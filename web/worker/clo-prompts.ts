@@ -562,6 +562,12 @@ export function ppmExtractionPrompt(): { system: string; user: string } {
 
   "cmTradingConstraints": { "discretionarySales": "...", "requiredSaleTypes": ["Credit Risk","Defaulted"], "postReinvestmentTrading": "..." },
 
+  "managementOfPortfolio": "Full text of the Management of the Portfolio section — PM authority, permitted activities, restrictions on trading, discretionary powers, investment guidelines",
+
+  "termsAndConditionsOfSales": "Full text of Terms and Conditions of Sales section — sale requirements, conditions precedent, notice periods, pricing requirements",
+
+  "tradingRestrictionsByTestBreach": [{ "testName": "OC Test Class A", "consequence": "If failed, interest proceeds diverted to pay down senior notes until cured" }],
+
   "refinancingHistory": [ { "date": "2021-06-15", "details": "..." } ],
 
   "additionalIssuance": { "permitted": true, "conditions": "..." },
@@ -585,6 +591,20 @@ export function ppmExtractionPrompt(): { system: string; user: string } {
   "lossMitigationLimits": { "maxOutstanding": "2%", "maxExtended": "2%", "maxCumulativePrincipal": "5%", "maxCumulativeTotal": "10%" },
   "additionalProvisions": "FREE-FORM CATCH-ALL — see instructions below"
 }
+
+CAPITAL STRUCTURE EXTRACTION — CRITICAL:
+- The capital structure table is typically found in the FIRST 5-10 pages of the PPM, often in a summary or term sheet section.
+- You MUST extract ALL tranches/classes — from the most senior (Class A / AAA) through the equity/subordinated notes.
+- Do NOT focus only on the tranche being described in the main body text. Find the summary table that lists ALL classes.
+- Include: class name, designation, principal amount, rate type (fixed/floating), reference rate, spread in bps, ratings from ALL agencies (Fitch, S&P, Moody's if available), deferability, issue price, maturity.
+- If the PPM only describes one tranche in detail but references others, still extract all tranches from the summary table.
+
+CM TRADING CONSTRAINTS & TRADING RESTRICTIONS — CRITICAL:
+- Extract the LINK between test breaches and trading restrictions. For example: "If the CCC/Caa bucket exceeds 7.5% of the portfolio, the PM cannot purchase additional CCC-rated assets."
+- Extract concentration-based trading limits: single obligor limits, industry limits, country limits, and what happens when they are breached.
+- For tradingRestrictionsByTestBreach, map EACH compliance test to its consequence when breached (e.g., OC test failure → proceeds diversion, CCC excess → purchase restriction).
+- Extract "Management of the Portfolio" section FULLY — PM authority, permitted activities, investment guidelines.
+- Extract "Terms and Conditions of Sales" section FULLY — conditions for sales, required sale types, discretionary limits.
 
 CRITICAL — additionalProvisions is the safety net. After populating all structured sections, write EVERYTHING remaining that could possibly be relevant into this field as structured prose with section headers. This includes but is not limited to:
 - Workout/restructured loan treatment and haircuts
