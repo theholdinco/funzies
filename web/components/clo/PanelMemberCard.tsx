@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { PanelMember } from "@/lib/clo/types";
 
 interface PanelMemberCardProps {
@@ -42,19 +43,32 @@ export default function PanelMemberCard({
       onKeyDown={(e) => e.key === "Enter" && handleToggle()}
     >
       <div className="ic-member-detail-header">
-        {member.avatarUrl ? (
-          <img
-            src={member.avatarUrl}
-            alt={member.name}
-            className="ic-member-avatar"
-          />
-        ) : (
-          <div className="ic-member-avatar-placeholder">
-            {member.name.charAt(0)}
-          </div>
-        )}
+        <Link
+          href={`/clo/panel/${member.number}`}
+          onClick={(e) => e.stopPropagation()}
+          style={{ textDecoration: "none" }}
+        >
+          {member.avatarUrl ? (
+            <img
+              src={member.avatarUrl}
+              alt={member.name}
+              className="ic-member-avatar"
+            />
+          ) : (
+            <div className="ic-member-avatar-placeholder">
+              {member.name.charAt(0)}
+            </div>
+          )}
+        </Link>
         <div className="ic-member-detail-info">
-          <div className="ic-member-detail-name">{member.name}</div>
+          <Link
+            href={`/clo/panel/${member.number}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ textDecoration: "none", color: "inherit" }}
+            className="ic-member-detail-name"
+          >
+            {member.name}
+          </Link>
           <div className="ic-member-detail-role">{member.role}</div>
         </div>
         <span
@@ -106,6 +120,13 @@ export default function PanelMemberCard({
               </ul>
             </div>
           )}
+          <Link
+            href={`/clo/panel/${member.number}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ fontSize: "0.82rem", display: "inline-block", marginTop: "0.5rem" }}
+          >
+            View profile &rarr;
+          </Link>
         </div>
       )}
     </div>
