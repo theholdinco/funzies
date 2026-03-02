@@ -7,8 +7,9 @@ import {
   getReportPeriodData,
   rowToProfile,
 } from "@/lib/clo/access";
-import type { ExtractedConstraints } from "@/lib/clo/types";
+import type { ExtractedConstraints, CloDocument } from "@/lib/clo/types";
 import ContextEditor from "./ContextEditor";
+import ResetProfile from "./ResetProfile";
 
 export default async function ContextPage() {
   const session = await auth();
@@ -23,6 +24,7 @@ export default async function ContextPage() {
 
   const profile = rowToProfile(profileRow as unknown as Record<string, unknown>);
   const constraints = (profile.extractedConstraints || {}) as ExtractedConstraints;
+  const documents = (profile.documents || []) as CloDocument[];
 
   const fundProfile = {
     fundStrategy: profile.fundStrategy,
@@ -58,11 +60,48 @@ export default async function ContextPage() {
   return (
     <div className="ic-content">
       <div className="standalone-header">
-        <h1>Context Editor</h1>
-        <p style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
-          View and edit the extracted data that feeds into every analysis and chat interaction.
-        </p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <h1>Context Editor</h1>
+            <p style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
+              View and edit the extracted data that feeds into every analysis and chat interaction.
+            </p>
+          </div>
+          <ResetProfile />
+        </div>
       </div>
+
+      {documents.length > 0 && (
+        <section className="ic-section" style={{ marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "0.9rem", margin: "0 0 0.5rem" }}>Uploaded Documents</h2>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            {documents.map((doc, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: "0.4rem 0.7rem",
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "0.8rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                }}
+              >
+                <span style={{ opacity: 0.5 }}>PDF</span>
+                <span>{doc.name || `Document ${i + 1}`}</span>
+                {doc.docType && (
+                  <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", textTransform: "uppercase" }}>
+                    {doc.docType}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <ContextEditor
         constraints={constraints}
         fundProfile={fundProfile}

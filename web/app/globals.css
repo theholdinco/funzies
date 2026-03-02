@@ -1644,6 +1644,9 @@
   background: var(--color-surface);
   border-right: 1px solid var(--color-border-light);
   padding: 1.5rem 1rem;
+  height: 100vh;
+  position: sticky;
+  top: 0;
 }
 
 .ic-sidebar-header {
