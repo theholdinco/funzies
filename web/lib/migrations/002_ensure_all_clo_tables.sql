@@ -194,10 +194,7 @@ CREATE TABLE IF NOT EXISTS clo_compliance_tests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   report_period_id UUID NOT NULL REFERENCES clo_report_periods(id) ON DELETE CASCADE,
   test_name TEXT NOT NULL,
-  test_type TEXT CHECK (test_type IN (
-    'OC_PAR', 'OC_MV', 'IC', 'INTEREST_DIVERSION', 'WARF', 'WAL', 'WAS',
-    'DIVERSITY', 'RECOVERY', 'CONCENTRATION', 'ELIGIBILITY'
-  )),
+  test_type TEXT,
   test_class TEXT,
   numerator NUMERIC,
   denominator NUMERIC,
@@ -220,9 +217,7 @@ CREATE INDEX IF NOT EXISTS idx_clo_compliance_tests_period_type ON clo_complianc
 CREATE TABLE IF NOT EXISTS clo_concentrations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   report_period_id UUID NOT NULL REFERENCES clo_report_periods(id) ON DELETE CASCADE,
-  concentration_type TEXT NOT NULL CHECK (concentration_type IN (
-    'INDUSTRY', 'COUNTRY', 'SINGLE_OBLIGOR', 'RATING', 'MATURITY', 'SPREAD', 'ASSET_TYPE', 'CURRENCY'
-  )),
+  concentration_type TEXT NOT NULL,
   bucket_name TEXT NOT NULL,
   actual_value NUMERIC,
   actual_pct NUMERIC,
@@ -241,7 +236,7 @@ CREATE INDEX IF NOT EXISTS idx_clo_concentrations_period_type ON clo_concentrati
 CREATE TABLE IF NOT EXISTS clo_waterfall_steps (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   report_period_id UUID NOT NULL REFERENCES clo_report_periods(id) ON DELETE CASCADE,
-  waterfall_type TEXT CHECK (waterfall_type IN ('INTEREST', 'PRINCIPAL', 'COMBINED')),
+  waterfall_type TEXT,
   priority_order INTEGER,
   description TEXT,
   payee TEXT,
@@ -258,9 +253,7 @@ CREATE TABLE IF NOT EXISTS clo_account_balances (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   report_period_id UUID NOT NULL REFERENCES clo_report_periods(id) ON DELETE CASCADE,
   account_name TEXT NOT NULL,
-  account_type TEXT CHECK (account_type IN (
-    'COLLECTION', 'PAYMENT', 'RESERVE', 'PRINCIPAL', 'INTEREST', 'EXPENSE', 'HEDGE', 'CUSTODY'
-  )),
+  account_type TEXT,
   currency TEXT,
   balance_amount NUMERIC,
   required_balance NUMERIC,
@@ -270,9 +263,7 @@ CREATE TABLE IF NOT EXISTS clo_account_balances (
 CREATE TABLE IF NOT EXISTS clo_proceeds (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   report_period_id UUID NOT NULL REFERENCES clo_report_periods(id) ON DELETE CASCADE,
-  proceeds_type TEXT CHECK (proceeds_type IN (
-    'INTEREST', 'PRINCIPAL', 'SALE', 'RECOVERY', 'FEE_REBATE', 'HEDGE', 'OTHER'
-  )),
+  proceeds_type TEXT,
   source_description TEXT,
   amount NUMERIC,
   period_start TEXT,
@@ -282,10 +273,7 @@ CREATE TABLE IF NOT EXISTS clo_proceeds (
 CREATE TABLE IF NOT EXISTS clo_trades (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   report_period_id UUID NOT NULL REFERENCES clo_report_periods(id) ON DELETE CASCADE,
-  trade_type TEXT CHECK (trade_type IN (
-    'PURCHASE', 'SALE', 'PAYDOWN', 'PREPAYMENT', 'DEFAULT_RECOVERY', 'CREDIT_RISK_SALE',
-    'DISCRETIONARY_SALE', 'SUBSTITUTION', 'AMENDED', 'RESTRUCTURED'
-  )),
+  trade_type TEXT,
   obligor_name TEXT,
   facility_name TEXT,
   trade_date TEXT,
@@ -325,10 +313,7 @@ CREATE TABLE IF NOT EXISTS clo_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   deal_id UUID NOT NULL REFERENCES clo_deals(id) ON DELETE CASCADE,
   report_period_id UUID REFERENCES clo_report_periods(id) ON DELETE SET NULL,
-  event_type TEXT CHECK (event_type IN (
-    'EOD_TRIGGER', 'OC_FAIL', 'IC_FAIL', 'COVERAGE_CURE', 'RATING_DOWNGRADE', 'RATING_UPGRADE',
-    'PAYMENT_DEFAULT', 'REINVESTMENT_PERIOD_END', 'ACCELERATION', 'REDEMPTION', 'AMENDMENT', 'OTHER'
-  )),
+  event_type TEXT,
   event_date TEXT,
   description TEXT,
   is_event_of_default BOOLEAN,
@@ -342,11 +327,7 @@ CREATE TABLE IF NOT EXISTS clo_par_value_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   report_period_id UUID NOT NULL REFERENCES clo_report_periods(id) ON DELETE CASCADE,
   test_name TEXT,
-  adjustment_type TEXT CHECK (adjustment_type IN (
-    'DEFAULTED_HAIRCUT', 'CCC_EXCESS_HAIRCUT', 'DISCOUNT_OBLIGATION_HAIRCUT',
-    'EXCESS_CONCENTRATION_HAIRCUT', 'TRADING_GAIN_LOSS', 'PRINCIPAL_CASH', 'HEDGE_MTM',
-    'DEFERRED_INTEREST', 'LONG_DATED_HAIRCUT', 'CURRENCY_HAIRCUT', 'RECOVERY_RATE_ADJ'
-  )),
+  adjustment_type TEXT,
   description TEXT,
   gross_amount NUMERIC,
   adjustment_amount NUMERIC,

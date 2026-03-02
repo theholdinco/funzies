@@ -78,22 +78,46 @@ function cushionColor(cushion: number): string {
   return "var(--color-error, #ef4444)";
 }
 
+function deduplicateTests(tests: CloComplianceTest[]): CloComplianceTest[] {
+  const best = new Map<string, CloComplianceTest>();
+  for (const t of tests) {
+    const key = `${t.testName}::${t.testClass ?? ""}`;
+    const existing = best.get(key);
+    if (!existing) {
+      best.set(key, t);
+    } else {
+      // Keep the one with more data (non-null fields)
+      const score = (c: CloComplianceTest) => [c.actualValue, c.triggerLevel, c.cushionPct, c.isPassing].filter((v) => v != null).length;
+      if (score(t) > score(existing)) best.set(key, t);
+    }
+  }
+  return Array.from(best.values());
+}
+
+function testBarColor(t: CloComplianceTest, cushion: number): string {
+  // Use explicit isPassing when available — handles both min and max tests correctly
+  if (t.isPassing === true) return cushionColor(Math.abs(cushion));
+  if (t.isPassing === false) return "var(--color-error, #ef4444)";
+  return cushionColor(cushion);
+}
+
 function TestComplianceSection({ tests, newTests }: { tests?: ComplianceTest[]; newTests?: CloComplianceTest[] }) {
-  // Prefer new data — filter out empty/zero-value tests from partial extractions
+  // Filter out empty/zero-value tests from partial extractions, then deduplicate
   const validTests = newTests?.filter((t) => (t.actualValue != null && t.actualValue !== 0) || (t.triggerLevel != null && t.triggerLevel !== 0));
-  if (validTests && validTests.length > 0) {
+  const dedupedTests = validTests && validTests.length > 0 ? deduplicateTests(validTests) : undefined;
+  if (dedupedTests && dedupedTests.length > 0) {
     return (
       <section className="ic-section">
         <h2>Test Compliance</h2>
         <div style={{ display: "grid", gap: "0.75rem" }}>
-          {validTests.map((t) => {
+          {dedupedTests.map((t) => {
             const actual = t.actualValue ?? 0;
             const trigger = t.triggerLevel ?? 0;
             const cushion = t.cushionPct ?? (actual - trigger);
             const maxVal = Math.max(actual, trigger) * 1.1 || 1;
             const actualPct = (actual / maxVal) * 100;
             const triggerPct = (trigger / maxVal) * 100;
-            const color = cushionColor(cushion);
+            const color = testBarColor(t, cushion);
             return (
               <div key={t.id}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginBottom: "0.25rem" }}>

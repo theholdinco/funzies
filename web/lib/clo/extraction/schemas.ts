@@ -61,10 +61,7 @@ export const pass1Schema = z.object({
 
   complianceTests: z.array(z.object({
     testName: z.string(),
-    testType: z.enum([
-      "OC_PAR", "OC_MV", "IC", "INTEREST_DIVERSION", "WARF", "WAL", "WAS",
-      "DIVERSITY", "RECOVERY", "CONCENTRATION", "ELIGIBILITY",
-    ]).nullable().optional(),
+    testType: z.string().nullable().optional(),
     testClass: z.string().nullable().optional(),
     numerator: z.number().nullable().optional(),
     denominator: z.number().nullable().optional(),
@@ -85,9 +82,7 @@ export const pass1Schema = z.object({
 
   accountBalances: z.array(z.object({
     accountName: z.string(),
-    accountType: z.enum([
-      "COLLECTION", "PAYMENT", "RESERVE", "PRINCIPAL", "INTEREST", "EXPENSE", "HEDGE", "CUSTODY",
-    ]).nullable().optional(),
+    accountType: z.string().nullable().optional(),
     currency: z.string().nullable().optional(),
     balanceAmount: z.number().nullable().optional(),
     requiredBalance: z.number().nullable().optional(),
@@ -96,11 +91,7 @@ export const pass1Schema = z.object({
 
   parValueAdjustments: z.array(z.object({
     testName: z.string().nullable().optional(),
-    adjustmentType: z.enum([
-      "DEFAULTED_HAIRCUT", "CCC_EXCESS_HAIRCUT", "DISCOUNT_OBLIGATION_HAIRCUT",
-      "EXCESS_CONCENTRATION_HAIRCUT", "TRADING_GAIN_LOSS", "PRINCIPAL_CASH", "HEDGE_MTM",
-      "DEFERRED_INTEREST", "LONG_DATED_HAIRCUT", "CURRENCY_HAIRCUT", "RECOVERY_RATE_ADJ",
-    ]).nullable().optional(),
+    adjustmentType: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     grossAmount: z.number().nullable().optional(),
     adjustmentAmount: z.number().nullable().optional(),
@@ -173,9 +164,7 @@ export type Pass2Output = z.infer<typeof pass2Schema>;
 
 export const pass3Schema = z.object({
   concentrations: z.array(z.object({
-    concentrationType: z.enum([
-      "INDUSTRY", "COUNTRY", "SINGLE_OBLIGOR", "RATING", "MATURITY", "SPREAD", "ASSET_TYPE", "CURRENCY",
-    ]),
+    concentrationType: z.string(),
     bucketName: z.string(),
     actualValue: z.number().nullable().optional(),
     actualPct: z.number().nullable().optional(),
@@ -199,7 +188,7 @@ export type Pass3Output = z.infer<typeof pass3Schema>;
 
 export const pass4Schema = z.object({
   waterfallSteps: z.array(z.object({
-    waterfallType: z.enum(["INTEREST", "PRINCIPAL", "COMBINED"]).nullable().optional(),
+    waterfallType: z.string().nullable().optional(),
     priorityOrder: z.number().nullable().optional(),
     description: z.string().nullable().optional(),
     payee: z.string().nullable().optional(),
@@ -213,7 +202,7 @@ export const pass4Schema = z.object({
   })).optional().default([]),
 
   proceeds: z.array(z.object({
-    proceedsType: z.enum(["INTEREST", "PRINCIPAL", "SALE", "RECOVERY", "FEE_REBATE", "HEDGE", "OTHER"]).nullable().optional(),
+    proceedsType: z.string().nullable().optional(),
     sourceDescription: z.string().nullable().optional(),
     amount: z.number().nullable().optional(),
     periodStart: z.string().nullable().optional(),
@@ -221,10 +210,7 @@ export const pass4Schema = z.object({
   })).optional().default([]),
 
   trades: z.array(z.object({
-    tradeType: z.enum([
-      "PURCHASE", "SALE", "PAYDOWN", "PREPAYMENT", "DEFAULT_RECOVERY", "CREDIT_RISK_SALE",
-      "DISCRETIONARY_SALE", "SUBSTITUTION", "AMENDED", "RESTRUCTURED",
-    ]).nullable().optional(),
+    tradeType: z.string().nullable().optional(),
     obligorName: z.string().nullable().optional(),
     facilityName: z.string().nullable().optional(),
     tradeDate: z.string().nullable().optional(),
@@ -347,10 +333,7 @@ export const pass5Schema = z.object({
   })).optional().default([]),
 
   events: z.array(z.object({
-    eventType: z.enum([
-      "EOD_TRIGGER", "OC_FAIL", "IC_FAIL", "COVERAGE_CURE", "RATING_DOWNGRADE", "RATING_UPGRADE",
-      "PAYMENT_DEFAULT", "REINVESTMENT_PERIOD_END", "ACCELERATION", "REDEMPTION", "AMENDMENT", "OTHER",
-    ]).nullable().optional(),
+    eventType: z.string().nullable().optional(),
     eventDate: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     isEventOfDefault: z.boolean().nullable().optional(),
