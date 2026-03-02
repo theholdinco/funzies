@@ -1,53 +1,62 @@
 import { query } from "../../db";
 import type { CloDocument } from "../types";
-import { buildDocumentContent, callAnthropic, callAnthropicChunked, parseJsonResponse, normalizeClassName } from "../api";
+import { callAnthropicChunkedWithTool, normalizeClassName } from "../api";
 import { pass1Schema, pass2Schema, pass3Schema, pass4Schema, pass5Schema } from "./schemas";
 import { pass1Prompt, pass2Prompt, pass3Prompt, pass4Prompt, pass5Prompt } from "./prompts";
 import { normalizePass1, normalizePass2, normalizePass3, normalizePass4, normalizePass5 } from "./normalizer";
 import { validateExtraction } from "./validator";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
-async function callClaude(
+async function callClaudeStructured(
   apiKey: string,
   system: string,
   documents: CloDocument[],
   userText: string,
   maxTokens: number,
-): Promise<{ text: string; truncated: boolean; error?: string; status?: number }> {
-  const chunked = await callAnthropicChunked(apiKey, system, documents, userText, maxTokens);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  schema: any,
+  toolName: string,
+): Promise<{ data: Record<string, unknown> | null; truncated: boolean; error?: string; status?: number }> {
+  // zodToJsonSchema types expect zod v3; zod v4 works at runtime
+  const inputSchema = zodToJsonSchema(schema as Parameters<typeof zodToJsonSchema>[0], { target: "openApi3" }) as Record<string, unknown>;
+
+  const tool = {
+    name: toolName,
+    description: "Extract structured data from the document. Return all fields matching the schema.",
+    inputSchema,
+  };
+
+  const chunked = await callAnthropicChunkedWithTool(apiKey, system, documents, userText, maxTokens, tool);
 
   if (chunked.error) {
-    return { text: "", truncated: false, error: chunked.error, status: chunked.status };
+    return { data: null, truncated: false, error: chunked.error, status: chunked.status };
   }
 
   if (chunked.results.length === 1) {
-    return { text: chunked.results[0].text, truncated: chunked.results[0].truncated };
+    return { data: chunked.results[0].data, truncated: chunked.results[0].truncated };
   }
 
-  // For multi-chunk results, merge JSON outputs
+  // Multi-chunk: merge structured results
   let merged: Record<string, unknown> = {};
   for (const result of chunked.results) {
-    try {
-      const parsed = parseJsonResponse(result.text);
-      if (Object.keys(merged).length === 0) {
-        merged = parsed;
-      } else {
-        for (const [key, val] of Object.entries(parsed)) {
-          if (val == null) continue;
-          const baseVal = merged[key];
-          if (Array.isArray(val) && Array.isArray(baseVal)) {
-            merged[key] = [...baseVal, ...val];
-          } else if (merged[key] == null) {
-            merged[key] = val;
-          }
+    if (!result.data) continue;
+    if (Object.keys(merged).length === 0) {
+      merged = result.data;
+    } else {
+      for (const [key, val] of Object.entries(result.data)) {
+        if (val == null) continue;
+        const baseVal = merged[key];
+        if (Array.isArray(val) && Array.isArray(baseVal)) {
+          merged[key] = [...baseVal, ...val];
+        } else if (merged[key] == null) {
+          merged[key] = val;
         }
       }
-    } catch {
-      // Individual chunk parse failure — continue with others
     }
   }
 
   const anyTruncated = chunked.results.some((r) => r.truncated);
-  return { text: JSON.stringify(merged), truncated: anyTruncated };
+  return { data: merged, truncated: anyTruncated };
 }
 
 async function batchInsert(table: string, rows: Record<string, unknown>[]): Promise<void> {
@@ -114,7 +123,7 @@ export async function runExtraction(
 
   // Pass 1: blocking — we need reportDate before anything else
   const p1Prompt = pass1Prompt();
-  const p1Result = await callClaude(apiKey, p1Prompt.system, documents, p1Prompt.user, 8192);
+  const p1Result = await callClaudeStructured(apiKey, p1Prompt.system, documents, p1Prompt.user, 8192, pass1Schema, "extract_pass1");
 
   if (p1Result.error) {
     throw new Error(`Pass 1 API error: ${p1Result.error}`);
@@ -122,14 +131,13 @@ export async function runExtraction(
 
   let pass1Data;
   try {
-    const raw = parseJsonResponse(p1Result.text);
-    pass1Data = pass1Schema.parse(raw);
+    pass1Data = pass1Schema.parse(p1Result.data);
   } catch (e) {
-    throw new Error(`Pass 1 parse/validate error: ${(e as Error).message}`);
+    throw new Error(`Pass 1 validate error: ${(e as Error).message}`);
   }
 
   const reportDate = pass1Data.reportMetadata.reportDate;
-  const rawOutputs: Record<string, unknown> = { pass1: p1Result.text };
+  const rawOutputs: Record<string, unknown> = { pass1: p1Result.data };
 
   // Create report period
   const rpRows = await query<{ id: string }>(
@@ -181,10 +189,10 @@ export async function runExtraction(
   }
 
   const [p2Result, p3Result, p4Result, p5Result] = await Promise.all([
-    callClaude(apiKey, pass2Prompt(reportDate).system, documents, pass2Prompt(reportDate).user, 32768),
-    callClaude(apiKey, pass3Prompt(reportDate).system, documents, pass3Prompt(reportDate).user, 8192),
-    callClaude(apiKey, pass4Prompt(reportDate).system, documents, pass4Prompt(reportDate).user, 8192),
-    callClaude(apiKey, pass5Prompt(reportDate).system, documents, pass5Prompt(reportDate).user, 8192),
+    callClaudeStructured(apiKey, pass2Prompt(reportDate).system, documents, pass2Prompt(reportDate).user, 32768, pass2Schema, "extract_pass2"),
+    callClaudeStructured(apiKey, pass3Prompt(reportDate).system, documents, pass3Prompt(reportDate).user, 8192, pass3Schema, "extract_pass3"),
+    callClaudeStructured(apiKey, pass4Prompt(reportDate).system, documents, pass4Prompt(reportDate).user, 8192, pass4Schema, "extract_pass4"),
+    callClaudeStructured(apiKey, pass5Prompt(reportDate).system, documents, pass5Prompt(reportDate).user, 8192, pass5Schema, "extract_pass5"),
   ]);
 
   const passInputs = [
@@ -195,15 +203,14 @@ export async function runExtraction(
   ];
 
   for (const { num, result, schema } of passInputs) {
-    rawOutputs[`pass${num}`] = result.text;
+    rawOutputs[`pass${num}`] = result.data;
     if (result.error) {
-      passResults.push({ pass: num, data: null, truncated: false, error: result.error, raw: result.text });
+      passResults.push({ pass: num, data: null, truncated: false, error: result.error, raw: JSON.stringify(result.data) });
       continue;
     }
     try {
-      const raw = parseJsonResponse(result.text);
-      const validated = schema.parse(raw);
-      passResults.push({ pass: num, data: validated as Record<string, unknown>, truncated: result.truncated, raw: result.text });
+      const validated = schema.parse(result.data);
+      passResults.push({ pass: num, data: validated as Record<string, unknown>, truncated: result.truncated, raw: JSON.stringify(result.data) });
 
       // Collect overflow
       const overflow = (validated as Record<string, unknown[]>)._overflow;
@@ -219,7 +226,7 @@ export async function runExtraction(
         }
       }
     } catch (e) {
-      passResults.push({ pass: num, data: null, truncated: result.truncated, error: (e as Error).message, raw: result.text });
+      passResults.push({ pass: num, data: null, truncated: result.truncated, error: (e as Error).message, raw: JSON.stringify(result.data) });
     }
   }
 

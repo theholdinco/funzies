@@ -59,6 +59,138 @@ export async function callAnthropic(
   return { text, truncated };
 }
 
+export async function callAnthropicWithTool(
+  apiKey: string,
+  system: string,
+  content: Array<Record<string, unknown>>,
+  maxTokens: number,
+  tool: { name: string; description: string; inputSchema: Record<string, unknown> },
+): Promise<{ data: Record<string, unknown> | null; truncated: boolean; error?: string; status?: number }> {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content }],
+      tools: [{
+        name: tool.name,
+        description: tool.description,
+        input_schema: tool.inputSchema,
+      }],
+      tool_choice: { type: "tool", name: tool.name },
+    }),
+  });
+
+  if (!response.ok) {
+    return { data: null, truncated: false, error: await response.text(), status: response.status };
+  }
+
+  const result = await response.json();
+  const toolUseBlock = result.content?.find(
+    (block: { type: string }) => block.type === "tool_use"
+  );
+
+  if (!toolUseBlock) {
+    const text = result.content
+      ?.filter((block: AnthropicBlock) => block.type === "text")
+      ?.map((block: AnthropicBlock) => block.text)
+      ?.join("\n") || "";
+    return { data: text ? parseJsonResponse(text) : null, truncated: result.stop_reason !== "end_turn" };
+  }
+
+  return {
+    data: toolUseBlock.input as Record<string, unknown>,
+    truncated: result.stop_reason !== "end_turn",
+  };
+}
+
+export async function callAnthropicChunkedWithTool(
+  apiKey: string,
+  system: string,
+  documents: CloDocument[],
+  userText: string,
+  maxTokens: number,
+  tool: { name: string; description: string; inputSchema: Record<string, unknown> },
+): Promise<{ results: { data: Record<string, unknown> | null; truncated: boolean; chunkLabel: string }[]; error?: string; status?: number }> {
+  const chunkSets = await chunkDocuments(documents);
+
+  if (chunkSets.length === 1) {
+    const content = buildDocumentContent(chunkSets[0].documents, userText);
+    const result = await callAnthropicWithTool(apiKey, system, content, maxTokens, tool);
+    if (result.error && result.error.includes("prompt is too long")) {
+      return callAnthropicChunkedWithToolLimit(apiKey, system, documents, userText, maxTokens, tool, Math.floor(MAX_PDF_PAGES / 2));
+    }
+    if (result.error) return { results: [], error: result.error, status: result.status };
+    return { results: [{ data: result.data, truncated: result.truncated, chunkLabel: chunkSets[0].chunkLabel }] };
+  }
+
+  const chunkResults = await Promise.all(
+    chunkSets.map(async (chunkSet) => {
+      const chunkUserText = `[NOTE: This document has been split due to size. You are viewing ${chunkSet.chunkLabel}. Extract all information from these pages.]\n\n${userText}`;
+      const content = buildDocumentContent(chunkSet.documents, chunkUserText);
+      const result = await callAnthropicWithTool(apiKey, system, content, maxTokens, tool);
+      return { ...result, chunkLabel: chunkSet.chunkLabel };
+    }),
+  );
+
+  const promptTooLong = chunkResults.some((r) => r.error?.includes("prompt is too long"));
+  if (promptTooLong) {
+    return callAnthropicChunkedWithToolLimit(apiKey, system, documents, userText, maxTokens, tool, Math.floor(MAX_PDF_PAGES / 2));
+  }
+
+  const firstError = chunkResults.find((r) => r.error);
+  if (firstError && chunkResults.every((r) => r.error)) {
+    return { results: [], error: firstError.error, status: firstError.status };
+  }
+
+  return {
+    results: chunkResults
+      .filter((r) => !r.error)
+      .map((r) => ({ data: r.data, truncated: r.truncated, chunkLabel: r.chunkLabel })),
+  };
+}
+
+async function callAnthropicChunkedWithToolLimit(
+  apiKey: string,
+  system: string,
+  documents: CloDocument[],
+  userText: string,
+  maxTokens: number,
+  tool: { name: string; description: string; inputSchema: Record<string, unknown> },
+  pageLimit: number,
+): Promise<{ results: { data: Record<string, unknown> | null; truncated: boolean; chunkLabel: string }[]; error?: string; status?: number }> {
+  console.log(`[callAnthropicChunkedWithTool] Retrying with reduced page limit: ${pageLimit}`);
+  const chunkSets = await chunkDocuments(documents, pageLimit);
+
+  const chunkResults = await Promise.all(
+    chunkSets.map(async (chunkSet) => {
+      const chunkUserText = chunkSets.length > 1
+        ? `[NOTE: This document has been split due to size. You are viewing ${chunkSet.chunkLabel}. Extract all information from these pages.]\n\n${userText}`
+        : userText;
+      const content = buildDocumentContent(chunkSet.documents, chunkUserText);
+      const result = await callAnthropicWithTool(apiKey, system, content, maxTokens, tool);
+      return { ...result, chunkLabel: chunkSet.chunkLabel };
+    }),
+  );
+
+  const firstError = chunkResults.find((r) => r.error);
+  if (firstError && chunkResults.every((r) => r.error)) {
+    return { results: [], error: firstError.error, status: firstError.status };
+  }
+
+  return {
+    results: chunkResults
+      .filter((r) => !r.error)
+      .map((r) => ({ data: r.data, truncated: r.truncated, chunkLabel: r.chunkLabel })),
+  };
+}
+
 export function parseJsonResponse(text: string): Record<string, unknown> {
   // Find the outermost JSON object, handling nested braces correctly
   const start = text.indexOf("{");
