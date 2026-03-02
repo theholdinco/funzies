@@ -37,6 +37,7 @@ async function verifyReportPeriodAccess(reportPeriodId: string, userId: string):
 function buildUpdateQuery(
   table: string,
   id: string,
+  reportPeriodId: string,
   updates: Record<string, unknown>
 ): { sql: string; values: unknown[] } | null {
   const allowed = ALLOWED_UPDATES[table];
@@ -55,9 +56,9 @@ function buildUpdateQuery(
 
   if (setClauses.length === 0) return null;
 
-  values.push(id);
+  values.push(id, reportPeriodId);
   return {
-    sql: `UPDATE ${table} SET ${setClauses.join(", ")} WHERE id = $${paramIndex}`,
+    sql: `UPDATE ${table} SET ${setClauses.join(", ")} WHERE id = $${paramIndex - 1} AND report_period_id = $${paramIndex}`,
     values,
   };
 }
@@ -88,7 +89,7 @@ export async function PATCH(request: NextRequest) {
       [reportPeriodId]
     );
     if (poolRows.length > 0) {
-      const q = buildUpdateQuery("clo_pool_summary", poolRows[0].id, poolSummary);
+      const q = buildUpdateQuery("clo_pool_summary", poolRows[0].id, reportPeriodId, poolSummary);
       if (q) {
         await query(q.sql, q.values);
         results.push("poolSummary");
@@ -99,7 +100,7 @@ export async function PATCH(request: NextRequest) {
   if (Array.isArray(complianceTests)) {
     for (const { id, updates } of complianceTests) {
       if (!id || !updates) continue;
-      const q = buildUpdateQuery("clo_compliance_tests", id, updates);
+      const q = buildUpdateQuery("clo_compliance_tests", id, reportPeriodId, updates);
       if (q) {
         await query(q.sql, q.values);
         results.push(`complianceTest:${id}`);
@@ -110,7 +111,7 @@ export async function PATCH(request: NextRequest) {
   if (Array.isArray(concentrations)) {
     for (const { id, updates } of concentrations) {
       if (!id || !updates) continue;
-      const q = buildUpdateQuery("clo_concentrations", id, updates);
+      const q = buildUpdateQuery("clo_concentrations", id, reportPeriodId, updates);
       if (q) {
         await query(q.sql, q.values);
         results.push(`concentration:${id}`);

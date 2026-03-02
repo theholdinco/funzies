@@ -36,6 +36,10 @@ export default async function CLOLayout({
                 <span className="ic-nav-icon">&#9670;</span>
                 Panel
               </Link>
+              <Link href="/clo/context" className="ic-nav-link">
+                <span className="ic-nav-icon">&#9670;</span>
+                Context
+              </Link>
               <Link href="/clo/analyze/new" className="ic-nav-link">
                 <span className="ic-nav-icon">&#9670;</span>
                 New Analysis
@@ -43,10 +47,6 @@ export default async function CLOLayout({
               <Link href="/clo/screenings" className="ic-nav-link">
                 <span className="ic-nav-icon">&#9670;</span>
                 Screenings
-              </Link>
-              <Link href="/clo/context" className="ic-nav-link">
-                <span className="ic-nav-icon">&#9670;</span>
-                Context
               </Link>
             </>
           )}

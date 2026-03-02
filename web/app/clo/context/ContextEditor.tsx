@@ -269,18 +269,18 @@ export default function ContextEditor({
 
   async function saveConstraints() {
     setSavingConstraints(true);
-    await fetch("/api/clo/profile/constraints", {
+    const res = await fetch("/api/clo/profile/constraints", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ extractedConstraints: constraints }),
     });
     setSavingConstraints(false);
-    setConstraintsDirty(false);
+    if (res.ok) setConstraintsDirty(false);
   }
 
   async function saveProfile() {
     setSavingProfile(true);
-    await fetch("/api/clo/profile", {
+    const res = await fetch("/api/clo/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -299,13 +299,13 @@ export default function ContextEditor({
       }),
     });
     setSavingProfile(false);
-    setProfileDirty(false);
+    if (res.ok) setProfileDirty(false);
   }
 
   async function saveCompliance() {
     if (!complianceData) return;
     setSavingCompliance(true);
-    await fetch("/api/clo/compliance", {
+    const res = await fetch("/api/clo/compliance", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -316,7 +316,7 @@ export default function ContextEditor({
       }),
     });
     setSavingCompliance(false);
-    setComplianceDirty(false);
+    if (res.ok) setComplianceDirty(false);
   }
 
   // --- Array mutators for constraint sub-fields ---
