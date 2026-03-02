@@ -57,12 +57,16 @@ export default async function CLOLayout({
             <Link
               href="/clo/context"
               className="ic-nav-link"
-              style={{ color: "var(--color-text-muted)", fontSize: "0.8rem", opacity: 0.7 }}
+              style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}
             >
               Context
             </Link>
           )}
-          <Link href="/" className="ic-nav-link ic-nav-link-muted">
+          <Link
+            href="/"
+            className="ic-nav-link"
+            style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}
+          >
             &larr; Back to Panels
           </Link>
         </div>
