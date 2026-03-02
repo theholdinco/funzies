@@ -705,6 +705,7 @@ Return a single JSON object (no markdown fences, no explanation) containing ONLY
   "tax": { ...if first pass missed fields... },
   "riskRetention": { ...if first pass missed fields... },
   "lossMitigationLimits": { ...if first pass missed or incomplete... },
+  "tradingRestrictionsByTestBreach": [{ "testName": "...", "consequence": "..." }],
   "additionalProvisions": "NEW TEXT ONLY — provisions the first pass missed entirely"
 }
 
@@ -720,6 +721,7 @@ WHERE TO LOOK — structural provisions commonly missed:
 - **Workout obligations** — restructured obligation criteria, participation mechanics
 - **Maturity amendment** — conditions under which loan maturities can be extended
 - **Defined terms that create hidden constraints** — e.g., "Aggregate Principal Balance" excluding defaulted obligations affects OC test calculations
+- **Test breach consequences** — scattered throughout the PPM, often in waterfall descriptions, coverage test sections, and portfolio management sections. Map each test (OC par, OC MV, IC, WARF, WAL, WAS, Diversity, CCC bucket, etc.) to what happens when it fails. Common consequences: proceeds diversion, purchase restrictions, mandatory redemption, acceleration triggers. Also check for tiered consequences (e.g., "minor breach" vs "major breach").
 
 If the first pass captured everything in these areas, return: {}
 
