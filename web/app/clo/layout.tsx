@@ -50,26 +50,13 @@ export default async function CLOLayout({
               </Link>
             </>
           )}
-        </nav>
-
-        <div className="ic-sidebar-footer">
+          <div style={{ marginTop: "auto" }} />
           {profile && (
-            <Link
-              href="/clo/context"
-              className="ic-nav-link"
-              style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}
-            >
+            <Link href="/clo/context" className="ic-nav-link" style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", opacity: 0.5 }}>
               Context
             </Link>
           )}
-          <Link
-            href="/"
-            className="ic-nav-link"
-            style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}
-          >
-            &larr; Back to Panels
-          </Link>
-        </div>
+        </nav>
       </aside>
 
       <main className="ic-main">
