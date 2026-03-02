@@ -1,5 +1,5 @@
 import type { CloDocument } from "./types";
-import { chunkDocuments } from "./pdf-chunking";
+import { chunkDocuments, MAX_PDF_PAGES } from "./pdf-chunking";
 
 interface AnthropicBlock { type: string; text?: string }
 
@@ -112,6 +112,10 @@ export async function callAnthropicChunked(
   if (chunkSets.length === 1) {
     const content = buildDocumentContent(chunkSets[0].documents, userText);
     const result = await callAnthropic(apiKey, system, content, maxTokens);
+    if (result.error && result.error.includes("prompt is too long")) {
+      // Single chunk too large — re-chunk with halved page limit
+      return callAnthropicChunkedWithLimit(apiKey, system, documents, userText, maxTokens, Math.floor(MAX_PDF_PAGES / 2));
+    }
     if (result.error) return { results: [], error: result.error, status: result.status };
     return { results: [{ text: result.text, truncated: result.truncated, chunkLabel: chunkSets[0].chunkLabel }] };
   }
@@ -119,6 +123,46 @@ export async function callAnthropicChunked(
   const chunkResults = await Promise.all(
     chunkSets.map(async (chunkSet) => {
       const chunkUserText = `[NOTE: This document has been split due to size. You are viewing ${chunkSet.chunkLabel}. Extract all information from these pages.]\n\n${userText}`;
+      const content = buildDocumentContent(chunkSet.documents, chunkUserText);
+      const result = await callAnthropic(apiKey, system, content, maxTokens);
+      return { ...result, chunkLabel: chunkSet.chunkLabel };
+    }),
+  );
+
+  const promptTooLong = chunkResults.some((r) => r.error?.includes("prompt is too long"));
+  if (promptTooLong) {
+    // At least one chunk was too large — retry everything with halved page limit
+    return callAnthropicChunkedWithLimit(apiKey, system, documents, userText, maxTokens, Math.floor(MAX_PDF_PAGES / 2));
+  }
+
+  const firstError = chunkResults.find((r) => r.error);
+  if (firstError && chunkResults.every((r) => r.error)) {
+    return { results: [], error: firstError.error, status: firstError.status };
+  }
+
+  return {
+    results: chunkResults
+      .filter((r) => !r.error)
+      .map((r) => ({ text: r.text, truncated: r.truncated, chunkLabel: r.chunkLabel })),
+  };
+}
+
+async function callAnthropicChunkedWithLimit(
+  apiKey: string,
+  system: string,
+  documents: CloDocument[],
+  userText: string,
+  maxTokens: number,
+  pageLimit: number,
+): Promise<{ results: { text: string; truncated: boolean; chunkLabel: string }[]; error?: string; status?: number }> {
+  console.log(`[callAnthropicChunked] Retrying with reduced page limit: ${pageLimit}`);
+  const chunkSets = await chunkDocuments(documents, pageLimit);
+
+  const chunkResults = await Promise.all(
+    chunkSets.map(async (chunkSet) => {
+      const chunkUserText = chunkSets.length > 1
+        ? `[NOTE: This document has been split due to size. You are viewing ${chunkSet.chunkLabel}. Extract all information from these pages.]\n\n${userText}`
+        : userText;
       const content = buildDocumentContent(chunkSet.documents, chunkUserText);
       const result = await callAnthropic(apiKey, system, content, maxTokens);
       return { ...result, chunkLabel: chunkSet.chunkLabel };

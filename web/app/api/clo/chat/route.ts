@@ -119,7 +119,9 @@ export async function POST(request: NextRequest) {
   if (existingMessages.length === 0) {
     const fullProfile = await getProfileWithDocuments(user.id);
     const rawDocs = (fullProfile?.documents as typeof documents) || [];
-    documents = await fitDocumentsToPageLimit(rawDocs);
+    // Use a lower page limit for chat — the system prompt, conversation
+    // history, and tool definitions consume significant tokens alongside the PDFs.
+    documents = await fitDocumentsToPageLimit(rawDocs, 50);
   }
   const claudeMessages: Array<{ role: "user" | "assistant"; content: string | Array<Record<string, unknown>> }> = [];
 
@@ -193,6 +195,12 @@ export async function POST(request: NextRequest) {
       );
     }
     const errorText = await anthropicResponse.text();
+    if (errorText.includes("prompt is too long")) {
+      return NextResponse.json(
+        { error: "The uploaded documents are too large for a single request. Please try with fewer or smaller documents." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { error: "API error", details: errorText },
       { status: anthropicResponse.status }

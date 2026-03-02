@@ -14,24 +14,27 @@ export default function ExtractPortfolioButton({ hasPortfolio }: { hasPortfolio:
     setError("");
     setStatus("Starting extraction...");
 
-    const res = await fetch("/api/clo/report/extract", { method: "POST" });
+    try {
+      const res = await fetch("/api/clo/report/extract", { method: "POST" });
 
-    if (!res.ok) {
-      // Fall back to legacy endpoint
-      setStatus("Trying legacy extraction...");
-      const legacyRes = await fetch("/api/clo/profile/extract-portfolio", { method: "POST" });
-      if (!legacyRes.ok) {
-        const data = await legacyRes.json().catch(() => ({}));
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         setError(data.error || "Extraction failed");
         setLoading(false);
         setStatus("");
         return;
       }
-    }
 
-    setStatus("Extraction complete!");
-    setLoading(false);
-    router.refresh();
+      const result = await res.json().catch(() => ({}));
+      const extractionStatus = result.status === "complete" ? "Extraction complete!" : "Extraction partially complete.";
+      setStatus(extractionStatus);
+      setLoading(false);
+      router.refresh();
+    } catch (e) {
+      setError(`Extraction failed: ${(e as Error).message}`);
+      setLoading(false);
+      setStatus("");
+    }
   }
 
   return (

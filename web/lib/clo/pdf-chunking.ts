@@ -1,7 +1,7 @@
 import { PDFDocument } from "pdf-lib";
 import type { CloDocument } from "./types";
 
-export const MAX_PDF_PAGES = 100;
+export const MAX_PDF_PAGES = 75;
 
 export type PipelineDocument = { name: string; type: string; base64: string };
 
@@ -12,19 +12,20 @@ interface PdfChunk {
   totalPages: number;
 }
 
-async function splitPdf(base64Data: string): Promise<PdfChunk[]> {
+async function splitPdf(base64Data: string, pageLimit?: number): Promise<PdfChunk[]> {
+  const limit = pageLimit ?? MAX_PDF_PAGES;
   const pdfBytes = Buffer.from(base64Data, "base64");
   const pdfDoc = await PDFDocument.load(pdfBytes);
   const totalPages = pdfDoc.getPageCount();
 
-  if (totalPages <= MAX_PDF_PAGES) {
+  if (totalPages <= limit) {
     return [{ base64: base64Data, pageStart: 1, pageEnd: totalPages, totalPages }];
   }
 
   const chunks: PdfChunk[] = [];
 
-  for (let start = 0; start < totalPages; start += MAX_PDF_PAGES) {
-    const end = Math.min(start + MAX_PDF_PAGES, totalPages);
+  for (let start = 0; start < totalPages; start += limit) {
+    const end = Math.min(start + limit, totalPages);
     const chunkDoc = await PDFDocument.create();
     const pages = await chunkDoc.copyPages(pdfDoc, Array.from({ length: end - start }, (_, i) => start + i));
 
@@ -49,7 +50,9 @@ export interface DocumentChunkSet {
   chunkLabel: string;
 }
 
-export async function chunkDocuments(documents: CloDocument[]): Promise<DocumentChunkSet[]> {
+export async function chunkDocuments(documents: CloDocument[], pageLimit?: number): Promise<DocumentChunkSet[]> {
+  const limit = pageLimit ?? MAX_PDF_PAGES;
+
   // Count total PDF pages across all documents
   let totalPdfPages = 0;
   const pdfChunkMap: Map<number, PdfChunk[]> = new Map();
@@ -58,17 +61,17 @@ export async function chunkDocuments(documents: CloDocument[]): Promise<Document
     const doc = documents[i];
     if (doc.type !== "application/pdf") continue;
 
-    const chunks = await splitPdf(doc.base64);
+    const chunks = await splitPdf(doc.base64, limit);
     pdfChunkMap.set(i, chunks);
     totalPdfPages += chunks[0].totalPages;
   }
 
   // If everything fits in one request, return as-is
-  if (totalPdfPages <= MAX_PDF_PAGES) {
+  if (totalPdfPages <= limit) {
     return [{ documents, chunkLabel: "all pages" }];
   }
 
-  // Build chunk sets where each set has ≤100 total PDF pages
+  // Build chunk sets where each set has ≤limit total PDF pages
   const chunkSets: DocumentChunkSet[] = [];
   const nonPdfDocs = documents.filter((d) => d.type !== "application/pdf");
 
@@ -80,14 +83,14 @@ export async function chunkDocuments(documents: CloDocument[]): Promise<Document
     }
   }
 
-  // Group chunks into sets of ≤100 pages
+  // Group chunks into sets of ≤limit pages
   let currentPages = 0;
   let currentChunks: typeof allChunks = [];
 
   for (const entry of allChunks) {
     const chunkPageCount = entry.chunk.pageEnd - entry.chunk.pageStart + 1;
 
-    if (currentPages + chunkPageCount > MAX_PDF_PAGES && currentChunks.length > 0) {
+    if (currentPages + chunkPageCount > limit && currentChunks.length > 0) {
       chunkSets.push(buildChunkSet(currentChunks, nonPdfDocs));
       currentChunks = [];
       currentPages = 0;
@@ -137,7 +140,9 @@ async function getPdfPageCount(base64Data: string): Promise<number> {
  */
 export async function fitDocumentsToPageLimit(
   documents: PipelineDocument[],
+  pageLimit?: number,
 ): Promise<PipelineDocument[]> {
+  const limit = pageLimit ?? MAX_PDF_PAGES;
   let totalPages = 0;
   const result: PipelineDocument[] = [];
 
@@ -149,13 +154,13 @@ export async function fitDocumentsToPageLimit(
 
     const pageCount = await getPdfPageCount(doc.base64);
 
-    if (totalPages + pageCount <= MAX_PDF_PAGES) {
+    if (totalPages + pageCount <= limit) {
       result.push(doc);
       totalPages += pageCount;
       continue;
     }
 
-    const remaining = MAX_PDF_PAGES - totalPages;
+    const remaining = limit - totalPages;
     if (remaining <= 0) break;
 
     // Truncate this PDF to fit remaining space

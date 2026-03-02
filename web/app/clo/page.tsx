@@ -759,9 +759,9 @@ export default async function CLODashboard() {
         </Link>
       </section>
 
-      {analyses.length > 0 && (
-        <section className="ic-section">
-          <h2>Recent Analyses</h2>
+      <section className="ic-section">
+        <h2>Recent Analyses</h2>
+        {analyses.length > 0 ? (
           <div className="ic-eval-list">
             {analyses.map((a) => (
               <Link
@@ -787,8 +787,12 @@ export default async function CLODashboard() {
               </Link>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
+            No analyses yet. Use &ldquo;New Analysis&rdquo; to evaluate a credit opportunity.
+          </p>
+        )}
+      </section>
     </div>
   );
 }
