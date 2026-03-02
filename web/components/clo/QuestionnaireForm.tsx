@@ -8,6 +8,8 @@ import type {
   CapitalStructureEntry,
   FeeEntry,
   KeyParty,
+  CloComplianceTest,
+  CloPoolSummary,
 } from "@/lib/clo/types";
 
 const STEPS = [
@@ -129,6 +131,8 @@ export default function QuestionnaireForm() {
   const [complianceFiles, setComplianceFiles] = useState<File[]>([]);
   const [uploadedPpmNames, setUploadedPpmNames] = useState<string[]>([]);
   const [uploadedComplianceNames, setUploadedComplianceNames] = useState<string[]>([]);
+  const [complianceTestData, setComplianceTestData] = useState<CloComplianceTest[]>([]);
+  const [poolSummary, setPoolSummary] = useState<CloPoolSummary | null>(null);
   const ppmInputRef = useRef<HTMLInputElement>(null);
   const complianceInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -219,6 +223,8 @@ export default function QuestionnaireForm() {
           ...prev,
           extractedConstraints: pollData.extractedConstraints || {},
         }));
+        if (pollData.complianceTests) setComplianceTestData(pollData.complianceTests);
+        if (pollData.poolSummary) setPoolSummary(pollData.poolSummary);
         setExtracting(false);
         setStep(1);
         return;
@@ -455,7 +461,7 @@ export default function QuestionnaireForm() {
   }
 
   function renderComplianceTests() {
-    const { coverageTests } = crossReferenceTests(c);
+    const { coverageTests } = crossReferenceTests(c, complianceTestData.length > 0 ? complianceTestData : undefined, poolSummary);
     const hasLegacyCoverage = c.coverageTests && Object.keys(c.coverageTests).length > 0;
     const hasReinvOc = !!c.reinvestmentOcTest;
 
@@ -533,7 +539,7 @@ export default function QuestionnaireForm() {
   }
 
   function renderProfileTests() {
-    const { qualityAndProfileTests } = crossReferenceTests(c);
+    const { qualityAndProfileTests } = crossReferenceTests(c, complianceTestData.length > 0 ? complianceTestData : undefined, poolSummary);
     const hasMetrics = c.warfLimit != null || c.wasMinimum != null || c.walMaximum != null || c.diversityScoreMinimum != null;
 
     if (qualityAndProfileTests.length === 0 && !hasMetrics) return null;

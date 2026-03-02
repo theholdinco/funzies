@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-helpers";
 import { query } from "@/lib/db";
+import { getComplianceTests, getPoolSummary } from "@/lib/clo/access";
 
 export async function POST() {
   const user = await getCurrentUser();
@@ -57,11 +58,12 @@ export async function GET() {
   }
 
   const profiles = await query<{
+    id: string;
     ppm_extraction_status: string | null;
     ppm_extraction_error: string | null;
     extracted_constraints: Record<string, unknown> | null;
   }>(
-    "SELECT ppm_extraction_status, ppm_extraction_error, extracted_constraints FROM clo_profiles WHERE user_id = $1",
+    "SELECT id, ppm_extraction_status, ppm_extraction_error, extracted_constraints FROM clo_profiles WHERE user_id = $1",
     [user.id]
   );
 
@@ -69,11 +71,39 @@ export async function GET() {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
 
-  const { ppm_extraction_status, ppm_extraction_error, extracted_constraints } = profiles[0];
+  const { id: profileId, ppm_extraction_status, ppm_extraction_error, extracted_constraints } = profiles[0];
+
+  // When PPM extraction is complete, also check for compliance data
+  let complianceTests = null;
+  let poolSummary = null;
+
+  if (ppm_extraction_status === "complete") {
+    const deals = await query<{ id: string }>(
+      "SELECT id FROM clo_deals WHERE profile_id = $1 LIMIT 1",
+      [profileId]
+    );
+
+    if (deals.length > 0) {
+      const periods = await query<{ id: string }>(
+        "SELECT id FROM clo_report_periods WHERE deal_id = $1 AND extraction_status = 'complete' ORDER BY report_date DESC LIMIT 1",
+        [deals[0].id]
+      );
+
+      if (periods.length > 0) {
+        const reportPeriodId = periods[0].id;
+        [complianceTests, poolSummary] = await Promise.all([
+          getComplianceTests(reportPeriodId),
+          getPoolSummary(reportPeriodId),
+        ]);
+      }
+    }
+  }
 
   return NextResponse.json({
     status: ppm_extraction_status,
     error: ppm_extraction_error,
     extractedConstraints: ppm_extraction_status === "complete" ? extracted_constraints : null,
+    complianceTests,
+    poolSummary,
   });
 }
