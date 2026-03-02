@@ -167,7 +167,7 @@ export default function MemberProfileClient({
           <h2>Full Profile</h2>
           <div
             className="markdown-content"
-            dangerouslySetInnerHTML={{ __html: md(member.fullProfile) }}
+            dangerouslySetInnerHTML={{ __html: md(member.fullProfile.replace(/^##?\s+.*?\n+/, "")) }}
           />
         </>
       )}

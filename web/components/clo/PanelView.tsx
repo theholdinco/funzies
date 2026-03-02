@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import type { PanelMember } from "@/lib/clo/types";
 import PanelMemberCard from "./PanelMemberCard";
 
@@ -9,8 +6,6 @@ interface PanelViewProps {
 }
 
 export default function PanelView({ members }: PanelViewProps) {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-
   return (
     <div>
       <div className="ic-panel-header">
@@ -21,13 +16,8 @@ export default function PanelView({ members }: PanelViewProps) {
       </div>
 
       <div className="ic-panel-grid">
-        {members.map((member, i) => (
-          <PanelMemberCard
-            key={member.number}
-            member={member}
-            expanded={expandedIndex === i}
-            onToggle={() => setExpandedIndex(expandedIndex === i ? null : i)}
-          />
+        {members.map((member) => (
+          <PanelMemberCard key={member.number} member={member} />
         ))}
       </div>
     </div>
