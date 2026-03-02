@@ -4,6 +4,7 @@ import { buildDocumentContent, callAnthropic, callAnthropicChunked, parseJsonRes
 import { pass1Schema, pass2Schema, pass3Schema, pass4Schema, pass5Schema } from "./schemas";
 import { pass1Prompt, pass2Prompt, pass3Prompt, pass4Prompt, pass5Prompt } from "./prompts";
 import { normalizePass1, normalizePass2, normalizePass3, normalizePass4, normalizePass5 } from "./normalizer";
+import { validateExtraction } from "./validator";
 
 async function callClaude(
   apiKey: string,
@@ -302,6 +303,11 @@ export async function runExtraction(
     : (p1Result.truncated || truncatedPasses.length > 0) ? "partial"
     : "complete";
 
+  // Run cross-validation
+  const pass2Data = p2?.data as unknown as import("./schemas").Pass2Output | null;
+  const pass3Data = p3?.data as unknown as import("./schemas").Pass3Output | null;
+  const validationResult = validateExtraction(pass1Data, pass2Data ?? null, pass3Data ?? null);
+
   // Update report period with final data
   await query(
     `UPDATE clo_report_periods
@@ -309,12 +315,14 @@ export async function runExtraction(
          extracted_at = now(),
          raw_extraction = $2::jsonb,
          supplementary_data = $3::jsonb,
+         data_quality = $4::jsonb,
          updated_at = now()
-     WHERE id = $4`,
+     WHERE id = $5`,
     [
       status,
       JSON.stringify(rawOutputs),
       supplementaryData ? JSON.stringify(supplementaryData) : null,
+      JSON.stringify(validationResult),
       reportPeriodId,
     ],
   );
