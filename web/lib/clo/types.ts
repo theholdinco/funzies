@@ -319,6 +319,23 @@ export interface CloDeal {
 export type ExtractionStatus = "pending" | "extracting" | "complete" | "partial" | "error";
 export type ReportType = "quarterly" | "semi-annual" | "annual" | "ad-hoc";
 
+export interface DataQualityCheck {
+  name: string;
+  status: "pass" | "warn" | "fail";
+  expected: number | null;
+  actual: number | null;
+  discrepancy: number | null;
+  message: string;
+}
+
+export interface DataQuality {
+  checks: DataQualityCheck[];
+  score: number;
+  totalChecks: number;
+  checksRun: number;
+  checksSkipped: number;
+}
+
 export interface CloReportPeriod {
   id: string;
   dealId: string;
@@ -334,6 +351,7 @@ export interface CloReportPeriod {
   extractedAt: string | null;
   rawExtraction: Record<string, unknown> | null;
   supplementaryData: CloSupplementaryData | null;
+  dataQuality: DataQuality | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -14,6 +14,9 @@ import type {
   CloEvent,
   CloExtractionOverflow,
   CloSupplementaryData,
+  DataQuality,
+  CloTranche,
+  CloTrancheSnapshot,
 } from "./types";
 
 export function rowToProfile(row: Record<string, unknown>): CloProfile {
@@ -215,6 +218,7 @@ function rowToReportPeriod(row: Record<string, unknown>): CloReportPeriod {
     extractedAt: (row.extracted_at as string) ?? null,
     rawExtraction: (row.raw_extraction as Record<string, unknown>) ?? null,
     supplementaryData: (row.supplementary_data as CloSupplementaryData) ?? null,
+    dataQuality: (row.data_quality as DataQuality) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -374,6 +378,58 @@ function rowToWaterfallStep(row: Record<string, unknown>): CloWaterfallStep {
     fundsAvailableAfter: (row.funds_available_after as number) ?? null,
     isOcTestDiversion: (row.is_oc_test_diversion as boolean) ?? null,
     isIcTestDiversion: (row.is_ic_test_diversion as boolean) ?? null,
+  };
+}
+
+function rowToTranche(row: Record<string, unknown>): CloTranche {
+  return {
+    id: row.id as string,
+    dealId: row.deal_id as string,
+    className: row.class_name as string,
+    isin: (row.isin as string) ?? null,
+    cusip: (row.cusip as string) ?? null,
+    commonCode: (row.common_code as string) ?? null,
+    currency: (row.currency as string) ?? null,
+    originalBalance: (row.original_balance as number) ?? null,
+    seniorityRank: (row.seniority_rank as number) ?? null,
+    isFloating: (row.is_floating as boolean) ?? null,
+    referenceRate: (row.reference_rate as string) ?? null,
+    referenceRateTenor: (row.reference_rate_tenor as string) ?? null,
+    spreadBps: (row.spread_bps as number) ?? null,
+    couponFloor: (row.coupon_floor as number) ?? null,
+    couponCap: (row.coupon_cap as number) ?? null,
+    dayCountConvention: (row.day_count_convention as string) ?? null,
+    paymentFrequency: (row.payment_frequency as string) ?? null,
+    isDeferrable: (row.is_deferrable as boolean) ?? null,
+    isPik: (row.is_pik as boolean) ?? null,
+    ratingMoodys: (row.rating_moodys as string) ?? null,
+    ratingSp: (row.rating_sp as string) ?? null,
+    ratingFitch: (row.rating_fitch as string) ?? null,
+    ratingDbrs: (row.rating_dbrs as string) ?? null,
+    isSubordinate: (row.is_subordinate as boolean) ?? null,
+    isIncomeNote: (row.is_income_note as boolean) ?? null,
+  };
+}
+
+function rowToTrancheSnapshot(row: Record<string, unknown>): CloTrancheSnapshot {
+  return {
+    id: row.id as string,
+    trancheId: row.tranche_id as string,
+    reportPeriodId: row.report_period_id as string,
+    currentBalance: (row.current_balance as number) ?? null,
+    factor: (row.factor as number) ?? null,
+    currentIndexRate: (row.current_index_rate as number) ?? null,
+    couponRate: (row.coupon_rate as number) ?? null,
+    deferredInterestBalance: (row.deferred_interest_balance as number) ?? null,
+    enhancementPct: (row.enhancement_pct as number) ?? null,
+    beginningBalance: (row.beginning_balance as number) ?? null,
+    endingBalance: (row.ending_balance as number) ?? null,
+    interestAccrued: (row.interest_accrued as number) ?? null,
+    interestPaid: (row.interest_paid as number) ?? null,
+    interestShortfall: (row.interest_shortfall as number) ?? null,
+    cumulativeShortfall: (row.cumulative_shortfall as number) ?? null,
+    principalPaid: (row.principal_paid as number) ?? null,
+    daysAccrued: (row.days_accrued as number) ?? null,
   };
 }
 
@@ -637,4 +693,20 @@ export async function getTradingSummary(reportPeriodId: string): Promise<CloTrad
     [reportPeriodId]
   );
   return rows[0] ? rowToTradingSummary(rows[0]) : null;
+}
+
+export async function getTranches(dealId: string): Promise<CloTranche[]> {
+  const rows = await query<Record<string, unknown>>(
+    "SELECT * FROM clo_tranches WHERE deal_id = $1 ORDER BY seniority_rank NULLS LAST",
+    [dealId]
+  );
+  return rows.map(rowToTranche);
+}
+
+export async function getTrancheSnapshots(reportPeriodId: string): Promise<CloTrancheSnapshot[]> {
+  const rows = await query<Record<string, unknown>>(
+    "SELECT * FROM clo_tranche_snapshots WHERE report_period_id = $1",
+    [reportPeriodId]
+  );
+  return rows.map(rowToTrancheSnapshot);
 }
