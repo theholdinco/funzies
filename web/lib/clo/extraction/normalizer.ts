@@ -190,3 +190,280 @@ export function normalizePass5(data: Pass5Output, reportPeriodId: string, dealId
     events: events.map((e) => toDbRow(e, { deal_id: dealId, report_period_id: reportPeriodId })),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Section-based normalizers
+// ---------------------------------------------------------------------------
+
+const POOL_METRIC_KEYS = new Set([
+  "totalPar", "wacSpread", "warf", "diversityScore", "numberOfAssets",
+  "numberOfObligors", "walYears", "waRecoveryRate", "aggregatePrincipalBalance",
+  "adjustedCollateralPrincipalAmount", "pctFixedRate", "pctFloatingRate",
+  "pctCovLite", "pctSecondLien", "pctDefaulted", "pctCccAndBelow",
+]);
+
+export function normalizeSectionResults(
+  sections: Record<string, Record<string, unknown> | null>,
+  reportPeriodId: string,
+  dealId: string,
+): {
+  poolSummary: Record<string, unknown> | null;
+  complianceTests: Record<string, unknown>[];
+  holdings: Record<string, unknown>[];
+  concentrations: Record<string, unknown>[];
+  waterfallSteps: Record<string, unknown>[];
+  proceeds: Record<string, unknown>[];
+  trades: Record<string, unknown>[];
+  tradingSummary: Record<string, unknown> | null;
+  trancheSnapshots: Array<{ className: string; data: Record<string, unknown> }>;
+  accountBalances: Record<string, unknown>[];
+  parValueAdjustments: Record<string, unknown>[];
+  events: Record<string, unknown>[];
+  supplementaryData: Record<string, unknown> | null;
+} {
+  const base = { report_period_id: reportPeriodId };
+
+  // 1. compliance_summary → poolSummary + trancheSnapshots (from compliance_summary tranches)
+  let poolSummary: Record<string, unknown> | null = null;
+  let complianceTranches: Array<{ className: string; data: Record<string, unknown> }> = [];
+
+  const cs = sections.compliance_summary;
+  if (cs) {
+    const poolMetrics: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(cs)) {
+      if (POOL_METRIC_KEYS.has(key)) {
+        poolMetrics[key] = value;
+      }
+    }
+    poolSummary = toDbRow(poolMetrics, base);
+
+    const tranches = cs.tranches as Array<Record<string, unknown>> | undefined;
+    if (tranches) {
+      complianceTranches = tranches.map((t) => {
+        const { className, ...rest } = t;
+        return { className: className as string, data: toDbRow(rest, base) };
+      });
+    }
+  }
+
+  // 2. par_value_tests + interest_coverage_tests → complianceTests
+  let complianceTests: Record<string, unknown>[] = [];
+  const allTests: Array<Record<string, unknown>> = [];
+
+  const pvt = sections.par_value_tests;
+  if (pvt) {
+    const tests = pvt.tests as Array<Record<string, unknown>> | undefined;
+    if (tests) allTests.push(...tests);
+  }
+
+  const ict = sections.interest_coverage_tests;
+  if (ict) {
+    const tests = ict.tests as Array<Record<string, unknown>> | undefined;
+    if (tests) allTests.push(...tests);
+  }
+
+  if (allTests.length > 0) {
+    const deduped = deduplicateComplianceTests(allTests as any);
+    complianceTests = deduped.map((t) => toDbRow(t as Record<string, unknown>, base));
+  }
+
+  // 3. par_value_tests → parValueAdjustments
+  let parValueAdjustments: Record<string, unknown>[] = [];
+  if (pvt) {
+    const adjustments = pvt.parValueAdjustments as Array<Record<string, unknown>> | undefined;
+    if (adjustments) {
+      parValueAdjustments = adjustments.map((a) => toDbRow(a, base));
+    }
+  }
+
+  // 4. asset_schedule → holdings
+  let holdings: Record<string, unknown>[] = [];
+  const as_ = sections.asset_schedule;
+  if (as_) {
+    const rawHoldings = as_.holdings as Array<Record<string, unknown>> | undefined;
+    if (rawHoldings && rawHoldings.length > 0) {
+      const deduped = deduplicateHoldings(rawHoldings as any);
+      holdings = deduped.map((h) => toDbRow(h as Record<string, unknown>, base));
+    }
+  }
+
+  // 5. concentration_tables → concentrations
+  let concentrations: Record<string, unknown>[] = [];
+  const ct = sections.concentration_tables;
+  if (ct) {
+    const rawConc = ct.concentrations as Array<Record<string, unknown>> | undefined;
+    if (rawConc) {
+      concentrations = rawConc.map((c) => toDbRow(c, base));
+    }
+  }
+
+  // 6. waterfall → waterfallSteps + proceeds + trancheSnapshots
+  let waterfallSteps: Record<string, unknown>[] = [];
+  let proceeds: Record<string, unknown>[] = [];
+  let waterfallTranches: Array<{ className: string; data: Record<string, unknown> }> = [];
+
+  const wf = sections.waterfall;
+  if (wf) {
+    const rawSteps = wf.waterfallSteps as Array<Record<string, unknown>> | undefined;
+    if (rawSteps) waterfallSteps = rawSteps.map((w) => toDbRow(w, base));
+
+    const rawProceeds = wf.proceeds as Array<Record<string, unknown>> | undefined;
+    if (rawProceeds) proceeds = rawProceeds.map((p) => toDbRow(p, base));
+
+    const rawTranches = wf.trancheSnapshots as Array<Record<string, unknown>> | undefined;
+    if (rawTranches) {
+      waterfallTranches = rawTranches.map((ts) => {
+        const { className, ...rest } = ts;
+        return { className: className as string, data: toDbRow(rest, base) };
+      });
+    }
+  }
+
+  // Merge trancheSnapshots from compliance_summary and waterfall
+  const trancheSnapshots = [...complianceTranches, ...waterfallTranches];
+
+  // 7. trading_activity → trades + tradingSummary
+  let trades: Record<string, unknown>[] = [];
+  let tradingSummary: Record<string, unknown> | null = null;
+
+  const ta = sections.trading_activity;
+  if (ta) {
+    const rawTrades = ta.trades as Array<Record<string, unknown>> | undefined;
+    if (rawTrades) trades = rawTrades.map((t) => toDbRow(t, base));
+
+    const rawSummary = ta.tradingSummary as Record<string, unknown> | undefined;
+    if (rawSummary) tradingSummary = toDbRow(rawSummary, base);
+  }
+
+  // 8. account_balances → accountBalances
+  let accountBalances: Record<string, unknown>[] = [];
+  const ab = sections.account_balances;
+  if (ab) {
+    const rawAccounts = ab.accounts as Array<Record<string, unknown>> | undefined;
+    if (rawAccounts) accountBalances = rawAccounts.map((a) => toDbRow(a, base));
+  }
+
+  // 9. supplementary → events + supplementaryData
+  let events: Record<string, unknown>[] = [];
+  let supplementaryData: Record<string, unknown> | null = null;
+
+  const supp = sections.supplementary;
+  if (supp) {
+    const rawEvents = supp.events as Array<Record<string, unknown>> | undefined;
+    if (rawEvents) {
+      events = rawEvents.map((e) => toDbRow(e, { deal_id: dealId, report_period_id: reportPeriodId }));
+    }
+
+    const { events: _, ...rest } = supp;
+    if (Object.keys(rest).length > 0) {
+      supplementaryData = rest as Record<string, unknown>;
+    }
+  }
+
+  return {
+    poolSummary,
+    complianceTests,
+    holdings,
+    concentrations,
+    waterfallSteps,
+    proceeds,
+    trades,
+    tradingSummary,
+    trancheSnapshots,
+    accountBalances,
+    parValueAdjustments,
+    events,
+    supplementaryData,
+  };
+}
+
+export function normalizePpmSectionResults(
+  sections: Record<string, Record<string, unknown> | null>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+
+  const txOverview = sections.transaction_overview;
+  if (txOverview) result.dealIdentity = txOverview;
+
+  const capStructure = sections.capital_structure;
+  if (capStructure) {
+    const { capitalStructure, dealSizing, ...rest } = capStructure;
+    if (capitalStructure) result.capitalStructure = capitalStructure;
+    if (dealSizing) result.dealSizing = dealSizing;
+    // Spread any extra fields
+    for (const [key, value] of Object.entries(rest)) {
+      if (value != null) result[key] = value;
+    }
+  }
+
+  const coverageTests = sections.coverage_tests;
+  if (coverageTests) {
+    const { coverageTestEntries, reinvestmentOcTest, ...rest } = coverageTests;
+    if (coverageTestEntries) result.coverageTestEntries = coverageTestEntries;
+    if (reinvestmentOcTest) result.reinvestmentOcTest = reinvestmentOcTest;
+    for (const [key, value] of Object.entries(rest)) {
+      if (value != null) result[key] = value;
+    }
+  }
+
+  const eligibility = sections.eligibility_criteria;
+  if (eligibility) {
+    const { eligibilityCriteria, reinvestmentCriteria, ...rest } = eligibility;
+    if (eligibilityCriteria) result.eligibilityCriteria = eligibilityCriteria;
+    if (reinvestmentCriteria) result.reinvestmentCriteria = reinvestmentCriteria;
+    for (const [key, value] of Object.entries(rest)) {
+      if (value != null) result[key] = value;
+    }
+  }
+
+  const portfolio = sections.portfolio_constraints;
+  if (portfolio) {
+    const { collateralQualityTests, portfolioProfileTests, ...rest } = portfolio;
+    if (collateralQualityTests) result.collateralQualityTests = collateralQualityTests;
+    if (portfolioProfileTests) result.portfolioProfileTests = portfolioProfileTests;
+    for (const [key, value] of Object.entries(rest)) {
+      if (value != null) result[key] = value;
+    }
+  }
+
+  const waterfallRules = sections.waterfall_rules;
+  if (waterfallRules) result.waterfall = waterfallRules;
+
+  const fees = sections.fees_and_expenses;
+  if (fees) {
+    const { fees: feeList, accounts, ...rest } = fees;
+    if (feeList) result.fees = feeList;
+    if (accounts) result.accounts = accounts;
+    for (const [key, value] of Object.entries(rest)) {
+      if (value != null) result[key] = value;
+    }
+  }
+
+  const keyDates = sections.key_dates;
+  if (keyDates) result.keyDates = keyDates;
+
+  const keyParties = sections.key_parties;
+  if (keyParties) {
+    const { keyParties: parties, cmDetails, ...rest } = keyParties;
+    if (parties) result.keyParties = parties;
+    if (cmDetails) result.cmDetails = cmDetails;
+    for (const [key, value] of Object.entries(rest)) {
+      if (value != null) result[key] = value;
+    }
+  }
+
+  const redemption = sections.redemption;
+  if (redemption) {
+    const { redemptionProvisions, eventsOfDefault, ...rest } = redemption;
+    if (redemptionProvisions) result.redemptionProvisions = redemptionProvisions;
+    if (eventsOfDefault) result.eventsOfDefault = eventsOfDefault;
+    for (const [key, value] of Object.entries(rest)) {
+      if (value != null) result[key] = value;
+    }
+  }
+
+  const hedging = sections.hedging;
+  if (hedging) result.hedging = hedging;
+
+  return result;
+}
