@@ -15,6 +15,7 @@ import {
 } from "./clo-pipeline.js";
 import { runScanPipeline } from "./pulse-pipeline.js";
 import { runSectionPpmExtraction } from "../lib/clo/extraction/ppm-extraction.js";
+import { runSectionExtraction } from "../lib/clo/extraction/runner.js";
 import { runPortfolioExtraction } from "../lib/clo/extraction/portfolio-extraction.js";
 
 if (!process.env.DATABASE_URL) {
@@ -603,6 +604,61 @@ async function pollCloExtractionJobs() {
         `UPDATE clo_profiles
          SET ppm_extraction_status = 'error',
              ppm_extraction_error = $1,
+             updated_at = now()
+         WHERE id = $2`,
+        [message, job.id]
+      );
+    }
+  }
+
+  // Compliance report extraction
+  const reportJob = await pool.query<{
+    id: string;
+    user_id: string;
+    documents: Array<{ name: string; type: string; size: number; base64: string; docType?: "ppm" | "compliance" }>;
+  }>(
+    `UPDATE clo_profiles SET report_extraction_status = 'extracting', updated_at = NOW()
+     WHERE id = (
+       SELECT id FROM clo_profiles
+       WHERE report_extraction_status = 'queued'
+       ORDER BY updated_at LIMIT 1
+       FOR UPDATE SKIP LOCKED
+     )
+     RETURNING id, user_id, documents`
+  );
+
+  if (reportJob.rows.length > 0) {
+    const job = reportJob.rows[0];
+    console.log(`[worker] Claimed report extraction job for profile ${job.id}`);
+    try {
+      const { encrypted, iv } = await getUserApiKey(job.user_id);
+      const apiKey = decryptApiKey(encrypted, iv);
+      const complianceDocs = (job.documents || []).filter((d) => d.docType === "compliance");
+      if (complianceDocs.length === 0) {
+        console.log(`[worker] No compliance docs for profile ${job.id}, skipping report extraction`);
+        await pool.query(
+          `UPDATE clo_profiles SET report_extraction_status = 'complete', report_extraction_error = NULL, updated_at = now() WHERE id = $1`,
+          [job.id]
+        );
+      } else {
+        await runSectionExtraction(job.id, apiKey, complianceDocs);
+        await pool.query(
+          `UPDATE clo_profiles
+           SET report_extraction_status = 'complete',
+               report_extraction_error = NULL,
+               updated_at = now()
+           WHERE id = $1`,
+          [job.id]
+        );
+        console.log(`[worker] Report extraction complete for profile ${job.id}`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error(`[worker] Report extraction failed for profile ${job.id}: ${message}`);
+      await pool.query(
+        `UPDATE clo_profiles
+         SET report_extraction_status = 'error',
+             report_extraction_error = $1,
              updated_at = now()
          WHERE id = $2`,
         [message, job.id]

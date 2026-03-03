@@ -141,9 +141,29 @@ export default function DocumentUploadBanner({ hasDocuments }: { hasDocuments?: 
     setExtracting(true);
     for (let i = 0; i < 120; i++) {
       await new Promise((r) => setTimeout(r, 5000));
-      // Just wait and refresh — compliance extraction updates clo_report_periods
       const elapsed = (i + 1) * 5;
       setStatusText(`Extracting compliance data (${elapsed}s)...`);
+      try {
+        const res = await fetch("/api/clo/report/extract");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "complete") {
+            setExtracting(false);
+            setDone(true);
+            setStatusText("");
+            router.refresh();
+            return;
+          }
+          if (data.status === "error") {
+            setExtracting(false);
+            setError(data.error || "Report extraction failed");
+            setStatusText("");
+            return;
+          }
+        }
+      } catch {
+        // Continue polling
+      }
     }
     setExtracting(false);
     setDone(true);

@@ -54,28 +54,46 @@ export default function UpdateComplianceReport({ hasPortfolio }: { hasPortfolio:
 
       const extractRes = await fetch("/api/clo/report/extract", { method: "POST" });
 
-      stopTimer();
-
       if (!extractRes.ok) {
+        stopTimer();
         const data = await extractRes.json().catch(() => ({}));
         setError(data.error || "Extraction failed");
         setStatus("error");
         return;
       }
 
-      const result = await extractRes.json();
+      // Also queue portfolio extraction
+      fetch("/api/clo/profile/extract-portfolio", { method: "POST" }).catch(() => {});
 
-      if (result.status === "error") {
-        setError("Extraction completed with errors. Some data may be missing.");
-        setStatus("error");
-        return;
+      // Poll for completion
+      for (let i = 0; i < 180; i++) {
+        await new Promise((r) => setTimeout(r, 5000));
+        try {
+          const pollRes = await fetch("/api/clo/report/extract");
+          if (pollRes.ok) {
+            const data = await pollRes.json();
+            if (data.status === "complete") {
+              stopTimer();
+              setStatus("done");
+              router.refresh();
+              setTimeout(() => setStatus("idle"), 3000);
+              return;
+            }
+            if (data.status === "error") {
+              stopTimer();
+              setError(data.error || "Extraction failed");
+              setStatus("error");
+              return;
+            }
+          }
+        } catch {
+          // Continue polling
+        }
       }
 
-      setStatus("done");
-      router.refresh();
-
-      // Reset after showing success briefly
-      setTimeout(() => setStatus("idle"), 3000);
+      stopTimer();
+      setError("Extraction timed out. Please refresh to check status.");
+      setStatus("error");
     } catch (e) {
       stopTimer();
       setError(`Failed: ${(e as Error).message}`);

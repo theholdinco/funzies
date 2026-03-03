@@ -825,6 +825,11 @@ ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS portfolio_extraction_status TE
   CHECK (portfolio_extraction_status IS NULL OR portfolio_extraction_status IN ('queued', 'extracting', 'complete', 'error'));
 ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS portfolio_extraction_error TEXT DEFAULT NULL;
 
+-- Compliance report extraction queue status
+ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS report_extraction_status TEXT DEFAULT NULL
+  CHECK (report_extraction_status IS NULL OR report_extraction_status IN ('queued', 'extracting', 'complete', 'error'));
+ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS report_extraction_error TEXT DEFAULT NULL;
+
 -- CLO panel-level follow-ups (no analysis required)
 ALTER TABLE clo_follow_ups ALTER COLUMN analysis_id DROP NOT NULL;
 ALTER TABLE clo_follow_ups ADD COLUMN IF NOT EXISTS panel_id UUID REFERENCES clo_panels(id) ON DELETE CASCADE;
