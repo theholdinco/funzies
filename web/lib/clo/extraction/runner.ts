@@ -6,6 +6,51 @@ import { mapDocument } from "./document-mapper";
 import { extractAllSectionTexts, extractSectionText, type SectionText } from "./text-extractor";
 import { extractAllSections, extractSection } from "./section-extractor";
 import { normalizeSectionResults } from "./normalizer";
+// Common field name aliases the model returns → correct DB column names
+const POOL_SUMMARY_ALIASES: Record<string, string> = {
+  aggregate_principal_balance: "total_principal_balance",
+  adjusted_collateral_principal_amount: "total_par",
+  collateral_principal_amount: "total_par",
+  total_collateral_balance: "total_par",
+  weighted_average_spread: "wac_spread",
+  weighted_average_coupon: "wac_total",
+  weighted_average_life: "wal_years",
+  weighted_average_rating_factor: "warf",
+  wa_spread: "wac_spread",
+  wa_coupon: "wac_total",
+  num_obligors: "number_of_obligors",
+  num_assets: "number_of_assets",
+  num_industries: "number_of_industries",
+  num_countries: "number_of_countries",
+};
+
+const SNAPSHOT_ALIASES: Record<string, string> = {
+  current_rate: "coupon_rate",
+  all_in_rate: "coupon_rate",
+  spread: "coupon_rate",
+  balance: "current_balance",
+  outstanding_balance: "current_balance",
+  principal_balance: "current_balance",
+  deferred_interest: "deferred_interest_balance",
+  shortfall: "interest_shortfall",
+  cumulative_interest_shortfall: "cumulative_shortfall",
+  principal_amount: "current_balance",
+};
+
+function remapColumnAliases(
+  row: Record<string, unknown>,
+  aliases: Record<string, string>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) {
+    const mapped = aliases[k] ?? k;
+    // Don't overwrite if we already have a value for the target column
+    if (mapped !== k && result[mapped] != null) continue;
+    result[mapped] = v;
+  }
+  return result;
+}
+
 async function batchInsert(table: string, rows: Record<string, unknown>[]): Promise<void> {
   if (rows.length === 0) return;
 
@@ -160,7 +205,7 @@ export async function runSectionExtraction(
   console.log(`[extraction] events: ${normalized.events.length}`);
   console.log(`[extraction] ═══════════════════════════════`);
 
-  // Insert pool summary (filter to known columns)
+  // Insert pool summary (remap aliases + filter to known columns)
   if (normalized.poolSummary) {
     const POOL_SUMMARY_COLUMNS = new Set([
       "report_period_id", "total_par", "total_principal_balance", "total_market_value",
@@ -173,9 +218,11 @@ export async function runSectionExtraction(
       "pct_semi_annual_pay", "pct_quarterly_pay", "pct_eur_denominated", "pct_gbp_denominated",
       "pct_usd_denominated", "pct_non_base_currency",
     ]);
+    const remapped = remapColumnAliases(normalized.poolSummary, POOL_SUMMARY_ALIASES);
     const filtered: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(normalized.poolSummary)) {
+    for (const [k, v] of Object.entries(remapped)) {
       if (POOL_SUMMARY_COLUMNS.has(k)) filtered[k] = v;
+      else console.log(`[extraction] pool_summary: dropped unknown field "${k}"`);
     }
     await replaceIfPresent("clo_pool_summary", [filtered]);
     console.log(`[extraction] → clo_pool_summary: inserted`);
@@ -251,15 +298,16 @@ export async function runSectionExtraction(
         );
       }
 
-      // Filter to only known columns to avoid "column does not exist" errors
+      // Remap aliases + filter to known columns
       const SNAPSHOT_COLUMNS = new Set([
         "report_period_id", "current_balance", "factor", "current_index_rate",
         "coupon_rate", "deferred_interest_balance", "enhancement_pct",
         "beginning_balance", "ending_balance", "interest_accrued", "interest_paid",
         "interest_shortfall", "cumulative_shortfall", "principal_paid", "days_accrued",
       ]);
+      const remappedData = remapColumnAliases(snapshot.data, SNAPSHOT_ALIASES);
       const filteredData: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(snapshot.data)) {
+      for (const [k, v] of Object.entries(remappedData)) {
         if (SNAPSHOT_COLUMNS.has(k)) filteredData[k] = v;
       }
       await batchInsert("clo_tranche_snapshots", [{ tranche_id: existing[0].id, ...filteredData }]);
