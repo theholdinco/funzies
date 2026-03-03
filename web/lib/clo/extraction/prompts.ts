@@ -578,3 +578,49 @@ Rules:
     user: `Extract all supplementary data (fees, hedging, FX rates, rating agency analytics, events, tax, regulatory, eligibility tests, reinvestment constraints, sale limitations, test matrices) from the attached compliance/trustee report. Report date context: ${reportDate}. Return only the JSON object, no markdown fences.`,
   };
 }
+
+/** Build a repair user prompt for Pass 2 when holdings count is off */
+export function pass2RepairPrompt(
+  reportDate: string,
+  extractedCount: number,
+  expectedCount: number,
+): { system: string; user: string } {
+  const base = pass2Prompt(reportDate);
+  return {
+    system: base.system,
+    user: `${base.user}
+
+REPAIR CONTEXT — CRITICAL:
+A previous extraction attempt found only ${extractedCount} holdings, but the pool summary indicates ${expectedCount} assets. You are MISSING approximately ${expectedCount - extractedCount} positions. This is likely because:
+- The extraction stopped partway through the asset tables
+- Some tables (Asset Information II, III) were skipped
+- Holdings starting with later letters (D-Z) were not reached
+
+You MUST extract ALL ${expectedCount} positions. Do NOT stop early. Continue through every page of asset data until you have extracted every single holding.`,
+  };
+}
+
+/** Build a continuation user prompt for a truncated pass */
+export function passContinuationPrompt(
+  passNum: number,
+  reportDate: string,
+  lastItems: string[],
+  arrayField: string,
+): { system: string; user: string } {
+  const promptFn = passNum === 2 ? pass2Prompt
+    : passNum === 3 ? pass3Prompt
+    : passNum === 4 ? pass4Prompt
+    : pass5Prompt;
+  const base = promptFn(reportDate);
+
+  return {
+    system: base.system,
+    user: `${base.user}
+
+CONTINUATION — CRITICAL:
+A previous extraction was TRUNCATED and did not complete. The last items extracted in the "${arrayField}" array were:
+${lastItems.map((item) => `- ${item}`).join("\n")}
+
+You MUST continue extracting from where the previous extraction stopped. Include ALL remaining items that were not yet extracted. Do NOT re-extract items that were already captured — start from the NEXT item after the ones listed above.`,
+  };
+}
