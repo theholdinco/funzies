@@ -48,8 +48,9 @@ export async function GET() {
     id: string;
     report_extraction_status: string | null;
     report_extraction_error: string | null;
+    report_extraction_progress: { step: string; detail: string } | null;
   }>(
-    "SELECT id, report_extraction_status, report_extraction_error FROM clo_profiles WHERE user_id = $1",
+    "SELECT id, report_extraction_status, report_extraction_error, report_extraction_progress FROM clo_profiles WHERE user_id = $1",
     [user.id],
   );
 
@@ -57,10 +58,11 @@ export async function GET() {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
 
-  const { report_extraction_status, report_extraction_error } = profiles[0];
+  const { report_extraction_status, report_extraction_error, report_extraction_progress } = profiles[0];
 
   return NextResponse.json({
     status: report_extraction_status,
     error: report_extraction_error,
+    progress: report_extraction_progress,
   });
 }

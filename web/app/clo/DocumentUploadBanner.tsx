@@ -17,9 +17,9 @@ export default function DocumentUploadBanner({ hasDocuments }: { hasDocuments?: 
 
   const pollExtraction = useCallback(async () => {
     setExtracting(true);
-    setStatusText("Extracting constraints from PPM...");
+    setStatusText("Queued — waiting for extraction to start...");
 
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 480; i++) {
       await new Promise((r) => setTimeout(r, 5000));
 
       const res = await fetch("/api/clo/profile/extract");
@@ -49,8 +49,11 @@ export default function DocumentUploadBanner({ hasDocuments }: { hasDocuments?: 
         return;
       }
 
-      if (data.status === "extracting") {
-        setStatusText("Extracting constraints from PPM (this may take several minutes for large documents)...");
+      const progressDetail = data.progress?.detail;
+      if (progressDetail) {
+        setStatusText(progressDetail);
+      } else if (data.status === "extracting") {
+        setStatusText("Extracting constraints from PPM...");
       }
     }
 
@@ -139,10 +142,9 @@ export default function DocumentUploadBanner({ hasDocuments }: { hasDocuments?: 
 
   async function pollComplianceExtraction() {
     setExtracting(true);
-    for (let i = 0; i < 120; i++) {
+    setStatusText("Queued — waiting for extraction to start...");
+    for (let i = 0; i < 480; i++) {
       await new Promise((r) => setTimeout(r, 5000));
-      const elapsed = (i + 1) * 5;
-      setStatusText(`Extracting compliance data (${elapsed}s)...`);
       try {
         const res = await fetch("/api/clo/report/extract");
         if (res.ok) {
@@ -159,6 +161,12 @@ export default function DocumentUploadBanner({ hasDocuments }: { hasDocuments?: 
             setError(data.error || "Report extraction failed");
             setStatusText("");
             return;
+          }
+          const progressDetail = data.progress?.detail;
+          if (progressDetail) {
+            setStatusText(progressDetail);
+          } else if (data.status === "extracting") {
+            setStatusText("Extracting compliance data...");
           }
         }
       } catch {

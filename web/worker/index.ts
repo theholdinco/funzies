@@ -583,7 +583,13 @@ async function pollCloExtractionJobs() {
       const apiKey = decryptApiKey(encrypted, iv);
       // Filter to only PPM documents (backwards compat: no docType = ppm)
       const ppmDocs = (job.documents || []).filter((d) => (d.docType || "ppm") === "ppm");
-      const { extractedConstraints, rawOutputs } = await runSectionPpmExtraction(apiKey, ppmDocs);
+      const ppmProgress = async (step: string, detail?: string) => {
+        await pool.query(
+          `UPDATE clo_profiles SET ppm_extraction_progress = $1::jsonb, updated_at = now() WHERE id = $2`,
+          [JSON.stringify({ step, detail, updatedAt: new Date().toISOString() }), job.id]
+        );
+      };
+      const { extractedConstraints, rawOutputs } = await runSectionPpmExtraction(apiKey, ppmDocs, ppmProgress);
 
       await pool.query(
         `UPDATE clo_profiles
@@ -592,9 +598,10 @@ async function pollCloExtractionJobs() {
              ppm_extracted_at = now(),
              ppm_extraction_status = 'complete',
              ppm_extraction_error = NULL,
+             ppm_extraction_progress = $3::jsonb,
              updated_at = now()
-         WHERE id = $3`,
-        [JSON.stringify(extractedConstraints), JSON.stringify(rawOutputs), job.id]
+         WHERE id = $4`,
+        [JSON.stringify(extractedConstraints), JSON.stringify(rawOutputs), JSON.stringify({ step: "complete", detail: "Extraction complete", updatedAt: new Date().toISOString() }), job.id]
       );
       console.log(`[worker] PPM extraction complete for profile ${job.id}`);
     } catch (err) {
@@ -604,9 +611,10 @@ async function pollCloExtractionJobs() {
         `UPDATE clo_profiles
          SET ppm_extraction_status = 'error',
              ppm_extraction_error = $1,
+             ppm_extraction_progress = $2::jsonb,
              updated_at = now()
-         WHERE id = $2`,
-        [message, job.id]
+         WHERE id = $3`,
+        [message, JSON.stringify({ step: "error", detail: message, updatedAt: new Date().toISOString() }), job.id]
       );
     }
   }
@@ -641,14 +649,21 @@ async function pollCloExtractionJobs() {
           [job.id]
         );
       } else {
-        await runSectionExtraction(job.id, apiKey, complianceDocs);
+        const reportProgress = async (step: string, detail?: string) => {
+          await pool.query(
+            `UPDATE clo_profiles SET report_extraction_progress = $1::jsonb, updated_at = now() WHERE id = $2`,
+            [JSON.stringify({ step, detail, updatedAt: new Date().toISOString() }), job.id]
+          );
+        };
+        await runSectionExtraction(job.id, apiKey, complianceDocs, reportProgress);
         await pool.query(
           `UPDATE clo_profiles
            SET report_extraction_status = 'complete',
                report_extraction_error = NULL,
+               report_extraction_progress = $1::jsonb,
                updated_at = now()
-           WHERE id = $1`,
-          [job.id]
+           WHERE id = $2`,
+          [JSON.stringify({ step: "complete", detail: "Extraction complete", updatedAt: new Date().toISOString() }), job.id]
         );
         console.log(`[worker] Report extraction complete for profile ${job.id}`);
       }
@@ -659,9 +674,10 @@ async function pollCloExtractionJobs() {
         `UPDATE clo_profiles
          SET report_extraction_status = 'error',
              report_extraction_error = $1,
+             report_extraction_progress = $2::jsonb,
              updated_at = now()
-         WHERE id = $2`,
-        [message, job.id]
+         WHERE id = $3`,
+        [message, JSON.stringify({ step: "error", detail: message, updatedAt: new Date().toISOString() }), job.id]
       );
     }
   }

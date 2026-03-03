@@ -829,6 +829,10 @@ ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS portfolio_extraction_error TEX
 ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS report_extraction_status TEXT DEFAULT NULL
   CHECK (report_extraction_status IS NULL OR report_extraction_status IN ('queued', 'extracting', 'complete', 'error'));
 ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS report_extraction_error TEXT DEFAULT NULL;
+ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS report_extraction_progress JSONB DEFAULT NULL;
+
+-- PPM extraction progress
+ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS ppm_extraction_progress JSONB DEFAULT NULL;
 
 -- CLO panel-level follow-ups (no analysis required)
 ALTER TABLE clo_follow_ups ALTER COLUMN analysis_id DROP NOT NULL;

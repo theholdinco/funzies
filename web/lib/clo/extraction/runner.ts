@@ -53,23 +53,36 @@ async function getOrCreateDeal(profileId: string): Promise<string> {
   return rows[0].id;
 }
 
+export type ProgressCallback = (step: string, detail?: string) => void | Promise<void>;
+
 export async function runSectionExtraction(
   profileId: string,
   apiKey: string,
   documents: CloDocument[],
+  onProgress?: ProgressCallback,
 ): Promise<{ reportPeriodId: string; status: "complete" | "partial" | "error" }> {
+  const progress = onProgress ?? (() => {});
+
   // Find the primary PDF document
   const pdfDoc = documents.find((d) => d.type === "application/pdf");
   if (!pdfDoc) throw new Error("No PDF document found");
 
   // Phase 1: Map document structure
+  await progress("mapping", "Identifying document sections...");
   const documentMap = await mapDocument(apiKey, documents);
+  await progress("mapping_done", `Found ${documentMap.sections.length} sections`);
 
   // Phase 2: Transcribe sections to markdown (parallel)
+  await progress("transcribing", `Transcribing ${documentMap.sections.length} sections to text...`);
   const sectionTexts = await extractAllSectionTexts(apiKey, pdfDoc, documentMap);
+  const successfulTexts = sectionTexts.filter((t) => t.markdown.length > 0);
+  await progress("transcribing_done", `Transcribed ${successfulTexts.length}/${documentMap.sections.length} sections`);
 
   // Phase 3: Extract structured data per section (parallel)
+  await progress("extracting", `Extracting structured data from ${successfulTexts.length} sections...`);
   const sectionResults = await extractAllSections(apiKey, sectionTexts, documentMap.documentType);
+  const successfulExtracts = sectionResults.filter((r) => r.data != null);
+  await progress("extracting_done", `Extracted data from ${successfulExtracts.length}/${sectionTexts.length} sections`);
 
   // Build sections map
   const sections: Record<string, Record<string, unknown> | null> = {};
@@ -101,6 +114,7 @@ export async function runSectionExtraction(
   }
 
   // Normalize and insert data
+  await progress("saving", "Saving extracted data to database...");
   const normalized = normalizeSectionResults(sections, reportPeriodId, dealId);
 
   // Insert pool summary
@@ -202,6 +216,7 @@ export async function runSectionExtraction(
   }
 
   // Phase 4: Validate
+  await progress("validating", "Cross-validating extracted data...");
   let validationResult = validateSectionExtraction(sections);
 
   // Cap structure cross-validation: PPM vs compliance report tranches
@@ -225,6 +240,7 @@ export async function runSectionExtraction(
   const repairs = buildRepairQueries(validationResult, sections);
 
   if (repairs.length > 0) {
+    await progress("repairing", `Repairing ${repairs.length} section(s)...`);
     console.log(`[section-extraction] Repair needed for ${repairs.length} section(s): ${repairs.map((r) => `${r.sectionType} (${r.reason})`).join(", ")}`);
 
     for (const repair of repairs) {

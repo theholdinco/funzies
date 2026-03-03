@@ -62,8 +62,9 @@ export async function GET() {
     ppm_extraction_status: string | null;
     ppm_extraction_error: string | null;
     extracted_constraints: Record<string, unknown> | null;
+    ppm_extraction_progress: { step: string; detail: string } | null;
   }>(
-    "SELECT id, ppm_extraction_status, ppm_extraction_error, extracted_constraints FROM clo_profiles WHERE user_id = $1",
+    "SELECT id, ppm_extraction_status, ppm_extraction_error, extracted_constraints, ppm_extraction_progress FROM clo_profiles WHERE user_id = $1",
     [user.id]
   );
 
@@ -71,7 +72,7 @@ export async function GET() {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
 
-  const { id: profileId, ppm_extraction_status, ppm_extraction_error, extracted_constraints } = profiles[0];
+  const { id: profileId, ppm_extraction_status, ppm_extraction_error, extracted_constraints, ppm_extraction_progress } = profiles[0];
 
   // When PPM extraction is complete, also check for compliance data
   let complianceTests = null;
@@ -102,6 +103,7 @@ export async function GET() {
   return NextResponse.json({
     status: ppm_extraction_status,
     error: ppm_extraction_error,
+    progress: ppm_extraction_progress,
     extractedConstraints: ppm_extraction_status === "complete" ? extracted_constraints : null,
     complianceTests,
     poolSummary,

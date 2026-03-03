@@ -6,22 +6,9 @@ import { useRouter } from "next/navigation";
 export default function UpdateComplianceReport({ hasPortfolio }: { hasPortfolio: boolean }) {
   const [status, setStatus] = useState<"idle" | "uploading" | "extracting" | "done" | "error">("idle");
   const [error, setError] = useState("");
-  const [elapsed, setElapsed] = useState(0);
+  const [progressText, setProgressText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
-
-  function startTimer() {
-    setElapsed(0);
-    timerRef.current = setInterval(() => setElapsed((t) => t + 1), 1000);
-  }
-
-  function stopTimer() {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -50,12 +37,11 @@ export default function UpdateComplianceReport({ hasPortfolio }: { hasPortfolio:
       }
 
       setStatus("extracting");
-      startTimer();
+      setProgressText("Queued — waiting for extraction to start...");
 
       const extractRes = await fetch("/api/clo/report/extract", { method: "POST" });
 
       if (!extractRes.ok) {
-        stopTimer();
         const data = await extractRes.json().catch(() => ({}));
         setError(data.error || "Extraction failed");
         setStatus("error");
@@ -65,25 +51,31 @@ export default function UpdateComplianceReport({ hasPortfolio }: { hasPortfolio:
       // Also queue portfolio extraction
       fetch("/api/clo/profile/extract-portfolio", { method: "POST" }).catch(() => {});
 
-      // Poll for completion
-      for (let i = 0; i < 180; i++) {
+      // Poll for completion (up to 40 minutes)
+      for (let i = 0; i < 480; i++) {
         await new Promise((r) => setTimeout(r, 5000));
         try {
           const pollRes = await fetch("/api/clo/report/extract");
           if (pollRes.ok) {
             const data = await pollRes.json();
             if (data.status === "complete") {
-              stopTimer();
               setStatus("done");
+              setProgressText("");
               router.refresh();
               setTimeout(() => setStatus("idle"), 3000);
               return;
             }
             if (data.status === "error") {
-              stopTimer();
               setError(data.error || "Extraction failed");
               setStatus("error");
+              setProgressText("");
               return;
+            }
+            const detail = data.progress?.detail;
+            if (detail) {
+              setProgressText(detail);
+            } else if (data.status === "extracting") {
+              setProgressText("Extracting compliance data...");
             }
           }
         } catch {
@@ -91,13 +83,13 @@ export default function UpdateComplianceReport({ hasPortfolio }: { hasPortfolio:
         }
       }
 
-      stopTimer();
       setStatus("done");
+      setProgressText("");
       router.refresh();
     } catch (e) {
-      stopTimer();
       setError(`Failed: ${(e as Error).message}`);
       setStatus("error");
+      setProgressText("");
     }
   }
 
@@ -105,7 +97,7 @@ export default function UpdateComplianceReport({ hasPortfolio }: { hasPortfolio:
     status === "uploading"
       ? "Uploading..."
       : status === "extracting"
-        ? `Extracting... ${elapsed}s`
+        ? "Extracting..."
         : status === "done"
           ? "Done"
           : status === "error"
@@ -134,9 +126,10 @@ export default function UpdateComplianceReport({ hasPortfolio }: { hasPortfolio:
       >
         {buttonLabel}
       </button>
-      {status === "extracting" && (
-        <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
-          Extracting compliance data (this takes up to 10 minutes)...
+      {status === "extracting" && progressText && (
+        <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <span className="spinner" style={{ width: "0.7rem", height: "0.7rem", flexShrink: 0 }} />
+          {progressText}
         </span>
       )}
       {status === "done" && (
