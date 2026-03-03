@@ -414,3 +414,308 @@ export function validateCapStructure(
 
   return checks;
 }
+
+// ─── Section-Based Validation (Phase 4) ───
+
+export function validateSectionExtraction(
+  sections: Record<string, Record<string, unknown> | null>,
+): ValidationResult {
+  const checks: ValidationCheck[] = [];
+  let skipped = 0;
+
+  const summary = sections.compliance_summary as Record<string, unknown> | null;
+  const holdings = (sections.asset_schedule as Record<string, unknown> | null)?.holdings as Array<Record<string, unknown>> | undefined;
+  const pvTests = (sections.par_value_tests as Record<string, unknown> | null)?.tests as Array<Record<string, unknown>> | undefined;
+  const icTests = (sections.interest_coverage_tests as Record<string, unknown> | null)?.tests as Array<Record<string, unknown>> | undefined;
+  const allTests = [...(pvTests || []), ...(icTests || [])];
+  const concentrations = (sections.concentration_tables as Record<string, unknown> | null)?.concentrations as Array<Record<string, unknown>> | undefined;
+
+  // ─── Pool-Level Checks (summary vs holdings) ───
+
+  if (summary && holdings && holdings.length > 0) {
+    const holdingsWithPar = holdings.filter((h) => h.parBalance != null);
+    const totalHoldingsPar = holdingsWithPar.reduce((sum, h) => sum + (h.parBalance as number ?? 0), 0);
+
+    const c1 = check("total_par_match", summary.totalPar as number | null, totalHoldingsPar, 2, "pct", "Total par");
+    if (c1) checks.push(c1); else skipped++;
+
+    const uniqueObligors = new Set(holdings.map((h) => (h.obligorName as string | null)?.toLowerCase().trim()).filter(Boolean)).size;
+    const c2 = check("obligor_count", summary.numberOfObligors as number | null, uniqueObligors, 2, "abs", "Obligor count");
+    if (c2) checks.push(c2); else skipped++;
+
+    const c3 = check("asset_count", summary.numberOfAssets as number | null, holdings.length, 1, "abs", "Asset count");
+    if (c3) checks.push(c3); else skipped++;
+
+    const wacSpread = summary.wacSpread as number | null | undefined;
+    if (wacSpread != null) {
+      const holdingsWithSpread = holdingsWithPar.filter((h) => h.spreadBps != null);
+      if (holdingsWithSpread.length > 0) {
+        const totalParForSpread = holdingsWithSpread.reduce((sum, h) => sum + (h.parBalance as number ?? 0), 0);
+        const waSpread = totalParForSpread > 0
+          ? holdingsWithSpread.reduce((sum, h) => sum + (h.spreadBps as number ?? 0) * (h.parBalance as number ?? 0), 0) / totalParForSpread
+          : 0;
+        const c4 = check("wa_spread", wacSpread, waSpread, 10, "abs", "WA spread (bps)");
+        if (c4) checks.push(c4); else skipped++;
+      } else {
+        skipped++;
+      }
+    } else {
+      skipped++;
+    }
+
+    const pctFixedRate = summary.pctFixedRate as number | null | undefined;
+    if (pctFixedRate != null && totalHoldingsPar > 0) {
+      const fixedPar = holdings.filter((h) => h.isFixedRate === true).reduce((sum, h) => sum + (h.parBalance as number ?? 0), 0);
+      const calcFixedPct = (fixedPar / totalHoldingsPar) * 100;
+      const c5 = check("fixed_rate_pct", pctFixedRate, calcFixedPct, 1, "abs", "Fixed rate %");
+      if (c5) checks.push(c5); else skipped++;
+    } else {
+      skipped++;
+    }
+
+    const pctCccAndBelow = summary.pctCccAndBelow as number | null | undefined;
+    if (pctCccAndBelow != null && totalHoldingsPar > 0) {
+      const cccPar = holdings
+        .filter((h) =>
+          isCccOrBelow(h.moodysRating as string | null) ||
+          isCccOrBelow(h.spRating as string | null) ||
+          isCccOrBelow(h.compositeRating as string | null)
+        )
+        .reduce((sum, h) => sum + (h.parBalance as number ?? 0), 0);
+      const calcCccPct = (cccPar / totalHoldingsPar) * 100;
+      const c6 = check("ccc_pct", pctCccAndBelow, calcCccPct, 1, "abs", "CCC & below %");
+      if (c6) checks.push(c6); else skipped++;
+    } else {
+      skipped++;
+    }
+
+    const pctDefaulted = summary.pctDefaulted as number | null | undefined;
+    if (pctDefaulted != null && totalHoldingsPar > 0) {
+      const defaultedPar = holdings.filter((h) => h.isDefaulted === true).reduce((sum, h) => sum + (h.parBalance as number ?? 0), 0);
+      const calcDefaultedPct = (defaultedPar / totalHoldingsPar) * 100;
+      const c7 = check("defaulted_pct", pctDefaulted, calcDefaultedPct, 0.5, "abs", "Defaulted %");
+      if (c7) checks.push(c7); else skipped++;
+    } else {
+      skipped++;
+    }
+  } else {
+    skipped += 7;
+  }
+
+  // ─── Concentration Checks ───
+
+  if (concentrations && concentrations.length > 0 && allTests.length > 0) {
+    const industryBuckets = concentrations.filter((c) => c.concentrationType === "INDUSTRY");
+    const maxIndustryPct = industryBuckets.reduce((max, c) => Math.max(max, c.actualPct as number ?? 0), 0);
+    const industryTests = allTests.filter((t) =>
+      t.testType === "CONCENTRATION" && (t.testName as string | undefined)?.toLowerCase().includes("industry")
+    );
+    if (maxIndustryPct > 0 && industryTests.length > 0) {
+      const industryLimit = (industryTests[0].triggerLevel ?? industryTests[0].thresholdLevel) as number | undefined;
+      if (industryLimit != null) {
+        const status = maxIndustryPct <= industryLimit ? "pass" : "fail";
+        checks.push({
+          name: "industry_concentration",
+          status,
+          expected: industryLimit,
+          actual: maxIndustryPct,
+          discrepancy: Math.round((maxIndustryPct - industryLimit) * 100) / 100,
+          message: status === "pass"
+            ? `Largest industry bucket (${maxIndustryPct.toFixed(1)}%) within limit (${industryLimit}%)`
+            : `Largest industry bucket (${maxIndustryPct.toFixed(1)}%) exceeds limit (${industryLimit}%)`,
+        });
+      } else {
+        skipped++;
+      }
+    } else {
+      skipped++;
+    }
+
+    const obligorBuckets = concentrations.filter((c) => c.concentrationType === "SINGLE_OBLIGOR");
+    const maxObligorPct = obligorBuckets.reduce((max, c) => Math.max(max, c.actualPct as number ?? 0), 0);
+    const obligorTests = allTests.filter((t) =>
+      t.testType === "CONCENTRATION" && ((t.testName as string | undefined)?.toLowerCase().includes("obligor") || (t.testName as string | undefined)?.toLowerCase().includes("single"))
+    );
+    if (maxObligorPct > 0 && obligorTests.length > 0) {
+      const obligorLimit = (obligorTests[0].triggerLevel ?? obligorTests[0].thresholdLevel) as number | undefined;
+      if (obligorLimit != null) {
+        const status = maxObligorPct <= obligorLimit ? "pass" : "fail";
+        checks.push({
+          name: "single_obligor_concentration",
+          status,
+          expected: obligorLimit,
+          actual: maxObligorPct,
+          discrepancy: Math.round((maxObligorPct - obligorLimit) * 100) / 100,
+          message: status === "pass"
+            ? `Largest obligor exposure (${maxObligorPct.toFixed(1)}%) within limit (${obligorLimit}%)`
+            : `Largest obligor exposure (${maxObligorPct.toFixed(1)}%) exceeds limit (${obligorLimit}%)`,
+        });
+      } else {
+        skipped++;
+      }
+    } else {
+      skipped++;
+    }
+  } else {
+    skipped += 2;
+  }
+
+  // ─── Internal Consistency (OC/IC test math) ───
+
+  if (allTests.length > 0) {
+    let ocCheckRan = false;
+    let cushionCheckRan = false;
+    let ocFailures = 0;
+    let ocTotal = 0;
+    let cushionFailures = 0;
+    let cushionTotal = 0;
+
+    for (const t of allTests) {
+      const numerator = t.numerator as number | null | undefined;
+      const denominator = t.denominator as number | null | undefined;
+      const actualValue = t.actualValue as number | null | undefined;
+      const triggerLevel = t.triggerLevel as number | null | undefined;
+      const cushionPct = t.cushionPct as number | null | undefined;
+
+      if (numerator != null && denominator != null && denominator !== 0 && actualValue != null) {
+        ocCheckRan = true;
+        ocTotal++;
+        const calculated = (numerator / denominator) * 100;
+        if (absDiff(calculated, actualValue) > 0.1) {
+          ocFailures++;
+        }
+      }
+
+      if (actualValue != null && triggerLevel != null && cushionPct != null) {
+        cushionCheckRan = true;
+        cushionTotal++;
+        const calculated = actualValue - triggerLevel;
+        if (absDiff(calculated, cushionPct) > 0.1) {
+          cushionFailures++;
+        }
+      }
+    }
+
+    if (ocCheckRan) {
+      const status = ocFailures === 0 ? "pass" : ocFailures <= 1 ? "warn" : "fail";
+      checks.push({
+        name: "oc_test_math",
+        status,
+        expected: 0,
+        actual: ocFailures,
+        discrepancy: ocFailures,
+        message: ocFailures === 0
+          ? `OC test math consistent across ${ocTotal} tests`
+          : `${ocFailures}/${ocTotal} OC tests have numerator/denominator ≠ actualValue`,
+      });
+    } else {
+      skipped++;
+    }
+
+    if (cushionCheckRan) {
+      const status = cushionFailures === 0 ? "pass" : cushionFailures <= 1 ? "warn" : "fail";
+      checks.push({
+        name: "cushion_math",
+        status,
+        expected: 0,
+        actual: cushionFailures,
+        discrepancy: cushionFailures,
+        message: cushionFailures === 0
+          ? `Cushion math consistent across ${cushionTotal} tests`
+          : `${cushionFailures}/${cushionTotal} tests have actualValue - triggerLevel ≠ cushionPct`,
+      });
+    } else {
+      skipped++;
+    }
+  } else {
+    skipped += 2;
+  }
+
+  const passed = checks.filter((c) => c.status === "pass").length;
+
+  return {
+    checks,
+    score: passed,
+    totalChecks: 11,
+    checksRun: checks.length,
+    checksSkipped: skipped,
+  };
+}
+
+// ─── Repair Query Builder ───
+
+export interface RepairQuery {
+  sectionType: string;
+  reason: string;
+  instruction: string;
+}
+
+export function buildRepairQueries(
+  validationResult: ValidationResult,
+  sections: Record<string, Record<string, unknown> | null>,
+): RepairQuery[] {
+  const repairs: RepairQuery[] = [];
+
+  // Check for entirely missing required sections
+  const requiredSections = [
+    "compliance_summary",
+    "asset_schedule",
+    "par_value_tests",
+    "interest_coverage_tests",
+    "concentration_tables",
+  ];
+  for (const sectionType of requiredSections) {
+    if (sections[sectionType] === null || sections[sectionType] === undefined) {
+      repairs.push({
+        sectionType,
+        reason: "missing_section",
+        instruction: "Section was not found in the document. Try full document search.",
+      });
+    }
+  }
+
+  // Check for failing validation checks
+  const failingChecks = validationResult.checks.filter((c) => c.status === "fail");
+
+  for (const c of failingChecks) {
+    switch (c.name) {
+      case "asset_count":
+        repairs.push({
+          sectionType: "asset_schedule",
+          reason: c.name,
+          instruction: `Extracted ${c.actual} holdings but expected ${c.expected}. Find the missing holdings.`,
+        });
+        break;
+      case "total_par_match":
+        repairs.push({
+          sectionType: "asset_schedule",
+          reason: c.name,
+          instruction: `Total par from holdings ($${c.actual}) doesn't match summary ($${c.expected}). Verify par balances.`,
+        });
+        break;
+      case "wa_spread":
+        repairs.push({
+          sectionType: "asset_schedule",
+          reason: c.name,
+          instruction: "WA spread mismatch. Verify spread values for holdings.",
+        });
+        break;
+      case "oc_test_math":
+        repairs.push({
+          sectionType: "par_value_tests",
+          reason: c.name,
+          instruction: "Some OC tests have inconsistent math. Re-extract tests.",
+        });
+        break;
+      case "cushion_math":
+        repairs.push({
+          sectionType: "interest_coverage_tests",
+          reason: c.name,
+          instruction: "Some IC tests have inconsistent cushion math. Re-extract tests.",
+        });
+        break;
+    }
+  }
+
+  return repairs;
+}
