@@ -2,7 +2,7 @@ import { query } from "../../db";
 import type { CloDocument } from "../types";
 import { callAnthropicChunkedWithTool, normalizeClassName } from "../api";
 import { pass1Schema, pass2Schema, pass3Schema, pass4Schema, pass5Schema } from "./schemas";
-import { pass1Prompt, pass2Prompt, pass3Prompt, pass4Prompt, pass5Prompt } from "./prompts";
+import { pass1Prompt, pass2Prompt, pass3Prompt, pass4Prompt, pass5Prompt, pass2RepairPrompt, passContinuationPrompt } from "./prompts";
 import { normalizePass1, normalizePass2, normalizePass3, normalizePass4, normalizePass5 } from "./normalizer";
 import { validateExtraction } from "./validator";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -169,6 +169,79 @@ interface PassResult {
   truncated: boolean;
   error?: string;
   raw: string;
+}
+
+interface RepairAction {
+  pass: number;
+  reason: string;
+  type: "validation_mismatch" | "truncation";
+}
+
+function detectRepairNeeds(
+  pass1Data: import("./schemas").Pass1Output,
+  passResults: PassResult[],
+): RepairAction[] {
+  const repairs: RepairAction[] = [];
+
+  // Check for truncated passes
+  for (const pr of passResults) {
+    if (pr.truncated && pr.data) {
+      repairs.push({
+        pass: pr.pass,
+        reason: `Pass ${pr.pass} output was truncated`,
+        type: "truncation",
+      });
+    }
+  }
+
+  // Check validation: holdings count mismatch (Pass 2)
+  const p2 = passResults.find((p) => p.pass === 2);
+  if (p2?.data) {
+    const holdings = (p2.data as unknown as import("./schemas").Pass2Output).holdings;
+    const expectedAssets = pass1Data.poolSummary.numberOfAssets;
+    if (expectedAssets != null && holdings.length < expectedAssets * 0.85) {
+      repairs.push({
+        pass: 2,
+        reason: `Extracted ${holdings.length} holdings but pool summary says ${expectedAssets} assets`,
+        type: "validation_mismatch",
+      });
+    }
+  }
+
+  // Deduplicate — if a pass has both truncation and validation issues, keep validation (more targeted)
+  const seen = new Set<number>();
+  return repairs.filter((r) => {
+    if (seen.has(r.pass)) return false;
+    seen.add(r.pass);
+    return true;
+  });
+}
+
+/** Get the last N items from the largest array in a pass result, for continuation context */
+function getLastItems(data: Record<string, unknown>, n: number): { field: string; items: string[] } {
+  let largestField = "";
+  let largestArray: unknown[] = [];
+
+  for (const [key, val] of Object.entries(data)) {
+    if (Array.isArray(val) && val.length > largestArray.length) {
+      largestField = key;
+      largestArray = val;
+    }
+  }
+
+  if (largestArray.length === 0) return { field: "", items: [] };
+
+  const last = largestArray.slice(-n);
+  const items = last.map((item) => {
+    if (typeof item === "object" && item !== null) {
+      const obj = item as Record<string, unknown>;
+      const name = obj.obligorName ?? obj.testName ?? obj.description ?? obj.className ?? obj.bucketName ?? obj.feeType ?? "";
+      return String(name);
+    }
+    return String(item);
+  });
+
+  return { field: largestField, items };
 }
 
 export async function runExtraction(
@@ -394,17 +467,114 @@ export async function runExtraction(
     await batchInsert("clo_extraction_overflow", overflowRows);
   }
 
-  // Determine final status
-  const failedPasses = passResults.filter((p) => !p.data);
-  const truncatedPasses = passResults.filter((p) => p.truncated);
-  const status = failedPasses.length > 0 ? "partial"
-    : (p1Result.truncated || truncatedPasses.length > 0) ? "partial"
-    : "complete";
-
   // Run cross-validation
   const pass2Data = p2?.data as unknown as import("./schemas").Pass2Output | null;
   const pass3Data = p3?.data as unknown as import("./schemas").Pass3Output | null;
-  const validationResult = validateExtraction(pass1Data, pass2Data ?? null, pass3Data ?? null);
+  let validationResult = validateExtraction(pass1Data, pass2Data ?? null, pass3Data ?? null);
+
+  // ─── Repair Loop: re-extract passes with validation failures or truncation ───
+  const repairNeeds = detectRepairNeeds(pass1Data, passResults);
+
+  if (repairNeeds.length > 0) {
+    console.log(`[extraction] Repair needed for ${repairNeeds.length} pass(es): ${repairNeeds.map((r) => `Pass ${r.pass} (${r.reason})`).join(", ")}`);
+
+    for (const repair of repairNeeds) {
+      const pr = passResults.find((p) => p.pass === repair.pass);
+
+      if (repair.type === "truncation" && pr?.data) {
+        const { field, items } = getLastItems(pr.data as Record<string, unknown>, 3);
+        if (field && items.length > 0) {
+          const contPrompt = passContinuationPrompt(repair.pass, reportDate, items, field);
+          const schema = repair.pass === 2 ? pass2Schema : repair.pass === 3 ? pass3Schema : repair.pass === 4 ? pass4Schema : pass5Schema;
+
+          console.log(`[extraction] Running continuation for Pass ${repair.pass}, last items: ${items.join(", ")}`);
+          const contResult = await callClaudeStructured(apiKey, contPrompt.system, documents, contPrompt.user, 65536, schema, `extract_pass${repair.pass}`);
+
+          if (contResult.data && !contResult.error) {
+            const existing = pr.data as Record<string, unknown>;
+            for (const [key, val] of Object.entries(contResult.data as Record<string, unknown>)) {
+              if (val == null) continue;
+              const baseVal = existing[key];
+              if (Array.isArray(val) && Array.isArray(baseVal)) {
+                existing[key] = [...baseVal, ...val];
+              } else if (existing[key] == null) {
+                existing[key] = val;
+              }
+            }
+            pr.truncated = contResult.truncated;
+            rawOutputs[`pass${repair.pass}_continuation`] = contResult.data;
+
+            // Re-insert merged data
+            if (repair.pass === 2) {
+              try {
+                const validated = pass2Schema.parse(existing);
+                const normalized = normalizePass2(validated, reportPeriodId);
+                await replaceIfPresent("clo_holdings", normalized.holdings);
+              } catch { /* keep original */ }
+            } else if (repair.pass === 3) {
+              try {
+                const validated = pass3Schema.parse(existing);
+                const normalized = normalizePass3(validated, reportPeriodId);
+                await replaceIfPresent("clo_concentrations", normalized.concentrations);
+              } catch { /* keep original */ }
+            } else if (repair.pass === 4) {
+              try {
+                const validated = pass4Schema.parse(existing);
+                const normalized = normalizePass4(validated, reportPeriodId);
+                await replaceIfPresent("clo_waterfall_steps", normalized.waterfallSteps);
+                await replaceIfPresent("clo_proceeds", normalized.proceeds);
+                await replaceIfPresent("clo_trades", normalized.trades);
+              } catch { /* keep original */ }
+            }
+          }
+        }
+      } else if (repair.type === "validation_mismatch" && repair.pass === 2) {
+        const holdings = pr?.data ? (pr.data as unknown as import("./schemas").Pass2Output).holdings : [];
+        const expectedAssets = pass1Data.poolSummary.numberOfAssets ?? 0;
+        const repairPr = pass2RepairPrompt(reportDate, holdings.length, expectedAssets);
+
+        console.log(`[extraction] Running repair extraction for Pass 2 (${holdings.length}/${expectedAssets} holdings)`);
+        const repairResult = await callClaudeStructured(apiKey, repairPr.system, documents, repairPr.user, 65536, pass2Schema, "extract_pass2");
+
+        if (repairResult.data && !repairResult.error) {
+          try {
+            const validated = pass2Schema.parse(repairResult.data);
+            if (validated.holdings.length > holdings.length) {
+              console.log(`[extraction] Repair improved Pass 2: ${holdings.length} → ${validated.holdings.length} holdings`);
+              const prIdx = passResults.findIndex((p) => p.pass === 2);
+              passResults[prIdx] = {
+                pass: 2,
+                data: validated as unknown as Record<string, unknown>,
+                truncated: repairResult.truncated,
+                raw: JSON.stringify(repairResult.data),
+              };
+              rawOutputs.pass2_repair = repairResult.data;
+
+              const normalized = normalizePass2(validated, reportPeriodId);
+              await replaceIfPresent("clo_holdings", normalized.holdings);
+            } else {
+              console.log(`[extraction] Repair did not improve Pass 2 (${validated.holdings.length} ≤ ${holdings.length}), keeping original`);
+            }
+          } catch (e) {
+            console.log(`[extraction] Repair Pass 2 validation failed: ${(e as Error).message}`);
+          }
+        }
+      }
+    }
+
+    // Re-run validation after repairs
+    const repairedP2 = passResults.find((p) => p.pass === 2);
+    const repairedPass2Data = repairedP2?.data as unknown as import("./schemas").Pass2Output | null;
+    const repairedPass3Data = (passResults.find((p) => p.pass === 3)?.data as unknown as import("./schemas").Pass3Output) ?? null;
+    validationResult = validateExtraction(pass1Data, repairedPass2Data ?? null, repairedPass3Data);
+  }
+
+  // Determine final status (after any repairs)
+  const finalFailedPasses = passResults.filter((p) => !p.data);
+  const finalTruncatedPasses = passResults.filter((p) => p.truncated);
+  const status = finalFailedPasses.length > 0 ? "partial"
+    : (p1Result.truncated || finalTruncatedPasses.length > 0) ? "partial"
+    : "complete";
 
   // Update report period with final data
   await query(
