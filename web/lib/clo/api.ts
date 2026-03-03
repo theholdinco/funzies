@@ -67,31 +67,7 @@ export async function callAnthropicForText(
   maxTokens: number,
 ): Promise<{ text: string; truncated: boolean; error?: string; status?: number }> {
   const content = buildDocumentContent(documents, userText);
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: "user", content }],
-    }),
-  });
-
-  if (!response.ok) {
-    return { text: "", truncated: false, error: await response.text(), status: response.status };
-  }
-
-  const result = await response.json();
-  const text = result.content
-    ?.filter((block: AnthropicBlock) => block.type === "text")
-    ?.map((block: AnthropicBlock) => block.text)
-    ?.join("\n") || "";
-  return { text, truncated: result.stop_reason !== "end_turn" };
+  return callAnthropic(apiKey, system, content, maxTokens);
 }
 
 export async function callAnthropicWithTool(
