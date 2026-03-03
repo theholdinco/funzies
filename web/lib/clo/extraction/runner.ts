@@ -160,9 +160,24 @@ export async function runSectionExtraction(
   console.log(`[extraction] events: ${normalized.events.length}`);
   console.log(`[extraction] ═══════════════════════════════`);
 
-  // Insert pool summary
+  // Insert pool summary (filter to known columns)
   if (normalized.poolSummary) {
-    await replaceIfPresent("clo_pool_summary", [normalized.poolSummary]);
+    const POOL_SUMMARY_COLUMNS = new Set([
+      "report_period_id", "total_par", "total_principal_balance", "total_market_value",
+      "number_of_obligors", "number_of_assets", "number_of_industries", "number_of_countries",
+      "target_par", "par_surplus_deficit", "wac_spread", "wac_total", "wal_years", "warf",
+      "diversity_score", "wa_recovery_rate", "wa_moodys_recovery", "wa_sp_recovery",
+      "pct_fixed_rate", "pct_floating_rate", "pct_cov_lite", "pct_second_lien",
+      "pct_senior_secured", "pct_bonds", "pct_current_pay", "pct_defaulted",
+      "pct_ccc_and_below", "pct_single_b", "pct_discount_obligations", "pct_long_dated",
+      "pct_semi_annual_pay", "pct_quarterly_pay", "pct_eur_denominated", "pct_gbp_denominated",
+      "pct_usd_denominated", "pct_non_base_currency",
+    ]);
+    const filtered: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(normalized.poolSummary)) {
+      if (POOL_SUMMARY_COLUMNS.has(k)) filtered[k] = v;
+    }
+    await replaceIfPresent("clo_pool_summary", [filtered]);
     console.log(`[extraction] → clo_pool_summary: inserted`);
   }
 
