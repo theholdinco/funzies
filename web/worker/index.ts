@@ -14,7 +14,7 @@ import {
   runScreeningPipeline,
 } from "./clo-pipeline.js";
 import { runScanPipeline } from "./pulse-pipeline.js";
-import { runPpmExtraction } from "../lib/clo/extraction/ppm-extraction.js";
+import { runSectionPpmExtraction } from "../lib/clo/extraction/ppm-extraction.js";
 import { runPortfolioExtraction } from "../lib/clo/extraction/portfolio-extraction.js";
 
 if (!process.env.DATABASE_URL) {
@@ -582,7 +582,7 @@ async function pollCloExtractionJobs() {
       const apiKey = decryptApiKey(encrypted, iv);
       // Filter to only PPM documents (backwards compat: no docType = ppm)
       const ppmDocs = (job.documents || []).filter((d) => (d.docType || "ppm") === "ppm");
-      const { extractedConstraints, rawOutputs } = await runPpmExtraction(apiKey, ppmDocs);
+      const { extractedConstraints, rawOutputs } = await runSectionPpmExtraction(apiKey, ppmDocs);
 
       await pool.query(
         `UPDATE clo_profiles

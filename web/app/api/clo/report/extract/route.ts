@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-helpers";
 import { query } from "@/lib/db";
 import { decryptApiKey } from "@/lib/crypto";
-import { runExtraction } from "@/lib/clo/extraction/runner";
+import { runSectionExtraction } from "@/lib/clo/extraction/runner";
 import type { CloDocument } from "@/lib/clo/types";
 
 export async function POST() {
@@ -42,7 +42,7 @@ export async function POST() {
   const apiKey = decryptApiKey(userRows[0].encrypted_api_key, userRows[0].api_key_iv);
 
   try {
-    const result = await runExtraction(profile.id, apiKey, documents);
+    const result = await runSectionExtraction(profile.id, apiKey, documents);
     return NextResponse.json(result);
   } catch (e) {
     const message = (e as Error).message;
