@@ -6,6 +6,16 @@ interface AnthropicBlock { type: string; text?: string }
 const RETRY_DELAYS = [5000, 15000, 30000]; // 3 retries with backoff
 const FETCH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes — large PDFs need time
 
+// Node's default headersTimeout is 300s which is too short for large PDF processing.
+// undici is Node's built-in HTTP client behind fetch.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { Agent } = require("undici");
+const dispatcher = new Agent({
+  headersTimeout: FETCH_TIMEOUT_MS,
+  bodyTimeout: FETCH_TIMEOUT_MS,
+  connectTimeout: 30_000,
+});
+
 async function fetchWithRetry(url: string, init: RequestInit, label?: string): Promise<Response> {
   const bodySize = typeof init.body === "string" ? init.body.length : 0;
   const tag = label ? `[anthropic:${label}]` : "[anthropic]";
@@ -19,7 +29,12 @@ async function fetchWithRetry(url: string, init: RequestInit, label?: string): P
       } else {
         console.log(`${tag} retry attempt ${attempt + 1}/${RETRY_DELAYS.length + 1}`);
       }
-      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+      const response = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        // @ts-expect-error -- undici dispatcher accepted by Node fetch
+        dispatcher,
+      });
       const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
       // Retry on transient server errors
       if ((response.status >= 500 || response.status === 529) && attempt < RETRY_DELAYS.length) {
