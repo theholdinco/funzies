@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 import { callAnthropicWithTool, buildDocumentContent } from "../api";
+import { zodToToolSchema } from "./schema-utils";
 import type { CloDocument } from "../types";
 
 // Section types for compliance reports (trustee reports / monthly reports)
@@ -85,14 +85,12 @@ export async function mapDocument(
   const { system, user } = mapperPrompt();
   const content = buildDocumentContent(documents, user);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const jsonSchema = zodToJsonSchema(documentMapSchema as any, { target: "jsonSchema7" }) as Record<string, unknown>;
-  delete jsonSchema.$schema;
+  const inputSchema = zodToToolSchema(documentMapSchema);
 
   const result = await callAnthropicWithTool(apiKey, system, content, 4096, {
     name: "map_document_sections",
     description: "Return the document type and a list of identified sections with their page ranges.",
-    inputSchema: jsonSchema,
+    inputSchema,
   });
 
   if (result.error) {
