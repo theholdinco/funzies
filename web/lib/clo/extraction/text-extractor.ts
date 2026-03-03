@@ -57,7 +57,7 @@ async function extractSectionChunk(
   };
 
   const pageCount = chunkEnd - chunkStart + 1;
-  const maxTokens = Math.min(64000, pageCount * 2000);
+  const maxTokens = Math.min(64000, Math.max(8000, pageCount * 4000));
 
   const { system, user } = transcriptionPrompt(section);
 

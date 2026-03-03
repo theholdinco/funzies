@@ -176,7 +176,18 @@ export async function runSectionExtraction(
         );
       }
 
-      await batchInsert("clo_tranche_snapshots", [{ tranche_id: existing[0].id, ...snapshot.data }]);
+      // Filter to only known columns to avoid "column does not exist" errors
+      const SNAPSHOT_COLUMNS = new Set([
+        "report_period_id", "current_balance", "factor", "current_index_rate",
+        "coupon_rate", "deferred_interest_balance", "enhancement_pct",
+        "beginning_balance", "ending_balance", "interest_accrued", "interest_paid",
+        "interest_shortfall", "cumulative_shortfall", "principal_paid", "days_accrued",
+      ]);
+      const filteredData: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(snapshot.data)) {
+        if (SNAPSHOT_COLUMNS.has(k)) filteredData[k] = v;
+      }
+      await batchInsert("clo_tranche_snapshots", [{ tranche_id: existing[0].id, ...filteredData }]);
 
       // Enrich the tranche record with financial data from the snapshot
       const bal = snapshot.data.current_balance ?? snapshot.data.beginning_balance;
