@@ -96,8 +96,18 @@ export async function extractAllSections(
   apiKey: string,
   sectionTexts: SectionText[],
   documentType: "compliance_report" | "ppm",
+  concurrency = 3,
 ): Promise<SectionExtractionResult[]> {
-  return Promise.all(
-    sectionTexts.map((st) => extractSection(apiKey, st, documentType)),
-  );
+  const results: SectionExtractionResult[] = [];
+  const items = [...sectionTexts];
+
+  for (let i = 0; i < items.length; i += concurrency) {
+    const batch = items.slice(i, i + concurrency);
+    const batchResults = await Promise.all(
+      batch.map((st) => extractSection(apiKey, st, documentType)),
+    );
+    results.push(...batchResults);
+  }
+
+  return results;
 }

@@ -160,9 +160,11 @@ export async function mapDocument(
     return mapDocumentChunk(apiKey, pdfDoc, nonPdfDocs, 0, totalPages);
   }
 
-  // Large PDF: split into chunks and map each, then merge
+  // Large PDF: split into chunks, map in batches of 2, then merge
   console.log(`[document-mapper] PDF has ${totalPages} pages, splitting into chunks of ${MAX_MAPPING_PAGES}`);
-  const chunkPromises: Promise<DocumentMap>[] = [];
+
+  interface ChunkInfo { doc: CloDocument; offset: number }
+  const chunks: ChunkInfo[] = [];
 
   for (let start = 0; start < totalPages; start += MAX_MAPPING_PAGES) {
     const end = Math.min(start + MAX_MAPPING_PAGES, totalPages);
@@ -171,16 +173,26 @@ export async function mapDocument(
     pages.forEach((p) => chunkDoc.addPage(p));
     const chunkBytes = await chunkDoc.save();
 
-    const chunkCloDoc: CloDocument = {
-      name: `${pdfDoc.name} (pages ${start + 1}-${end})`,
-      type: "application/pdf",
-      size: chunkBytes.length,
-      base64: Buffer.from(chunkBytes).toString("base64"),
-    };
-
-    chunkPromises.push(mapDocumentChunk(apiKey, chunkCloDoc, nonPdfDocs, start, totalPages));
+    chunks.push({
+      doc: {
+        name: `${pdfDoc.name} (pages ${start + 1}-${end})`,
+        type: "application/pdf",
+        size: chunkBytes.length,
+        base64: Buffer.from(chunkBytes).toString("base64"),
+      },
+      offset: start,
+    });
   }
 
-  const maps = await Promise.all(chunkPromises);
+  const maps: DocumentMap[] = [];
+  const concurrency = 2;
+  for (let i = 0; i < chunks.length; i += concurrency) {
+    const batch = chunks.slice(i, i + concurrency);
+    const batchMaps = await Promise.all(
+      batch.map((c) => mapDocumentChunk(apiKey, c.doc, nonPdfDocs, c.offset, totalPages)),
+    );
+    maps.push(...batchMaps);
+  }
+
   return mergeSectionMaps(maps);
 }

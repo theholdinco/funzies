@@ -80,10 +80,18 @@ export async function extractAllSectionTexts(
   apiKey: string,
   pdfDocument: CloDocument,
   documentMap: DocumentMap,
+  concurrency = 3,
 ): Promise<SectionText[]> {
-  return Promise.all(
-    documentMap.sections.map((section) =>
-      extractSectionText(apiKey, pdfDocument, section),
-    ),
-  );
+  const results: SectionText[] = [];
+  const sections = [...documentMap.sections];
+
+  for (let i = 0; i < sections.length; i += concurrency) {
+    const batch = sections.slice(i, i + concurrency);
+    const batchResults = await Promise.all(
+      batch.map((section) => extractSectionText(apiKey, pdfDocument, section)),
+    );
+    results.push(...batchResults);
+  }
+
+  return results;
 }
