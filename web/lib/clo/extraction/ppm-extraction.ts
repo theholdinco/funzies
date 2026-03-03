@@ -42,7 +42,8 @@ export async function runSectionPpmExtraction(
   // Fallback: if key_dates returned all nulls, re-extract from transaction_overview text
   // (dates often appear in the term sheet/summary which the mapper may assign to transaction_overview)
   const keyDatesData = sections.key_dates as Record<string, unknown> | null;
-  const allDatesNull = keyDatesData && Object.values(keyDatesData).every((v) => v == null);
+  const isNullish = (v: unknown) => v == null || v === "null";
+  const allDatesNull = keyDatesData && Object.values(keyDatesData).every(isNullish);
   if (allDatesNull) {
     const overviewText = sectionTexts.find((t) => t.sectionType === "transaction_overview");
     const capStructText = sectionTexts.find((t) => t.sectionType === "capital_structure");
@@ -57,7 +58,7 @@ export async function runSectionPpmExtraction(
         "ppm",
       );
       if (fallbackResult.data) {
-        const hasValues = Object.values(fallbackResult.data).some((v) => v != null);
+        const hasValues = Object.values(fallbackResult.data).some((v) => !isNullish(v));
         if (hasValues) {
           console.log(`[ppm-extraction] key_dates fallback succeeded`);
           sections.key_dates = fallbackResult.data;

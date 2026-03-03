@@ -17,6 +17,8 @@ import { runScanPipeline } from "./pulse-pipeline.js";
 import { runSectionPpmExtraction } from "../lib/clo/extraction/ppm-extraction.js";
 import { runSectionExtraction } from "../lib/clo/extraction/runner.js";
 import { runPortfolioExtraction } from "../lib/clo/extraction/portfolio-extraction.js";
+import { normalizeClassName } from "../lib/clo/api.js";
+import type { CapitalStructureEntry } from "../lib/clo/types.js";
 
 if (!process.env.DATABASE_URL) {
   config({ path: ".env.local" });
@@ -556,6 +558,165 @@ async function pollPulseJobs() {
   }
 }
 
+// ─── PPM → Relational Sync ──────────────────────────────────────────
+
+function parseAmount(s: string | undefined | null): number | null {
+  if (!s) return null;
+  const cleaned = String(s).replace(/[$,\s]/g, "");
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
+}
+
+async function syncPpmToRelationalTables(
+  profileId: string,
+  extractedConstraints: Record<string, unknown>,
+) {
+  const isNullish = (v: unknown) => v == null || v === "null";
+
+  // Look up deal_id
+  const deals = await pool.query<{ id: string }>(
+    "SELECT id FROM clo_deals WHERE profile_id = $1",
+    [profileId],
+  );
+  if (deals.rows.length === 0) {
+    console.log(`[worker] syncPpm: no deal found for profile ${profileId}, skipping`);
+    return;
+  }
+  const dealId = deals.rows[0].id;
+
+  // Sync capital structure → clo_tranches
+  const capitalStructure = (extractedConstraints.capitalStructure ?? []) as CapitalStructureEntry[];
+  if (capitalStructure.length === 0) {
+    console.log(`[worker] syncPpm: no capital structure entries, skipping tranche sync`);
+    return;
+  }
+
+  // Sort: non-subordinated first (by array order), subordinated last
+  const sorted = [...capitalStructure];
+  sorted.sort((a, b) => {
+    if (a.isSubordinated && !b.isSubordinated) return 1;
+    if (!a.isSubordinated && b.isSubordinated) return -1;
+    return 0;
+  });
+
+  for (let i = 0; i < sorted.length; i++) {
+    const entry = sorted[i];
+    const normalizedName = normalizeClassName(entry.class);
+
+    // Find or create tranche
+    const allTranches = await pool.query<{ id: string; class_name: string }>(
+      "SELECT id, class_name FROM clo_tranches WHERE deal_id = $1",
+      [dealId],
+    );
+    let tranche = allTranches.rows.find((t) => normalizeClassName(t.class_name) === normalizedName);
+
+    if (!tranche) {
+      const inserted = await pool.query<{ id: string; class_name: string }>(
+        `INSERT INTO clo_tranches (deal_id, class_name) VALUES ($1, $2) RETURNING id, class_name`,
+        [dealId, entry.class],
+      );
+      tranche = inserted.rows[0];
+    }
+
+    // Build update
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+    let pi = 1;
+
+    if (entry.spreadBps != null) {
+      setClauses.push(`spread_bps = $${pi++}`);
+      values.push(entry.spreadBps);
+    }
+
+    const balance = parseAmount(entry.principalAmount);
+    if (balance != null) {
+      setClauses.push(`original_balance = $${pi++}`);
+      values.push(balance);
+    }
+
+    if (entry.rateType) {
+      setClauses.push(`is_floating = $${pi++}`);
+      values.push(entry.rateType.toLowerCase() === "floating");
+    }
+
+    if (entry.isSubordinated != null) {
+      setClauses.push(`is_subordinate = $${pi++}`);
+      values.push(entry.isSubordinated);
+    }
+
+    if (entry.deferrable != null) {
+      setClauses.push(`is_deferrable = $${pi++}`);
+      values.push(entry.deferrable);
+    }
+
+    if (entry.rating?.sp) {
+      setClauses.push(`rating_sp = $${pi++}`);
+      values.push(entry.rating.sp);
+    }
+
+    if (entry.rating?.fitch) {
+      setClauses.push(`rating_fitch = $${pi++}`);
+      values.push(entry.rating.fitch);
+    }
+
+    if (entry.referenceRate) {
+      setClauses.push(`reference_rate = $${pi++}`);
+      values.push(entry.referenceRate);
+    }
+
+    setClauses.push(`seniority_rank = $${pi++}`);
+    values.push(i + 1);
+
+    if (setClauses.length > 0) {
+      values.push(tranche.id);
+      await pool.query(
+        `UPDATE clo_tranches SET ${setClauses.join(", ")} WHERE id = $${pi}`,
+        values,
+      );
+    }
+  }
+
+  console.log(`[worker] syncPpm: synced ${sorted.length} tranches to clo_tranches`);
+
+  // Sync dates → clo_deals
+  const firstEntry = capitalStructure[0];
+  const maturityDate = firstEntry?.maturityDate;
+  const keyDates = extractedConstraints.keyDates as Record<string, unknown> | undefined;
+
+  const reinvestmentEnd = keyDates && !isNullish(keyDates.reinvestmentPeriodEnd)
+    ? keyDates.reinvestmentPeriodEnd as string
+    : null;
+  const nonCallEnd = keyDates && !isNullish(keyDates.nonCallPeriodEnd)
+    ? keyDates.nonCallPeriodEnd as string
+    : null;
+
+  if (maturityDate || reinvestmentEnd || nonCallEnd) {
+    const dateClauses: string[] = [];
+    const dateValues: unknown[] = [];
+    let di = 1;
+
+    if (maturityDate) {
+      dateClauses.push(`stated_maturity_date = $${di++}`);
+      dateValues.push(maturityDate);
+    }
+    if (reinvestmentEnd) {
+      dateClauses.push(`reinvestment_period_end = $${di++}`);
+      dateValues.push(reinvestmentEnd);
+    }
+    if (nonCallEnd) {
+      dateClauses.push(`non_call_period_end = $${di++}`);
+      dateValues.push(nonCallEnd);
+    }
+
+    dateValues.push(dealId);
+    await pool.query(
+      `UPDATE clo_deals SET ${dateClauses.join(", ")} WHERE id = $${di}`,
+      dateValues,
+    );
+    console.log(`[worker] syncPpm: updated deal dates (maturity=${maturityDate}, reinvEnd=${reinvestmentEnd}, nonCallEnd=${nonCallEnd})`);
+  }
+}
+
 // ─── CLO Extraction Jobs ─────────────────────────────────────────────
 
 async function pollCloExtractionJobs() {
@@ -605,6 +766,14 @@ async function pollCloExtractionJobs() {
          WHERE id = $4`,
         [JSON.stringify(extractedConstraints), JSON.stringify(rawOutputs), JSON.stringify({ step: "complete", detail: "Extraction complete", updatedAt: new Date().toISOString() }), job.id]
       );
+
+      // Sync PPM data to relational tables (tranches, deals)
+      try {
+        await syncPpmToRelationalTables(job.id, extractedConstraints);
+      } catch (syncErr) {
+        console.error(`[worker] PPM relational sync failed for profile ${job.id}:`, syncErr instanceof Error ? syncErr.message : syncErr);
+      }
+
       console.log(`[worker] PPM extraction complete for profile ${job.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";

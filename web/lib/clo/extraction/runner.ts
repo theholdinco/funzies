@@ -312,22 +312,14 @@ export async function runSectionExtraction(
       }
       await batchInsert("clo_tranche_snapshots", [{ tranche_id: existing[0].id, ...filteredData }]);
 
-      // Enrich the tranche record with financial data from the snapshot
+      // Enrich the tranche record with balance from the snapshot
+      // Note: spread_bps should only come from PPM extraction, not coupon_rate
       const bal = snapshot.data.current_balance ?? snapshot.data.beginning_balance;
-      const rate = snapshot.data.coupon_rate;
-      if (bal != null || rate != null) {
-        const setClauses: string[] = [];
-        const setValues: unknown[] = [];
-        let pi = 1;
-        if (bal != null) { setClauses.push(`original_balance = $${pi++}`); setValues.push(bal); }
-        if (rate != null) { setClauses.push(`spread_bps = $${pi++}`); setValues.push(Number(rate) * 100); }
-        if (setClauses.length > 0) {
-          setValues.push(existing[0].id);
-          await query(
-            `UPDATE clo_tranches SET ${setClauses.join(", ")} WHERE id = $${pi}`,
-            setValues,
-          );
-        }
+      if (bal != null) {
+        await query(
+          `UPDATE clo_tranches SET original_balance = $1 WHERE id = $2`,
+          [bal, existing[0].id],
+        );
       }
     }
 
