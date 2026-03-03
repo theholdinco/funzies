@@ -565,7 +565,9 @@ async function pollCloExtractionJobs() {
     user_id: string;
     documents: Array<{ name: string; type: string; size: number; base64: string; docType?: "ppm" | "compliance" }>;
   }>(
-    `UPDATE clo_profiles SET ppm_extraction_status = 'extracting', updated_at = NOW()
+    `UPDATE clo_profiles SET ppm_extraction_status = 'extracting',
+       ppm_extraction_progress = '{"step":"starting","detail":"Starting PPM extraction..."}'::jsonb,
+       updated_at = NOW()
      WHERE id = (
        SELECT id FROM clo_profiles
        WHERE ppm_extraction_status = 'queued'
@@ -625,7 +627,9 @@ async function pollCloExtractionJobs() {
     user_id: string;
     documents: Array<{ name: string; type: string; size: number; base64: string; docType?: "ppm" | "compliance" }>;
   }>(
-    `UPDATE clo_profiles SET report_extraction_status = 'extracting', updated_at = NOW()
+    `UPDATE clo_profiles SET report_extraction_status = 'extracting',
+       report_extraction_progress = '{"step":"starting","detail":"Starting report extraction..."}'::jsonb,
+       updated_at = NOW()
      WHERE id = (
        SELECT id FROM clo_profiles
        WHERE report_extraction_status = 'queued'
