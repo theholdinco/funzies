@@ -56,8 +56,7 @@ async function extractSectionChunk(
     base64: chunkBase64,
   };
 
-  const pageCount = chunkEnd - chunkStart + 1;
-  const maxTokens = Math.min(64000, Math.max(8000, pageCount * 4000));
+  const maxTokens = 64000;
 
   const { system, user } = transcriptionPrompt(section);
 
