@@ -120,7 +120,8 @@ async function batchInsert(table: string, rows: Record<string, unknown>[]): Prom
     const rowPlaceholders: string[] = [];
     for (const col of columns) {
       rowPlaceholders.push(`$${paramIdx++}`);
-      values.push(row[col] ?? null);
+      const v = row[col];
+      values.push(v === "null" || v === "NULL" || v === "" ? null : v ?? null);
     }
     valuePlaceholders.push(`(${rowPlaceholders.join(", ")})`);
   }
