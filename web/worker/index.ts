@@ -839,7 +839,12 @@ async function pollCloExtractionJobs() {
           [job.id]
         );
       } else {
-        await runExtraction(job.id, apiKey, complianceDocs);
+        await runSectionExtraction(job.id, apiKey, complianceDocs, async (step, detail) => {
+          await pool.query(
+            `UPDATE clo_profiles SET report_extraction_progress = $1::jsonb, updated_at = now() WHERE id = $2`,
+            [JSON.stringify({ step, detail, updatedAt: new Date().toISOString() }), job.id],
+          );
+        });
         await pool.query(
           `UPDATE clo_profiles
            SET report_extraction_status = 'complete',
