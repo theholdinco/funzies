@@ -642,6 +642,8 @@ async function syncPpmToRelationalTables(
     if (entry.isSubordinated != null) {
       setClauses.push(`is_subordinate = $${pi++}`);
       values.push(entry.isSubordinated);
+      setClauses.push(`is_income_note = $${pi++}`);
+      values.push(entry.isSubordinated);
     }
 
     if (entry.deferrable != null) {

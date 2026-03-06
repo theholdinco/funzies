@@ -115,12 +115,23 @@ export default function ProjectionModel({
   panelId,
   dealContext,
 }: Props) {
+  const isOcTest = (t: { testType?: string | null; testName?: string | null }) => {
+    if (t.testType === "OC_PAR" || t.testType === "OC_MV") return true;
+    const name = (t.testName ?? "").toLowerCase();
+    return name.includes("overcollateral") || name.includes("par value") || (name.includes("oc") && name.includes("ratio"));
+  };
+  const isIcTest = (t: { testType?: string | null; testName?: string | null }) => {
+    if (t.testType === "IC") return true;
+    const name = (t.testName ?? "").toLowerCase();
+    return name.includes("interest coverage") || (name.includes("ic") && name.includes("ratio"));
+  };
+
   const ocTriggersFromTests = complianceTests
-    .filter((t) => t.testType === "OC_PAR" && t.triggerLevel !== null && t.testClass)
+    .filter((t) => isOcTest(t) && t.triggerLevel !== null && t.testClass)
     .map((t) => ({ className: t.testClass!, triggerLevel: t.triggerLevel! }));
 
   const icTriggersFromTests = complianceTests
-    .filter((t) => t.testType === "IC" && t.triggerLevel !== null && t.testClass)
+    .filter((t) => isIcTest(t) && t.triggerLevel !== null && t.testClass)
     .map((t) => ({ className: t.testClass!, triggerLevel: t.triggerLevel! }));
 
   // Fall back to extractedConstraints coverage tests if no compliance test records
@@ -148,7 +159,7 @@ export default function ProjectionModel({
             spreadBps: t.spreadBps ?? 0,
             seniorityRank: t.seniorityRank ?? 99,
             isFloating: t.isFloating ?? true,
-            isIncomeNote: t.isIncomeNote ?? false,
+            isIncomeNote: t.isIncomeNote ?? t.isSubordinate ?? false,
           };
         })
     : buildTranchesFromConstraints(constraints);
