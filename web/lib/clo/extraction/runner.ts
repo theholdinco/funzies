@@ -108,10 +108,35 @@ function remapColumnAliases(
   return result;
 }
 
+// Cache of known columns per table (populated on first insert)
+const tableColumnsCache = new Map<string, Set<string>>();
+
+async function getTableColumns(table: string): Promise<Set<string>> {
+  const cached = tableColumnsCache.get(table);
+  if (cached) return cached;
+  const rows = await query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns WHERE table_name = $1`,
+    [table],
+  );
+  const cols = new Set(rows.map((r) => r.column_name));
+  tableColumnsCache.set(table, cols);
+  return cols;
+}
+
 async function batchInsert(table: string, rows: Record<string, unknown>[]): Promise<void> {
   if (rows.length === 0) return;
 
-  const columns = Object.keys(rows[0]);
+  // Filter to only columns that exist in the target table
+  const validColumns = await getTableColumns(table);
+  const allColumns = Object.keys(rows[0]);
+  const columns = allColumns.filter((c) => validColumns.has(c));
+  const dropped = allColumns.filter((c) => !validColumns.has(c));
+  if (dropped.length > 0) {
+    console.log(`[extraction] ${table}: dropped unknown columns: ${dropped.join(", ")}`);
+  }
+
+  if (columns.length === 0) return;
+
   const valuePlaceholders: string[] = [];
   const values: unknown[] = [];
   let paramIdx = 1;
