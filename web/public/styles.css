@@ -823,6 +823,72 @@ th {
   border-left-color: #dc2626;
 }
 
+.provenance-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.provenance-toggle:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.provenance-toggle.active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.provenance-panel {
+  margin: 1.5rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.provenance-section-header {
+  display: block;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  user-select: none;
+}
+
+.provenance-section-header:hover {
+  color: var(--color-text);
+}
+
+details[open] > .provenance-section-header {
+  border-bottom: 1px solid var(--color-border);
+}
+
+details + details > .provenance-section-header {
+  border-top: 1px solid var(--color-border);
+}
+
+.provenance-content {
+  padding: 1rem 1.25rem;
+  font-size: 0.88rem;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
 .badge-unwavering {
   background: #fef3c7;
   color: #92400e;

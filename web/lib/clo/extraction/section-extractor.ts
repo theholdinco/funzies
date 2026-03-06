@@ -216,6 +216,19 @@ import { createAuditLog, addAuditEntry, logAuditSummary, type ExtractionAuditLog
  * Overlay table-extracted values onto Claude's result.
  * Table = ground truth for numbers/dates. Claude = better for structure/text.
  */
+/** Count non-null numeric values in an array of objects */
+function arrayDataScore(arr: unknown[]): number {
+  let score = 0;
+  for (const item of arr) {
+    if (item && typeof item === "object") {
+      for (const v of Object.values(item as Record<string, unknown>)) {
+        if (typeof v === "number") score++;
+      }
+    }
+  }
+  return score;
+}
+
 function mergeTableOntoClaudeResult(
   tableData: Record<string, unknown>,
   claudeData: Record<string, unknown>,
@@ -229,9 +242,22 @@ function mergeTableOntoClaudeResult(
     const claudeValue = merged[key];
 
     if (Array.isArray(tableValue)) {
-      // Use whichever array found more items (more complete extraction)
-      if (!Array.isArray(claudeValue) || tableValue.length > claudeValue.length) {
+      // Compare data quality: prefer the array with more non-null numeric values
+      // Table parser has hardcoded column positions which may be wrong for some PDFs,
+      // so only replace Claude's data if the table data is clearly more complete
+      if (!Array.isArray(claudeValue) || claudeValue.length === 0) {
         merged[key] = tableValue;
+      } else if (tableValue.length > claudeValue.length * 1.5) {
+        // Table found significantly more items — likely more complete
+        merged[key] = tableValue;
+      } else {
+        // Similar count — keep whichever has more populated numeric fields
+        const tableScore = arrayDataScore(tableValue);
+        const claudeScore = arrayDataScore(claudeValue);
+        if (tableScore > claudeScore * 1.2) {
+          merged[key] = tableValue;
+        }
+        // Otherwise keep Claude's data (it has correct field-to-value mapping)
       }
     } else if (typeof tableValue === "number") {
       // Table numbers are precise (pdfplumber, no hallucination)

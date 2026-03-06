@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { marked } from "marked";
 import { useAssembly, useAssemblyId } from "@/lib/assembly-context";
@@ -62,6 +63,10 @@ export default function SynthesisPage() {
     .filter(Boolean)
     .join(" \u00b7 ");
 
+  const [showProvenance, setShowProvenance] = useState(false);
+  const hasVerification = topic.verification.length > 0;
+  const hasReferences = !!topic.referenceLibrary;
+
   if (!synth) {
     return (
       <div style={{ padding: "2rem 0", color: "var(--color-text-muted)" }}>
@@ -112,6 +117,14 @@ export default function SynthesisPage() {
         >
           Export HTML
         </a>
+        {(hasVerification || hasReferences) && (
+          <button
+            onClick={() => setShowProvenance((v) => !v)}
+            className={`provenance-toggle${showProvenance ? " active" : ""}`}
+          >
+            {showProvenance ? "Hide" : "Show"} Sources &amp; Verification
+          </button>
+        )}
       </div>
 
       <h1>{synth.title}</h1>
@@ -212,6 +225,38 @@ export default function SynthesisPage() {
           </Link>
         )}
       </div>
+
+      {showProvenance && (
+        <div className="provenance-panel">
+          {hasVerification && (
+            <details open>
+              <summary className="provenance-section-header">
+                Verification Notes
+              </summary>
+              {topic.verification.map((v, i) => (
+                <div
+                  key={i}
+                  className="provenance-content markdown-content"
+                  dangerouslySetInnerHTML={{ __html: md(v.content) }}
+                />
+              ))}
+            </details>
+          )}
+          {hasReferences && (
+            <details>
+              <summary className="provenance-section-header">
+                Reference Library
+              </summary>
+              <div
+                className="provenance-content markdown-content"
+                dangerouslySetInnerHTML={{
+                  __html: md(topic.referenceLibrary!),
+                }}
+              />
+            </details>
+          )}
+        </div>
+      )}
 
       <div
         className="markdown-content"

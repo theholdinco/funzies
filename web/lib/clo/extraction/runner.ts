@@ -84,7 +84,6 @@ const POOL_SUMMARY_ALIASES: Record<string, string> = {
 const SNAPSHOT_ALIASES: Record<string, string> = {
   current_rate: "coupon_rate",
   all_in_rate: "coupon_rate",
-  spread: "coupon_rate",
   balance: "current_balance",
   outstanding_balance: "current_balance",
   principal_balance: "current_balance",
@@ -99,11 +98,17 @@ function remapColumnAliases(
   aliases: Record<string, string>,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
+  // First pass: set canonical (non-aliased) keys — these take priority
   for (const [k, v] of Object.entries(row)) {
     const mapped = aliases[k] ?? k;
-    // Don't overwrite a non-null value (whether from alias or original key)
-    if (result[mapped] != null) continue;
-    result[mapped] = v;
+    if (mapped === k) result[k] = v;
+  }
+  // Second pass: fill gaps from aliased keys
+  for (const [k, v] of Object.entries(row)) {
+    const mapped = aliases[k] ?? k;
+    if (mapped !== k && result[mapped] == null) {
+      result[mapped] = v;
+    }
   }
   return result;
 }
@@ -592,15 +597,39 @@ export async function runExtraction(
           );
         }
 
-        await batchInsert("clo_tranche_snapshots", [{ tranche_id: existing[0].id, ...snapshot.data }]);
+        // Remap aliases + filter to known columns (same as section-based path)
+        const SNAPSHOT_COLUMNS_LEGACY = new Set([
+          "report_period_id", "current_balance", "factor", "current_index_rate",
+          "coupon_rate", "deferred_interest_balance", "enhancement_pct",
+          "beginning_balance", "ending_balance", "interest_accrued", "interest_paid",
+          "interest_shortfall", "cumulative_shortfall", "principal_paid", "days_accrued",
+        ]);
+        const remappedLegacy = remapColumnAliases(snapshot.data, SNAPSHOT_ALIASES);
+        const filteredLegacy: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(remappedLegacy)) {
+          if (SNAPSHOT_COLUMNS_LEGACY.has(k)) filteredLegacy[k] = v;
+        }
+        await batchInsert("clo_tranche_snapshots", [{ tranche_id: existing[0].id, ...filteredLegacy }]);
 
-        // Enrich the tranche record with balance from the snapshot
-        // Note: spread_bps should only come from PPM extraction, not coupon_rate
+        // Enrich the tranche record with balance and spread from the snapshot
         const bal = snapshot.data.current_balance ?? snapshot.data.beginning_balance;
+        const spreadLegacy = snapshot.data.spread;
+        const legacyClauses: string[] = [];
+        const legacyValues: unknown[] = [];
+        let li = 1;
         if (bal != null) {
+          legacyClauses.push(`original_balance = $${li++}`);
+          legacyValues.push(bal);
+        }
+        if (spreadLegacy != null && typeof spreadLegacy === "number") {
+          legacyClauses.push(`spread_bps = COALESCE(spread_bps, $${li++})`);
+          legacyValues.push(spreadLegacy);
+        }
+        if (legacyClauses.length > 0) {
+          legacyValues.push(existing[0].id);
           await query(
-            `UPDATE clo_tranches SET original_balance = $1 WHERE id = $2`,
-            [bal, existing[0].id],
+            `UPDATE clo_tranches SET ${legacyClauses.join(", ")} WHERE id = $${li}`,
+            legacyValues,
           );
         }
       }
@@ -1096,13 +1125,26 @@ export async function runSectionExtraction(
       }
       await batchInsert("clo_tranche_snapshots", [{ tranche_id: existing[0].id, ...filteredData }]);
 
-      // Enrich the tranche record with balance from the snapshot
-      // Note: spread_bps should only come from PPM extraction, not coupon_rate
+      // Enrich the tranche record with balance and spread from the snapshot
       const bal = snapshot.data.current_balance ?? snapshot.data.beginning_balance;
+      const spreadFromReport = snapshot.data.spread;
+      const enrichClauses: string[] = [];
+      const enrichValues: unknown[] = [];
+      let ei = 1;
       if (bal != null) {
+        enrichClauses.push(`original_balance = $${ei++}`);
+        enrichValues.push(bal);
+      }
+      // Set spread_bps from compliance report if PPM didn't set it
+      if (spreadFromReport != null && typeof spreadFromReport === "number") {
+        enrichClauses.push(`spread_bps = COALESCE(spread_bps, $${ei++})`);
+        enrichValues.push(spreadFromReport);
+      }
+      if (enrichClauses.length > 0) {
+        enrichValues.push(existing[0].id);
         await query(
-          `UPDATE clo_tranches SET original_balance = $1 WHERE id = $2`,
-          [bal, existing[0].id],
+          `UPDATE clo_tranches SET ${enrichClauses.join(", ")} WHERE id = $${ei}`,
+          enrichValues,
         );
       }
     }

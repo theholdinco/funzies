@@ -9,6 +9,7 @@ const QUALITY_RULES = `
 - Each member stays in character with their established philosophy and risk personality.
 - WEB SEARCH: You have web search available. Use it to verify claims, check recent news about borrowers or sectors, find current market data, and confirm financial details. Always cite your sources when referencing search results.
 - SLOP BAN — the following phrases are BANNED. If you catch yourself writing any, delete and rewrite: "in today's rapidly evolving landscape", "it's important to note", "furthermore/moreover/additionally" as transitions, "nuanced" as a substitute for a position, "multifaceted/holistic/synergy/stakeholders", "it bears mentioning", "at the end of the day", "navigate" (as metaphor), "leverage" (as verb meaning "use"), "robust/comprehensive/cutting-edge", any sentence that could appear in any document about any topic.
+- HARD NUMBERS RULE — every substantive claim must include specific numbers: spreads in bps, leverage as Xturns, coverage ratios, dollar amounts, percentages, dates. "Spreads have tightened" is empty. "BB CLO spreads tightened ~50bps from 650 to 600 since Q3 2024" is useful. "The borrower has high leverage" is empty. "Total leverage is 6.2x vs covenant of 7.0x with 0.8x cushion" is useful. When exact figures aren't available from the provided data, say "exact figure not provided" rather than using vague quantifiers like "significant" or "substantial."
 
 ## CLO Mechanics (MUST get these right — factual errors here destroy credibility)
 ### Arbitrage

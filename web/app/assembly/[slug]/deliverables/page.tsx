@@ -18,6 +18,9 @@ export default function DeliverablesPage() {
   const base = `/assembly/${topic.slug}`;
   const { avatarUrlMap } = buildCharacterMaps(topic.characters);
   const [activeVersion, setActiveVersion] = useState(topic.deliverables.length - 1);
+  const [showProvenance, setShowProvenance] = useState(false);
+  const hasVerification = topic.verification.length > 0;
+  const hasReferences = !!topic.referenceLibrary;
 
   if (topic.deliverables.length === 0) {
     return <p>No deliverables available.</p>;
@@ -38,6 +41,15 @@ export default function DeliverablesPage() {
         </Link>
         <span className="separator">/</span>
         <span className="current">Deliverables</span>
+        {(hasVerification || hasReferences) && (
+          <button
+            onClick={() => setShowProvenance((v) => !v)}
+            className={`provenance-toggle${showProvenance ? " active" : ""}`}
+            style={{ marginLeft: "auto" }}
+          >
+            {showProvenance ? "Hide" : "Show"} Sources &amp; Verification
+          </button>
+        )}
       </div>
 
       <h1>Deliverables</h1>
@@ -85,6 +97,38 @@ export default function DeliverablesPage() {
               </button>
             );
           })}
+        </div>
+      )}
+
+      {showProvenance && (
+        <div className="provenance-panel">
+          {hasVerification && (
+            <details open>
+              <summary className="provenance-section-header">
+                Verification Notes
+              </summary>
+              {topic.verification.map((v, i) => (
+                <div
+                  key={i}
+                  className="provenance-content markdown-content"
+                  dangerouslySetInnerHTML={{ __html: md(v.content) }}
+                />
+              ))}
+            </details>
+          )}
+          {hasReferences && (
+            <details>
+              <summary className="provenance-section-header">
+                Reference Library
+              </summary>
+              <div
+                className="provenance-content markdown-content"
+                dangerouslySetInnerHTML={{
+                  __html: md(topic.referenceLibrary!),
+                }}
+              />
+            </details>
+          )}
         </div>
       )}
 

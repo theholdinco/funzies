@@ -218,13 +218,13 @@ Format each tradition as:
 
 ## Layer 2: Empirical Evidence Base
 
-Provide 3-4 categories of empirical evidence relevant to the topic. For each category, list 4-6 real data sources, studies, or reports.
+Provide 3-4 categories of empirical evidence relevant to the topic. For each category, list 4-6 real data sources, studies, or reports. **Prioritize sources with hard numbers** — specific statistics, percentages, dollar figures, sample sizes. The debate will only be as rigorous as the data you provide here.
 
 Format as:
 
 ### Category Name
 
-- **Author/Organization** — *Study/Report Title* (Year). Key finding or data point.
+- **Author/Organization** — *Study/Report Title* (Year). Key finding WITH specific number (e.g., "found that X increased by 34%" or "surveyed 2,400 firms and found..." — not just "explored the relationship between X and Y").
 
 ## Cross-Reading Assignments
 
@@ -324,6 +324,7 @@ For Socrate interventions mid-round:
 13. **Conviction Hold Rule**: Characters should NOT concede unless genuinely persuaded by a specific argument. Holding firm on a position despite group pressure is explicitly valued and expected. A character who caves to social pressure rather than evidence has failed. After the debate, at least 1 character should hold their original position with STRONGER conviction than when they started.
 7. The debate should surface at least 1 idea that no single character held at the start
 8. When characters cite evidence, they must reference works from the Reference Library provided. Characters must NOT invent new citations, studies, or statistics that aren't grounded in the library or clearly labeled as their professional judgment.
+14. **Hard Numbers Rule**: Characters must cite specific numbers, dates, percentages, dollar amounts, or named sources whenever possible. "The market is growing" is empty. "The market grew 23% YoY to $4.7B in 2024 according to [Source]" is an argument. Every round should contain at least 3 concrete data points drawn from the Reference Library. When exact numbers aren't available, characters must explicitly say "I don't have the exact figure" rather than using vague quantifiers like "significant" or "substantial."
 9. Characters speak only when their framework genuinely informs the question. Not every character needs to respond to every point. If a character's framework doesn't add specific, substantive insight, they stay silent.
 10. Framework restatement is not insight. A character who takes a practical question and "reframes" it through their theoretical lens without answering it has failed. Engage the actual question first.
 11. Brevity signals understanding. If you can't say it in under 50 words, you don't understand it yet. The best debate contributions are 2-4 sentences that change how everyone else thinks.
@@ -451,7 +452,7 @@ List points where multiple characters converged. For each:
 - Provide the evidence basis
 
 Format:
-- **Bold the claim in one plain-language sentence, no jargon** — Characters A, B, and C converged on this (meaningful because A and B hold incompatible frameworks on X). Confidence: **high**. Evidence: description of supporting evidence.
+- **Bold the claim in one plain-language sentence, no jargon** — Characters A, B, and C converged on this (meaningful because A and B hold incompatible frameworks on X). Confidence: **high**. Evidence: cite the specific numbers, studies, or data points that support this — not just "evidence from the debate" but the actual figures and their sources.
 
 ## Irreducible Divergences
 
@@ -512,6 +513,7 @@ For every claim or recommendation:
 1. **Plaintext test**: Rewrite it in one sentence using no jargon. If the plain version sounds obvious or empty, the original was disguising a lack of substance — delete it.
 2. **Falsifiability test**: What evidence would disprove this claim? If nothing could disprove it, it's not saying anything.
 3. **Slop test**: Does this contain any of: "in today's rapidly evolving landscape", "it's important to note", "furthermore/moreover/additionally", "nuanced" as a substitute for a position, "multifaceted/holistic/synergy/stakeholders", sentences that could appear in any synthesis about any topic? Delete them.
+4. **Numbers test**: Does each major claim include at least one concrete number, date, percentage, or named source? Vague quantifiers ("significant growth", "substantial risk", "many experts") must be replaced with specifics or flagged as unquantified. If the debate didn't surface a number, say so explicitly rather than hiding behind vague language.
 
 Topic: ${topic}
 
@@ -533,7 +535,7 @@ export function deliverablePrompt(
 Based on the synthesis, produce a polished, actionable deliverable document. The deliverable should:
 
 1. **Stand alone** — A reader who hasn't seen the debate should understand it fully
-2. **Be evidence-based** — Reference specific findings from the assembly
+2. **Be evidence-based** — Reference specific findings from the assembly with hard numbers and named sources. Every major claim should include a concrete data point (percentage, dollar amount, date, named study). "Industry experts agree" is not evidence. "McKinsey's 2024 report found X" or "revenue grew 34% from $2.1M to $2.8M" is evidence. If a claim lacks quantitative backing, flag it explicitly as "based on qualitative assessment" rather than dressing it up.
 3. **Acknowledge complexity** — Don't flatten the nuance revealed by the debate
 4. **Be actionable** — Include concrete recommendations or frameworks
 5. **Credit multiple perspectives** — Show how different viewpoints informed the conclusions
@@ -751,7 +753,12 @@ export function verificationPrompt(
 
 4. **Run plaintext test**: For every key claim, strip jargon. If the plain version sounds obvious or empty, either rewrite with substance or delete.
 
-5. **Re-audit** the corrected version. Max 2 revision cycles. If something can't be verified, mark it [unverified] and move on.
+5. **Run numbers test**: Flag every major claim that lacks a concrete number, date, percentage, or named source. For each:
+   - If the debate surfaced a specific figure, add it inline with source attribution
+   - If no figure exists, add [no hard data] inline so the reader knows this is qualitative judgment, not evidence
+   - Replace vague quantifiers ("significant", "substantial", "many") with specifics or explicit uncertainty
+
+6. **Re-audit** the corrected version. Max 2 revision cycles. If something can't be verified, mark it [unverified] and move on.
 
 ## Output Format
 
