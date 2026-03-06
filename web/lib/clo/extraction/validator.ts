@@ -282,11 +282,25 @@ export function validateExtraction(
 // ─── Cap Structure Cross-Validation (PPM vs Compliance Report) ───
 
 /** Normalize class name for matching: "Class A-1" → "A1", "Sub Notes" → "SUBNOTES" */
+const TRANCHE_NAME_ALIASES: Record<string, string> = {
+  SUB: "SUBORDINATED",
+  SUBORD: "SUBORDINATED",
+  SUBORDINATEDNOTES: "SUBORDINATED",
+  SUBNOTES: "SUBORDINATED",
+  EQ: "EQUITY",
+  EQUITYNOTES: "EQUITY",
+  MEZZ: "MEZZANINE",
+  INCOMENOTES: "INCOMENOTE",
+  INCOME: "INCOMENOTE",
+  RESIDUAL: "INCOMENOTE",
+};
+
 function normalizeCapClassName(name: string): string {
-  return name
+  const stripped = name
     .replace(/^class(es)?\s+/i, "")
     .replace(/[\s\-\/]+/g, "")
     .toUpperCase();
+  return TRANCHE_NAME_ALIASES[stripped] ?? stripped;
 }
 
 /** Parse a principal amount string like "€150,000,000" or "150000000" to a number */
