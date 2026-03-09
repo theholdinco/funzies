@@ -583,20 +583,20 @@ function persistTribeData(db: Database.Database, entityId: string, data: Record<
   const merged: Tribe = {
     id: entityId,
     name: existing?.name ?? entityId,
-    name_ar: (tribe.name_ar as string) ?? existing?.name_ar,
-    formation_type: (tribe.formation_type as string) ?? existing?.formation_type,
-    legitimacy_notes: (tribe.legitimacy_notes as string) ?? existing?.legitimacy_notes,
-    ancestor_name: (tribe.ancestor_name as string) ?? existing?.ancestor_name,
-    ancestor_story: (tribe.ancestor_story as string) ?? existing?.ancestor_story,
-    lineage_root: (tribe.lineage_root as string) ?? existing?.lineage_root,
-    founding_era: (tribe.founding_era as string) ?? existing?.founding_era,
-    origin_region_id: existing?.origin_region_id,
-    status: (tribe.status as string) ?? existing?.status,
-    peak_power_era: (tribe.peak_power_era as string) ?? existing?.peak_power_era,
-    traditional_economy: (tribe.traditional_economy as string) ?? existing?.traditional_economy,
-    alignment: (tribe.alignment as string) ?? existing?.alignment,
-    description: (tribe.description as string) ?? existing?.description,
-    color: existing?.color,
+    name_ar: (tribe.name_ar as string) ?? existing?.name_ar ?? null,
+    formation_type: (tribe.formation_type as string) ?? existing?.formation_type ?? null,
+    legitimacy_notes: (tribe.legitimacy_notes as string) ?? existing?.legitimacy_notes ?? null,
+    ancestor_name: (tribe.ancestor_name as string) ?? existing?.ancestor_name ?? null,
+    ancestor_story: (tribe.ancestor_story as string) ?? existing?.ancestor_story ?? null,
+    lineage_root: (tribe.lineage_root as string) ?? existing?.lineage_root ?? null,
+    founding_era: (tribe.founding_era as string) ?? existing?.founding_era ?? null,
+    origin_region_id: existing?.origin_region_id ?? null,
+    status: (tribe.status as string) ?? existing?.status ?? null,
+    peak_power_era: (tribe.peak_power_era as string) ?? existing?.peak_power_era ?? null,
+    traditional_economy: (tribe.traditional_economy as string) ?? existing?.traditional_economy ?? null,
+    alignment: (tribe.alignment as string) ?? existing?.alignment ?? null,
+    description: (tribe.description as string) ?? existing?.description ?? null,
+    color: existing?.color ?? null,
   };
   upsertTribe(db, merged);
 
@@ -611,7 +611,10 @@ function persistTribeData(db: Database.Database, entityId: string, data: Record<
         upsertTribe(db, {
           id: stId,
           name: st.name as string,
-          name_ar: st.name_ar as string | undefined,
+          name_ar: (st.name_ar as string) ?? null,
+          formation_type: null, legitimacy_notes: null, ancestor_name: null, ancestor_story: null,
+          lineage_root: null, founding_era: null, origin_region_id: null, status: null,
+          peak_power_era: null, traditional_economy: null, alignment: null, description: null, color: null,
         });
         setPipelineStatus(db, "tribe", stId, "seeded");
       }
@@ -619,8 +622,8 @@ function persistTribeData(db: Database.Database, entityId: string, data: Record<
         parent_id: entityId,
         child_id: stId,
         relationship: (st.relationship as string) ?? "sub_tribe",
-        split_year: st.split_year as number | undefined,
-        split_story: st.split_story as string | undefined,
+        split_year: (st.split_year as number) ?? null,
+        split_story: (st.split_story as string) ?? null,
         is_contested: st.is_contested ? 1 : 0,
       });
     }
@@ -634,17 +637,24 @@ function persistTribeData(db: Database.Database, entityId: string, data: Record<
       // Ensure other tribe exists
       const existingOther = db.prepare("SELECT id FROM tribes WHERE id = ?").get(otherId);
       if (!existingOther) {
-        upsertTribe(db, { id: otherId, name: rel.other_tribe_name as string });
+        upsertTribe(db, {
+          id: otherId, name: rel.other_tribe_name as string,
+          name_ar: null, formation_type: null, legitimacy_notes: null, ancestor_name: null, ancestor_story: null,
+          lineage_root: null, founding_era: null, origin_region_id: null, status: null,
+          peak_power_era: null, traditional_economy: null, alignment: null, description: null, color: null,
+        });
         setPipelineStatus(db, "tribe", otherId, "seeded");
       }
       upsertTribalRelation(db, {
         tribe_a_id: entityId,
         tribe_b_id: otherId,
         relation_type: rel.relation_type as string,
-        strength: rel.strength as string | undefined,
+        strength: (rel.strength as string) ?? null,
+        start_era: null,
+        end_era: null,
         is_current: rel.is_current ? 1 : 0,
-        context: rel.context as string | undefined,
-        turning_point: rel.turning_point as string | undefined,
+        context: (rel.context as string) ?? null,
+        turning_point: (rel.turning_point as string) ?? null,
       });
     }
   }
@@ -659,12 +669,15 @@ function persistTribeData(db: Database.Database, entityId: string, data: Record<
         id: migId,
         entity_type: "tribe",
         entity_id: entityId,
-        origin_region_id: mig.origin as string | undefined,
-        destination_region_id: mig.destination as string | undefined,
-        start_year: mig.start_year as number | undefined,
-        end_year: mig.end_year as number | undefined,
-        reason: mig.reason as string | undefined,
-        narrative: mig.narrative as string | undefined,
+        origin_region_id: (mig.origin as string) ?? null,
+        destination_region_id: (mig.destination as string) ?? null,
+        waypoints: null,
+        route_geojson: null,
+        start_year: (mig.start_year as number) ?? null,
+        end_year: (mig.end_year as number) ?? null,
+        reason: (mig.reason as string) ?? null,
+        narrative: (mig.narrative as string) ?? null,
+        population_estimate: null,
       });
     }
   }
@@ -690,16 +703,16 @@ function persistFamilyData(db: Database.Database, entityId: string, data: Record
   const merged: Family = {
     id: entityId,
     name: existing?.name ?? entityId,
-    name_ar: (family.name_ar as string) ?? existing?.name_ar,
-    tribe_id: (family.tribe_id as string) ?? existing?.tribe_id,
-    family_type: (family.family_type as string) ?? existing?.family_type,
-    is_ruling: family.is_ruling !== undefined ? (family.is_ruling ? 1 : 0) : existing?.is_ruling,
-    rules_over: (family.rules_over as string) ?? existing?.rules_over,
-    current_head: (family.current_head as string) ?? existing?.current_head,
-    founded_year: (family.founded_year as number) ?? existing?.founded_year,
-    origin_story: (family.origin_story as string) ?? existing?.origin_story,
-    legitimacy_basis: (family.legitimacy_basis as string) ?? existing?.legitimacy_basis,
-    description: (family.description as string) ?? existing?.description,
+    name_ar: (family.name_ar as string) ?? existing?.name_ar ?? null,
+    tribe_id: (family.tribe_id as string) ?? existing?.tribe_id ?? null,
+    family_type: (family.family_type as string) ?? existing?.family_type ?? null,
+    is_ruling: family.is_ruling !== undefined ? (family.is_ruling ? 1 : 0) : (existing?.is_ruling ?? null),
+    rules_over: (family.rules_over as string) ?? existing?.rules_over ?? null,
+    current_head: (family.current_head as string) ?? existing?.current_head ?? null,
+    founded_year: (family.founded_year as number) ?? existing?.founded_year ?? null,
+    origin_story: (family.origin_story as string) ?? existing?.origin_story ?? null,
+    legitimacy_basis: (family.legitimacy_basis as string) ?? existing?.legitimacy_basis ?? null,
+    description: (family.description as string) ?? existing?.description ?? null,
   };
   upsertFamily(db, merged);
 
@@ -721,14 +734,16 @@ function persistEthnicGroupData(db: Database.Database, entityId: string, data: R
   const merged: EthnicGroup = {
     id: entityId,
     name: existing?.name ?? entityId,
-    name_ar: (eg.name_ar as string) ?? existing?.name_ar,
-    identity_type: (eg.identity_type as string) ?? existing?.identity_type,
-    pre_islamic_origins: (eg.pre_islamic_origins as string) ?? existing?.pre_islamic_origins,
-    key_tension: (eg.key_tension as string) ?? existing?.key_tension,
-    origin_narrative: (eg.origin_narrative as string) ?? existing?.origin_narrative,
-    population_estimate: (eg.population_estimate as string) ?? existing?.population_estimate,
-    traditional_economy: (eg.traditional_economy as string) ?? existing?.traditional_economy,
-    description: (eg.description as string) ?? existing?.description,
+    name_ar: (eg.name_ar as string) ?? existing?.name_ar ?? null,
+    ethnicity: (eg.ethnicity as string) ?? existing?.ethnicity ?? null,
+    religion: (eg.religion as string) ?? existing?.religion ?? null,
+    identity_type: (eg.identity_type as string) ?? existing?.identity_type ?? null,
+    pre_islamic_origins: (eg.pre_islamic_origins as string) ?? existing?.pre_islamic_origins ?? null,
+    key_tension: (eg.key_tension as string) ?? existing?.key_tension ?? null,
+    origin_narrative: (eg.origin_narrative as string) ?? existing?.origin_narrative ?? null,
+    population_estimate: (eg.population_estimate as string) ?? existing?.population_estimate ?? null,
+    traditional_economy: (eg.traditional_economy as string) ?? existing?.traditional_economy ?? null,
+    description: (eg.description as string) ?? existing?.description ?? null,
   };
   upsertEthnicGroup(db, merged);
 
@@ -745,15 +760,15 @@ function persistEventData(db: Database.Database, entityId: string, data: Record<
   const merged: HistoricalEvent = {
     id: entityId,
     title: existing?.title ?? entityId,
-    title_ar: (evt.title_ar as string) ?? existing?.title_ar,
-    year: (evt.year as number) ?? existing?.year,
-    end_year: (evt.end_year as number) ?? existing?.end_year,
-    event_type: (evt.event_type as string) ?? existing?.event_type,
-    location_id: (evt.location_id as string) ?? existing?.location_id,
-    description: (evt.description as string) ?? existing?.description,
-    significance: (evt.significance as string) ?? existing?.significance,
-    outcome: (evt.outcome as string) ?? existing?.outcome,
-    surprise_factor: (evt.surprise_factor as string) ?? existing?.surprise_factor,
+    title_ar: (evt.title_ar as string) ?? existing?.title_ar ?? null,
+    year: (evt.year as number) ?? existing?.year ?? null,
+    end_year: (evt.end_year as number) ?? existing?.end_year ?? null,
+    event_type: (evt.event_type as string) ?? existing?.event_type ?? null,
+    location_id: (evt.location_id as string) ?? existing?.location_id ?? null,
+    description: (evt.description as string) ?? existing?.description ?? null,
+    significance: (evt.significance as string) ?? existing?.significance ?? null,
+    outcome: (evt.outcome as string) ?? existing?.outcome ?? null,
+    surprise_factor: (evt.surprise_factor as string) ?? existing?.surprise_factor ?? null,
   };
   upsertHistoricalEvent(db, merged);
 
@@ -764,8 +779,8 @@ function persistEventData(db: Database.Database, entityId: string, data: Record<
         event_id: entityId,
         entity_type: p.entity_type as string,
         entity_id: p.entity_id as string,
-        role: p.role as string | undefined,
-        action: p.action as string | undefined,
+        role: (p.role as string) ?? null,
+        action: (p.action as string) ?? null,
       });
     }
   }
@@ -781,13 +796,14 @@ function persistRegionData(db: Database.Database, entityId: string, data: Record
   const merged: Region = {
     id: entityId,
     name: existing?.name ?? entityId,
-    name_ar: (region.name_ar as string) ?? existing?.name_ar,
-    type: existing?.type,
-    country: existing?.country,
-    parent_region_id: existing?.parent_region_id,
-    lat: (region.lat as number) ?? existing?.lat,
-    lng: (region.lng as number) ?? existing?.lng,
-    strategic_importance: (region.strategic_importance as string) ?? existing?.strategic_importance,
+    name_ar: (region.name_ar as string) ?? existing?.name_ar ?? null,
+    type: existing?.type ?? null,
+    country: existing?.country ?? null,
+    parent_region_id: existing?.parent_region_id ?? null,
+    lat: (region.lat as number) ?? existing?.lat ?? null,
+    lng: (region.lng as number) ?? existing?.lng ?? null,
+    boundary_geojson: existing?.boundary_geojson ?? null,
+    strategic_importance: (region.strategic_importance as string) ?? existing?.strategic_importance ?? null,
   };
   upsertRegion(db, merged);
 
@@ -798,7 +814,10 @@ function persistRegionData(db: Database.Database, entityId: string, data: Record
         entity_type: ep.entity_type as string,
         entity_id: ep.entity_id as string,
         region_id: entityId,
-        presence_type: ep.presence_type as string | undefined,
+        presence_type: (ep.presence_type as string) ?? null,
+        influence_level: null,
+        start_era: null,
+        end_era: null,
       });
     }
   }
@@ -814,15 +833,15 @@ function persistNotableFigureData(db: Database.Database, entityId: string, data:
   const merged: NotableFigure = {
     id: entityId,
     name: existing?.name ?? entityId,
-    name_ar: (fig.name_ar as string) ?? existing?.name_ar,
-    family_id: (fig.family_id as string) ?? existing?.family_id,
-    tribe_id: (fig.tribe_id as string) ?? existing?.tribe_id,
-    born_year: (fig.born_year as number) ?? existing?.born_year,
-    died_year: (fig.died_year as number) ?? existing?.died_year,
-    title: (fig.title as string) ?? existing?.title,
-    role_description: (fig.role_description as string) ?? existing?.role_description,
-    era: (fig.era as string) ?? existing?.era,
-    significance: (fig.significance as string) ?? existing?.significance,
+    name_ar: (fig.name_ar as string) ?? existing?.name_ar ?? null,
+    family_id: (fig.family_id as string) ?? existing?.family_id ?? null,
+    tribe_id: (fig.tribe_id as string) ?? existing?.tribe_id ?? null,
+    born_year: (fig.born_year as number) ?? existing?.born_year ?? null,
+    died_year: (fig.died_year as number) ?? existing?.died_year ?? null,
+    title: (fig.title as string) ?? existing?.title ?? null,
+    role_description: (fig.role_description as string) ?? existing?.role_description ?? null,
+    era: (fig.era as string) ?? existing?.era ?? null,
+    significance: (fig.significance as string) ?? existing?.significance ?? null,
   };
   upsertNotableFigure(db, merged);
 
@@ -843,15 +862,16 @@ function persistFigures(
     const figData: NotableFigure = {
       id: fig.id as string,
       name: fig.name as string,
-      name_ar: fig.name_ar as string | undefined,
-      title: fig.title as string | undefined,
-      born_year: fig.born_year as number | undefined,
-      died_year: fig.died_year as number | undefined,
-      role_description: fig.role_description as string | undefined,
-      significance: fig.significance as string | undefined,
+      name_ar: (fig.name_ar as string) ?? null,
+      family_id: parentType === "family" ? parentId : null,
+      tribe_id: parentType === "tribe" ? parentId : null,
+      title: (fig.title as string) ?? null,
+      born_year: (fig.born_year as number) ?? null,
+      died_year: (fig.died_year as number) ?? null,
+      role_description: (fig.role_description as string) ?? null,
+      era: null,
+      significance: (fig.significance as string) ?? null,
     };
-    if (parentType === "tribe") figData.tribe_id = parentId;
-    if (parentType === "family") figData.family_id = parentId;
     upsertNotableFigure(db, figData);
   }
 }
@@ -868,13 +888,20 @@ function persistRegions(
     // Ensure region exists
     const existing = db.prepare("SELECT id FROM regions WHERE id = ?").get(regionId);
     if (!existing) {
-      upsertRegion(db, { id: regionId, name: reg.region_name as string });
+      upsertRegion(db, {
+        id: regionId, name: reg.region_name as string,
+        name_ar: null, type: null, country: null, parent_region_id: null,
+        lat: null, lng: null, boundary_geojson: null, strategic_importance: null,
+      });
     }
     upsertEntityRegion(db, {
       entity_type: entityType,
       entity_id: entityId,
       region_id: regionId,
-      presence_type: reg.presence_type as string | undefined,
+      presence_type: (reg.presence_type as string) ?? null,
+      influence_level: null,
+      start_era: null,
+      end_era: null,
     });
   }
 }
@@ -893,17 +920,23 @@ function persistEvents(
       upsertHistoricalEvent(db, {
         id: eventId,
         title: evt.title as string,
-        year: evt.year as number | undefined,
-        event_type: evt.event_type as string | undefined,
-        description: evt.description as string | undefined,
-        significance: evt.significance as string | undefined,
+        title_ar: null,
+        year: (evt.year as number) ?? null,
+        end_year: null,
+        event_type: (evt.event_type as string) ?? null,
+        location_id: null,
+        description: (evt.description as string) ?? null,
+        significance: (evt.significance as string) ?? null,
+        outcome: null,
+        surprise_factor: null,
       });
     }
     upsertEventParticipant(db, {
       event_id: eventId,
       entity_type: entityType,
       entity_id: entityId,
-      role: evt.role as string | undefined,
+      role: (evt.role as string) ?? null,
+      action: null,
     });
   }
 }
@@ -980,6 +1013,9 @@ function parseArgs(): {
 async function main() {
   const { entityType, id, limit, dryRun } = parseArgs();
   const db = getDb();
+
+  // Disable FK checks during extraction since we're building the graph incrementally
+  db.pragma("foreign_keys = OFF");
 
   // Get entities with status 'researched'
   let entities = getPendingEntities(db, "researched");
