@@ -10,7 +10,9 @@
     "db:migrate": "npx tsx lib/migrate.ts",
     "dev:worker": "npx tsx worker/index.ts",
     "dev:ic-worker": "npx tsx worker/ic-index.ts",
-    "dev:all": "npx tsx worker/index.ts & npx tsx worker/ic-index.ts & next dev & wait"
+    "dev:all": "npx tsx worker/index.ts & npx tsx worker/ic-index.ts & next dev & wait",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.77.0",
@@ -39,6 +41,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   }
 }
