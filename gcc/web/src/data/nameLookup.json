@@ -1,0 +1,7870 @@
+[
+  {
+    "id": 365,
+    "surname": "'Amayer",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "'Amayer",
+      "'amayer"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "amayer"
+    }
+  },
+  {
+    "id": 444,
+    "surname": "'Ujman",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "'Ujman",
+      "'ujman"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ujman"
+    }
+  },
+  {
+    "id": 95,
+    "surname": "Abd al-Qays",
+    "surnameAr": "عبد القيس",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Abd al-Qays",
+      "abd_al-qays"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "abd_al_qays"
+    }
+  },
+  {
+    "id": 332,
+    "surname": "Abdah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Abdah",
+      "abdah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "abdah_shammar"
+    }
+  },
+  {
+    "id": 109,
+    "surname": "Abdul Qays",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Abdul Qays",
+      "abdul_qays"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "abdul_qays"
+    }
+  },
+  {
+    "id": 220,
+    "surname": "Abida",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Abida",
+      "abida"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "abida"
+    }
+  },
+  {
+    "id": 424,
+    "surname": "Abookara",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Abookara",
+      "abookara"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "abookara"
+    }
+  },
+  {
+    "id": 201,
+    "surname": "Abu Karaki",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Abu Karaki",
+      "abu_karaki"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "abu_karaki"
+    }
+  },
+  {
+    "id": 120,
+    "surname": "Adi",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Adi",
+      "adi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "adi_hilal"
+    }
+  },
+  {
+    "id": 20,
+    "surname": "Adnan (Adnanite lineage)",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Adnan (Adnanite lineage)",
+      "adnan_(adnanite_lineage)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "adnan"
+    }
+  },
+  {
+    "id": 329,
+    "surname": "Adwan",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Adwan",
+      "adwan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "adwan"
+    }
+  },
+  {
+    "id": 127,
+    "surname": "Afar",
+    "surnameAr": "عفار",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Afar",
+      "afar"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "afar_awamir"
+    }
+  },
+  {
+    "id": 483,
+    "surname": "Aghlabids",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Aghlabids",
+      "aghlabids"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "aghlabids"
+    }
+  },
+  {
+    "id": 161,
+    "surname": "Ahl al-Buwait",
+    "surnameAr": "أهل البويت",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ahl al-Buwait",
+      "ahl_al-buwait"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ahl_al_buwait"
+    }
+  },
+  {
+    "id": 166,
+    "surname": "Ahl al-Sumada",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ahl al-Sumada",
+      "ahl_al-sumada"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ahl_al_sumada"
+    }
+  },
+  {
+    "id": 348,
+    "surname": "Ajman",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ajman",
+      "ajman"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ajman"
+    }
+  },
+  {
+    "id": 369,
+    "surname": "Ajman (tribe)",
+    "surnameAr": "العُجمان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ajman (tribe)",
+      "ajman_(tribe)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ajman_tribe"
+    }
+  },
+  {
+    "id": 485,
+    "surname": "Al 'Ura'yir / Al 'Uray'ir",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al 'Ura'yir / Al 'Uray'ir",
+      "Al-'Ura'yir / Al 'Uray'ir",
+      "'Ura'yir / Al 'Uray'ir",
+      "al_'ura'yir_/_al_'uray'ir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_urayir"
+    }
+  },
+  {
+    "id": 197,
+    "surname": "Al Abdul Dayem",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Abdul Dayem",
+      "Al-Abdul Dayem",
+      "Abdul Dayem",
+      "al_abdul_dayem"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_abdul_dayem"
+    }
+  },
+  {
+    "id": 497,
+    "surname": "Al Abu Risha",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Abu Risha",
+      "Al-Abu Risha",
+      "Abu Risha",
+      "al_abu_risha"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_abu_risha"
+    }
+  },
+  {
+    "id": 218,
+    "surname": "Al Ajman",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Ajman",
+      "Al-Ajman",
+      "Ajman",
+      "al_ajman"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_ajman"
+    }
+  },
+  {
+    "id": 479,
+    "surname": "Al Ali",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Ali",
+      "Al-Ali",
+      "Ali",
+      "al_ali"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_ali_hail"
+    }
+  },
+  {
+    "id": 302,
+    "surname": "Al Araytham",
+    "surnameAr": "العريثم",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Araytham",
+      "Al-Araytham",
+      "Araytham",
+      "al_araytham"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_araytham"
+    }
+  },
+  {
+    "id": 502,
+    "surname": "Al Attiyah",
+    "surnameAr": "<UNKNOWN>",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Attiyah",
+      "Al-Attiyah",
+      "Attiyah",
+      "al_attiyah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_attiyah"
+    }
+  },
+  {
+    "id": 308,
+    "surname": "Al Aunan",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Aunan",
+      "Al-Aunan",
+      "Aunan",
+      "al_aunan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_aunan"
+    }
+  },
+  {
+    "id": 417,
+    "surname": "Al Bin Ali",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Bin Ali",
+      "Al-Bin Ali",
+      "Bin Ali",
+      "al_bin_ali"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_bin_ali"
+    }
+  },
+  {
+    "id": 296,
+    "surname": "Al Bu Falah",
+    "surnameAr": "آل بو صالح",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Bu Falah",
+      "Al-Bu Falah",
+      "Bu Falah",
+      "al_bu_falah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_bu_falah"
+    }
+  },
+  {
+    "id": 310,
+    "surname": "Al Bu Falasah",
+    "surnameAr": "البوفلاسة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Bu Falasah",
+      "Al-Bu Falasah",
+      "Bu Falasah",
+      "al_bu_falasah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_bu_falasah"
+    }
+  },
+  {
+    "id": 189,
+    "surname": "Al Bu Hamir",
+    "surnameAr": "آل بو حمير",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Bu Hamir",
+      "Al-Bu Hamir",
+      "Bu Hamir",
+      "al_bu_hamir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_bu_hamir"
+    }
+  },
+  {
+    "id": 456,
+    "surname": "Al Bu Hemair",
+    "surnameAr": "آل بو حمير",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Bu Hemair",
+      "Al-Bu Hemair",
+      "Bu Hemair",
+      "al_bu_hemair"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_bu_hemair"
+    }
+  },
+  {
+    "id": 222,
+    "surname": "Al Bu Kharaiban",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Bu Kharaiban",
+      "Al-Bu Kharaiban",
+      "Bu Kharaiban",
+      "al_bu_kharaiban"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_bu_kharaiban"
+    }
+  },
+  {
+    "id": 254,
+    "surname": "Al Bu Muhair",
+    "surnameAr": "آل بو مهير",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Bu Muhair",
+      "Al-Bu Muhair",
+      "Bu Muhair",
+      "al_bu_muhair"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_bu_muhair"
+    }
+  },
+  {
+    "id": 314,
+    "surname": "Al Bu Sa'id Dynasty",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Bu Sa'id Dynasty",
+      "Al-Bu Sa'id Dynasty",
+      "Bu Sa'id Dynasty",
+      "al_bu_sa'id_dynasty"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_bu_said"
+    }
+  },
+  {
+    "id": 519,
+    "surname": "Al Bu Said",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Bu Said",
+      "Al-Bu Said",
+      "Bu Said",
+      "al_bu_said"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_bu_said"
+    }
+  },
+  {
+    "id": 277,
+    "surname": "Al Bu Shamis",
+    "surnameAr": "آل بو شامس",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Bu Shamis",
+      "Al-Bu Shamis",
+      "Bu Shamis",
+      "al_bu_shamis"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_bu_shamis"
+    }
+  },
+  {
+    "id": 468,
+    "surname": "Al Darmaki",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Darmaki",
+      "Al-Darmaki",
+      "Darmaki",
+      "al_darmaki"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_darmaki"
+    }
+  },
+  {
+    "id": 505,
+    "surname": "Al Dosari",
+    "surnameAr": "الدوسري",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Dosari",
+      "Al-Dosari",
+      "Dosari",
+      "al_dosari"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_dosari"
+    }
+  },
+  {
+    "id": 326,
+    "surname": "Al Fadl",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Fadl",
+      "Al-Fadl",
+      "Fadl",
+      "al_fadl"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_fadl"
+    }
+  },
+  {
+    "id": 16,
+    "surname": "Al Hajri",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": "From Bani Hajer tribe",
+    "variants": null,
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_hajer"
+    }
+  },
+  {
+    "id": 491,
+    "surname": "Al Hamoud Al Nuaimi",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Hamoud Al Nuaimi",
+      "Al-Hamoud Al Nuaimi",
+      "Hamoud Al Nuaimi",
+      "al_hamoud_al_nuaimi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_hamoud_al_nuaimi"
+    }
+  },
+  {
+    "id": 187,
+    "surname": "Al Haramsha of Bani Idaid Shihuh",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Haramsha of Bani Idaid Shihuh",
+      "Al-Haramsha of Bani Idaid Shihuh",
+      "Haramsha of Bani Idaid Shihuh",
+      "al_haramsha_of_bani_idaid_shihuh"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_haramsha_bani_idaid"
+    }
+  },
+  {
+    "id": 358,
+    "surname": "Al Humaid",
+    "surnameAr": "آل حميد",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Humaid",
+      "Al-Humaid",
+      "Humaid",
+      "al_humaid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_humaid"
+    }
+  },
+  {
+    "id": 469,
+    "surname": "Al Jaberi",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Jaberi",
+      "Al-Jaberi",
+      "Jaberi",
+      "al_jaberi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_jaberi"
+    }
+  },
+  {
+    "id": 258,
+    "surname": "Al Jabr (Qatar section)",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Jabr (Qatar section)",
+      "Al-Jabr (Qatar section)",
+      "Jabr (Qatar section)",
+      "al_jabr_(qatar_section)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_jabr_naim_qatar"
+    }
+  },
+  {
+    "id": 43,
+    "surname": "Al Jadila",
+    "surnameAr": "آل جديلة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Jadila",
+      "Al-Jadila",
+      "Jadila",
+      "al_jadila"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_jadila_tayy"
+    }
+  },
+  {
+    "id": 462,
+    "surname": "Al Jalahma",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Jalahma",
+      "Al-Jalahma",
+      "Jalahma",
+      "al_jalahma"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_jalahma"
+    }
+  },
+  {
+    "id": 361,
+    "surname": "Al Janah",
+    "surnameAr": "آل جناح",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Janah",
+      "Al-Janah",
+      "Janah",
+      "al_janah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_janah"
+    }
+  },
+  {
+    "id": 478,
+    "surname": "Al Jarba",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Jarba",
+      "Al-Jarba",
+      "Jarba",
+      "al_jarba"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_jarba"
+    }
+  },
+  {
+    "id": 165,
+    "surname": "Al Katheer",
+    "surnameAr": "آل كثير",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Katheer",
+      "Al-Katheer",
+      "Katheer",
+      "al_katheer"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_katheer"
+    }
+  },
+  {
+    "id": 130,
+    "surname": "Al Kathiri",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Kathiri",
+      "Al-Kathiri",
+      "Kathiri",
+      "al_kathiri"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_kathiri"
+    }
+  },
+  {
+    "id": 492,
+    "surname": "Al Khalifa",
+    "surnameAr": "الخليفات",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Khalifa",
+      "Al-Khalifa",
+      "Khalifa",
+      "al_khalifa"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_khalifa"
+    }
+  },
+  {
+    "id": 299,
+    "surname": "Al Khlawi",
+    "surnameAr": "الخليوي",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Khlawi",
+      "Al-Khlawi",
+      "Khlawi",
+      "al_khlawi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_khlawi"
+    }
+  },
+  {
+    "id": 304,
+    "surname": "Al Kurdi",
+    "surnameAr": "الكردي",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Kurdi",
+      "Al-Kurdi",
+      "Kurdi",
+      "al_kurdi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_kurdi"
+    }
+  },
+  {
+    "id": 17,
+    "surname": "Al Kuwari",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": "Merchant family (Qatar/Bahrain)",
+    "variants": null,
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_kuwari"
+    }
+  },
+  {
+    "id": 2,
+    "surname": "Al Maktoum",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": "Dubai ruling family",
+    "variants": null,
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_maktoum"
+    }
+  },
+  {
+    "id": 19,
+    "surname": "Al Mannai",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": "Qatar and Bahrain",
+    "variants": null,
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_mannai"
+    }
+  },
+  {
+    "id": 397,
+    "surname": "Al Mira",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Mira",
+      "Al-Mira",
+      "Mira",
+      "al_mira"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_mira"
+    }
+  },
+  {
+    "id": 484,
+    "surname": "Al Mu'ammar",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Mu'ammar",
+      "Al-Mu'ammar",
+      "Mu'ammar",
+      "al_mu'ammar"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_muammar"
+    }
+  },
+  {
+    "id": 5,
+    "surname": "Al Mualla",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": "Umm Al Quwain ruling family",
+    "variants": null,
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_mualla"
+    }
+  },
+  {
+    "id": 15,
+    "surname": "Al Murri",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": "From Al Murrah tribe",
+    "variants": null,
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_murrah"
+    }
+  },
+  {
+    "id": 390,
+    "surname": "Al Musallam",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Musallam",
+      "Al-Musallam",
+      "Musallam",
+      "al_musallam"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al-musallam"
+    }
+  },
+  {
+    "id": 486,
+    "surname": "Al Nahyan",
+    "surnameAr": "آل نهيان",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Nahyan",
+      "Al-Nahyan",
+      "Nahyan",
+      "al_nahyan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_nahyan"
+    }
+  },
+  {
+    "id": 503,
+    "surname": "Al Naimi",
+    "surnameAr": "آل النعيمي",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Naimi",
+      "Al-Naimi",
+      "Naimi",
+      "al_naimi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_naimi_qatar"
+    }
+  },
+  {
+    "id": 298,
+    "surname": "Al Nasrallah",
+    "surnameAr": "آل نصرالله",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Nasrallah",
+      "Al-Nasrallah",
+      "Nasrallah",
+      "al_nasrallah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_nasrallah"
+    }
+  },
+  {
+    "id": 411,
+    "surname": "Al Nasur/Nassour",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Nasur/Nassour",
+      "Al-Nasur/Nassour",
+      "Nasur/Nassour",
+      "al_nasur/nassour"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_nasur"
+    }
+  },
+  {
+    "id": 504,
+    "surname": "Al Nuaimi",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Nuaimi",
+      "Al-Nuaimi",
+      "Nuaimi",
+      "al_nuaimi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_nuaimi_ajman"
+    }
+  },
+  {
+    "id": 300,
+    "surname": "Al Omar",
+    "surnameAr": "آل عمر",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Omar",
+      "Al-Omar",
+      "Omar",
+      "al_omar"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_omar_albu_salih"
+    }
+  },
+  {
+    "id": 219,
+    "surname": "Al Qahtani",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Qahtani",
+      "Al-Qahtani",
+      "Qahtani",
+      "al_qahtani"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_qahtani"
+    }
+  },
+  {
+    "id": 490,
+    "surname": "Al Qasimi",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Qasimi",
+      "Al-Qasimi",
+      "Qasimi",
+      "al_qasimi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_qasimi"
+    }
+  },
+  {
+    "id": 23,
+    "surname": "Al Qasimi (Qawasim)",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Qasimi (Qawasim)",
+      "Al-Qasimi (Qawasim)",
+      "Qasimi (Qawasim)",
+      "al_qasimi_(qawasim)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_qasimi"
+    }
+  },
+  {
+    "id": 487,
+    "surname": "Al Qasimi (RAK)",
+    "surnameAr": "القاسمي",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Qasimi (RAK)",
+      "Al-Qasimi (RAK)",
+      "Qasimi (RAK)",
+      "al_qasimi_(rak)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_qasimi_rak"
+    }
+  },
+  {
+    "id": 295,
+    "surname": "Al Qasimi of Ras Al Khaimah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Qasimi of Ras Al Khaimah",
+      "Al-Qasimi of Ras Al Khaimah",
+      "Qasimi of Ras Al Khaimah",
+      "al_qasimi_of_ras_al_khaimah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_qasimi_rak"
+    }
+  },
+  {
+    "id": 282,
+    "surname": "Al Qasimi of Sharjah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Qasimi of Sharjah",
+      "Al-Qasimi of Sharjah",
+      "Qasimi of Sharjah",
+      "al_qasimi_of_sharjah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_qasimi_sharjah"
+    }
+  },
+  {
+    "id": 255,
+    "surname": "Al Qawasim",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Qawasim",
+      "Al-Qawasim",
+      "Qawasim",
+      "al_qawasim"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_qawasim"
+    }
+  },
+  {
+    "id": 27,
+    "surname": "Al Qemzi",
+    "surnameAr": "القمزان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Qemzi",
+      "Al-Qemzi",
+      "Qemzi",
+      "al_qemzi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_qemzi"
+    }
+  },
+  {
+    "id": 477,
+    "surname": "Al Rashid (House of Rashid)",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Rashid (House of Rashid)",
+      "Al-Rashid (House of Rashid)",
+      "Rashid (House of Rashid)",
+      "al_rashid_(house_of_rashid)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_rashid"
+    }
+  },
+  {
+    "id": 18,
+    "surname": "Al Rumaihi",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": "Across Gulf states",
+    "variants": null,
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_rumaihi"
+    }
+  },
+  {
+    "id": 297,
+    "surname": "Al Rumaiyadh",
+    "surnameAr": "آل رميض",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Rumaiyadh",
+      "Al-Rumaiyadh",
+      "Rumaiyadh",
+      "al_rumaiyadh"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_rumaiyadh"
+    }
+  },
+  {
+    "id": 470,
+    "surname": "Al Saadi",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Saadi",
+      "Al-Saadi",
+      "Saadi",
+      "al_saadi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_saadi"
+    }
+  },
+  {
+    "id": 9,
+    "surname": "Al Sabah",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": "Kuwait ruling family",
+    "variants": null,
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_sabah"
+    }
+  },
+  {
+    "id": 480,
+    "surname": "Al Sabhan",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Sabhan",
+      "Al-Sabhan",
+      "Sabhan",
+      "al_sabhan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_sabhan"
+    }
+  },
+  {
+    "id": 10,
+    "surname": "Al Saud",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": "Saudi Arabia ruling family",
+    "variants": null,
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_saud"
+    }
+  },
+  {
+    "id": 6,
+    "surname": "Al Sharqi",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": "Fujairah ruling family",
+    "variants": null,
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_sharqi"
+    }
+  },
+  {
+    "id": 366,
+    "surname": "Al Subaih",
+    "surnameAr": "آل صبيح",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Subaih",
+      "Al-Subaih",
+      "Subaih",
+      "al_subaih"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_subaih"
+    }
+  },
+  {
+    "id": 155,
+    "surname": "Al Sudairi",
+    "surnameAr": "آل سديري",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Sudairi",
+      "Al-Sudairi",
+      "Sudairi",
+      "al_sudairi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sudairi"
+    }
+  },
+  {
+    "id": 362,
+    "surname": "Al Suhoob",
+    "surnameAr": "آل صحوب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Suhoob",
+      "Al-Suhoob",
+      "Suhoob",
+      "al_suhoob"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_suhoob"
+    }
+  },
+  {
+    "id": 303,
+    "surname": "Al Tarayma",
+    "surnameAr": "الترايمة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Tarayma",
+      "Al-Tarayma",
+      "Tarayma",
+      "al_tarayma"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_tarayma"
+    }
+  },
+  {
+    "id": 493,
+    "surname": "Al Thani",
+    "surnameAr": "آل ثاني",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al Thani",
+      "Al-Thani",
+      "Thani",
+      "al_thani"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_thani"
+    }
+  },
+  {
+    "id": 301,
+    "surname": "Al Yosha'a",
+    "surnameAr": "سادة آل يوشع",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al Yosha'a",
+      "Al-Yosha'a",
+      "Yosha'a",
+      "al_yosha'a"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_yoshaa"
+    }
+  },
+  {
+    "id": 42,
+    "surname": "Al al-Ghawth",
+    "surnameAr": "آل الغوث",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al al-Ghawth",
+      "Al-al-Ghawth",
+      "al-Ghawth",
+      "al_al-ghawth"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_ghawth_tayy"
+    }
+  },
+  {
+    "id": 49,
+    "surname": "Al al-Tha'alib (Tha'laba)",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al al-Tha'alib (Tha'laba)",
+      "Al-al-Tha'alib (Tha'laba)",
+      "al-Tha'alib (Tha'laba)",
+      "al_al-tha'alib_(tha'laba)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_thaalib_tayy"
+    }
+  },
+  {
+    "id": 482,
+    "surname": "Al ash-Sheikh",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al ash-Sheikh",
+      "Al-ash-Sheikh",
+      "ash-Sheikh",
+      "al_ash-sheikh"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_ash_sheikh_family"
+    }
+  },
+  {
+    "id": 211,
+    "surname": "Al'ahmad",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al'ahmad",
+      "al'ahmad"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_ahmad"
+    }
+  },
+  {
+    "id": 210,
+    "surname": "Al'asead",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al'asead",
+      "al'asead"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_asead"
+    }
+  },
+  {
+    "id": 172,
+    "surname": "Al-'Aljanat",
+    "surnameAr": "العلجانات",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-'Aljanat",
+      "Al 'Aljanat",
+      "'Aljanat",
+      "al-'aljanat"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_aljanat"
+    }
+  },
+  {
+    "id": 343,
+    "surname": "Al-'Ulwa",
+    "surnameAr": "العلوا",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-'Ulwa",
+      "Al 'Ulwa",
+      "'Ulwa",
+      "al-'ulwa"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mutayr_al_ulwa"
+    }
+  },
+  {
+    "id": 516,
+    "surname": "Al-Alawi",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Alawi",
+      "Al Alawi",
+      "Alawi",
+      "al-alawi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_alawi"
+    }
+  },
+  {
+    "id": 471,
+    "surname": "Al-Amru",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Amru",
+      "Al Amru",
+      "Amru",
+      "al-amru"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_amru"
+    }
+  },
+  {
+    "id": 173,
+    "surname": "Al-Askar",
+    "surnameAr": "العسكر",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Askar",
+      "Al Askar",
+      "Askar",
+      "al-askar"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_askar"
+    }
+  },
+  {
+    "id": 333,
+    "surname": "Al-Aslam",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Aslam",
+      "Al Aslam",
+      "Aslam",
+      "al-aslam"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_aslam_shammar"
+    }
+  },
+  {
+    "id": 128,
+    "surname": "Al-Awazim",
+    "surnameAr": "العوازم",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Awazim",
+      "Al Awazim",
+      "Awazim",
+      "al-awazim"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_awazim"
+    }
+  },
+  {
+    "id": 267,
+    "surname": "Al-Azaznah tribe",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Azaznah tribe",
+      "Al Azaznah tribe",
+      "Azaznah tribe",
+      "al-azaznah_tribe"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_azaznah"
+    }
+  },
+  {
+    "id": 407,
+    "surname": "Al-Azd",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Azd",
+      "Al Azd",
+      "Azd",
+      "al-azd"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_azd"
+    }
+  },
+  {
+    "id": 199,
+    "surname": "Al-Bahri",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Bahri",
+      "Al Bahri",
+      "Bahri",
+      "al-bahri"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_bahri"
+    }
+  },
+  {
+    "id": 11,
+    "surname": "Al-Balushi",
+    "surnameAr": null,
+    "originType": "ethnic",
+    "meaning": "Baloch origin",
+    "variants": [
+      "Al-Blooshi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "ethnic_group",
+      "id": "baloch"
+    }
+  },
+  {
+    "id": 495,
+    "surname": "Al-Buainain",
+    "surnameAr": "آل بو عينين",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Buainain",
+      "Al Buainain",
+      "Buainain",
+      "al-buainain"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_buainain"
+    }
+  },
+  {
+    "id": 418,
+    "surname": "Al-Dawasir",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Dawasir",
+      "Al Dawasir",
+      "Dawasir",
+      "al-dawasir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_dawasir"
+    }
+  },
+  {
+    "id": 160,
+    "surname": "Al-Dhafeer",
+    "surnameAr": "الظفير",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Dhafeer",
+      "Al Dhafeer",
+      "Dhafeer",
+      "al-dhafeer"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_dhafeer"
+    }
+  },
+  {
+    "id": 496,
+    "surname": "Al-Fadhil",
+    "surnameAr": "آل فَضْل",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Fadhil",
+      "Al Fadhil",
+      "Fadhil",
+      "al-fadhil"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_fadhil"
+    }
+  },
+  {
+    "id": 12,
+    "surname": "Al-Farsi",
+    "surnameAr": null,
+    "originType": "ethnic",
+    "meaning": "Persian origin",
+    "variants": null,
+    "funFact": null
+  },
+  {
+    "id": 13,
+    "surname": "Al-Hindi",
+    "surnameAr": null,
+    "originType": "geographic",
+    "meaning": "Indian origin",
+    "variants": null,
+    "funFact": null
+  },
+  {
+    "id": 213,
+    "surname": "Al-Huwaitat",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Huwaitat",
+      "Al Huwaitat",
+      "Huwaitat",
+      "al-huwaitat"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_huwaitat"
+    }
+  },
+  {
+    "id": 377,
+    "surname": "Al-Jadara",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Jadara",
+      "Al Jadara",
+      "Jadara",
+      "al-jadara"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_jadara"
+    }
+  },
+  {
+    "id": 167,
+    "surname": "Al-Jawasim",
+    "surnameAr": "الجواسم",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Jawasim",
+      "Al Jawasim",
+      "Jawasim",
+      "al-jawasim"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_jawasim"
+    }
+  },
+  {
+    "id": 386,
+    "surname": "Al-Khalifa",
+    "surnameAr": "آل خليفة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Khalifa",
+      "Al Khalifa",
+      "Khalifa",
+      "al-khalifa"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al-khalifa"
+    }
+  },
+  {
+    "id": 170,
+    "surname": "Al-Ma'adin",
+    "surnameAr": "المعادين",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Ma'adin",
+      "Al Ma'adin",
+      "Ma'adin",
+      "al-ma'adin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_maadin"
+    }
+  },
+  {
+    "id": 169,
+    "surname": "Al-Ma'alem",
+    "surnameAr": "المعاليم",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Ma'alem",
+      "Al Ma'alem",
+      "Ma'alem",
+      "al-ma'alem"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_maalem"
+    }
+  },
+  {
+    "id": 494,
+    "surname": "Al-Ma'awdah",
+    "surnameAr": "<UNKNOWN>",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Ma'awdah",
+      "Al Ma'awdah",
+      "Ma'awdah",
+      "al-ma'awdah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_maawdah"
+    }
+  },
+  {
+    "id": 305,
+    "surname": "Al-Muntafiq",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Muntafiq",
+      "Al Muntafiq",
+      "Muntafiq",
+      "al-muntafiq"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_muntafiq"
+    }
+  },
+  {
+    "id": 517,
+    "surname": "Al-Musawi",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Musawi",
+      "Al Musawi",
+      "Musawi",
+      "al-musawi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_musawi"
+    }
+  },
+  {
+    "id": 499,
+    "surname": "Al-Noaimi",
+    "surnameAr": "آل نعيمي",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Noaimi",
+      "Al Noaimi",
+      "Noaimi",
+      "al-noaimi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_noaimi"
+    }
+  },
+  {
+    "id": 212,
+    "surname": "Al-Omaro Bani Uqba",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Omaro Bani Uqba",
+      "Al Omaro Bani Uqba",
+      "Omaro Bani Uqba",
+      "al-omaro_bani_uqba"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_omaro_bani_uqba"
+    }
+  },
+  {
+    "id": 171,
+    "surname": "Al-Oraif",
+    "surnameAr": "العريف",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Oraif",
+      "Al Oraif",
+      "Oraif",
+      "al-oraif"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_oraif"
+    }
+  },
+  {
+    "id": 515,
+    "surname": "Al-Qarooni/Karuni family",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Qarooni/Karuni family",
+      "Al Qarooni/Karuni family",
+      "Qarooni/Karuni family",
+      "al-qarooni/karuni_family"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_qarooni"
+    }
+  },
+  {
+    "id": 518,
+    "surname": "Al-Qassab",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Qassab",
+      "Al Qassab",
+      "Qassab",
+      "al-qassab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_qassab"
+    }
+  },
+  {
+    "id": 353,
+    "surname": "Al-Rabbab",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Rabbab",
+      "Al Rabbab",
+      "Rabbab",
+      "al-rabbab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_rabbab"
+    }
+  },
+  {
+    "id": 163,
+    "surname": "Al-Sa'id",
+    "surnameAr": "السعيد",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Sa'id",
+      "Al Sa'id",
+      "Sa'id",
+      "al-sa'id"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_said"
+    }
+  },
+  {
+    "id": 385,
+    "surname": "Al-Sabah",
+    "surnameAr": "آل صباح",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Sabah",
+      "Al Sabah",
+      "Sabah",
+      "al-sabah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al-sabah"
+    }
+  },
+  {
+    "id": 198,
+    "surname": "Al-Shaleikh",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Shaleikh",
+      "Al Shaleikh",
+      "Shaleikh",
+      "al-shaleikh"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_shaleikh"
+    }
+  },
+  {
+    "id": 500,
+    "surname": "Al-Sulaiti",
+    "surnameAr": "<UNKNOWN>",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Sulaiti",
+      "Al Sulaiti",
+      "Sulaiti",
+      "al-sulaiti"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_sulaiti"
+    }
+  },
+  {
+    "id": 265,
+    "surname": "Al-Surur family",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Surur family",
+      "Al Surur family",
+      "Surur family",
+      "al-surur_family"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_surur"
+    }
+  },
+  {
+    "id": 162,
+    "surname": "Al-Suwait",
+    "surnameAr": "السويط",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Suwait",
+      "Al Suwait",
+      "Suwait",
+      "al-suwait"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_suwait"
+    }
+  },
+  {
+    "id": 501,
+    "surname": "Al-Thawadi",
+    "surnameAr": "آل ثوادي",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Al-Thawadi",
+      "Al Thawadi",
+      "Thawadi",
+      "al-thawadi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "al_thawadi"
+    }
+  },
+  {
+    "id": 168,
+    "surname": "Al-Thira'an",
+    "surnameAr": "الذرعان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Thira'an",
+      "Al Thira'an",
+      "Thira'an",
+      "al-thira'an"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_thiraan"
+    }
+  },
+  {
+    "id": 339,
+    "surname": "Al-Ubaid",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Ubaid",
+      "Al Ubaid",
+      "Ubaid",
+      "al-ubaid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_ubaid"
+    }
+  },
+  {
+    "id": 413,
+    "surname": "Al-Utub",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Utub",
+      "Al Utub",
+      "Utub",
+      "al-utub"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_utub"
+    }
+  },
+  {
+    "id": 264,
+    "surname": "Al-Zar'a family",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Al-Zar'a family",
+      "Al Zar'a family",
+      "Zar'a family",
+      "al-zar'a_family"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_zara"
+    }
+  },
+  {
+    "id": 474,
+    "surname": "Albuflasa",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Albuflasa",
+      "albuflasa"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "albuflasa_clan"
+    }
+  },
+  {
+    "id": 205,
+    "surname": "Alhamamada",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Alhamamada",
+      "alhamamada"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "alhamamada"
+    }
+  },
+  {
+    "id": 207,
+    "surname": "Alhasasana",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Alhasasana",
+      "alhasasana"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "alhasasana"
+    }
+  },
+  {
+    "id": 208,
+    "surname": "Aljeayisa",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Aljeayisa",
+      "aljeayisa"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "aljeayisa"
+    }
+  },
+  {
+    "id": 203,
+    "surname": "Alkhudur",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Alkhudur",
+      "alkhudur"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "alkhudur"
+    }
+  },
+  {
+    "id": 193,
+    "surname": "Almadhakir",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Almadhakir",
+      "almadhakir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "almadhakir"
+    }
+  },
+  {
+    "id": 192,
+    "surname": "Almatiei",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Almatiei",
+      "almatiei"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "almatiei"
+    }
+  },
+  {
+    "id": 194,
+    "surname": "Almuhabida",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Almuhabida",
+      "almuhabida"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "almuhabida"
+    }
+  },
+  {
+    "id": 473,
+    "surname": "Almuhannada",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Almuhannada",
+      "almuhannada"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "almuhannada"
+    }
+  },
+  {
+    "id": 206,
+    "surname": "Almusaeada",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Almusaeada",
+      "almusaeada"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "almusaeada"
+    }
+  },
+  {
+    "id": 195,
+    "surname": "Alrathea",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Alrathea",
+      "alrathea"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "alrathea"
+    }
+  },
+  {
+    "id": 191,
+    "surname": "Alrtuei",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Alrtuei",
+      "alrtuei"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "alrtuei"
+    }
+  },
+  {
+    "id": 204,
+    "surname": "Alsawalima",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Alsawalima",
+      "alsawalima"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "alsawalima"
+    }
+  },
+  {
+    "id": 125,
+    "surname": "Amir ibn Sa'sa'a",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Amir ibn Sa'sa'a",
+      "amir_ibn_sa'sa'a"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "amir_ibn_sasaa"
+    }
+  },
+  {
+    "id": 350,
+    "surname": "Amr",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Amr",
+      "amr"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_tamim_amr"
+    }
+  },
+  {
+    "id": 416,
+    "surname": "Anaza",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Anaza",
+      "anaza"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "anaza"
+    }
+  },
+  {
+    "id": 270,
+    "surname": "Anazzah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Anazzah",
+      "anazzah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "anazzah"
+    }
+  },
+  {
+    "id": 96,
+    "surname": "Anizah",
+    "surnameAr": "عنزة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Anizah",
+      "anizah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "anizah"
+    }
+  },
+  {
+    "id": 405,
+    "surname": "Anizah tribe",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Anizah tribe",
+      "anizah_tribe"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "anizah_tribe"
+    }
+  },
+  {
+    "id": 318,
+    "surname": "Anizzah",
+    "surnameAr": "عنزة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Anizzah",
+      "anizzah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "anizzah"
+    }
+  },
+  {
+    "id": 399,
+    "surname": "Annazah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Annazah",
+      "annazah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "annazah"
+    }
+  },
+  {
+    "id": 97,
+    "surname": "Anz ibn Wa'il",
+    "surnameAr": "أنز بن وائل",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Anz ibn Wa'il",
+      "anz_ibn_wa'il"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "anz_ibn_wail"
+    }
+  },
+  {
+    "id": 86,
+    "surname": "Asad",
+    "surnameAr": "أسد",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Asad",
+      "asad"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "asad"
+    }
+  },
+  {
+    "id": 116,
+    "surname": "Athbaj",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Athbaj",
+      "athbaj"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "athbaj_hilal"
+    }
+  },
+  {
+    "id": 126,
+    "surname": "Awamir",
+    "surnameAr": "العوامر",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Awamir",
+      "awamir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "awamir"
+    }
+  },
+  {
+    "id": 261,
+    "surname": "Awanat",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Awanat",
+      "awanat"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "awanat"
+    }
+  },
+  {
+    "id": 60,
+    "surname": "Aws and Khazraj",
+    "surnameAr": "الأوس والخزرج",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Aws and Khazraj",
+      "aws_and_khazraj"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "aws_khazraj"
+    }
+  },
+  {
+    "id": 200,
+    "surname": "Ayal Abdo",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ayal Abdo",
+      "ayal_abdo"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ayal_abdo"
+    }
+  },
+  {
+    "id": 58,
+    "surname": "Azd",
+    "surnameAr": "أَزْد",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Azd",
+      "azd"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "azd"
+    }
+  },
+  {
+    "id": 59,
+    "surname": "Azd Uman",
+    "surnameAr": "أزد عُمان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Azd Uman",
+      "azd_uman"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "azd_uman"
+    }
+  },
+  {
+    "id": 443,
+    "surname": "Bakil",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bakil",
+      "bakil"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bakil"
+    }
+  },
+  {
+    "id": 406,
+    "surname": "Bakr Bin Wail",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bakr Bin Wail",
+      "bakr_bin_wail"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bakr_bin_wail"
+    }
+  },
+  {
+    "id": 214,
+    "surname": "Bani Abbad",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Abbad",
+      "bani_abbad",
+      "Abbad"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_abbad"
+    }
+  },
+  {
+    "id": 342,
+    "surname": "Bani Abdullah",
+    "surnameAr": "بني عبدالله",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Abdullah",
+      "bani_abdullah",
+      "Abdullah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mutayr_bani_abdullah"
+    }
+  },
+  {
+    "id": 285,
+    "surname": "Bani Ali",
+    "surnameAr": "بني علي",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Ali",
+      "bani_ali",
+      "Ali"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_ali"
+    }
+  },
+  {
+    "id": 114,
+    "surname": "Bani Ghafir",
+    "surnameAr": "<UNKNOWN>",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Ghafir",
+      "bani_ghafir",
+      "Ghafir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_ghafir"
+    }
+  },
+  {
+    "id": 132,
+    "surname": "Bani Hadiyah",
+    "surnameAr": "بني هدية",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Hadiyah",
+      "bani_hadiyah",
+      "Hadiyah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_hadiyah"
+    }
+  },
+  {
+    "id": 466,
+    "surname": "Bani Hafiz Family",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Bani Hafiz Family",
+      "bani_hafiz_family",
+      "Hafiz Family"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "bani_hafiz_family"
+    }
+  },
+  {
+    "id": 286,
+    "surname": "Bani Ham Mazyud",
+    "surnameAr": "بني حام مزيود",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Ham Mazyud",
+      "bani_ham_mazyud",
+      "Ham Mazyud"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_ham_mazyud"
+    }
+  },
+  {
+    "id": 215,
+    "surname": "Bani Hamida",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Hamida",
+      "bani_hamida",
+      "Hamida"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_hamida"
+    }
+  },
+  {
+    "id": 410,
+    "surname": "Bani Hammad",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Hammad",
+      "bani_hammad",
+      "Hammad"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_hammad"
+    }
+  },
+  {
+    "id": 327,
+    "surname": "Bani Hanifa",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Hanifa",
+      "bani_hanifa",
+      "Hanifa"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_hanifa"
+    }
+  },
+  {
+    "id": 320,
+    "surname": "Bani Hizzan",
+    "surnameAr": "بني حزان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Hizzan",
+      "bani_hizzan",
+      "Hizzan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_hizzan"
+    }
+  },
+  {
+    "id": 164,
+    "surname": "Bani Hussein",
+    "surnameAr": "بني حسين",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Hussein",
+      "bani_hussein",
+      "Hussein"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_hussein"
+    }
+  },
+  {
+    "id": 266,
+    "surname": "Bani Jaber tribe",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Jaber tribe",
+      "bani_jaber_tribe",
+      "Jaber tribe"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_jaber"
+    }
+  },
+  {
+    "id": 135,
+    "surname": "Bani Kaab",
+    "surnameAr": "بني كعب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Kaab",
+      "bani_kaab",
+      "Kaab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_kaab"
+    }
+  },
+  {
+    "id": 129,
+    "surname": "Bani Khalid",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Khalid",
+      "bani_khalid",
+      "Khalid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_khalid"
+    }
+  },
+  {
+    "id": 309,
+    "surname": "Bani Malik",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Malik",
+      "bani_malik",
+      "Malik"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_malik"
+    }
+  },
+  {
+    "id": 284,
+    "surname": "Bani Muhammad",
+    "surnameAr": "بني محمد",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Muhammad",
+      "bani_muhammad",
+      "Muhammad"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_muhammad"
+    }
+  },
+  {
+    "id": 148,
+    "surname": "Bani Qitab",
+    "surnameAr": "بني كتب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Qitab",
+      "bani_qitab",
+      "Qitab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_qitab"
+    }
+  },
+  {
+    "id": 131,
+    "surname": "Bani Rasheed",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Rasheed",
+      "bani_rasheed",
+      "Rasheed"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_rasheed"
+    }
+  },
+  {
+    "id": 179,
+    "surname": "Bani Saad",
+    "surnameAr": "بني سعد",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Saad",
+      "bani_saad",
+      "Saad"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_saad"
+    }
+  },
+  {
+    "id": 52,
+    "surname": "Bani Sakher",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Sakher",
+      "bani_sakher",
+      "Sakher"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_sakher"
+    }
+  },
+  {
+    "id": 151,
+    "surname": "Bani Shatair",
+    "surnameAr": "بني شطير",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Shatair",
+      "bani_shatair",
+      "Shatair"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_shatair"
+    }
+  },
+  {
+    "id": 349,
+    "surname": "Bani Tamim",
+    "surnameAr": "بَنُو تَمِيم",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Tamim",
+      "bani_tamim",
+      "Tamim"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_tamim"
+    }
+  },
+  {
+    "id": 384,
+    "surname": "Bani Utbah",
+    "surnameAr": "بَنِيّ عُتبَة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Utbah",
+      "bani_utbah",
+      "Utbah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_utbah"
+    }
+  },
+  {
+    "id": 455,
+    "surname": "Bani Yas",
+    "surnameAr": "بَنُو ياس",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bani Yas",
+      "bani_yas",
+      "Yas"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bani_yas"
+    }
+  },
+  {
+    "id": 24,
+    "surname": "Banu Abdul Qays",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Abdul Qays",
+      "banu_abdul_qays",
+      "Abdul Qays"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_abdul_qays"
+    }
+  },
+  {
+    "id": 68,
+    "surname": "Banu Adi",
+    "surnameAr": "بنو عدي",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Adi",
+      "banu_adi",
+      "Adi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_adi"
+    }
+  },
+  {
+    "id": 378,
+    "surname": "Banu Al Du'al",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Al Du'al",
+      "banu_al_du'al",
+      "Al Du'al"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_al_dual"
+    }
+  },
+  {
+    "id": 447,
+    "surname": "Banu Al Harith",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Al Harith",
+      "banu_al_harith",
+      "Al Harith"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_harith_jabal_amil"
+    }
+  },
+  {
+    "id": 451,
+    "surname": "Banu Al-Harith",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Al-Harith",
+      "banu_al-harith",
+      "Al-Harith"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_harith_najran"
+    }
+  },
+  {
+    "id": 446,
+    "surname": "Banu Al-Mashruki",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Al-Mashruki",
+      "banu_al-mashruki",
+      "Al-Mashruki"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_mashruki"
+    }
+  },
+  {
+    "id": 450,
+    "surname": "Banu Al-Sakasek",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Al-Sakasek",
+      "banu_al-sakasek",
+      "Al-Sakasek"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_sakasek"
+    }
+  },
+  {
+    "id": 449,
+    "surname": "Banu Al-Sukun",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Al-Sukun",
+      "banu_al-sukun",
+      "Al-Sukun"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_sukun"
+    }
+  },
+  {
+    "id": 376,
+    "surname": "Banu Ali",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Ali",
+      "banu_ali",
+      "Ali"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_ali_zahran"
+    }
+  },
+  {
+    "id": 113,
+    "surname": "Banu Amir",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Amir",
+      "banu_amir",
+      "Amir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_amir"
+    }
+  },
+  {
+    "id": 372,
+    "surname": "Banu Amr",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Amr",
+      "banu_amr",
+      "Amr"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_amr_zahran"
+    }
+  },
+  {
+    "id": 56,
+    "surname": "Banu Asad",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Asad",
+      "banu_asad",
+      "Asad"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_asad"
+    }
+  },
+  {
+    "id": 338,
+    "surname": "Banu Assad",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Assad",
+      "banu_assad",
+      "Assad"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_assad"
+    }
+  },
+  {
+    "id": 373,
+    "surname": "Banu Aws",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Aws",
+      "banu_aws",
+      "Aws"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_aws_zahran"
+    }
+  },
+  {
+    "id": 401,
+    "surname": "Banu Azd",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Azd",
+      "banu_azd",
+      "Azd"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_azd"
+    }
+  },
+  {
+    "id": 57,
+    "surname": "Banu Bakr",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Bakr",
+      "banu_bakr",
+      "Bakr"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_bakr"
+    }
+  },
+  {
+    "id": 371,
+    "surname": "Banu Daws",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Daws",
+      "banu_daws",
+      "Daws"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_daws"
+    }
+  },
+  {
+    "id": 375,
+    "surname": "Banu Fahm",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Fahm",
+      "banu_fahm",
+      "Fahm"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_fahm"
+    }
+  },
+  {
+    "id": 89,
+    "surname": "Banu Ghassan",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Ghassan",
+      "banu_ghassan",
+      "Ghassan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_ghassan"
+    }
+  },
+  {
+    "id": 46,
+    "surname": "Banu Hani",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Hani",
+      "banu_hani",
+      "Hani"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_hani_tayy"
+    }
+  },
+  {
+    "id": 107,
+    "surname": "Banu Hanifa",
+    "surnameAr": "بنو حنيفة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Hanifa",
+      "banu_hanifa",
+      "Hanifa"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_hanifa"
+    }
+  },
+  {
+    "id": 351,
+    "surname": "Banu Hanzala",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Hanzala",
+      "banu_hanzala",
+      "Hanzala"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_hanzala"
+    }
+  },
+  {
+    "id": 66,
+    "surname": "Banu Hashim",
+    "surnameAr": "بنو هاشم",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Hashim",
+      "banu_hashim",
+      "Hashim"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_hashim"
+    }
+  },
+  {
+    "id": 115,
+    "surname": "Banu Hina",
+    "surnameAr": "بنو هلال",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Hina",
+      "banu_hina",
+      "Hina"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_hina"
+    }
+  },
+  {
+    "id": 47,
+    "surname": "Banu Hur",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Hur",
+      "banu_hur",
+      "Hur"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_hur_tayy"
+    }
+  },
+  {
+    "id": 452,
+    "surname": "Banu Judham",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Judham",
+      "banu_judham",
+      "Judham"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_judham"
+    }
+  },
+  {
+    "id": 70,
+    "surname": "Banu Jumah",
+    "surnameAr": "بنو جمح",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Jumah",
+      "banu_jumah",
+      "Jumah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_jumah"
+    }
+  },
+  {
+    "id": 48,
+    "surname": "Banu Jundub",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Jundub",
+      "banu_jundub",
+      "Jundub"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_jundub_tayy"
+    }
+  },
+  {
+    "id": 104,
+    "surname": "Banu Kanz",
+    "surnameAr": "بنو كنز",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Kanz",
+      "banu_kanz",
+      "Kanz"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_kanz"
+    }
+  },
+  {
+    "id": 445,
+    "surname": "Banu Kathir",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Kathir",
+      "banu_kathir",
+      "Kathir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_kathir"
+    }
+  },
+  {
+    "id": 357,
+    "surname": "Banu Khalid",
+    "surnameAr": "بني خالد",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Khalid",
+      "banu_khalid",
+      "Khalid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_khalid"
+    }
+  },
+  {
+    "id": 76,
+    "surname": "Banu Khazraj",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Khazraj",
+      "banu_khazraj",
+      "Khazraj"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_khazraj"
+    }
+  },
+  {
+    "id": 77,
+    "surname": "Banu Khuza'ah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Khuza'ah",
+      "banu_khuza'ah",
+      "Khuza'ah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_khuza_ah"
+    }
+  },
+  {
+    "id": 50,
+    "surname": "Banu La'm",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu La'm",
+      "banu_la'm",
+      "La'm"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_lam_tayy"
+    }
+  },
+  {
+    "id": 381,
+    "surname": "Banu Lahb",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Lahb",
+      "banu_lahb",
+      "Lahb"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_lahb"
+    }
+  },
+  {
+    "id": 80,
+    "surname": "Banu Lahyan",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Lahyan",
+      "banu_lahyan",
+      "Lahyan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_lahyan"
+    }
+  },
+  {
+    "id": 176,
+    "surname": "Banu Lam",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Lam",
+      "banu_lam",
+      "Lam"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_lam"
+    }
+  },
+  {
+    "id": 69,
+    "surname": "Banu Makhzum",
+    "surnameAr": "بنو مخزوم",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Makhzum",
+      "banu_makhzum",
+      "Makhzum"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_makhzum"
+    }
+  },
+  {
+    "id": 374,
+    "surname": "Banu Manhib",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Manhib",
+      "banu_manhib",
+      "Manhib"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_manhib"
+    }
+  },
+  {
+    "id": 448,
+    "surname": "Banu Muayiya",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Muayiya",
+      "banu_muayiya",
+      "Muayiya"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_muayiya"
+    }
+  },
+  {
+    "id": 81,
+    "surname": "Banu Mustaliq",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Mustaliq",
+      "banu_mustaliq",
+      "Mustaliq"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_mustaliq"
+    }
+  },
+  {
+    "id": 45,
+    "surname": "Banu Nabhan (Aswadan)",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Nabhan (Aswadan)",
+      "banu_nabhan_(aswadan)",
+      "Nabhan (Aswadan)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_nabhan_tayy"
+    }
+  },
+  {
+    "id": 354,
+    "surname": "Banu Nu'aym",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Nu'aym",
+      "banu_nu'aym",
+      "Nu'aym"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_nuaym"
+    }
+  },
+  {
+    "id": 99,
+    "surname": "Banu Qays ibn Tha'laba",
+    "surnameAr": "بنو قيس بن ثعلبة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Qays ibn Tha'laba",
+      "banu_qays_ibn_tha'laba",
+      "Qays ibn Tha'laba"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_qays_ibn_thalaba"
+    }
+  },
+  {
+    "id": 454,
+    "surname": "Banu Quda'a",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Quda'a",
+      "banu_quda'a",
+      "Quda'a"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_qudaa"
+    }
+  },
+  {
+    "id": 396,
+    "surname": "Banu Rabi'ah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Rabi'ah",
+      "banu_rabi'ah",
+      "Rabi'ah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_rabiah"
+    }
+  },
+  {
+    "id": 352,
+    "surname": "Banu Sa'd",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Sa'd",
+      "banu_sa'd",
+      "Sa'd"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_sad_tamim"
+    }
+  },
+  {
+    "id": 67,
+    "surname": "Banu Sahm",
+    "surnameAr": "بنو سهم",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Sahm",
+      "banu_sahm",
+      "Sahm"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_sahm"
+    }
+  },
+  {
+    "id": 98,
+    "surname": "Banu Shayban",
+    "surnameAr": "بنو شيبان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Shayban",
+      "banu_shayban",
+      "Shayban"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_shayban"
+    }
+  },
+  {
+    "id": 389,
+    "surname": "Banu Sulaym",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Sulaym",
+      "banu_sulaym",
+      "Sulaym"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu-sulaym"
+    }
+  },
+  {
+    "id": 112,
+    "surname": "Banu Tamim",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Tamim",
+      "banu_tamim",
+      "Tamim"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_tamim"
+    }
+  },
+  {
+    "id": 71,
+    "surname": "Banu Taym",
+    "surnameAr": "بنو تيم",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Taym",
+      "banu_taym",
+      "Taym"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_taym"
+    }
+  },
+  {
+    "id": 395,
+    "surname": "Banu Tayy",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Tayy",
+      "banu_tayy",
+      "Tayy"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_tayy"
+    }
+  },
+  {
+    "id": 87,
+    "surname": "Banu Tha'labah",
+    "surnameAr": "بنو ثعلبة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Tha'labah",
+      "banu_tha'labah",
+      "Tha'labah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_thalabah"
+    }
+  },
+  {
+    "id": 79,
+    "surname": "Banu Thaqif",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Thaqif",
+      "banu_thaqif",
+      "Thaqif"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_thaqif"
+    }
+  },
+  {
+    "id": 44,
+    "surname": "Banu Thu'al",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Thu'al",
+      "banu_thu'al",
+      "Thu'al"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_thuwal_tayy"
+    }
+  },
+  {
+    "id": 159,
+    "surname": "Banu Toghlib",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Toghlib",
+      "banu_toghlib",
+      "Toghlib"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_toghlib"
+    }
+  },
+  {
+    "id": 408,
+    "surname": "Banu Utbah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Utbah",
+      "banu_utbah",
+      "Utbah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_utbah"
+    }
+  },
+  {
+    "id": 347,
+    "surname": "Banu Yam",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Yam",
+      "banu_yam",
+      "Yam"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_yam"
+    }
+  },
+  {
+    "id": 101,
+    "surname": "Banu Yashkur",
+    "surnameAr": "بنو يشكر",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Yashkur",
+      "banu_yashkur",
+      "Yashkur"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_yashkur"
+    }
+  },
+  {
+    "id": 72,
+    "surname": "Banu Zuhra",
+    "surnameAr": "بنو زهرة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu Zuhra",
+      "banu_zuhra",
+      "Zuhra"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_zuhra"
+    }
+  },
+  {
+    "id": 73,
+    "surname": "Banu al-Harith ibn Fihr",
+    "surnameAr": "بنو الحارث بن فهر",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Banu al-Harith ibn Fihr",
+      "banu_al-harith_ibn_fihr",
+      "al-Harith ibn Fihr"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "banu_harith_ibn_fihr"
+    }
+  },
+  {
+    "id": 61,
+    "surname": "Bariq",
+    "surnameAr": "بارق",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bariq",
+      "bariq"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bariq"
+    }
+  },
+  {
+    "id": 106,
+    "surname": "Beja peoples",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Beja peoples",
+      "beja_peoples"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "beja"
+    }
+  },
+  {
+    "id": 425,
+    "surname": "Bithyni",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Bithyni",
+      "bithyni"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "bithyni_tribe"
+    }
+  },
+  {
+    "id": 344,
+    "surname": "Braih",
+    "surnameAr": "بريح",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Braih",
+      "braih"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mutayr_braih"
+    }
+  },
+  {
+    "id": 429,
+    "surname": "Caucones",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Caucones",
+      "caucones"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "caucones_tribe"
+    }
+  },
+  {
+    "id": 421,
+    "surname": "Chegini",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Chegini",
+      "chegini"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "chegini_kurds"
+    }
+  },
+  {
+    "id": 507,
+    "surname": "Cohen",
+    "surnameAr": "כֹּהֵן",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Cohen",
+      "cohen"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "cohen_bahrain"
+    }
+  },
+  {
+    "id": 509,
+    "surname": "Cohen-Maghari (Meguri)",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Cohen-Maghari (Meguri)",
+      "cohen-maghari_(meguri)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "cohen_maghari"
+    }
+  },
+  {
+    "id": 508,
+    "surname": "Cohen-Scali",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Cohen-Scali",
+      "cohen-scali"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "cohen_scali"
+    }
+  },
+  {
+    "id": 152,
+    "surname": "Dahaminah",
+    "surnameAr": "الدهامنة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Dahaminah",
+      "dahaminah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "dahaminah"
+    }
+  },
+  {
+    "id": 209,
+    "surname": "Dar Alearabi",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Dar Alearabi",
+      "dar_alearabi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "dar_alearabi"
+    }
+  },
+  {
+    "id": 154,
+    "surname": "Daramikah",
+    "surnameAr": "درامكة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Daramikah",
+      "daramikah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "daramikah"
+    }
+  },
+  {
+    "id": 257,
+    "surname": "Darawishah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Darawishah",
+      "darawishah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "darawishah"
+    }
+  },
+  {
+    "id": 403,
+    "surname": "Dawasir",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Dawasir",
+      "dawasir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "dawasir_tribe"
+    }
+  },
+  {
+    "id": 63,
+    "surname": "Daws",
+    "surnameAr": "دوس",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Daws",
+      "daws"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "daws"
+    }
+  },
+  {
+    "id": 330,
+    "surname": "Dhafeer",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Dhafeer",
+      "dhafeer"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "dhafeer"
+    }
+  },
+  {
+    "id": 186,
+    "surname": "Dhahuriyiin",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Dhahuriyiin",
+      "dhahuriyiin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "dhahuriyiin"
+    }
+  },
+  {
+    "id": 177,
+    "surname": "Dhawahir",
+    "surnameAr": "ظَوَاهِر",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Dhawahir",
+      "dhawahir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "dhawahir"
+    }
+  },
+  {
+    "id": 433,
+    "surname": "Dhu Asbah",
+    "surnameAr": "ذو أصبح",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Dhu Asbah",
+      "dhu_asbah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "dhu_asbah"
+    }
+  },
+  {
+    "id": 432,
+    "surname": "Dhu'l-Kala",
+    "surnameAr": "ذو الكلاع",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Dhu'l-Kala",
+      "dhu'l-kala"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "dhul_kala"
+    }
+  },
+  {
+    "id": 136,
+    "surname": "Drisah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Drisah",
+      "drisah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "drisah"
+    }
+  },
+  {
+    "id": 360,
+    "surname": "Du'um",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Du'um",
+      "du'um"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "duum"
+    }
+  },
+  {
+    "id": 463,
+    "surname": "Dulafid dynasty",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Dulafid dynasty",
+      "dulafid_dynasty"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "dulafid_dynasty"
+    }
+  },
+  {
+    "id": 181,
+    "surname": "Duru",
+    "surnameAr": "<UNKNOWN>",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Duru",
+      "duru"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "duru"
+    }
+  },
+  {
+    "id": 323,
+    "surname": "Fad'an",
+    "surnameAr": "الفدعان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Fad'an",
+      "fad'an"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "fadan"
+    }
+  },
+  {
+    "id": 247,
+    "surname": "Ga'ali",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ga'ali",
+      "ga'ali"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "gaali"
+    }
+  },
+  {
+    "id": 183,
+    "surname": "Ghafalah",
+    "surnameAr": "الغفلة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ghafalah",
+      "ghafalah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ghafalah"
+    }
+  },
+  {
+    "id": 380,
+    "surname": "Ghamid",
+    "surnameAr": "غامد",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ghamid",
+      "ghamid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ghamid"
+    }
+  },
+  {
+    "id": 91,
+    "surname": "Ghassanid",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ghassanid",
+      "ghassanid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ghassanid"
+    }
+  },
+  {
+    "id": 55,
+    "surname": "Ghassanids",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ghassanids",
+      "ghassanids"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ghassanids"
+    }
+  },
+  {
+    "id": 346,
+    "surname": "Ghatafan",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ghatafan",
+      "ghatafan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ghatafan"
+    }
+  },
+  {
+    "id": 520,
+    "surname": "Ghurid Dynasty (Shansabani)",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Ghurid Dynasty (Shansabani)",
+      "ghurid_dynasty_(shansabani)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "ghurid_dynasty"
+    }
+  },
+  {
+    "id": 363,
+    "surname": "Grusha",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Grusha",
+      "grusha"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "grusha"
+    }
+  },
+  {
+    "id": 269,
+    "surname": "Guzayah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Guzayah",
+      "guzayah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "guzayah"
+    }
+  },
+  {
+    "id": 185,
+    "surname": "Habus",
+    "surnameAr": "الهابوس",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Habus",
+      "habus"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "habus"
+    }
+  },
+  {
+    "id": 279,
+    "surname": "Hafaitat",
+    "surnameAr": "الحفيتات",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Hafaitat",
+      "hafaitat"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hafaitat"
+    }
+  },
+  {
+    "id": 461,
+    "surname": "Halalmah",
+    "surnameAr": "الحلالمة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Halalmah",
+      "halalmah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "halalmah"
+    }
+  },
+  {
+    "id": 438,
+    "surname": "Hamdan",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Hamdan",
+      "hamdan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hamdan"
+    }
+  },
+  {
+    "id": 465,
+    "surname": "Hamdanid dynasty",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Hamdanid dynasty",
+      "hamdanid_dynasty"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "hamdanid_dynasty"
+    }
+  },
+  {
+    "id": 281,
+    "surname": "Hamudiyin",
+    "surnameAr": "الحموديين",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Hamudiyin",
+      "hamudiyin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hamudiyin"
+    }
+  },
+  {
+    "id": 188,
+    "surname": "Harb",
+    "surnameAr": "حرب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Harb",
+      "harb"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "harb"
+    }
+  },
+  {
+    "id": 321,
+    "surname": "Hasana",
+    "surnameAr": "الحسنة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Hasana",
+      "hasana"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hasana"
+    }
+  },
+  {
+    "id": 442,
+    "surname": "Hashid",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Hashid",
+      "hashid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hashid"
+    }
+  },
+  {
+    "id": 315,
+    "surname": "Hawamil",
+    "surnameAr": "<UNKNOWN>",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Hawamil",
+      "hawamil"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hawamil"
+    }
+  },
+  {
+    "id": 78,
+    "surname": "Hawazin",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Hawazin",
+      "hawazin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hawazin"
+    }
+  },
+  {
+    "id": 436,
+    "surname": "Haḍramaut",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Haḍramaut",
+      "haḍramaut"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hadramaut"
+    }
+  },
+  {
+    "id": 430,
+    "surname": "Himyar",
+    "surnameAr": "حمير",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Himyar",
+      "himyar"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "himyar"
+    }
+  },
+  {
+    "id": 196,
+    "surname": "Hourani",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Hourani",
+      "hourani"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hourani"
+    }
+  },
+  {
+    "id": 475,
+    "surname": "House of Khalifa",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "House of Khalifa",
+      "house_of_khalifa"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "house_of_khalifa"
+    }
+  },
+  {
+    "id": 476,
+    "surname": "House of Sabah",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "House of Sabah",
+      "house_of_sabah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "house_of_sabah"
+    }
+  },
+  {
+    "id": 156,
+    "surname": "House of Saud",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "House of Saud",
+      "house_of_saud"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_saud"
+    }
+  },
+  {
+    "id": 488,
+    "surname": "House of Sheikh Saeed bin Hamad Al Qasimi",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "House of Sheikh Saeed bin Hamad Al Qasimi",
+      "house_of_sheikh_saeed_bin_hamad_al_qasimi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "house_of_sheikh_saeed_bin_hamad_al_qasimi"
+    }
+  },
+  {
+    "id": 85,
+    "surname": "Hudhayl",
+    "surnameAr": "هذيل",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Hudhayl",
+      "hudhayl"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hudhayl"
+    }
+  },
+  {
+    "id": 391,
+    "surname": "Huwala",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Huwala",
+      "huwala"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "huwala"
+    }
+  },
+  {
+    "id": 415,
+    "surname": "Huwayla",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Huwayla",
+      "huwayla"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "huwayla"
+    }
+  },
+  {
+    "id": 83,
+    "surname": "Ilyās",
+    "surnameAr": "إلياس",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ilyās",
+      "ilyās"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ilyas_mudar"
+    }
+  },
+  {
+    "id": 111,
+    "surname": "Jadis",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Jadis",
+      "jadis"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "jadis"
+    }
+  },
+  {
+    "id": 498,
+    "surname": "Jarrahids",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Jarrahids",
+      "jarrahids"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "jarrahids"
+    }
+  },
+  {
+    "id": 178,
+    "surname": "Jawabir",
+    "surnameAr": "جوابر",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Jawabir",
+      "jawabir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "jawabir"
+    }
+  },
+  {
+    "id": 359,
+    "surname": "Juboor",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Juboor",
+      "juboor"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "juboor"
+    }
+  },
+  {
+    "id": 340,
+    "surname": "Jubur",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Jubur",
+      "jubur"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "jubur"
+    }
+  },
+  {
+    "id": 274,
+    "surname": "Junb",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Junb",
+      "junb"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "junb"
+    }
+  },
+  {
+    "id": 118,
+    "surname": "Jusham",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Jusham",
+      "jusham"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "jusham_hilal"
+    }
+  },
+  {
+    "id": 307,
+    "surname": "Juwarin",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Juwarin",
+      "juwarin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "juwarin"
+    }
+  },
+  {
+    "id": 246,
+    "surname": "Kababish",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kababish",
+      "kababish"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kababish"
+    }
+  },
+  {
+    "id": 437,
+    "surname": "Kahlan",
+    "surnameAr": "كهلان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kahlan",
+      "kahlan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kahlan"
+    }
+  },
+  {
+    "id": 511,
+    "surname": "Kalantarian Family",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Kalantarian Family",
+      "kalantarian_family"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "kalantarian_family"
+    }
+  },
+  {
+    "id": 248,
+    "surname": "Kawahla",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kawahla",
+      "kawahla"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kawahla"
+    }
+  },
+  {
+    "id": 288,
+    "surname": "Khanabil",
+    "surnameAr": "خنابل",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Khanabil",
+      "khanabil"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "khanabil"
+    }
+  },
+  {
+    "id": 287,
+    "surname": "Khanazirah",
+    "surnameAr": "خنازيره",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Khanazirah",
+      "khanazirah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "khanazirah"
+    }
+  },
+  {
+    "id": 328,
+    "surname": "Khath'am",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Khath'am",
+      "khath'am"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "khathaam"
+    }
+  },
+  {
+    "id": 221,
+    "surname": "Khawatir",
+    "surnameAr": "الخواطر",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Khawatir",
+      "khawatir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "khawatir"
+    }
+  },
+  {
+    "id": 217,
+    "surname": "Khawlaniyah al-Qahtaniyah Harb",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Khawlaniyah al-Qahtaniyah Harb",
+      "khawlaniyah_al-qahtaniyah_harb"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "khawlaniyah_al_qahtaniyah_harb"
+    }
+  },
+  {
+    "id": 512,
+    "surname": "Khedouri",
+    "surnameAr": "خضوري",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Khedouri",
+      "khedouri"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "khedouri"
+    }
+  },
+  {
+    "id": 441,
+    "surname": "Khuza'a",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Khuza'a",
+      "khuza'a"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "khuzaa"
+    }
+  },
+  {
+    "id": 202,
+    "surname": "Kiawan",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kiawan",
+      "kiawan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kiawan"
+    }
+  },
+  {
+    "id": 74,
+    "surname": "Kinana",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kinana",
+      "kinana"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kinana"
+    }
+  },
+  {
+    "id": 93,
+    "surname": "Kingdom of Kinda",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kingdom of Kinda",
+      "kingdom_of_kinda"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kinda"
+    }
+  },
+  {
+    "id": 422,
+    "surname": "Kordshuli",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kordshuli",
+      "kordshuli"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kordshuli_kurds"
+    }
+  },
+  {
+    "id": 289,
+    "surname": "Kumazarah",
+    "surnameAr": "كمزاره",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kumazarah",
+      "kumazarah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kumazarah"
+    }
+  },
+  {
+    "id": 133,
+    "surname": "Kumzarah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kumzarah",
+      "kumzarah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kumzarah"
+    }
+  },
+  {
+    "id": 223,
+    "surname": "Kunud",
+    "surnameAr": "الكنود",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kunud",
+      "kunud"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kunud"
+    }
+  },
+  {
+    "id": 423,
+    "surname": "Kuruni",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Kuruni",
+      "kuruni"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kuruni_kurds"
+    }
+  },
+  {
+    "id": 439,
+    "surname": "Lakhm",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Lakhm",
+      "lakhm"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "lakhm"
+    }
+  },
+  {
+    "id": 90,
+    "surname": "Lakhmid",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Lakhmid",
+      "lakhmid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "lakhmid"
+    }
+  },
+  {
+    "id": 54,
+    "surname": "Lakhmids",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Lakhmids",
+      "lakhmids"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "lakhmids"
+    }
+  },
+  {
+    "id": 392,
+    "surname": "Maadhid",
+    "surnameAr": "<UNKNOWN>",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Maadhid",
+      "maadhid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "maadhid"
+    }
+  },
+  {
+    "id": 440,
+    "surname": "Madhhij",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Madhhij",
+      "madhhij"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "madhhij"
+    }
+  },
+  {
+    "id": 290,
+    "surname": "Mahabib",
+    "surnameAr": "محابب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mahabib",
+      "mahabib"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mahabib"
+    }
+  },
+  {
+    "id": 190,
+    "surname": "Mahamid",
+    "surnameAr": "المحاميد",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mahamid",
+      "mahamid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mahamid"
+    }
+  },
+  {
+    "id": 457,
+    "surname": "Maharibah",
+    "surnameAr": "المحاربة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Maharibah",
+      "maharibah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "maharibah"
+    }
+  },
+  {
+    "id": 367,
+    "surname": "Mahashir",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mahashir",
+      "mahashir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mahashir"
+    }
+  },
+  {
+    "id": 225,
+    "surname": "Mahris",
+    "surnameAr": "المهريون",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mahris",
+      "mahris"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mahris"
+    }
+  },
+  {
+    "id": 137,
+    "surname": "Makatim",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Makatim",
+      "makatim"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "makatim"
+    }
+  },
+  {
+    "id": 153,
+    "surname": "Manai'i",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Manai'i",
+      "manai'i"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "manaii"
+    }
+  },
+  {
+    "id": 227,
+    "surname": "Manasir",
+    "surnameAr": "المناصير",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Manasir",
+      "manasir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "manasir"
+    }
+  },
+  {
+    "id": 229,
+    "surname": "Manasir al-Badiyah (Bedouin Manasir)",
+    "surnameAr": "مناصير البادية",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Manasir al-Badiyah (Bedouin Manasir)",
+      "manasir_al-badiyah_(bedouin_manasir)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "manasir_al_badiyah"
+    }
+  },
+  {
+    "id": 228,
+    "surname": "Manasir al-Nil (Riverain Manasir)",
+    "surnameAr": "مناصير النيل",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Manasir al-Nil (Riverain Manasir)",
+      "manasir_al-nil_(riverain_manasir)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "manasir_al_nil"
+    }
+  },
+  {
+    "id": 291,
+    "surname": "Maqadilah",
+    "surnameAr": "مقادله",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Maqadilah",
+      "maqadilah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "maqadilah"
+    }
+  },
+  {
+    "id": 249,
+    "surname": "Marar",
+    "surnameAr": "مرار",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Marar",
+      "marar"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "marar"
+    }
+  },
+  {
+    "id": 250,
+    "surname": "Maraziq",
+    "surnameAr": "المرازيق",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Maraziq",
+      "maraziq"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "maraziq"
+    }
+  },
+  {
+    "id": 427,
+    "surname": "Mariandyni",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mariandyni",
+      "mariandyni"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mariandyni_tribe"
+    }
+  },
+  {
+    "id": 398,
+    "surname": "Mawali",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mawali",
+      "mawali"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mawali"
+    }
+  },
+  {
+    "id": 251,
+    "surname": "Mazari",
+    "surnameAr": "مزاري",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mazari",
+      "mazari"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mazari"
+    }
+  },
+  {
+    "id": 253,
+    "surname": "Mazari (Baloch)",
+    "surnameAr": "مزاري البلوشي",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mazari (Baloch)",
+      "mazari_(baloch)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mazari_baloch"
+    }
+  },
+  {
+    "id": 252,
+    "surname": "Mazari (Emirati)",
+    "surnameAr": "مزاري الإماراتي",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mazari (Emirati)",
+      "mazari_(emirati)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mazari_emirati"
+    }
+  },
+  {
+    "id": 313,
+    "surname": "Mazrui",
+    "surnameAr": "المزاريع",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mazrui",
+      "mazrui"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mazrui"
+    }
+  },
+  {
+    "id": 138,
+    "surname": "Misaid",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Misaid",
+      "misaid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "misaid"
+    }
+  },
+  {
+    "id": 458,
+    "surname": "Mishagin",
+    "surnameAr": "المشاغين",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mishagin",
+      "mishagin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mishagin"
+    }
+  },
+  {
+    "id": 139,
+    "surname": "Miyadilah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Miyadilah",
+      "miyadilah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "miyadilah"
+    }
+  },
+  {
+    "id": 140,
+    "surname": "Miyalisah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Miyalisah",
+      "miyalisah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "miyalisah"
+    }
+  },
+  {
+    "id": 141,
+    "surname": "Mizahamiyin",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mizahamiyin",
+      "mizahamiyin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mizahamiyin"
+    }
+  },
+  {
+    "id": 124,
+    "surname": "Mudar",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mudar",
+      "mudar"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mudar_confederation"
+    }
+  },
+  {
+    "id": 105,
+    "surname": "Mudhar",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mudhar",
+      "mudhar"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mudhar"
+    }
+  },
+  {
+    "id": 175,
+    "surname": "Mutair (Ikhwan forces)",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mutair (Ikhwan forces)",
+      "mutair_(ikhwan_forces)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mutair_ikhwan"
+    }
+  },
+  {
+    "id": 341,
+    "surname": "Mutayr",
+    "surnameAr": "مطير",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mutayr",
+      "mutayr"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mutayr"
+    }
+  },
+  {
+    "id": 428,
+    "surname": "Mysians",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Mysians",
+      "mysians"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "mysians_tribe"
+    }
+  },
+  {
+    "id": 402,
+    "surname": "Na'im",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Na'im",
+      "na'im"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "naim_tribe"
+    }
+  },
+  {
+    "id": 368,
+    "surname": "Nahood",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Nahood",
+      "nahood"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "nahood"
+    }
+  },
+  {
+    "id": 260,
+    "surname": "Naqbiyin",
+    "surnameAr": "النقبي",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Naqbiyin",
+      "naqbiyin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "naqbiyin"
+    }
+  },
+  {
+    "id": 142,
+    "surname": "Nawaljiyin",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Nawaljiyin",
+      "nawaljiyin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "nawaljiyin"
+    }
+  },
+  {
+    "id": 506,
+    "surname": "Nonoo",
+    "surnameAr": "نونو",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Nonoo",
+      "nonoo"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "nonoo"
+    }
+  },
+  {
+    "id": 514,
+    "surname": "Nonoo Family",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Nonoo Family",
+      "nonoo_family"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "nonoo_family"
+    }
+  },
+  {
+    "id": 149,
+    "surname": "Northern Bani Qitab",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Northern Bani Qitab",
+      "northern_bani_qitab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "northern_bani_qitab"
+    }
+  },
+  {
+    "id": 412,
+    "surname": "Obaidli",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Obaidli",
+      "obaidli"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "obaidli"
+    }
+  },
+  {
+    "id": 268,
+    "surname": "Otaibah",
+    "surnameAr": "عتيبة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Otaibah",
+      "otaibah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "otaibah"
+    }
+  },
+  {
+    "id": 21,
+    "surname": "Qahtan (Qahtanite lineage)",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Qahtan (Qahtanite lineage)",
+      "qahtan_(qahtanite_lineage)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "qahtan"
+    }
+  },
+  {
+    "id": 272,
+    "surname": "Qahtan (tribe)",
+    "surnameAr": "قحطان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Qahtan (tribe)",
+      "qahtan_(tribe)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "qahtan_tribe"
+    }
+  },
+  {
+    "id": 435,
+    "surname": "Qataban",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Qataban",
+      "qataban"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "qataban"
+    }
+  },
+  {
+    "id": 409,
+    "surname": "Qawasem",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Qawasem",
+      "qawasem"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "qawasem"
+    }
+  },
+  {
+    "id": 184,
+    "surname": "Qawasim",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Qawasim",
+      "qawasim"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "qawasim"
+    }
+  },
+  {
+    "id": 22,
+    "surname": "Qays Aylan",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Qays Aylan",
+      "qays_aylan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "qays_aylan"
+    }
+  },
+  {
+    "id": 312,
+    "surname": "Qubaisat",
+    "surnameAr": "القبيسي (القبيسات)",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Qubaisat",
+      "qubaisat"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "qubaisat"
+    }
+  },
+  {
+    "id": 316,
+    "surname": "Qubaisi",
+    "surnameAr": "القبيسي (القبيسات)",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Qubaisi",
+      "qubaisi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "qubaisi"
+    }
+  },
+  {
+    "id": 226,
+    "surname": "Quda'a",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Quda'a",
+      "quda'a"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "qudaa"
+    }
+  },
+  {
+    "id": 65,
+    "surname": "Quraysh",
+    "surnameAr": "قُرَيْشٍ",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Quraysh",
+      "quraysh"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "quraysh"
+    }
+  },
+  {
+    "id": 121,
+    "surname": "Qurra",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Qurra",
+      "qurra"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "qurra_hilal"
+    }
+  },
+  {
+    "id": 404,
+    "surname": "Rab'ia tribe",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Rab'ia tribe",
+      "rab'ia_tribe"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "rabia_tribe"
+    }
+  },
+  {
+    "id": 122,
+    "surname": "Rabi'a",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Rabi'a",
+      "rabi'a"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "rabia_hilal"
+    }
+  },
+  {
+    "id": 94,
+    "surname": "Rabi'ah",
+    "surnameAr": "ربيعة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Rabi'ah",
+      "rabi'ah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "rabiah"
+    }
+  },
+  {
+    "id": 88,
+    "surname": "Rabīʿa",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Rabīʿa",
+      "rabīʿa"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "rabia"
+    }
+  },
+  {
+    "id": 259,
+    "surname": "Ramzan (Qatar section)",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ramzan (Qatar section)",
+      "ramzan_(qatar_section)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ramzan_naim_qatar"
+    }
+  },
+  {
+    "id": 276,
+    "surname": "Rashid",
+    "surnameAr": "راشد",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Rashid",
+      "rashid"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "rashid"
+    }
+  },
+  {
+    "id": 317,
+    "surname": "Remeithi",
+    "surnameAr": "<UNKNOWN>",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Remeithi",
+      "remeithi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "remeithi"
+    }
+  },
+  {
+    "id": 117,
+    "surname": "Riyah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Riyah",
+      "riyah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "riyah_hilal"
+    }
+  },
+  {
+    "id": 510,
+    "surname": "Rouben",
+    "surnameAr": "روبن",
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Rouben",
+      "rouben"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "rouben"
+    }
+  },
+  {
+    "id": 244,
+    "surname": "Rubatab",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Rubatab",
+      "rubatab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "rubatab"
+    }
+  },
+  {
+    "id": 275,
+    "surname": "Rufaida",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Rufaida",
+      "rufaida"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "rufaida"
+    }
+  },
+  {
+    "id": 134,
+    "surname": "Rulers of Ras Al Khaimah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Rulers of Ras Al Khaimah",
+      "rulers_of_ras_al_khaimah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "rulers_ras_al_khaimah"
+    }
+  },
+  {
+    "id": 311,
+    "surname": "Rumaithat",
+    "surnameAr": "<UNKNOWN>",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Rumaithat",
+      "rumaithat"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "rumaithat"
+    }
+  },
+  {
+    "id": 319,
+    "surname": "Ruwallah",
+    "surnameAr": "الرولة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Ruwallah",
+      "ruwallah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ruwallah"
+    }
+  },
+  {
+    "id": 434,
+    "surname": "Saba'",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Saba'",
+      "saba'"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "saba"
+    }
+  },
+  {
+    "id": 64,
+    "surname": "Sabaeans",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Sabaeans",
+      "sabaeans"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sabaeans"
+    }
+  },
+  {
+    "id": 460,
+    "surname": "Sabais",
+    "surnameAr": "السبايس",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Sabais",
+      "sabais"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sabais"
+    }
+  },
+  {
+    "id": 453,
+    "surname": "Sakasic",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Sakasic",
+      "sakasic"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sakasic"
+    }
+  },
+  {
+    "id": 143,
+    "surname": "Salalat",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Salalat",
+      "salalat"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "salalat"
+    }
+  },
+  {
+    "id": 92,
+    "surname": "Salihids",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Salihids",
+      "salihids"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "salihids"
+    }
+  },
+  {
+    "id": 273,
+    "surname": "Sanhan",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Sanhan",
+      "sanhan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sanhan"
+    }
+  },
+  {
+    "id": 144,
+    "surname": "Sawalim",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Sawalim",
+      "sawalim"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sawalim"
+    }
+  },
+  {
+    "id": 324,
+    "surname": "Sba'a",
+    "surnameAr": "السبعة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Sba'a",
+      "sba'a"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sbaa"
+    }
+  },
+  {
+    "id": 245,
+    "surname": "Shaiqiyah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Shaiqiyah",
+      "shaiqiyah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "shaiqiyah"
+    }
+  },
+  {
+    "id": 331,
+    "surname": "Shammar",
+    "surnameAr": "شَمَّر",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Shammar",
+      "shammar"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "shammar"
+    }
+  },
+  {
+    "id": 337,
+    "surname": "Shammar Al-Sayeh",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Shammar Al-Sayeh",
+      "shammar_al-sayeh"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "shammar_al_sayeh"
+    }
+  },
+  {
+    "id": 336,
+    "surname": "Shammar Toga",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Shammar Toga",
+      "shammar_toga"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "shammar_toga"
+    }
+  },
+  {
+    "id": 335,
+    "surname": "Shammar al-Jarba",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Shammar al-Jarba",
+      "shammar_al-jarba"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "shammar_al_jarba"
+    }
+  },
+  {
+    "id": 278,
+    "surname": "Sharqiyin",
+    "surnameAr": "الشرقيون",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Sharqiyin",
+      "sharqiyin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sharqiyin"
+    }
+  },
+  {
+    "id": 283,
+    "surname": "Shihuh",
+    "surnameAr": "الشحوح",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Shihuh",
+      "shihuh"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "shihuh"
+    }
+  },
+  {
+    "id": 306,
+    "surname": "Shuraifat",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Shuraifat",
+      "shuraifat"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "shuraifat"
+    }
+  },
+  {
+    "id": 145,
+    "surname": "Shwaihiyin",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Shwaihiyin",
+      "shwaihiyin"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "shwaihiyin"
+    }
+  },
+  {
+    "id": 334,
+    "surname": "Sinjarah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Sinjarah",
+      "sinjarah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sinjarah_shammar"
+    }
+  },
+  {
+    "id": 150,
+    "surname": "Southern Bani Qitab",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Southern Bani Qitab",
+      "southern_bani_qitab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "southern_bani_qitab"
+    }
+  },
+  {
+    "id": 355,
+    "surname": "Subay'",
+    "surnameAr": "سبيع",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Subay'",
+      "subay'"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "subay"
+    }
+  },
+  {
+    "id": 467,
+    "surname": "Sudairi Seven",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Sudairi Seven",
+      "sudairi_seven"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "sudairi_seven"
+    }
+  },
+  {
+    "id": 459,
+    "surname": "Sudan",
+    "surnameAr": "السودان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Sudan",
+      "sudan"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sudan"
+    }
+  },
+  {
+    "id": 224,
+    "surname": "Sudan (Al Suwaidi)",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Sudan (Al Suwaidi)",
+      "sudan_(al_suwaidi)"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "sudan_al_suwaidi"
+    }
+  },
+  {
+    "id": 356,
+    "surname": "Suhool",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Suhool",
+      "suhool"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "suhool"
+    }
+  },
+  {
+    "id": 102,
+    "surname": "Taghlib",
+    "surnameAr": "تغلب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Taghlib",
+      "taghlib"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "taghlib"
+    }
+  },
+  {
+    "id": 84,
+    "surname": "Tamīm",
+    "surnameAr": "تميم",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Tamīm",
+      "tamīm"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "tamim"
+    }
+  },
+  {
+    "id": 379,
+    "surname": "Tanukh",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Tanukh",
+      "tanukh"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "tanukh"
+    }
+  },
+  {
+    "id": 110,
+    "surname": "Tasm",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Tasm",
+      "tasm"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "tasm"
+    }
+  },
+  {
+    "id": 182,
+    "surname": "Taulantii",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Taulantii",
+      "taulantii"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "taulantii"
+    }
+  },
+  {
+    "id": 100,
+    "surname": "Taym Allah",
+    "surnameAr": "تيم الله",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Taym Allah",
+      "taym_allah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "taym_allah"
+    }
+  },
+  {
+    "id": 41,
+    "surname": "Tayy",
+    "surnameAr": "طيء",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Tayy",
+      "tayy"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "tayy"
+    }
+  },
+  {
+    "id": 382,
+    "surname": "Thamalah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Thamalah",
+      "thamalah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "thamalah"
+    }
+  },
+  {
+    "id": 426,
+    "surname": "Thyni",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Thyni",
+      "thyni"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "thyni_tribe"
+    }
+  },
+  {
+    "id": 293,
+    "surname": "Tunaij",
+    "surnameAr": "الطنيج",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Tunaij",
+      "tunaij"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "tunaij"
+    }
+  },
+  {
+    "id": 394,
+    "surname": "Urayna",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Urayna",
+      "urayna"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "urayna"
+    }
+  },
+  {
+    "id": 419,
+    "surname": "Uriad",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Uriad",
+      "uriad"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "uriad_kurds"
+    }
+  },
+  {
+    "id": 345,
+    "surname": "Utaybah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Utaybah",
+      "utaybah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "utaybah"
+    }
+  },
+  {
+    "id": 158,
+    "surname": "Utub",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Utub",
+      "utub"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "utub"
+    }
+  },
+  {
+    "id": 464,
+    "surname": "Uyunid dynasty",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Uyunid dynasty",
+      "uyunid_dynasty"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "uyunid_dynasty"
+    }
+  },
+  {
+    "id": 322,
+    "surname": "Wuld Ali",
+    "surnameAr": "ولد علي",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Wuld Ali",
+      "wuld_ali"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "wuld_ali"
+    }
+  },
+  {
+    "id": 414,
+    "surname": "Yaarubah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Yaarubah",
+      "yaarubah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "yaarubah"
+    }
+  },
+  {
+    "id": 280,
+    "surname": "Yammahi",
+    "surnameAr": "اليماحي",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Yammahi",
+      "yammahi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "yammahi"
+    }
+  },
+  {
+    "id": 146,
+    "surname": "Yidwah",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Yidwah",
+      "yidwah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "yidwah"
+    }
+  },
+  {
+    "id": 294,
+    "surname": "Zaab",
+    "surnameAr": "زعاب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Zaab",
+      "zaab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "zaab"
+    }
+  },
+  {
+    "id": 147,
+    "surname": "Zahairat",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Zahairat",
+      "zahairat"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "zahairat"
+    }
+  },
+  {
+    "id": 370,
+    "surname": "Zahran",
+    "surnameAr": "زهران",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Zahran",
+      "zahran"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "zahran"
+    }
+  },
+  {
+    "id": 420,
+    "surname": "Zangana",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Zangana",
+      "zangana"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "zangana_kurds"
+    }
+  },
+  {
+    "id": 513,
+    "surname": "Zilkha Family",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "Zilkha Family",
+      "zilkha_family"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "zilkha_family"
+    }
+  },
+  {
+    "id": 216,
+    "surname": "Zoubi",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Zoubi",
+      "zoubi"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "zoubi"
+    }
+  },
+  {
+    "id": 119,
+    "surname": "Zughba",
+    "surnameAr": null,
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "Zughba",
+      "zughba"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "zughba_hilal"
+    }
+  },
+  {
+    "id": 325,
+    "surname": "`Amarat",
+    "surnameAr": "العمارات",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "`Amarat",
+      "`amarat"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "amarat"
+    }
+  },
+  {
+    "id": 236,
+    "surname": "al-'Ababsah",
+    "surnameAr": "العبابسة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-'Ababsah",
+      "al-'ababsah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "ababsah"
+    }
+  },
+  {
+    "id": 239,
+    "surname": "al-'Amasib",
+    "surnameAr": "العماسيب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-'Amasib",
+      "al-'amasib"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "amasib"
+    }
+  },
+  {
+    "id": 233,
+    "surname": "al-Diqeisab",
+    "surnameAr": "الدقيساب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Diqeisab",
+      "al-diqeisab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "diqeisab"
+    }
+  },
+  {
+    "id": 237,
+    "surname": "al-Farei'ab",
+    "surnameAr": "الفريعاب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Farei'ab",
+      "al-farei'ab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "fareiab"
+    }
+  },
+  {
+    "id": 235,
+    "surname": "al-Ga'al",
+    "surnameAr": "الجعل",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Ga'al",
+      "al-ga'al"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "gaal"
+    }
+  },
+  {
+    "id": 241,
+    "surname": "al-Hamamir",
+    "surnameAr": "الحمامير",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Hamamir",
+      "al-hamamir"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hamamir"
+    }
+  },
+  {
+    "id": 238,
+    "surname": "al-Hamdatiab",
+    "surnameAr": "الحمدتياب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Hamdatiab",
+      "al-hamdatiab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hamdatiab"
+    }
+  },
+  {
+    "id": 234,
+    "surname": "al-Hamsab",
+    "surnameAr": "الهامزاب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Hamsab",
+      "al-hamsab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "hamsab"
+    }
+  },
+  {
+    "id": 472,
+    "surname": "al-Hankab",
+    "surnameAr": null,
+    "originType": "ruling_family",
+    "meaning": null,
+    "variants": [
+      "al-Hankab",
+      "al-hankab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "family",
+      "id": "hankab"
+    }
+  },
+  {
+    "id": 232,
+    "surname": "al-Kabanah",
+    "surnameAr": "الكبانة",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Kabanah",
+      "al-kabanah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kabanah"
+    }
+  },
+  {
+    "id": 243,
+    "surname": "al-Kagbab",
+    "surnameAr": "الكجباب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Kagbab",
+      "al-kagbab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "kagbab"
+    }
+  },
+  {
+    "id": 240,
+    "surname": "al-Khabra",
+    "surnameAr": "الخبرا",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Khabra",
+      "al-khabra"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "khabra"
+    }
+  },
+  {
+    "id": 242,
+    "surname": "al-Muleikab",
+    "surnameAr": "المليكاب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Muleikab",
+      "al-muleikab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "muleikab"
+    }
+  },
+  {
+    "id": 103,
+    "surname": "al-Nammir ibn Qasit",
+    "surnameAr": "النمر بن قاسط",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Nammir ibn Qasit",
+      "al-nammir_ibn_qasit"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "al_nammir_ibn_qasit"
+    }
+  },
+  {
+    "id": 231,
+    "surname": "al-Suleimaniyah",
+    "surnameAr": "السليمانية",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Suleimaniyah",
+      "al-suleimaniyah"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "suleimaniyah"
+    }
+  },
+  {
+    "id": 230,
+    "surname": "al-Wahabab",
+    "surnameAr": "الوهاب",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "al-Wahabab",
+      "al-wahabab"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "wahabab"
+    }
+  },
+  {
+    "id": 431,
+    "surname": "dhū-Raydān",
+    "surnameAr": "ذو ريدان",
+    "originType": "tribal",
+    "meaning": null,
+    "variants": [
+      "dhū-Raydān",
+      "dhū-raydān"
+    ],
+    "funFact": null,
+    "linkedEntity": {
+      "type": "tribe",
+      "id": "dhu_raydan"
+    }
+  }
+]

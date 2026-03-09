@@ -838,3 +838,7 @@ ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS ppm_extraction_progress JSONB 
 ALTER TABLE clo_follow_ups ALTER COLUMN analysis_id DROP NOT NULL;
 ALTER TABLE clo_follow_ups ADD COLUMN IF NOT EXISTS panel_id UUID REFERENCES clo_panels(id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS idx_clo_follow_ups_panel ON clo_follow_ups(panel_id);
+
+-- CLO screening-level follow-ups
+ALTER TABLE clo_follow_ups ADD COLUMN IF NOT EXISTS screening_id UUID REFERENCES clo_screenings(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_clo_follow_ups_screening ON clo_follow_ups(screening_id);

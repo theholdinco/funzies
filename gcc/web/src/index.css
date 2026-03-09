@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import "mapbox-gl/dist/mapbox-gl.css";
+
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #FAFAF8;
+  --color-bg-raised: #FFFFFF;
+  --color-bg-subtle: #F3F2EE;
+  --color-border: #E8E6E1;
+  --color-border-strong: #D4D1C9;
+
+  --color-text: #1A1A1A;
+  --color-text-secondary: #6B6860;
+  --color-text-tertiary: #9B978E;
+
+  --color-accent: #C4643A;
+  --color-accent-hover: #A8522D;
+  --color-accent-soft: #C4643A1A;
+
+  --color-sage: #7A8B6F;
+  --color-sage-soft: #7A8B6F1A;
+  --color-slate: #5B6B7A;
+  --color-slate-soft: #5B6B7A1A;
+  --color-plum: #8B6B7A;
+  --color-plum-soft: #8B6B7A1A;
+  --color-ochre: #B8963E;
+  --color-ochre-soft: #B8963E1A;
+  --color-clay: #C4643A;
+  --color-clay-soft: #C4643A1A;
+
+  --font-display: 'Instrument Serif', serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-tertiary); }
+
+/* Entity type badges */
+.badge-tribe { background-color: var(--color-accent-soft); color: var(--color-accent); }
+.badge-family { background-color: var(--color-slate-soft); color: var(--color-slate); }
+.badge-figure { background-color: var(--color-plum-soft); color: var(--color-plum); }
+.badge-ethnic { background-color: var(--color-sage-soft); color: var(--color-sage); }
+.badge-event { background-color: var(--color-ochre-soft); color: var(--color-ochre); }
+.badge-region { background-color: var(--color-slate-soft); color: var(--color-slate); }
+
+/* Mapbox popup */
+.ansab-popup .mapboxgl-popup-content {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  font-family: var(--font-body);
+}
+.ansab-popup .mapboxgl-popup-tip {
+  border-top-color: var(--color-bg-raised);
+}
+
+/* Mapbox controls */
+.mapboxgl-ctrl-group {
+  background: var(--color-bg-raised) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+}
+.mapboxgl-ctrl-group button {
+  border-color: var(--color-border) !important;
+}
+.mapboxgl-ctrl-group button:hover {
+  background-color: var(--color-bg-subtle) !important;
+}

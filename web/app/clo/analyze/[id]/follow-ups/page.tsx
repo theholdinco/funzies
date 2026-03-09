@@ -35,5 +35,5 @@ export default async function FollowUpsPage({
   const dynamicSpecialists = (rows[0].dynamic_specialists || []) as PanelMember[];
   const members = [...standingMembers, ...dynamicSpecialists];
 
-  return <FollowUpChat analysisId={id} members={members} />;
+  return <FollowUpChat apiUrl={`/api/clo/analyses/${id}/follow-ups`} members={members} />;
 }

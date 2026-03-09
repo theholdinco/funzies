@@ -1,0 +1,2258 @@
+[
+  {
+    "id": "mig_quraysh_mecca",
+    "entityType": "tribe",
+    "entityId": "quraysh",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Qusayy ibn Kilab unified scattered descendants and established control over Mecca and the Kaaba",
+    "narrative": "Prior to Qusayy, Fihr's offspring lived in scattered, nomadic groups among their Kinana relatives. Qusayy gathered his kinsmen and took control of the Kaaba, establishing Quraysh as the dominant power in Mecca.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Scattered nomadic groups among Kinana",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Mecca",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_rabiah_northwards_and_eastwards_across_arabian_peninsula",
+    "entityType": "tribe",
+    "entityId": "rabiah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Legendary migration from original homeland",
+    "narrative": "According to legend, Rabi'a's original homelands were in the Tihamah region of western Arabia, from which they migrated northwards and eastwards",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Tihamah region of western Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Northwards and eastwards across Arabian Peninsula",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_banu_hanifa_al-yamama",
+    "entityType": "tribe",
+    "entityId": "banu_hanifa",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "According to legend, moved after original inhabitants Tasm and Jadis were decimated by war",
+    "narrative": "Legendary migration to al-Yamama from the Hejaz region",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Hejaz",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Al-Yamama",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_banu_hanifa_upper_egypt",
+    "entityType": "tribe",
+    "entityId": "banu_hanifa",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": 867,
+    "reason": "Fled harsh rule of Banul Ukhaidhir dynasty",
+    "narrative": "Moved to Wadi al-Allaqi near Aswan with women and children, worked in gold mining",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Al-Yamama",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Upper Egypt",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_hadiyah_ras_al_khaimah_villages_(sha'am_and_rams)",
+    "entityType": "tribe",
+    "entityId": "bani_hadiyah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Seasonal work during pearling season",
+    "narrative": "Traditional seasonal migration pattern - farming in the mountains during winter and working in pearling in coastal areas",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Ruus Al Jibal area of the Hajar Mountains",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Ras Al Khaimah villages (Sha'am and Rams)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_qitab_dhaid_and_al_falayah",
+    "entityType": "tribe",
+    "entityId": "bani_qitab",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Settlement transition from nomadism",
+    "narrative": "The Northern branch of Bani Qitab settled in the inland towns of Dhaid and Al Falayah",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Northern territories",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Dhaid and Al Falayah",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_qitab_aflaj_bani_qitab,_dhahirah",
+    "entityType": "tribe",
+    "entityId": "bani_qitab",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Settlement and territorial separation",
+    "narrative": "The Southern Bani Qitab, some 500 households, settled around the village of Aflaj Bani Qitab in the Dhahirah area. Over time these separated from the Northern section",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Northern section",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Aflaj Bani Qitab, Dhahirah",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_shatair_ras_al_khaimah_and_rams",
+    "entityType": "tribe",
+    "entityId": "bani_shatair",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Seasonal work during pearling season",
+    "narrative": "Traditionally, the Shihuh changed domicile, taking work in Ras Al Khaimah and Rams during the pearling season and farming in the Ruus Al Jibal area of the Hajar Mountains during the winter",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Ruus Al Jibal area (Hajar Mountains)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Ras Al Khaimah and Rams",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_dahaminah_ras_al_khaimah_and_fujairah_areas",
+    "entityType": "tribe",
+    "entityId": "dahaminah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Unknown",
+    "narrative": "Originally inhabited Wadi Qor area before dispersing to current locations in Ras Al Khaimah and Fujairah",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Wadi Qor",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Ras Al Khaimah and Fujairah areas",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_dhafeer_central_najd",
+    "entityType": "tribe",
+    "entityId": "al_dhafeer",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Tribal expansion and search for pastures",
+    "narrative": "Early migration from ancestral homes near Medina to central Arabian territories",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Desert east of Medina (al-Dhaghn area)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Central Najd",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_dhafeer_northern_najd_and_northern_bahrain_(eastern_arabia)",
+    "entityType": "tribe",
+    "entityId": "al_dhafeer",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Continued nomadic movement and raiding activities",
+    "narrative": "Later migration to northern territories including the desert areas of southern Iraq and northern Saudi Arabia and Kuwait",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Central Najd",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Northern Najd and Northern Bahrain (Eastern Arabia)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_dhawahir_buraimi_oasis/al_ain",
+    "entityType": "tribe",
+    "entityId": "dhawahir",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Settlement and land cultivation",
+    "narrative": "Early history suggests the Dhawahir originally populated the area of Al Dhahirah in present-day Oman before settling in the Buraimi Oasis area",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Al Dhahirah region (Oman)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Buraimi Oasis/Al Ain",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_mahamid_dumat_al-jandal",
+    "entityType": "tribe",
+    "entityId": "mahamid",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Population growth and limited territory",
+    "narrative": "When the tribe enlarged and their area became narrow in Yemen, Najd and Hijaz, they gathered to decide their future. After rejecting conquering neighboring tribes, they chose to migrate north",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Yemen, Hijaz (between Mecca and Medina)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Dumat Al-Jandal",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_mahamid_levant_and_karak_region",
+    "entityType": "tribe",
+    "entityId": "mahamid",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": null,
+    "narrative": "They moved from Dumat Al-Jandal towards the Levant, eventually settling in the Karak region where they became numerous enough to outnumber the largest local tribes",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Dumat Al-Jandal",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Levant and Karak region",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_hajer_al_ahsa'a_(eastern_region)",
+    "entityType": "tribe",
+    "entityId": "bani_hajer",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Under leadership of Sheikh Shafi bin Safar",
+    "narrative": "Second migration towards the eastern village of Al Ahsa'a when their sheikh became Shafi bin Safar bin Mohammed Bin Shaba'an",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Lower Najd",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Al Ahsa'a (eastern region)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_kunud_oman",
+    "entityType": "tribe",
+    "entityId": "kunud",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Early Islamic period migration",
+    "narrative": "Connected to Miqdad ibn Aswad Al Kindi's immigration from Yemen to Oman during the time of Prophet Muhammad",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Yemen",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Oman",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_kunud_east_coast_settlements",
+    "entityType": "tribe",
+    "entityId": "kunud",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": 1900,
+    "reason": "Settlement pattern establishment",
+    "narrative": "By the turn of the 20th century, the Kunud were mostly settled on the East Coast, from Nizwa in Oman to Kalba in Sharjah and Al Hayl in Fujairah, as well as Mahdah and Buraimi",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Various locations",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "East Coast settlements",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_mahris_horn_of_africa_(somalia)",
+    "entityType": "tribe",
+    "entityId": "mahris",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Historical ties and proximity",
+    "narrative": "Mahri established significant presence in northern Puntland due to historical connections and geographical proximity to Horn of Africa",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Arabian Peninsula",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Horn of Africa (Somalia)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_manasir_fourth_cataract_of_the_nile_region",
+    "entityType": "tribe",
+    "entityId": "manasir",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Voluntary amalgamation over centuries of different groups seeking to establish unified tribal identity and land claims",
+    "narrative": "Critical research suggests the Manasir formed through voluntary amalgamation over centuries between indigenous mostly Nubian groups, descendants of emigrating Arabs and recruited tribal minorities. Earlier travellers witnessed Beja and Bisharin influences from the Red Sea Hills among the Manasir.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "various origins (Red Sea Hills, Arab lands, local Nubian areas)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Fourth Cataract of the Nile region",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_manasir_kababish_territory,_ga'ali_country,_rubatab_country",
+    "entityType": "tribe",
+    "entityId": "manasir",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Seasonal grazing for livestock during dry season",
+    "narrative": "During the dry season some clans migrate to the desert area of the Kababish tribe to the west (Khala' Kabushiyah) others to the grazing grounds of Wad Hamid in the Ga'ali Country or to the Rubatab Country.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Dar al-Manasir",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Kababish territory, Ga'ali Country, Rubatab Country",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_maraziq_rams,_ras_al_khaimah",
+    "entityType": "tribe",
+    "entityId": "maraziq",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Settlement in area originally populated by Iranians",
+    "narrative": "The Maraziq are believed to originally have migrated from Arabia, and to have taken the name of the district they settled in Rams, originally populated by Iranians.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Rams, Ras Al Khaimah",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_qahtan_tribe_al-quwai'iyah_in_najd",
+    "entityType": "tribe",
+    "entityId": "qahtan_tribe",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "expansion and settlement",
+    "narrative": "The Qahtan tribe settled in Al-Quwai'iyah region of Najd and expanded its influence in southern Najd, becoming one of the powerful tribes of the region for a period.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "southern Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Al-Quwai'iyah in Najd",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_qahtan_tribe_southern_homeland",
+    "entityType": "tribe",
+    "entityId": "qahtan_tribe",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "return to original territory",
+    "narrative": "After a period of prominence in Najd, the tribe eventually left and returned to its original home in the south.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Najd",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "southern homeland",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_bu_shamis_dhahirah_and_sunaynah_areas",
+    "entityType": "tribe",
+    "entityId": "al_bu_shamis",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": null,
+    "narrative": "Initial settlement in the Dhahirah and Sunaynah areas after emigrating to Eastern Arabia",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Eastern Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Dhahirah and Sunaynah areas",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_bu_shamis_al_ain_and_buraimi_oasis",
+    "entityType": "tribe",
+    "entityId": "al_bu_shamis",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": null,
+    "narrative": "Later migrations led some Al Bu Shamis to settle in Al Ain and the Buraimi Oasis",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Dhahirah and Sunaynah",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Al Ain and Buraimi Oasis",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_shihuh_coastal_areas_(khasab,_dibba,_batinah_coast)",
+    "entityType": "tribe",
+    "entityId": "shihuh",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Seasonal migration for date season work and pearl fishing",
+    "narrative": "During warmer months, they migrated mainly to work during the date season and participated in pearl fishing season",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Mountain communities",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Coastal areas (Khasab, Dibba, Batinah coast)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_tunaij_northern_emirates_(dhaid,_rams,_hamriyah)",
+    "entityType": "tribe",
+    "entityId": "tunaij",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Settlement in oasis towns and coastal areas for pastoralism and pearl fishing",
+    "narrative": "The Tunaij settled primarily in Dhaid (Sharjah), Rams (Ras Al Khaimah), and small numbers at Hamriyah, establishing both Bedouin centers inland and pearl fishing communities on the coast",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "unknown",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Northern Emirates (Dhaid, Rams, Hamriyah)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_murrah_multiple_gulf_states",
+    "entityType": "tribe",
+    "entityId": "al_murrah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "nomadic lifestyle and grazing patterns",
+    "narrative": "Historically travelled as nomads covering up to 3,000 kilometres per year across the Arabian Peninsula, eventually settling in Qatar, Saudi Arabia, UAE, Kuwait and Bahrain",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Arabian Peninsula interior",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Multiple Gulf states",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_banu_khalid_eastern_arabia",
+    "entityType": "tribe",
+    "entityId": "banu_khalid",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Seeking new territories and trade opportunities",
+    "narrative": "Early migration eastwards from Nejd to eastern Arabian Peninsula, where they established dominance over desert regions around Al-Hasa and Al-Qatif",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Central Arabia/Nejd",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Eastern Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_yas_al_ain_and_buraimi",
+    "entityType": "tribe",
+    "entityId": "bani_yas",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": null,
+    "endYear": null,
+    "reason": "Acquisition of property and land",
+    "narrative": "The Bani Yas later settled in and around Al Ain and Buraimi when the Al Bu Falah clan acquired property and land in the Buraimi Oasis",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Liwa Oasis",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Al Ain and Buraimi",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_kahlan_yemeni_desert_region_around_marib",
+    "entityType": "tribe",
+    "entityId": "kahlan",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": -150,
+    "endYear": 300,
+    "reason": "Forced out by Himyarite expansion and pressure",
+    "narrative": "By the 2nd century BC, Himyar was able to settle nomadic tribes and create a stronger nation, eventually incorporating Saba' and forcing Kahlan tribes out of the highlands",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Yemeni highlands around Saba'",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Yemeni desert region around Marib",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_shihuh_northern_hajar_mountains",
+    "entityType": "tribe",
+    "entityId": "shihuh",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 100,
+    "endYear": 200,
+    "reason": "Part of wave of immigration from Yemen bringing Malik bin Fahm immigrants north",
+    "narrative": "The Arab element of the tribe is thought to be linked to the wave of immigration from Yemen in the second century",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Yemen",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Northern Hajar Mountains",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_shammar_mountains_of_ajā_and_salma,_northern_arabian_peninsula",
+    "entityType": "tribe",
+    "entityId": "shammar",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 115,
+    "endYear": null,
+    "reason": "Exodus from Yemen, invasion led by Usma bin Luai",
+    "narrative": "The Tayy (later Shammar) migrated from Yemen and invaded the mountains of Ajā and Salma from Banu Assad and Banu Tamim in northern Arabia. These mountains were later renamed Jabal Shammar.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Yemen",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Mountains of Ajā and Salma, northern Arabian Peninsula",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_tayy_jabal_tayy_(northern_arabia)",
+    "entityType": "tribe",
+    "entityId": "tayy",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 180,
+    "endYear": 200,
+    "reason": "Following the dispersion of the Banu Azd from Yemen",
+    "narrative": "Originally based in Yemen, the Banu Tayy migrated to northern Arabia in the late 2nd century CE, settling among the mountain ranges of Aja and Salma, which became known collectively as Jabal Tayy.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Yemen",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Jabal Tayy (northern Arabia)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_zahran_oman",
+    "entityType": "tribe",
+    "entityId": "zahran",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 200,
+    "endYear": 300,
+    "reason": "Settlement and expansion under Malik ibn Fehm leadership",
+    "narrative": "Many tribes descending from Zahran and Azd settled in Oman under leadership of Malik bin Fehm in the 3rd century, leading to the Arabization of Oman",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Al Bahah Province",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Oman",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_zahran_tanukh_confederation_area",
+    "entityType": "tribe",
+    "entityId": "zahran",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 250,
+    "endYear": 350,
+    "reason": "Political expansion and confederation building",
+    "narrative": "Malik ibn Fehm established the Tanukh tribal confederation centered initially in ancient Al-Hira",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Arabian Peninsula",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Tanukh confederation area",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_azd_northern_arabia",
+    "entityType": "tribe",
+    "entityId": "azd",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 280,
+    "endYear": 300,
+    "reason": "collapse of the Ma'rib Dam making living conditions unfavorable",
+    "narrative": "According to traditional medieval Yemeni folklore, the Azd tribal group originally lived in Yemen, until the collapse of the Ma'rib Dam when they began emigrating to other parts of the Arabian Peninsula",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Yemen",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Northern Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_azd_oman",
+    "entityType": "tribe",
+    "entityId": "azd",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 300,
+    "endYear": null,
+    "reason": "tribal expansion and settlement",
+    "narrative": "Imran bin Amr and the bulk of the tribe went to Oman, where they established the Azdi presence in Eastern Arabia",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Northern Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Oman",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_azd_syria",
+    "entityType": "tribe",
+    "entityId": "azd",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 300,
+    "endYear": null,
+    "reason": "tribal expansion and kingdom establishment",
+    "narrative": "Jafna bin Amr and his family headed for Syria, where he settled and initiated the kingdom of the Ghassanids",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Northern Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Syria",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_azd_medina_(yathrib)",
+    "entityType": "tribe",
+    "entityId": "azd",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 300,
+    "endYear": null,
+    "reason": "tribal settlement",
+    "narrative": "Thalabah bin Amr left his tribe for the Hijaz, and dwelt between Thalabiyah and Dhi Qar. When he gained strength, he headed for Yathrib, where he stayed",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Northern Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Medina (Yathrib)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_kahlan_northern_arabia,_mesopotamia,_and_syria",
+    "entityType": "tribe",
+    "entityId": "kahlan",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 300,
+    "endYear": 600,
+    "reason": "Destruction of the Marib Dam forced emigration",
+    "narrative": "The destruction of the Marib Dam in the 3rd century AD forced Kahlani tribes to emigrate northwards through Arabia, reaching as far as Mesopotamia and Syria prior to the 7th century Arab conquests",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Yemeni desert region around Marib",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Northern Arabia, Mesopotamia, and Syria",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_mudar_northern_arabia_and_mesopotamia",
+    "entityType": "tribe",
+    "entityId": "mudar",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 550,
+    "endYear": 600,
+    "reason": "Expansion following decline of Himyarite authority and collapse of Kindite rule",
+    "narrative": "During the later sixth century, sections of Mudar expanded into northern Arabia and Mesopotamia, where the name Diyār Muḍar came to designate a distinct tribal territory",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Central Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Northern Arabia and Mesopotamia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_tayy_syria",
+    "entityType": "tribe",
+    "entityId": "tayy",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 580,
+    "endYear": 605,
+    "reason": "Result of the Fasad War between Al al-Ghawth and Al Jadila branches",
+    "narrative": "During the late 6th century Fasad War, several Jadila clans migrated from the north Arabian plains to Syria, converting to Christianity and founding a military encampment near Qinnasrin called 'Hadir Tayyi'.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Jabal Tayy",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Syria",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_himyar_syria_(homs)",
+    "entityType": "tribe",
+    "entityId": "himyar",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 630,
+    "endYear": 640,
+    "reason": "Islamic conquests and settlement opportunities",
+    "narrative": "Descendants of Himyarites, particularly aristocratic families of Dhu'l-Kala and Dhu Asbah, migrated to Syria during early Islamic period and established Homs as center of South Arabian settlement and political power",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Yemen highlands",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Syria (Homs)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_tamim_across_arabian_peninsula",
+    "entityType": "tribe",
+    "entityId": "bani_tamim",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 632,
+    "endYear": null,
+    "reason": "Islamic conquests",
+    "narrative": "After the spread of Islam, the tribe migrated from their concentration in central and northern Najd across the Arabian Peninsula, then spread to areas ruled by subsequent caliphates",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Central and northern Najd",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Across Arabian Peninsula",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_banu_hanifa_iraq",
+    "entityType": "tribe",
+    "entityId": "banu_hanifa",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 635,
+    "endYear": null,
+    "reason": "Joined Muslim forces after ban was lifted by Caliph Umar",
+    "narrative": "Members settled in garrison towns such as al-Kufa",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Al-Yamama",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Iraq",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_mahris_north_africa_and_andalusia",
+    "entityType": "tribe",
+    "entityId": "mahris",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 641,
+    "endYear": null,
+    "reason": "Islamic conquests and military campaigns",
+    "narrative": "Mahri forces participated in Islamic conquests under Amr ibn al-As, establishing settlements in conquered territories including lands in Fustat (Hayy Al-Mehri quarter)",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Al-Mahra region, South Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "North Africa and Andalusia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_tamim_tunisia,_iraq,_morocco,_khuzestan_and_khorasan_regions_of_iran",
+    "entityType": "tribe",
+    "entityId": "bani_tamim",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 650,
+    "endYear": null,
+    "reason": "Islamic conquests and expansion",
+    "narrative": "Following the Islamic conquests, the tribe migrated to modern-day Tunisia, Iraq, Morocco, the Khuzestan and Khorasan regions of Iran, and other parts of the Arab world, holding significant power for centuries",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Arabian Peninsula",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Tunisia, Iraq, Morocco, Khuzestan and Khorasan regions of Iran",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_banu_hina_iraq_and_levant",
+    "entityType": "tribe",
+    "entityId": "banu_hina",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 700,
+    "endYear": 900,
+    "reason": "Search for pastures and participation in early Islamic expansion",
+    "narrative": "Early 8th century migration of some Banu Hilal to Egypt, then in 9th century to Iraq and Levant",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Najd",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Iraq and Levant",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_otaibah_najd_and_hejaz",
+    "entityType": "tribe",
+    "entityId": "otaibah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 700,
+    "endYear": null,
+    "reason": "Formation of largest remaining Hawazin alliance after other clans departed",
+    "narrative": "After most clans of Hawazin departed from Hejaz and Najd to the Levant, Iraq, Egypt, North Africa, and Persia, those who remained formed the largest Hawazin alliance and were named Otaibah",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Central Arabian Peninsula",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Najd and Hejaz",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_rabiah_southern_egypt",
+    "entityType": "tribe",
+    "entityId": "rabiah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 750,
+    "endYear": 1000,
+    "reason": "Economic opportunities in gold mining",
+    "narrative": "During the Abbasid era, many members of Bani Hanifa and related tribesmen from Bakr ibn Wa'il migrated from al-Yamama to southern Egypt, where they dominated the gold-mines of Wadi Allaqi near Aswan",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "al-Yamama",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Southern Egypt",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_anizzah_khaybar_(hijaz)",
+    "entityType": "tribe",
+    "entityId": "anizzah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 900,
+    "endYear": 1000,
+    "reason": "Settlement and expansion",
+    "narrative": "According to historians al-Hamdani and Abu'l-Hasan Bayhaqi, the Anizah tribe settled in the Hijaz region, specifically in Khaybar, at the end of the 10th century AD, fighting and expelling the previous rulers.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Al-Yamama (eastern Najd)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Khaybar (Hijaz)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_banu_hina_upper_egypt",
+    "entityType": "tribe",
+    "entityId": "banu_hina",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 978,
+    "endYear": null,
+    "reason": "Forcible relocation by Fatimid caliph al-Aziz after their defeat",
+    "narrative": "After joining Qarmatians against Fatimids, they were defeated and forcibly relocated to Upper Egypt, prohibited from crossing the Nile",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Egypt/Levant",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Upper Egypt",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_banu_hina_maghreb",
+    "entityType": "tribe",
+    "entityId": "banu_hina",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1050,
+    "endYear": 1100,
+    "reason": "Dispatched by Fatimids to punish rebellious Zirids, incentivized by drought in Egypt",
+    "narrative": "Major migration of 150,000-300,000 people led by Abu Zayd al-Hilali, fundamentally transforming the Maghreb through Arabization",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Upper Egypt",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Maghreb",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_hajer_lower_najd",
+    "entityType": "tribe",
+    "entityId": "bani_hajer",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1200,
+    "endYear": null,
+    "reason": "Leadership under Sheikh Mohammed Bin Shaba'an",
+    "narrative": "The first major migration led by Sheikh Mohammed Bin Shaba'an in the early 13th century from their ancestral lands near Sarat Abida to Lower Najd",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Sarat Abida (alhirja) near Thahran Al Janoub",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Lower Najd",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_awamir_northern_oman_peninsula",
+    "entityType": "tribe",
+    "entityId": "awamir",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1400,
+    "endYear": 1900,
+    "reason": "<UNKNOWN>",
+    "narrative": "A large tribe, the Awamir originated in the steppes to the north of the Hadhramut, settling in the north in a process of migration which took place over 500 years.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "steppes north of Hadhramut",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "northern Oman peninsula",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_anizzah_al-qassim_(northern_nejd)",
+    "entityType": "tribe",
+    "entityId": "anizzah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1400,
+    "endYear": 1500,
+    "reason": "Settlement and agricultural expansion",
+    "narrative": "In the 15th century, the region of Al-Qassim in northern Nejd was being rapidly settled through migration and the majority of this activity was by members of Anizah.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Various regions",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Al-Qassim (northern Nejd)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_naim_buraimi_and_eastern_uae",
+    "entityType": "tribe",
+    "entityId": "naim",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1600,
+    "endYear": 1700,
+    "reason": "Tribal expansion and search for grazing lands",
+    "narrative": "Early migration and establishment in Buraimi oasis area",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Central Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Buraimi and Eastern UAE",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_shammar_iraq",
+    "entityType": "tribe",
+    "entityId": "shammar",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1600,
+    "endYear": 1699,
+    "reason": "Large section left under leadership of Al Jarba",
+    "narrative": "In the 17th century, a large section of Shammar left Jabal Shammar under Al Jarba leadership and settled in Iraq, reaching as far as Mosul.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Jabal Shammar",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Iraq",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_mutayr_central_arabia/najd",
+    "entityType": "tribe",
+    "entityId": "mutayr",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1600,
+    "endYear": 1700,
+    "reason": "Large-scale tribal migration eastwards",
+    "narrative": "At some point in the 17th century, the tribe began a large-scale migration eastwards into central Arabia, displacing many other Bedouin tribes in the area, such as Harb and Anizzah who were forced to move northwards.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Northern Hejaz near Medina",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Central Arabia/Najd",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_utbah_eastern_arabia_via_al_aflaj,_qatif,_al_ahsa_to_freiha_in_northwestern_qatar",
+    "entityType": "tribe",
+    "entityId": "bani_utbah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1650,
+    "endYear": 1700,
+    "reason": "prolonged drought in the 17th century",
+    "narrative": "Migrated from central Arabia through various settlements, establishing Freiha as a fortified coastal hub",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Najd region, central Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Eastern Arabia via Al Aflaj, Qatif, Al Ahsa to Freiha in northwestern Qatar",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_awazim_eastern_arabian_peninsula",
+    "entityType": "tribe",
+    "entityId": "al_awazim",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1700,
+    "endYear": null,
+    "reason": "War between Al-Awazim and the Hejaz vilayet, and the large scale famine of Najd in 1703 CE",
+    "narrative": "They predominantly originated from Hejaz in western Arabia, they migrated to the eastern parts of the Arabian Peninsula by the year 1700 CE due to conflicts with the Ottoman Hejaz vilayet and severe famine conditions.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Hejaz",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Eastern Arabian Peninsula",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_naqbiyin_various_settlements_in_sharjah_and_ras_al_khaimah",
+    "entityType": "tribe",
+    "entityId": "naqbiyin",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1700,
+    "endYear": 1800,
+    "reason": "Disputes with pre-Al Qawasim local rulers",
+    "narrative": "The tribe dispersed from the agriculturally rich Wadi Naqab after a series of disputes with pre-Al Qawasim local rulers, settling in various locations including Khor Fakkan, Kalba, Dibba, Fahlain, Khatt, and Daftah",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Wadi Naqab",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Various settlements in Sharjah and Ras Al Khaimah",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_sharqiyin_east_coast_of_trucial_states",
+    "entityType": "tribe",
+    "entityId": "sharqiyin",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1700,
+    "endYear": 1800,
+    "reason": "territorial expansion",
+    "narrative": "Settled all along the East Coast from Kalba to Dibba, as well as in the Wadi Ham and Jiri plain, becoming dominant in the Shamailiyah region",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "interior regions",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "East Coast of Trucial States",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_bu_falah_northeastern_arabia_(southern_iraq,_northern_and_western_kuwait)",
+    "entityType": "tribe",
+    "entityId": "al_bu_falah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1700,
+    "endYear": 1950,
+    "reason": "Seasonal pastoral nomadism - autumn migration south for grazing and trade",
+    "narrative": "Historically the bedouin semi-nomads of Albu Salih would migrate south into the desert annually during autumn, camping and herding livestock in Northeastern Arabia. They moved through Wadi Batin valley into Kuwait, reaching the Arabian Gulf coast, and traded with local villages and towns. By spring's end they would return north for summer. This pattern continued until the 1940s-1950s when most settled permanently.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Albu Salih territory in southern Iraq (marshlands)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Northeastern Arabia (Southern Iraq, Northern and Western Kuwait)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_mazrui_east_africa",
+    "entityType": "tribe",
+    "entityId": "mazrui",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1700,
+    "endYear": 1800,
+    "reason": "Political expansion and governance",
+    "narrative": "Migration from Oman to establish rule over East African coastal areas, particularly Mombasa",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Oman",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "East Africa",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_yas_liwa_oasis",
+    "entityType": "tribe",
+    "entityId": "bani_yas",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1700,
+    "endYear": null,
+    "reason": "Settlement and establishment of power base",
+    "narrative": "The House of Al Bu Falah, which held the most power in the confederation, settled with the Bani Yas clans together in the Liwa oasis around 1700",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Najd region of Central Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Liwa Oasis",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_utbah_iraq_near_basra",
+    "entityType": "tribe",
+    "entityId": "bani_utbah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1716,
+    "endYear": 1716,
+    "reason": "military skirmishes with Al Musallam tribe under Ottoman support",
+    "narrative": "Departed after conflicts with dominant local tribe",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Freiha, Qatar",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Iraq near Basra",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_utbah_kuwait",
+    "entityType": "tribe",
+    "entityId": "bani_utbah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1716,
+    "endYear": 1720,
+    "reason": "expelled by Ottomans for preying on caravans and trading ships",
+    "narrative": "Established government under Al-Sabah family in Kuwait",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Iraq (Umm Qasr)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Kuwait",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_habus_wadi_naqab_and_other_hajar_mountain_wadis",
+    "entityType": "tribe",
+    "entityId": "habus",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1740,
+    "endYear": 1800,
+    "reason": "Agricultural expansion and acquisition of Naqbiyin lands",
+    "narrative": "Habus gradually expanded from their original holdings on Jebel Hibs to acquire fertile agricultural lands in Wadi Naqab and other wadis",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Jebel Hibs area",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Wadi Naqab and other Hajar Mountain wadis",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_bu_muhair_ras_al_khaimah",
+    "entityType": "tribe",
+    "entityId": "al_bu_muhair",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1750,
+    "endYear": null,
+    "reason": "establishment of Al Qawasim rule",
+    "narrative": "The Al Bu Muhair first settled in Ras Al Khaimah from Abu Dhabi with the establishment of Al Qawasim rule in the 1750s",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Abu Dhabi",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Ras Al Khaimah",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_anizzah_syria_(hawran_region)",
+    "entityType": "tribe",
+    "entityId": "anizzah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1750,
+    "endYear": 1850,
+    "reason": "Seasonal migration and territorial expansion",
+    "narrative": "The first Anizah tribe to enter Syria was the Hasana in the mid-18th century, followed by Wuld Ali in Hawran, then Ruwallah in early 19th century. The Fad'an and Sba'a entered central Syrian plains in early 19th century.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Northwestern Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Syria (Hawran region)",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_utbah_zubarah,_qatar",
+    "entityType": "tribe",
+    "entityId": "bani_utbah",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1760,
+    "endYear": 1760,
+    "reason": "Al Jalahma and Al Khalifa clans seeking new opportunities",
+    "narrative": "Left Al-Sabah as sole proprietors of Kuwait while other clans established free-trade port at Zubarah",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Kuwait",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Zubarah, Qatar",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_yas_abu_dhabi_island",
+    "entityType": "tribe",
+    "entityId": "bani_yas",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1793,
+    "endYear": 1795,
+    "reason": "Discovery of fresh water",
+    "narrative": "In 1793, the Al Bu Falah migrated to the island of Abu Dhabi due to the discovery of fresh water, settling there in 1795 and establishing Abu Dhabi town",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Liwa Oasis",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Abu Dhabi island",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_bu_hamir_abu_dhabi",
+    "entityType": "tribe",
+    "entityId": "al_bu_hamir",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1800,
+    "endYear": 1900,
+    "reason": "Settlement and integration with Bani Yas confederation",
+    "narrative": "The tribe appears to have settled in Abu Dhabi around the turn of the 20th century, comprising some 60 houses there",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Al Ain Region",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Abu Dhabi",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_khawatir_buraimi_oasis_settlements",
+    "entityType": "tribe",
+    "entityId": "khawatir",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1800,
+    "endYear": 1850,
+    "reason": "Settlement and adoption of oasis agriculture alongside traditional pastoralism",
+    "narrative": "The Khawatir, originally a Bedouin tribe whose dar stretched from Buraimi north to the Jiri Plain, gradually settled around the Buraimi oasis while maintaining their pastoral activities",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Traditional Bedouin territories between Buraimi and Jiri Plain",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Buraimi oasis settlements",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_khawatir_dhaid",
+    "entityType": "tribe",
+    "entityId": "khawatir",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1800,
+    "endYear": 1900,
+    "reason": "Expansion and settlement in Sharjah dependency",
+    "narrative": "Some Khawatir settled in the Sharjah dependency of Dhaid, where they had uneasy relations with Bani Qitab neighbors",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Buraimi area",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Dhaid",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_naim_qatar_and_bahrain",
+    "entityType": "tribe",
+    "entityId": "naim",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1800,
+    "endYear": 1900,
+    "reason": "Economic opportunities and tribal disputes",
+    "narrative": "Migration of Na'im families to Qatar and Bahrain in earlier generations",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Trucial States",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Qatar and Bahrain",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_bu_shamis_coastal_areas",
+    "entityType": "tribe",
+    "entityId": "al_bu_shamis",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1800,
+    "endYear": 1820,
+    "reason": "Temporary displacement from Dhahirah",
+    "narrative": "The Al Bu Shamis are believed to have settled along the coast after being temporarily displaced from Dhahirah in the early 19th century",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Dhahirah",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Coastal areas",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_nuaimi_tribe_ajman_coast",
+    "entityType": "tribe",
+    "entityId": "al_nuaimi_tribe",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1816,
+    "endYear": null,
+    "reason": "Political expansion and conquest",
+    "narrative": "Sheikh Rashid bin Humaid Al Nuaimi moved from the interior to establish control over the coastal settlement of Ajman",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Al Buraimi oasis region",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Ajman coast",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_yas_khor_al_adaid,_southeastern_qatar",
+    "entityType": "tribe",
+    "entityId": "bani_yas",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1835,
+    "endYear": null,
+    "reason": "Settlement expansion",
+    "narrative": "In 1835, members of the Bani Yas settled Khor Al Adaid in southeastern Qatar",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Various locations",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Khor Al Adaid, southeastern Qatar",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_bu_muhair_sharjah",
+    "entityType": "tribe",
+    "entityId": "al_bu_muhair",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1852,
+    "endYear": null,
+    "reason": null,
+    "narrative": "A further contingent of the tribe left Dubai for Sharjah in 1852",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Dubai",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Sharjah",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_subay_central_nejd_around_riyadh",
+    "entityType": "tribe",
+    "entityId": "subay",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1900,
+    "endYear": 1920,
+    "reason": "Seeking new grazing lands",
+    "narrative": "At the turn of the 20th century, the bedouin sections moved from their original grazing lands of Ranyah and Kurmah to roam the areas of central Nejd around Riyadh, along with the closely related family of the Suhool.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Ranyah and Kurmah region on the border between Nejd and 'Asir",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Central Nejd around Riyadh",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_subay_northern_regions",
+    "entityType": "tribe",
+    "entityId": "subay",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1900,
+    "endYear": 1950,
+    "reason": "Territorial expansion",
+    "narrative": "Some sections moved further north, where they later established the town of Rumah.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Central Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Northern regions",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_ajman_tribe_northeastern_saudi_arabia_and_persian_gulf_states",
+    "entityType": "tribe",
+    "entityId": "ajman_tribe",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1900,
+    "endYear": 1950,
+    "reason": "transition from nomadic to settled life",
+    "narrative": "Most of Ajman left their nomadic life and settled in northeastern Saudi Arabia. Nearly all the Ajman have abandoned nomadic life and have settled in the Persian Gulf states, particularly in the Eastern Province of Saudi Arabia.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "nomadic life",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "northeastern Saudi Arabia and Persian Gulf states",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_shammar_syria_and_iraq",
+    "entityType": "tribe",
+    "entityId": "shammar",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1921,
+    "endYear": null,
+    "reason": "Defeat by Ibn Saud forces",
+    "narrative": "Following Al Rashid's defeat in the Conquest of Ha'il in 1921, many Shammar fled to Syria and Iraq.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Arabian Peninsula",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Syria and Iraq",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_dawasir_dammam,_saudi_arabia",
+    "entityType": "tribe",
+    "entityId": "dawasir",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1923,
+    "endYear": 1923,
+    "reason": "Opposition to British overthrow of Sheikh Isa ibn Ali Al Khalifa in favour of his son Hamad bin Isa Al Khalifa",
+    "narrative": "Virtually all members of the tribe left Bahrain for Dammam, Saudi Arabia after suspecting that the new ruler would attempt to tighten his control over them with British support. They were officially allowed to return in April 1927.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Bahrain",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Dammam, Saudi Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_al_dhafeer_settled_communities_in_saudi_arabia",
+    "entityType": "tribe",
+    "entityId": "al_dhafeer",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1926,
+    "endYear": null,
+    "reason": "Ibn Saud's conquest and road security policies",
+    "narrative": "Around 1926, Emir Ibn Saud conquered a large portion of Arabia and allowed the tribe's branch in Saudi Arabia to settle in several settlements after securing roads",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Nomadic lifestyle",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Settled communities in Saudi Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_awamir_al_hasa",
+    "entityType": "tribe",
+    "entityId": "awamir",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1943,
+    "endYear": 1948,
+    "reason": "conflict with the Duru",
+    "narrative": "In the 1940s, the ongoing conflict with the Duru led the headman of the Bedouin Awamir, Salim bin Hamad bin Rakkad, to lead his people to Al Hasa in 1943. They returned in 1948, but in subsequent years were constantly drawn back to Hasa.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Buraimi area",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Al Hasa",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_maraziq_dispersed_throughout_uae",
+    "entityType": "tribe",
+    "entityId": "maraziq",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1950,
+    "endYear": 1955,
+    "reason": "Unknown - left traditional settlement area",
+    "narrative": "The Maraziq population of the area had left the area by the early 1950s and are today dispersed around the UAE.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Rams, Ras Al Khaimah",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Dispersed throughout UAE",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_bani_yas_qatar,_kuwait,_and_saudi_arabia",
+    "entityType": "tribe",
+    "entityId": "bani_yas",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1950,
+    "endYear": null,
+    "reason": "Search for employment in oil and construction sectors",
+    "narrative": "Large emigration during the late 1950s when many families moved to Qatar, Kuwait, and Saudi Arabia as oil exploration became mechanized and local labour demand declined",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "UAE territories",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Qatar, Kuwait, and Saudi Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_naim_saudi_arabia",
+    "entityType": "tribe",
+    "entityId": "naim",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1955,
+    "endYear": 1960,
+    "reason": "Forced resettlement after Buraimi dispute",
+    "narrative": "Following the Buraimi conflict, a number of Na'im were resettled in Saudi Arabia",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Buraimi area",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Saudi Arabia",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_zahran_mecca,_jeddah,_riyadh,_dammam",
+    "entityType": "tribe",
+    "entityId": "zahran",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1960,
+    "endYear": 1980,
+    "reason": "Economic opportunities and urbanization",
+    "narrative": "Large migration from villages and small cities during the 1960s and 1970s in search of a better life",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Villages and small cities",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Mecca, Jeddah, Riyadh, Dammam",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  },
+  {
+    "id": "mig_zaab_abu_dhabi",
+    "entityType": "tribe",
+    "entityId": "zaab",
+    "waypoints": null,
+    "routeGeojson": null,
+    "startYear": 1968,
+    "endYear": null,
+    "reason": "Disputes with the Ruler of Ras Al Khaimah, Sheikh Saqr bin Mohammed Al Qasimi",
+    "narrative": "The majority of the Zaab tribe accepted an offer from Sheikh Zayed bin Sultan Al Nahyan to move to Abu Dhabi, leaving behind an almost completely abandoned village that had housed some 2,500 people. This movement resulted in the establishment of an area called Al Zaab in Abu Dhabi.",
+    "populationEstimate": null,
+    "origin": {
+      "regionId": "Jazirat Al Hamra",
+      "name": null,
+      "lat": null,
+      "lng": null
+    },
+    "destination": {
+      "regionId": "Abu Dhabi",
+      "name": null,
+      "lat": null,
+      "lng": null
+    }
+  }
+]

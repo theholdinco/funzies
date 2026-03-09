@@ -1,0 +1,468 @@
+[
+  {
+    "id": "xb_tribe_abd_al_qays",
+    "title": "Abd al-Qays across Bahrain,Saudi Arabia",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "abd_al_qays"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_ajman_tribe",
+    "title": "Ajman (tribe) across Kuwait,Qatar,UAE",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "ajman_tribe"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_al_bin_ali",
+    "title": "Al Bin Ali across Qatar,Bahrain",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "al_bin_ali"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_al_bu_falah",
+    "title": "Al Bu Falah across UAE,Kuwait,Saudi Arabia",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "al_bu_falah"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_al_bu_falasah",
+    "title": "Al Bu Falasah across UAE,Bahrain",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "al_bu_falasah"
+      }
+    ]
+  },
+  {
+    "id": "xb_family_al_khalifa",
+    "title": "Al Khalifa across Bahrain,Qatar",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "family",
+        "entityId": "al_khalifa"
+      }
+    ]
+  },
+  {
+    "id": "al_murrah_cross_border",
+    "title": "Al Murrah Cross-Border",
+    "connectionType": "split_migration",
+    "narrative": "Al Murrah present in Saudi and Qatar",
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "al_murrah"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_al_murrah",
+    "title": "Al Murrah across Bahrain,Saudi Arabia,Kuwait,Qatar,UAE",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "al_murrah"
+      }
+    ]
+  },
+  {
+    "id": "xb_family_al_sabah",
+    "title": "Al Sabah across Kuwait,Qatar",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "family",
+        "entityId": "al_sabah"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_al_awazim",
+    "title": "Al-Awazim across Bahrain,Saudi Arabia,Kuwait",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "al_awazim"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_al_dhafeer",
+    "title": "Al-Dhafeer across Kuwait,Saudi Arabia",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "al_dhafeer"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_awamir",
+    "title": "Awamir across UAE,Oman",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "awamir"
+      }
+    ]
+  },
+  {
+    "id": "xb_ethnic_group_baharna",
+    "title": "Baharna across Bahrain,Kuwait,Oman,Qatar,UAE",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "ethnic_group",
+        "entityId": "baharna"
+      }
+    ]
+  },
+  {
+    "id": "baloch_cross_border",
+    "title": "Baloch Cross-Border",
+    "connectionType": "split_migration",
+    "narrative": "Baloch present in UAE (~468,000), Bahrain, Oman, Kuwait",
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "ethnic_group",
+        "entityId": "baloch"
+      }
+    ]
+  },
+  {
+    "id": "xb_ethnic_group_baloch",
+    "title": "Baloch across Bahrain,UAE",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "ethnic_group",
+        "entityId": "baloch"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_bani_hajer",
+    "title": "Bani Hajer across Bahrain,Kuwait,Oman,Qatar,UAE",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "bani_hajer"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_bani_khalid",
+    "title": "Bani Khalid across Kuwait,Qatar",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "bani_khalid"
+      }
+    ]
+  },
+  {
+    "id": "bani_tamim_cross_border",
+    "title": "Bani Tamim Cross-Border",
+    "connectionType": "split_migration",
+    "narrative": "Bani Tamim present in Saudi, Qatar, UAE, Iraq, Kuwait",
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "bani_tamim"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_bani_tamim",
+    "title": "Bani Tamim across Saudi Arabia,Kuwait,Qatar,UAE",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "bani_tamim"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_bani_utbah",
+    "title": "Bani Utbah across Bahrain,Kuwait,Saudi Arabia,Qatar",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "bani_utbah"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_bani_yas",
+    "title": "Bani Yas across UAE,Saudi Arabia",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "bani_yas"
+      }
+    ]
+  },
+  {
+    "id": "dawasir_cross_border",
+    "title": "Dawasir Cross-Border",
+    "connectionType": "split_migration",
+    "narrative": "Dawasir present in Saudi, Bahrain, Kuwait",
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "dawasir"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_ghamid",
+    "title": "Ghamid across Saudi Arabia,Oman,UAE",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "ghamid"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_kahlan",
+    "title": "Kahlan across Bahrain,Saudi Arabia,Oman",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "kahlan"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_mahamid",
+    "title": "Mahamid across Kuwait,Saudi Arabia",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "mahamid"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_mahris",
+    "title": "Mahris across Kuwait,Saudi Arabia,UAE",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "mahris"
+      }
+    ]
+  },
+  {
+    "id": "naim_cross_border",
+    "title": "Na'im Cross-Border",
+    "connectionType": "split_migration",
+    "narrative": "Na'im present in UAE, Oman, Bahrain",
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "naim"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_naim",
+    "title": "Na'im across UAE,Bahrain,Qatar",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "naim"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_otaibah",
+    "title": "Otaibah across Saudi Arabia,Kuwait,Qatar,UAE",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "otaibah"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_qahtan_tribe",
+    "title": "Qahtan (tribe) across Bahrain,Kuwait,Saudi Arabia,Oman,Qatar,UAE",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "qahtan_tribe"
+      }
+    ]
+  },
+  {
+    "id": "anizzah_super_tribe",
+    "title": "The Anizzah Super-Tribe",
+    "connectionType": "shared_lineage",
+    "narrative": "Saudi Arabia: Al Saud, Kuwait: Al Sabah, Bahrain: Al Khalifa — all connected through Anizzah",
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "anizzah"
+      },
+      {
+        "entityType": "family",
+        "entityId": "al_saud"
+      },
+      {
+        "entityType": "family",
+        "entityId": "al_sabah"
+      },
+      {
+        "entityType": "family",
+        "entityId": "al_khalifa"
+      }
+    ]
+  },
+  {
+    "id": "bani_utbah_confederation",
+    "title": "The Bani Utbah Confederation",
+    "connectionType": "ruling_family_cousins",
+    "narrative": "Al Khalifa (Bahrain) and Al Sabah (Kuwait) descend from this group. Also includes Al Jalahma.",
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "bani_utbah"
+      },
+      {
+        "entityType": "family",
+        "entityId": "al_khalifa"
+      },
+      {
+        "entityType": "family",
+        "entityId": "al_sabah"
+      },
+      {
+        "entityType": "family",
+        "entityId": "al_jalahma"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_utub",
+    "title": "Utub across Kuwait,Qatar",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "utub"
+      }
+    ]
+  },
+  {
+    "id": "xb_tribe_zahran",
+    "title": "Zahran across Saudi Arabia,Oman",
+    "connectionType": "shared_lineage",
+    "narrative": null,
+    "insight": null,
+    "entities": [
+      {
+        "entityType": "tribe",
+        "entityId": "zahran"
+      }
+    ]
+  }
+]

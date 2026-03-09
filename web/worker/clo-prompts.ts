@@ -17,6 +17,8 @@ const QUALITY_RULES = `
 - Tight CLO liabilities (low AAA/AA/A spreads) HELP the arbitrage — they reduce funding costs. Do NOT describe tight liabilities as compressing the arb or as a negative for CLO equity.
 - What compresses the arb from the LIABILITY side is WIDENING liabilities (higher tranche spreads), not tightening.
 - What compresses the arb from the ASSET side is lower loan spreads (declining WAS).
+- What WIDENS collateral spreads (higher loan spreads / lower prices) is credit deterioration: defaults, downgrades, sector distress, repricing events. Do NOT call this "spread compression" — distress widens spreads.
+- "Collateral spread compression" means loans are repricing TIGHTER (lower spreads) — this happens in strong/benign credit markets with heavy CLO formation demand, NOT during distress.
 - Example: if loan WAS declines but AAA liabilities also tighten, the arb may be stable or only compressed from one side (assets). Saying "compressed from both sides" in this scenario is factually wrong.
 ### Equity Distributions
 - CLO equity distributions can decline for many reasons — distinguish between them: (1) arb compression from lower asset spreads, (2) credit losses / defaults reducing par, (3) OC test failures diverting cash from equity to senior tranches, (4) lower reinvestment spreads when loans repay and are replaced at tighter levels, (5) interest rate mismatches if floating rate assets reset differently than liabilities.

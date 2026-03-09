@@ -4,11 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { marked } from "marked";
 import GeneratingProgress from "@/components/clo/GeneratingProgress";
-import type { LoanIdea } from "@/lib/clo/types";
+import FollowUpChat from "@/components/clo/FollowUpChat";
+import type { LoanIdea, PanelMember } from "@/lib/clo/types";
 import Link from "next/link";
 
 interface ScreeningSession {
   id: string;
+  panel_id: string;
   focus_area: string;
   status: string;
   parsed_data: {
@@ -106,6 +108,7 @@ export default function ScreeningSessionPage() {
   const params = useParams();
   const id = params.id as string;
   const [session, setSession] = useState<ScreeningSession | null>(null);
+  const [members, setMembers] = useState<PanelMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchSession = useCallback(() => {
@@ -120,6 +123,16 @@ export default function ScreeningSessionPage() {
       })
       .catch(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (members.length > 0) return;
+    fetch("/api/clo/panel")
+      .then((r) => r.json())
+      .then((panel) => {
+        if (panel.members) setMembers(panel.members);
+      })
+      .catch(() => {});
+  }, [members.length]);
 
   useEffect(() => {
     fetchSession();
@@ -234,6 +247,21 @@ export default function ScreeningSessionPage() {
               <LoanIdeaCard key={i} idea={idea} />
             ))}
           </div>
+        </section>
+      )}
+
+      {members.length > 0 && (
+        <section className="ic-section">
+          <FollowUpChat
+            apiUrl={`/api/clo/screenings/${id}/follow-ups`}
+            members={members}
+            title="Follow Up"
+            placeholders={{
+              analyst: "Ask about these screening results...",
+              "ask-panel": "Ask the panel about these opportunities...",
+              debate: "What should the panel debate about this screening?",
+            }}
+          />
         </section>
       )}
     </div>

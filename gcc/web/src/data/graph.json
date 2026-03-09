@@ -1,0 +1,7096 @@
+{
+  "nodes": [
+    {
+      "id": "adnan",
+      "name": "Adnan (Adnanite lineage)",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 12
+    },
+    {
+      "id": "qahtan",
+      "name": "Qahtan (Qahtanite lineage)",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 3
+    },
+    {
+      "id": "qays_aylan",
+      "name": "Qays Aylan",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "al_qasimi",
+      "name": "Al Qasimi (Qawasim)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 4
+    },
+    {
+      "id": "banu_abdul_qays",
+      "name": "Banu Abdul Qays",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_falah",
+      "name": "Al Bu Falah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_falasah",
+      "name": "Al Bu Falasah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_qemzi",
+      "name": "Al Qemzi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_hemairi",
+      "name": "Al Bu Hemair",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_mehairbi",
+      "name": "Maharibah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_remeithi",
+      "name": "Rumaithat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_mashghouni",
+      "name": "Mishagin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_hameli",
+      "name": "Hawamil",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_mehairi",
+      "name": "Al Bu Muhair",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_suwaidi",
+      "name": "Sudan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_qubaisi",
+      "name": "Qubaisat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_mazrouei",
+      "name": "Mazari",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_subousi",
+      "name": "Sabais",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_marri",
+      "name": "Marar",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_halami",
+      "name": "Halalmah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_ali",
+      "name": "Al Ali",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "tayy",
+      "name": "Tayy",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 19
+    },
+    {
+      "id": "al_ghawth_tayy",
+      "name": "Al al-Ghawth",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_jadila_tayy",
+      "name": "Al Jadila",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_thuwal_tayy",
+      "name": "Banu Thu'al",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_nabhan_tayy",
+      "name": "Banu Nabhan (Aswadan)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_hani_tayy",
+      "name": "Banu Hani",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_hur_tayy",
+      "name": "Banu Hur",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_jundub_tayy",
+      "name": "Banu Jundub",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_thaalib_tayy",
+      "name": "Al al-Tha'alib (Tha'laba)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_lam_tayy",
+      "name": "Banu La'm",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_fadl_tayy",
+      "name": "Al Fadl",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_sakher",
+      "name": "Bani Sakher",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "shammar_tribe",
+      "name": "Shammar",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "lakhmids",
+      "name": "Lakhmids",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "ghassanids",
+      "name": "Ghassanids",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 4
+    },
+    {
+      "id": "banu_asad",
+      "name": "Banu Asad",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 3
+    },
+    {
+      "id": "banu_bakr",
+      "name": "Banu Bakr",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 4
+    },
+    {
+      "id": "azd",
+      "name": "Azd",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 11
+    },
+    {
+      "id": "azd_uman",
+      "name": "Azd Uman",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "aws_khazraj",
+      "name": "Aws and Khazraj",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "bariq",
+      "name": "Bariq",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "khuza_a",
+      "name": "Khuza'a",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "daws",
+      "name": "Daws",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "sabaeans",
+      "name": "Sabaeans",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "quraysh",
+      "name": "Quraysh",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 17
+    },
+    {
+      "id": "banu_hashim",
+      "name": "Banu Hashim",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_sahm",
+      "name": "Banu Sahm",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_adi",
+      "name": "Banu Adi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_makhzum",
+      "name": "Banu Makhzum",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_jumah",
+      "name": "Banu Jumah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_taym",
+      "name": "Banu Taym",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_zuhra",
+      "name": "Banu Zuhra",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_harith_ibn_fihr",
+      "name": "Banu al-Harith ibn Fihr",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kinana",
+      "name": "Kinana",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "banu_aws",
+      "name": "Banu Aws",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_khazraj",
+      "name": "Banu Khazraj",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_khuza_ah",
+      "name": "Banu Khuza'ah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hawazin",
+      "name": "Hawazin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "banu_thaqif",
+      "name": "Banu Thaqif",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_lahyan",
+      "name": "Banu Lahyan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_mustaliq",
+      "name": "Banu Mustaliq",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mudar",
+      "name": "Mudar",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 14
+    },
+    {
+      "id": "ilyas_mudar",
+      "name": "Ilyās",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "tamim",
+      "name": "Tamīm",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hudhayl",
+      "name": "Hudhayl",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "asad",
+      "name": "Asad",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_thalabah",
+      "name": "Banu Tha'labah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "rabia",
+      "name": "Rabīʿa",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_ghassan",
+      "name": "Banu Ghassan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "lakhmid",
+      "name": "Lakhmid",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "ghassanid",
+      "name": "Ghassanid",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "salihids",
+      "name": "Salihids",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kinda",
+      "name": "Kingdom of Kinda",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "rabiah",
+      "name": "Rabi'ah",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 17
+    },
+    {
+      "id": "abd_al_qays",
+      "name": "Abd al-Qays",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "anizah",
+      "name": "Anizah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 3
+    },
+    {
+      "id": "anz_ibn_wail",
+      "name": "Anz ibn Wa'il",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_shayban",
+      "name": "Banu Shayban",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_qays_ibn_thalaba",
+      "name": "Banu Qays ibn Tha'laba",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "taym_allah",
+      "name": "Taym Allah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_yashkur",
+      "name": "Banu Yashkur",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "taghlib",
+      "name": "Taghlib",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_nammir_ibn_qasit",
+      "name": "al-Nammir ibn Qasit",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_kanz",
+      "name": "Banu Kanz",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mudhar",
+      "name": "Mudhar",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "beja",
+      "name": "Beja peoples",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_hanifa",
+      "name": "Banu Hanifa",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 7
+    },
+    {
+      "id": "house_of_saud",
+      "name": "House of Saud",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "abdul_qays",
+      "name": "Abdul Qays",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "tasm",
+      "name": "Tasm",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "jadis",
+      "name": "Jadis",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_tamim",
+      "name": "Banu Tamim",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "banu_amir",
+      "name": "Banu Amir",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_ghafir",
+      "name": "Bani Ghafir",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_hina",
+      "name": "Banu Hina",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 9
+    },
+    {
+      "id": "athbaj_hilal",
+      "name": "Athbaj",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "riyah_hilal",
+      "name": "Riyah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "jusham_hilal",
+      "name": "Jusham",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "zughba_hilal",
+      "name": "Zughba",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "adi_hilal",
+      "name": "Adi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "qurra_hilal",
+      "name": "Qurra",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "rabia_hilal",
+      "name": "Rabi'a",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_sulaym",
+      "name": "Banu Sulaym",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mudar_confederation",
+      "name": "Mudar",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "amir_ibn_sasaa",
+      "name": "Amir ibn Sa'sa'a",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "awamir",
+      "name": "Awamir",
+      "type": "tribe",
+      "group": "<UNKNOWN>",
+      "color": null,
+      "size": 8
+    },
+    {
+      "id": "afar_awamir",
+      "name": "Afar",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_awazim",
+      "name": "Al-Awazim",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 3
+    },
+    {
+      "id": "bani_khalid",
+      "name": "Bani Khalid",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_kathiri",
+      "name": "Al Kathiri",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_rasheed",
+      "name": "Bani Rasheed",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_hadiyah",
+      "name": "Bani Hadiyah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 6
+    },
+    {
+      "id": "kumzarah",
+      "name": "Kumzarah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "rulers_ras_al_khaimah",
+      "name": "Rulers of Ras Al Khaimah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_kaab",
+      "name": "Bani Kaab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 18
+    },
+    {
+      "id": "drisah",
+      "name": "Drisah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "makatim",
+      "name": "Makatim",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "misaid",
+      "name": "Misaid",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "miyadilah",
+      "name": "Miyadilah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "miyalisah",
+      "name": "Miyalisah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mizahamiyin",
+      "name": "Mizahamiyin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "nawaljiyin",
+      "name": "Nawaljiyin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "salalat",
+      "name": "Salalat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "sawalim",
+      "name": "Sawalim",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "shwaihiyin",
+      "name": "Shwaihiyin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "yidwah",
+      "name": "Yidwah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "zahairat",
+      "name": "Zahairat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_qitab",
+      "name": "Bani Qitab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 14
+    },
+    {
+      "id": "northern_bani_qitab",
+      "name": "Northern Bani Qitab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "southern_bani_qitab",
+      "name": "Southern Bani Qitab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_shatair",
+      "name": "Bani Shatair",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 5
+    },
+    {
+      "id": "dahaminah",
+      "name": "Dahaminah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "manaii",
+      "name": "Manai'i",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "daramikah",
+      "name": "Daramikah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 3
+    },
+    {
+      "id": "dawasir",
+      "name": "Dawasir",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 6
+    },
+    {
+      "id": "sudairi",
+      "name": "Al Sudairi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_saud",
+      "name": "House of Saud",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 4
+    },
+    {
+      "id": "al_khalifa",
+      "name": "Al Khalifa",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "utub",
+      "name": "Utub",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_toghlib",
+      "name": "Banu Toghlib",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_dhafeer",
+      "name": "Al-Dhafeer",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 15
+    },
+    {
+      "id": "ahl_al_buwait",
+      "name": "Ahl al-Buwait",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_suwait",
+      "name": "Al-Suwait",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_said",
+      "name": "Al-Sa'id",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_hussein",
+      "name": "Bani Hussein",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_katheer",
+      "name": "Al Katheer",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "ahl_al_sumada",
+      "name": "Ahl al-Sumada",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_jawasim",
+      "name": "Al-Jawasim",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_thiraan",
+      "name": "Al-Thira'an",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_maalem",
+      "name": "Al-Ma'alem",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_maadin",
+      "name": "Al-Ma'adin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_oraif",
+      "name": "Al-Oraif",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_aljanat",
+      "name": "Al-'Aljanat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_askar",
+      "name": "Al-Askar",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "house_of_khalifa",
+      "name": "House of Khalifa",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mutair_ikhwan",
+      "name": "Mutair (Ikhwan forces)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_lam",
+      "name": "Banu Lam",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "dhawahir",
+      "name": "Dhawahir",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 11
+    },
+    {
+      "id": "jawabir",
+      "name": "Jawabir",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_saad",
+      "name": "Bani Saad",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_nahyan",
+      "name": "Al Nahyan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 7
+    },
+    {
+      "id": "duru",
+      "name": "Duru",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 4
+    },
+    {
+      "id": "taulantii",
+      "name": "Taulantii",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "ghafalah",
+      "name": "Ghafalah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 5
+    },
+    {
+      "id": "qawasim",
+      "name": "Qawasim",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "habus",
+      "name": "Habus",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 6
+    },
+    {
+      "id": "dhahuriyiin",
+      "name": "Dhahuriyiin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_haramsha_bani_idaid",
+      "name": "Al Haramsha of Bani Idaid Shihuh",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "harb",
+      "name": "Harb",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 4
+    },
+    {
+      "id": "al_bu_hamir",
+      "name": "Al Bu Hamir",
+      "type": "tribe",
+      "group": "<UNKNOWN>",
+      "color": null,
+      "size": 3
+    },
+    {
+      "id": "mahamid",
+      "name": "Mahamid",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 27
+    },
+    {
+      "id": "alrtuei",
+      "name": "Alrtuei",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "almatiei",
+      "name": "Almatiei",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "almadhakir",
+      "name": "Almadhakir",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "almuhabida",
+      "name": "Almuhabida",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "alrathea",
+      "name": "Alrathea",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hourani",
+      "name": "Hourani",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_abdul_dayem",
+      "name": "Al Abdul Dayem",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_shaleikh",
+      "name": "Al-Shaleikh",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_bahri",
+      "name": "Al-Bahri",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "ayal_abdo",
+      "name": "Ayal Abdo",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "abu_karaki",
+      "name": "Abu Karaki",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kiawan",
+      "name": "Kiawan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "alkhudur",
+      "name": "Alkhudur",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "alsawalima",
+      "name": "Alsawalima",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "alhamamada",
+      "name": "Alhamamada",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "almusaeada",
+      "name": "Almusaeada",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "alhasasana",
+      "name": "Alhasasana",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "aljeayisa",
+      "name": "Aljeayisa",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "dar_alearabi",
+      "name": "Dar Alearabi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_asead",
+      "name": "Al'asead",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_ahmad",
+      "name": "Al'ahmad",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_omaro_bani_uqba",
+      "name": "Al-Omaro Bani Uqba",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_huwaitat",
+      "name": "Al-Huwaitat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_abbad",
+      "name": "Bani Abbad",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_hamida",
+      "name": "Bani Hamida",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "zoubi",
+      "name": "Zoubi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "khawlaniyah_al_qahtaniyah_harb",
+      "name": "Khawlaniyah al-Qahtaniyah Harb",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_hajer",
+      "name": "Bani Hajer",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 6
+    },
+    {
+      "id": "al_ajman",
+      "name": "Al Ajman",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_qahtani",
+      "name": "Al Qahtani",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "abida",
+      "name": "Abida",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "khawatir",
+      "name": "Khawatir",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 13
+    },
+    {
+      "id": "al_bu_kharaiban",
+      "name": "Al Bu Kharaiban",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 3
+    },
+    {
+      "id": "kunud",
+      "name": "Kunud",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "sudan_al_suwaidi",
+      "name": "Sudan (Al Suwaidi)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mahris",
+      "name": "Mahris",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "qudaa",
+      "name": "Quda'a",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "manasir",
+      "name": "Manasir",
+      "type": "tribe",
+      "group": "disputed",
+      "color": null,
+      "size": 28
+    },
+    {
+      "id": "manasir_al_nil",
+      "name": "Manasir al-Nil (Riverain Manasir)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "manasir_al_badiyah",
+      "name": "Manasir al-Badiyah (Bedouin Manasir)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "wahabab",
+      "name": "al-Wahabab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "suleimaniyah",
+      "name": "al-Suleimaniyah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kabanah",
+      "name": "al-Kabanah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "diqeisab",
+      "name": "al-Diqeisab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hamsab",
+      "name": "al-Hamsab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "gaal",
+      "name": "al-Ga'al",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "ababsah",
+      "name": "al-'Ababsah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "fareiab",
+      "name": "al-Farei'ab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hamdatiab",
+      "name": "al-Hamdatiab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "amasib",
+      "name": "al-'Amasib",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "khabra",
+      "name": "al-Khabra",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hamamir",
+      "name": "al-Hamamir",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "muleikab",
+      "name": "al-Muleikab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kagbab",
+      "name": "al-Kagbab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "rubatab",
+      "name": "Rubatab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "shaiqiyah",
+      "name": "Shaiqiyah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kababish",
+      "name": "Kababish",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "gaali",
+      "name": "Ga'ali",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kawahla",
+      "name": "Kawahla",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "marar",
+      "name": "Marar",
+      "type": "tribe",
+      "group": "<UNKNOWN>",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "maraziq",
+      "name": "Maraziq",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mazari",
+      "name": "Mazari",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 3
+    },
+    {
+      "id": "mazari_emirati",
+      "name": "Mazari (Emirati)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mazari_baloch",
+      "name": "Mazari (Baloch)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_bu_muhair",
+      "name": "Al Bu Muhair",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 5
+    },
+    {
+      "id": "al_qawasim",
+      "name": "Al Qawasim",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "naim",
+      "name": "Na'im",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 21
+    },
+    {
+      "id": "darawishah",
+      "name": "Darawishah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_jabr_naim_qatar",
+      "name": "Al Jabr (Qatar section)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "ramzan_naim_qatar",
+      "name": "Ramzan (Qatar section)",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "naqbiyin",
+      "name": "Naqbiyin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 5
+    },
+    {
+      "id": "awanat",
+      "name": "Awanat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_nuaimi_tribe",
+      "name": "Al Nuaimi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 4
+    },
+    {
+      "id": "naim_confederation",
+      "name": "Na'im",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_zara",
+      "name": "Al-Zar'a family",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_surur",
+      "name": "Al-Surur family",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_jaber",
+      "name": "Bani Jaber tribe",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_azaznah",
+      "name": "Al-Azaznah tribe",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "otaibah",
+      "name": "Otaibah",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 7
+    },
+    {
+      "id": "guzayah",
+      "name": "Guzayah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "anazzah",
+      "name": "Anazzah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_saad",
+      "name": "Banu Sa'd",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "qahtan_tribe",
+      "name": "Qahtan (tribe)",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 5
+    },
+    {
+      "id": "sanhan",
+      "name": "Sanhan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "junb",
+      "name": "Junb",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "rufaida",
+      "name": "Rufaida",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "rashid",
+      "name": "Rashid",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_bu_shamis",
+      "name": "Al Bu Shamis",
+      "type": "tribe",
+      "group": "<UNKNOWN>",
+      "color": null,
+      "size": 8
+    },
+    {
+      "id": "sharqiyin",
+      "name": "Sharqiyin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 13
+    },
+    {
+      "id": "hafaitat",
+      "name": "Hafaitat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "yammahi",
+      "name": "Yammahi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hamudiyin",
+      "name": "Hamudiyin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_qasimi_sharjah",
+      "name": "Al Qasimi of Sharjah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "shihuh",
+      "name": "Shihuh",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 16
+    },
+    {
+      "id": "bani_muhammad",
+      "name": "Bani Muhammad",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_ali",
+      "name": "Bani Ali",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_ham_mazyud",
+      "name": "Bani Ham Mazyud",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "khanazirah",
+      "name": "Khanazirah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "khanabil",
+      "name": "Khanabil",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kumazarah",
+      "name": "Kumazarah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mahabib",
+      "name": "Mahabib",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "maqadilah",
+      "name": "Maqadilah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "sudan_tribe",
+      "name": "Sudan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "tunaij",
+      "name": "Tunaij",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 4
+    },
+    {
+      "id": "zaab",
+      "name": "Zaab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "al_qasimi_rak",
+      "name": "Al Qasimi of Ras Al Khaimah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "al_bu_falah",
+      "name": "Al Bu Falah",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 17
+    },
+    {
+      "id": "al_rumaiyadh",
+      "name": "Al Rumaiyadh",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_nasrallah",
+      "name": "Al Nasrallah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_khlawi",
+      "name": "Al Khlawi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_omar_albu_salih",
+      "name": "Al Omar",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_yoshaa",
+      "name": "Al Yosha'a",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_araytham",
+      "name": "Al Araytham",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_tarayma",
+      "name": "Al Tarayma",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_kurdi",
+      "name": "Al Kurdi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_muntafiq",
+      "name": "Al-Muntafiq",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "shuraifat",
+      "name": "Shuraifat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "juwarin",
+      "name": "Juwarin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_aunan",
+      "name": "Al Aunan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_malik",
+      "name": "Bani Malik",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_bu_falasah",
+      "name": "Al Bu Falasah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "rumaithat",
+      "name": "Rumaithat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "qubaisat",
+      "name": "Qubaisat",
+      "type": "tribe",
+      "group": "<UNKNOWN>",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "mazrui",
+      "name": "Mazrui",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "al_bu_said",
+      "name": "Al Bu Sa'id Dynasty",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hawamil",
+      "name": "Hawamil",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "qubaisi",
+      "name": "Qubaisi",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 3
+    },
+    {
+      "id": "remeithi",
+      "name": "Remeithi",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "anizzah",
+      "name": "Anizzah",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 18
+    },
+    {
+      "id": "ruwallah",
+      "name": "Ruwallah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_hizzan",
+      "name": "Bani Hizzan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hasana",
+      "name": "Hasana",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "wuld_ali",
+      "name": "Wuld Ali",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "fadan",
+      "name": "Fad'an",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "sbaa",
+      "name": "Sba'a",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "amarat",
+      "name": "`Amarat",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_fadl",
+      "name": "Al Fadl",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_hanifa",
+      "name": "Bani Hanifa",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "khathaam",
+      "name": "Khath'am",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "adwan",
+      "name": "Adwan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "dhafeer",
+      "name": "Dhafeer",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "shammar",
+      "name": "Shammar",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 13
+    },
+    {
+      "id": "abdah_shammar",
+      "name": "Abdah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_aslam_shammar",
+      "name": "Al-Aslam",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "sinjarah_shammar",
+      "name": "Sinjarah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "shammar_al_jarba",
+      "name": "Shammar al-Jarba",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "shammar_toga",
+      "name": "Shammar Toga",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "shammar_al_sayeh",
+      "name": "Shammar Al-Sayeh",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_assad",
+      "name": "Banu Assad",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_ubaid",
+      "name": "Al-Ubaid",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "jubur",
+      "name": "Jubur",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mutayr",
+      "name": "Mutayr",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 10
+    },
+    {
+      "id": "mutayr_bani_abdullah",
+      "name": "Bani Abdullah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mutayr_al_ulwa",
+      "name": "Al-'Ulwa",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mutayr_braih",
+      "name": "Braih",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "utaybah",
+      "name": "Utaybah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "ghatafan",
+      "name": "Ghatafan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_murrah",
+      "name": "Al Murrah",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 6
+    },
+    {
+      "id": "banu_yam",
+      "name": "Banu Yam",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 3
+    },
+    {
+      "id": "ajman",
+      "name": "Ajman",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "bani_tamim",
+      "name": "Bani Tamim",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 7
+    },
+    {
+      "id": "banu_tamim_amr",
+      "name": "Amr",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_hanzala",
+      "name": "Banu Hanzala",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_sad_tamim",
+      "name": "Banu Sa'd",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_rabbab",
+      "name": "Al-Rabbab",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_nuaym",
+      "name": "Banu Nu'aym",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "subay",
+      "name": "Subay'",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 4
+    },
+    {
+      "id": "suhool",
+      "name": "Suhool",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_khalid",
+      "name": "Banu Khalid",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 18
+    },
+    {
+      "id": "al_humaid",
+      "name": "Al Humaid",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "juboor",
+      "name": "Juboor",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "duum",
+      "name": "Du'um",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_janah",
+      "name": "Al Janah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_suhoob",
+      "name": "Al Suhoob",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "grusha",
+      "name": "Grusha",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_musallam",
+      "name": "Al Musallam",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "amayer",
+      "name": "'Amayer",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_subaih",
+      "name": "Al Subaih",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mahashir",
+      "name": "Mahashir",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "nahood",
+      "name": "Nahood",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "ajman_tribe",
+      "name": "Ajman (tribe)",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 5
+    },
+    {
+      "id": "zahran",
+      "name": "Zahran",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 13
+    },
+    {
+      "id": "banu_daws",
+      "name": "Banu Daws",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_amr_zahran",
+      "name": "Banu Amr",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_aws_zahran",
+      "name": "Banu Aws",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_manhib",
+      "name": "Banu Manhib",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_fahm",
+      "name": "Banu Fahm",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_ali_zahran",
+      "name": "Banu Ali",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_jadara",
+      "name": "Al-Jadara",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_al_dual",
+      "name": "Banu Al Du'al",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "tanukh",
+      "name": "Tanukh",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "ghamid",
+      "name": "Ghamid",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 8
+    },
+    {
+      "id": "banu_lahb",
+      "name": "Banu Lahb",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "thamalah",
+      "name": "Thamalah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_al_harith",
+      "name": "Banu Al-Harith",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_utbah",
+      "name": "Bani Utbah",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 11
+    },
+    {
+      "id": "al-sabah",
+      "name": "Al-Sabah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al-khalifa",
+      "name": "Al-Khalifa",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al-bin-ali",
+      "name": "Al Bin Ali",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al-jalahma",
+      "name": "Al Jalahma",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu-sulaym",
+      "name": "Banu Sulaym",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al-musallam",
+      "name": "Al Musallam",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "huwala",
+      "name": "Huwala",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "maadhid",
+      "name": "Maadhid",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 2
+    },
+    {
+      "id": "al_ali_tribe",
+      "name": "Al Ali",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "urayna",
+      "name": "Urayna",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_tayy",
+      "name": "Banu Tayy",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_rabiah",
+      "name": "Banu Rabi'ah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_mira",
+      "name": "Al Mira",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mawali",
+      "name": "Mawali",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "annazah",
+      "name": "Annazah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "na_im_confederation",
+      "name": "Na'im",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_azd",
+      "name": "Banu Azd",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "naim_tribe",
+      "name": "Na'im",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "dawasir_tribe",
+      "name": "Dawasir",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "rabia_tribe",
+      "name": "Rab'ia tribe",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "anizah_tribe",
+      "name": "Anizah tribe",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bakr_bin_wail",
+      "name": "Bakr Bin Wail",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_azd",
+      "name": "Al-Azd",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_utbah",
+      "name": "Banu Utbah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "qawasem",
+      "name": "Qawasem",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_hammad",
+      "name": "Bani Hammad",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_nasur",
+      "name": "Al Nasur/Nassour",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "obaidli",
+      "name": "Obaidli",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_utub",
+      "name": "Al-Utub",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "yaarubah",
+      "name": "Yaarubah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "huwayla",
+      "name": "Huwayla",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "anaza",
+      "name": "Anaza",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_bin_ali",
+      "name": "Al Bin Ali",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_dawasir",
+      "name": "Al-Dawasir",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "uriad_kurds",
+      "name": "Uriad",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "zangana_kurds",
+      "name": "Zangana",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "chegini_kurds",
+      "name": "Chegini",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kordshuli_kurds",
+      "name": "Kordshuli",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kuruni_kurds",
+      "name": "Kuruni",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "abookara",
+      "name": "Abookara",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bithyni_tribe",
+      "name": "Bithyni",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "thyni_tribe",
+      "name": "Thyni",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mariandyni_tribe",
+      "name": "Mariandyni",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mysians_tribe",
+      "name": "Mysians",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "caucones_tribe",
+      "name": "Caucones",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "himyar",
+      "name": "Himyar",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 10
+    },
+    {
+      "id": "dhu_raydan",
+      "name": "dhū-Raydān",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "dhul_kala",
+      "name": "Dhu'l-Kala",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "dhu_asbah",
+      "name": "Dhu Asbah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "saba",
+      "name": "Saba'",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "qataban",
+      "name": "Qataban",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hadramaut",
+      "name": "Haḍramaut",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "kahlan",
+      "name": "Kahlan",
+      "type": "tribe",
+      "group": "qahtani",
+      "color": null,
+      "size": 31
+    },
+    {
+      "id": "hamdan",
+      "name": "Hamdan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "lakhm",
+      "name": "Lakhm",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "madhhij",
+      "name": "Madhhij",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "khuzaa",
+      "name": "Khuza'a",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "hashid",
+      "name": "Hashid",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bakil",
+      "name": "Bakil",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "ujman",
+      "name": "'Ujman",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_kathir",
+      "name": "Banu Kathir",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_mashruki",
+      "name": "Banu Al-Mashruki",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_harith_jabal_amil",
+      "name": "Banu Al Harith",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_muayiya",
+      "name": "Banu Muayiya",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_sukun",
+      "name": "Banu Al-Sukun",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_sakasek",
+      "name": "Banu Al-Sakasek",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_harith_najran",
+      "name": "Banu Al-Harith",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_judham",
+      "name": "Banu Judham",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "sakasic",
+      "name": "Sakasic",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "banu_qudaa",
+      "name": "Banu Quda'a",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "bani_yas",
+      "name": "Bani Yas",
+      "type": "tribe",
+      "group": "adnani",
+      "color": null,
+      "size": 52
+    },
+    {
+      "id": "al_bu_hemair",
+      "name": "Al Bu Hemair",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "maharibah",
+      "name": "Maharibah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "mishagin",
+      "name": "Mishagin",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "sudan",
+      "name": "Sudan",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "sabais",
+      "name": "Sabais",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "halalmah",
+      "name": "Halalmah",
+      "type": "tribe",
+      "group": "unknown",
+      "color": null,
+      "size": 1
+    },
+    {
+      "id": "al_qasimi_sharjah",
+      "name": "Al Qasimi (Sharjah)",
+      "type": "family",
+      "group": "family",
+      "size": 2
+    },
+    {
+      "id": "al_saud",
+      "name": "Al Saud (House of Saud)",
+      "type": "family",
+      "group": "family",
+      "size": 4
+    },
+    {
+      "id": "al_jalahma",
+      "name": "Al Jalahma",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "dulafid_dynasty",
+      "name": "Dulafid dynasty",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "uyunid_dynasty",
+      "name": "Uyunid dynasty",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "hamdanid_dynasty",
+      "name": "Hamdanid dynasty",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "bani_hafiz_family",
+      "name": "Bani Hafiz Family",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "sudairi_seven",
+      "name": "Sudairi Seven",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_darmaki",
+      "name": "Al Darmaki",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_jaberi",
+      "name": "Al Jaberi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_saadi",
+      "name": "Al Saadi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_amru",
+      "name": "Al-Amru",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "hankab",
+      "name": "al-Hankab",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "almuhannada",
+      "name": "Almuhannada",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "albuflasa_clan",
+      "name": "Albuflasa",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "house_of_khalifa",
+      "name": "House of Khalifa",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "house_of_sabah",
+      "name": "House of Sabah",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_rashid",
+      "name": "Al Rashid (House of Rashid)",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_jarba",
+      "name": "Al Jarba",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_ali_hail",
+      "name": "Al Ali",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_sabhan",
+      "name": "Al Sabhan",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_thani_family",
+      "name": "Al Thani",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_ash_sheikh_family",
+      "name": "Al ash-Sheikh",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "aghlabids",
+      "name": "Aghlabids",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_muammar",
+      "name": "Al Mu'ammar",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_urayir",
+      "name": "Al 'Ura'yir / Al 'Uray'ir",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_nahyan",
+      "name": "Al Nahyan",
+      "type": "family",
+      "group": "family",
+      "size": 7
+    },
+    {
+      "id": "al_maktoum",
+      "name": "Al Maktoum",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_qasimi_rak",
+      "name": "Al Qasimi (RAK)",
+      "type": "family",
+      "group": "family",
+      "size": 2
+    },
+    {
+      "id": "house_of_sheikh_saeed_bin_hamad_al_qasimi",
+      "name": "House of Sheikh Saeed bin Hamad Al Qasimi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_nuaimi",
+      "name": "Al Nuaimi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_qasimi",
+      "name": "Al Qasimi",
+      "type": "family",
+      "group": "family",
+      "size": 4
+    },
+    {
+      "id": "al_hamoud_al_nuaimi",
+      "name": "Al Hamoud Al Nuaimi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_mualla",
+      "name": "Al Mualla",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_sharqi",
+      "name": "Al Sharqi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_khalifa",
+      "name": "Al Khalifa",
+      "type": "family",
+      "group": "family",
+      "size": 2
+    },
+    {
+      "id": "al_thani",
+      "name": "Al Thani",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_sabah",
+      "name": "Al Sabah",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_maawdah",
+      "name": "Al-Ma'awdah",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_buainain",
+      "name": "Al-Buainain",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_fadhil",
+      "name": "Al-Fadhil",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_abu_risha",
+      "name": "Al Abu Risha",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "jarrahids",
+      "name": "Jarrahids",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_kuwari",
+      "name": "Al-Kuwari",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_mannai",
+      "name": "Al-Mannai",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_noaimi",
+      "name": "Al-Noaimi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_rumaihi",
+      "name": "Al-Rumaihi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_sulaiti",
+      "name": "Al-Sulaiti",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_thawadi",
+      "name": "Al-Thawadi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_attiyah",
+      "name": "Al Attiyah",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_naimi_qatar",
+      "name": "Al Naimi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_nuaimi_ajman",
+      "name": "Al Nuaimi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_dosari",
+      "name": "Al Dosari",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "nonoo",
+      "name": "Nonoo",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "cohen_bahrain",
+      "name": "Cohen",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "cohen_scali",
+      "name": "Cohen-Scali",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "cohen_maghari",
+      "name": "Cohen-Maghari (Meguri)",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "rouben",
+      "name": "Rouben",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "kalantarian_family",
+      "name": "Kalantarian Family",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "khedouri",
+      "name": "Khedouri",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "zilkha_family",
+      "name": "Zilkha Family",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "nonoo_family",
+      "name": "Nonoo Family",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_qarooni",
+      "name": "Al-Qarooni/Karuni family",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_alawi",
+      "name": "Al-Alawi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_musawi",
+      "name": "Al-Musawi",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_qassab",
+      "name": "Al-Qassab",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "al_bu_said",
+      "name": "Al Bu Said",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    },
+    {
+      "id": "ghurid_dynasty",
+      "name": "Ghurid Dynasty (Shansabani)",
+      "type": "family",
+      "group": "family",
+      "size": 1
+    }
+  ],
+  "links": [
+    {
+      "source": "bani_yas",
+      "target": "manasir",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "bani_yas",
+      "target": "awamir",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_yas",
+      "target": "bani_kaab",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "al_qasimi",
+      "target": "bani_yas",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "tayy",
+      "target": "bani_sakher",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "tayy",
+      "target": "shammar_tribe",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "tayy",
+      "target": "lakhmids",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "tayy",
+      "target": "ghassanids",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "tayy",
+      "target": "banu_asad",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "tayy",
+      "target": "banu_bakr",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "azd",
+      "target": "sabaeans",
+      "type": "trade_partnership",
+      "strength": 0.1
+    },
+    {
+      "source": "quraysh",
+      "target": "kinana",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_aws",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_khazraj",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_khuza_ah",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "quraysh",
+      "target": "hawazin",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_thaqif",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "mudar",
+      "target": "rabia",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "mudar",
+      "target": "himyar",
+      "type": "vassalage",
+      "strength": 1
+    },
+    {
+      "source": "mudar",
+      "target": "banu_ghassan",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "mudar",
+      "target": "lakhmid",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "mudar",
+      "target": "ghassanid",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "rabiah",
+      "target": "mudhar",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "rabiah",
+      "target": "beja",
+      "type": "intermarriage",
+      "strength": 0.1
+    },
+    {
+      "source": "rabiah",
+      "target": "hudhayl",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "banu_hanifa",
+      "target": "banu_bakr",
+      "type": "vassalage",
+      "strength": 0.1
+    },
+    {
+      "source": "banu_hanifa",
+      "target": "rabiah",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "banu_hanifa",
+      "target": "anizah",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "banu_hina",
+      "target": "banu_sulaym",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "banu_hina",
+      "target": "mudar_confederation",
+      "type": "vassalage",
+      "strength": 1
+    },
+    {
+      "source": "awamir",
+      "target": "bani_yas",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "awamir",
+      "target": "manasir",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "awamir",
+      "target": "duru",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "awamir",
+      "target": "bani_qitab",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "al_awazim",
+      "target": "bani_khalid",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "al_awazim",
+      "target": "al_kathiri",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "al_awazim",
+      "target": "bani_rasheed",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "bani_hadiyah",
+      "target": "bani_shatair",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "bani_hadiyah",
+      "target": "rulers_ras_al_khaimah",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_kaab",
+      "target": "bani_yas",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "bani_kaab",
+      "target": "naim",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_kaab",
+      "target": "bani_qitab",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_qitab",
+      "target": "naim",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "bani_qitab",
+      "target": "awamir",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_qitab",
+      "target": "duru",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_qitab",
+      "target": "manasir",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_qitab",
+      "target": "bani_yas",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_shatair",
+      "target": "bani_hadiyah",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "dahaminah",
+      "target": "manaii",
+      "type": "trade_partnership",
+      "strength": 0.6
+    },
+    {
+      "source": "daramikah",
+      "target": "dhawahir",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "daramikah",
+      "target": "al_bu_falah",
+      "type": "trade_partnership",
+      "strength": 0.1
+    },
+    {
+      "source": "dawasir",
+      "target": "al_saud",
+      "type": "intermarriage",
+      "strength": 1
+    },
+    {
+      "source": "dawasir",
+      "target": "al_khalifa",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "dawasir",
+      "target": "utub",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "house_of_khalifa",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "mutair_ikhwan",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "dhawahir",
+      "target": "al_nahyan",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "dhawahir",
+      "target": "bani_yas",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "dhawahir",
+      "target": "naim",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "dhawahir",
+      "target": "manasir",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "ghafalah",
+      "target": "al_nahyan",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "ghafalah",
+      "target": "khawatir",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "ghafalah",
+      "target": "bani_qitab",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "ghafalah",
+      "target": "naim",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "habus",
+      "target": "shihuh",
+      "type": "intermarriage",
+      "strength": 1
+    },
+    {
+      "source": "habus",
+      "target": "dhahuriyiin",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "habus",
+      "target": "naqbiyin",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "al_bu_hamir",
+      "target": "bani_yas",
+      "type": "vassalage",
+      "strength": 1
+    },
+    {
+      "source": "al_bu_hamir",
+      "target": "manasir",
+      "type": "vassalage",
+      "strength": 1
+    },
+    {
+      "source": "al_bu_hamir",
+      "target": "al_nahyan",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "mahamid",
+      "target": "harb",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "mahamid",
+      "target": "al_omaro_bani_uqba",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "mahamid",
+      "target": "al_huwaitat",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "mahamid",
+      "target": "bani_abbad",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "mahamid",
+      "target": "bani_hamida",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "mahamid",
+      "target": "zoubi",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_hajer",
+      "target": "al_ajman",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "bani_hajer",
+      "target": "al_murrah",
+      "type": "shared_migration",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_hajer",
+      "target": "dawasir",
+      "type": "shared_migration",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_hajer",
+      "target": "al_qahtani",
+      "type": "shared_migration",
+      "strength": 0.6
+    },
+    {
+      "source": "khawatir",
+      "target": "naim",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "khawatir",
+      "target": "al_bu_shamis",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "khawatir",
+      "target": "al_bu_kharaiban",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "khawatir",
+      "target": "sharqiyin",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "khawatir",
+      "target": "sharqiyin",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "khawatir",
+      "target": "qawasim",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "khawatir",
+      "target": "ghafalah",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "khawatir",
+      "target": "bani_qitab",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "khawatir",
+      "target": "al_bu_falah",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "khawatir",
+      "target": "manasir",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "kunud",
+      "target": "sudan_al_suwaidi",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "mahris",
+      "target": "qudaa",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "manasir",
+      "target": "rubatab",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "manasir",
+      "target": "shaiqiyah",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "manasir",
+      "target": "kababish",
+      "type": "trade_partnership",
+      "strength": 0.6
+    },
+    {
+      "source": "manasir",
+      "target": "gaali",
+      "type": "trade_partnership",
+      "strength": 0.6
+    },
+    {
+      "source": "manasir",
+      "target": "kawahla",
+      "type": "shared_migration",
+      "strength": 0.1
+    },
+    {
+      "source": "maraziq",
+      "target": "tunaij",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "al_bu_muhair",
+      "target": "bani_yas",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "al_bu_muhair",
+      "target": "al_bu_falasah",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "al_bu_muhair",
+      "target": "al_qawasim",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "al_bu_muhair",
+      "target": "sudan_tribe",
+      "type": "trade_partnership",
+      "strength": 0.6
+    },
+    {
+      "source": "naim",
+      "target": "dhawahir",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "naim",
+      "target": "bani_yas",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "naim",
+      "target": "al_bu_falah",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "naim",
+      "target": "bani_kaab",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "naim",
+      "target": "bani_qitab",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "naim",
+      "target": "duru",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "naim",
+      "target": "manasir",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "naqbiyin",
+      "target": "qawasim",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "naqbiyin",
+      "target": "sharqiyin",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "naqbiyin",
+      "target": "awanat",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "al_nuaimi_tribe",
+      "target": "al_bu_shamis",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "al_nuaimi_tribe",
+      "target": "al_qasimi",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "al_nuaimi_tribe",
+      "target": "al_nahyan",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "otaibah",
+      "target": "hawazin",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "otaibah",
+      "target": "anazzah",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "otaibah",
+      "target": "mutayr",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "otaibah",
+      "target": "harb",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "otaibah",
+      "target": "banu_saad",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "al_bu_shamis",
+      "target": "naim",
+      "type": "shared_migration",
+      "strength": 0.1
+    },
+    {
+      "source": "al_bu_shamis",
+      "target": "al_bu_falah",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "al_bu_shamis",
+      "target": "duru",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "al_bu_shamis",
+      "target": "bani_qitab",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "al_bu_shamis",
+      "target": "dhawahir",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "sharqiyin",
+      "target": "al_qasimi_sharjah",
+      "type": "vassalage",
+      "strength": 0.1
+    },
+    {
+      "source": "sharqiyin",
+      "target": "shihuh",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "sharqiyin",
+      "target": "khawatir",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "sharqiyin",
+      "target": "naqbiyin",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "sharqiyin",
+      "target": "bani_yas",
+      "type": "rivalry",
+      "strength": 0.3
+    },
+    {
+      "source": "shihuh",
+      "target": "habus",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "shihuh",
+      "target": "sharqiyin",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "shihuh",
+      "target": "al_qasimi",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "tunaij",
+      "target": "bani_qitab",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "tunaij",
+      "target": "naim",
+      "type": "shared_migration",
+      "strength": 0.6
+    },
+    {
+      "source": "tunaij",
+      "target": "shihuh",
+      "type": "trade_partnership",
+      "strength": 0.6
+    },
+    {
+      "source": "zaab",
+      "target": "al_qasimi_rak",
+      "type": "vassalage",
+      "strength": 0.1
+    },
+    {
+      "source": "zaab",
+      "target": "al_nahyan",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "al_muntafiq",
+      "type": "vassalage",
+      "strength": 0.1
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "shuraifat",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "juwarin",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "al_aunan",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "qubaisat",
+      "target": "bani_yas",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "mazrui",
+      "target": "al_bu_said",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "qubaisi",
+      "target": "bani_yas",
+      "type": "vassalage",
+      "strength": 1
+    },
+    {
+      "source": "qubaisi",
+      "target": "al_nahyan",
+      "type": "intermarriage",
+      "strength": 1
+    },
+    {
+      "source": "anizzah",
+      "target": "banu_bakr",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "anizzah",
+      "target": "shammar",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "anizzah",
+      "target": "al_fadl",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "anizzah",
+      "target": "bani_hanifa",
+      "type": "intermarriage",
+      "strength": 1
+    },
+    {
+      "source": "shammar",
+      "target": "anizzah",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "shammar",
+      "target": "tayy",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "shammar",
+      "target": "ghassanids",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "shammar",
+      "target": "lakhmids",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "mutayr",
+      "target": "utaybah",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "mutayr",
+      "target": "harb",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "mutayr",
+      "target": "anizzah",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "al_murrah",
+      "target": "banu_yam",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "al_murrah",
+      "target": "bani_hajer",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "al_murrah",
+      "target": "ajman",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "subay",
+      "target": "suhool",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "banu_khalid",
+      "target": "al_saud",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "banu_khalid",
+      "target": "anizzah",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "banu_khalid",
+      "target": "ajman",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "banu_khalid",
+      "target": "mutayr",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "banu_khalid",
+      "target": "subay",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "banu_khalid",
+      "target": "dawasir",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "ajman_tribe",
+      "target": "banu_yam",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "ajman_tribe",
+      "target": "al_murrah",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "ajman_tribe",
+      "target": "utaybah",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "ajman_tribe",
+      "target": "mutayr",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "ajman_tribe",
+      "target": "al_saud",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "zahran",
+      "target": "azd",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "zahran",
+      "target": "ghamid",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "zahran",
+      "target": "quraysh",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "zahran",
+      "target": "banu_al_dual",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "ghamid",
+      "target": "zahran",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "ghamid",
+      "target": "banu_lahb",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "ghamid",
+      "target": "thamalah",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "ghamid",
+      "target": "subay",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "ghamid",
+      "target": "banu_al_harith",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "ghamid",
+      "target": "khathaam",
+      "type": "alliance",
+      "strength": 0.1
+    },
+    {
+      "source": "bani_utbah",
+      "target": "anizah",
+      "type": "shared_migration",
+      "strength": 1
+    },
+    {
+      "source": "bani_utbah",
+      "target": "banu-sulaym",
+      "type": "shared_migration",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_utbah",
+      "target": "al-musallam",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "bani_utbah",
+      "target": "huwala",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "himyar",
+      "target": "saba",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "himyar",
+      "target": "qataban",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "himyar",
+      "target": "hadramaut",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "himyar",
+      "target": "qudaa",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "kahlan",
+      "target": "himyar",
+      "type": "rivalry",
+      "strength": 1
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_asad",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_tamim",
+      "type": "rivalry",
+      "strength": 0.1
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_judham",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "kahlan",
+      "target": "sakasic",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_qudaa",
+      "type": "alliance",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_yas",
+      "target": "dhawahir",
+      "type": "alliance",
+      "strength": 1
+    },
+    {
+      "source": "bani_yas",
+      "target": "naim",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_yas",
+      "target": "bani_kaab",
+      "type": "rivalry",
+      "strength": 0.6
+    },
+    {
+      "source": "bani_yas",
+      "target": "awamir",
+      "type": "shared_migration",
+      "strength": 0.1
+    },
+    {
+      "source": "qahtan",
+      "target": "himyar",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "qahtan",
+      "target": "kahlan",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "shammar",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "qahtan",
+      "target": "qahtan_tribe",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "mudar",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "rabiah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "qays_aylan",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "anizzah",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "bani_tamim",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "bani_yas",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "otaibah",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "harb",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "mutayr",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "banu_khalid",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "subay",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "adnan",
+      "target": "banu_hanifa",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "mazrui",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "sudan_tribe",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "qubaisi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "remeithi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "anizzah",
+      "target": "bani_utbah",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_hanifa",
+      "target": "anizzah",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_tamim",
+      "target": "maadhid",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_falah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_falasah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_hemairi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_mehairbi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_remeithi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_mashghouni",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_hameli",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_mehairi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_suwaidi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_qubaisi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_mazrouei",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_subousi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_marri",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_halami",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "al_ghawth_tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "al_jadila_tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "banu_thuwal_tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "banu_nabhan_tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "banu_hani_tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "banu_hur_tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "banu_jundub_tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "al_thaalib_tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "banu_lam_tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "tayy",
+      "target": "al_fadl_tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "azd",
+      "target": "azd_uman",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "azd",
+      "target": "ghassanids",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "azd",
+      "target": "aws_khazraj",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "azd",
+      "target": "bariq",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "azd",
+      "target": "khuza_a",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "azd",
+      "target": "zahran",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "azd",
+      "target": "ghamid",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "azd",
+      "target": "daws",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_hashim",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_sahm",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_adi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_makhzum",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_jumah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_taym",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_asad",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_zuhra",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "quraysh",
+      "target": "banu_harith_ibn_fihr",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mudar",
+      "target": "ilyas_mudar",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mudar",
+      "target": "qays_aylan",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mudar",
+      "target": "kinana",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mudar",
+      "target": "quraysh",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mudar",
+      "target": "tamim",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mudar",
+      "target": "hudhayl",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mudar",
+      "target": "asad",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mudar",
+      "target": "banu_thalabah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "abd_al_qays",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "anizah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "anz_ibn_wail",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "banu_bakr",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "banu_hanifa",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "banu_shayban",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "banu_qays_ibn_thalaba",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "taym_allah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "banu_yashkur",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "taghlib",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "al_nammir_ibn_qasit",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "rabiah",
+      "target": "banu_kanz",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_hanifa",
+      "target": "house_of_saud",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_hina",
+      "target": "athbaj_hilal",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_hina",
+      "target": "riyah_hilal",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_hina",
+      "target": "jusham_hilal",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_hina",
+      "target": "zughba_hilal",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_hina",
+      "target": "adi_hilal",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_hina",
+      "target": "qurra_hilal",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_hina",
+      "target": "rabia_hilal",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "awamir",
+      "target": "afar_awamir",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_hadiyah",
+      "target": "kumzarah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_hadiyah",
+      "target": "habus",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "drisah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "makatim",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "misaid",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "miyadilah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "miyalisah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "mizahamiyin",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "nawaljiyin",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "salalat",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "sawalim",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "shwaihiyin",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "yidwah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_kaab",
+      "target": "zahairat",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_qitab",
+      "target": "northern_bani_qitab",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_qitab",
+      "target": "southern_bani_qitab",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_shatair",
+      "target": "kumzarah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_shatair",
+      "target": "habus",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "dawasir",
+      "target": "sudairi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "ahl_al_buwait",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "al_suwait",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "al_said",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "bani_hussein",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "al_katheer",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "ahl_al_sumada",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "al_jawasim",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "al_thiraan",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "al_maalem",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "al_maadin",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "al_oraif",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "al_aljanat",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_dhafeer",
+      "target": "al_askar",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "dhawahir",
+      "target": "daramikah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "dhawahir",
+      "target": "jawabir",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "dhawahir",
+      "target": "bani_saad",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "alrtuei",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "almatiei",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "almadhakir",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "almuhabida",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "alrathea",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "hourani",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "al_abdul_dayem",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "al_shaleikh",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "al_bahri",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "ayal_abdo",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "abu_karaki",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "kiawan",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "alkhudur",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "alsawalima",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "alhamamada",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "almusaeada",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "alhasasana",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "aljeayisa",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "dar_alearabi",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "al_asead",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "mahamid",
+      "target": "al_ahmad",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "manasir_al_nil",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "manasir_al_badiyah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "wahabab",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "suleimaniyah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "kabanah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "diqeisab",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "hamsab",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "gaal",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "ababsah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "fareiab",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "hamdatiab",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "amasib",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "khabra",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "hamamir",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "muleikab",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "manasir",
+      "target": "kagbab",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mazari",
+      "target": "mazari_emirati",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "mazari",
+      "target": "mazari_baloch",
+      "type": "claimed_descent",
+      "strength": 0.8
+    },
+    {
+      "source": "naim",
+      "target": "al_bu_kharaiban",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "naim",
+      "target": "khawatir",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "naim",
+      "target": "al_bu_shamis",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "naim",
+      "target": "darawishah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "naim",
+      "target": "al_jabr_naim_qatar",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "naim",
+      "target": "ramzan_naim_qatar",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_nuaimi_tribe",
+      "target": "al_bu_kharaiban",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "otaibah",
+      "target": "guzayah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "qahtan_tribe",
+      "target": "sanhan",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "qahtan_tribe",
+      "target": "junb",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "qahtan_tribe",
+      "target": "rufaida",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "qahtan_tribe",
+      "target": "bani_hajer",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "sharqiyin",
+      "target": "hafaitat",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "sharqiyin",
+      "target": "yammahi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "sharqiyin",
+      "target": "hamudiyin",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shihuh",
+      "target": "bani_hadiyah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shihuh",
+      "target": "bani_shatair",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shihuh",
+      "target": "bani_muhammad",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shihuh",
+      "target": "bani_ali",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shihuh",
+      "target": "bani_ham_mazyud",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shihuh",
+      "target": "khanazirah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shihuh",
+      "target": "khanabil",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shihuh",
+      "target": "kumazarah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shihuh",
+      "target": "mahabib",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shihuh",
+      "target": "maqadilah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "al_rumaiyadh",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "al_nasrallah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "al_khlawi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "al_omar_albu_salih",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "al_yoshaa",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "al_araytham",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "al_tarayma",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_bu_falah",
+      "target": "al_kurdi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "anizzah",
+      "target": "ruwallah",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "anizzah",
+      "target": "bani_hizzan",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "anizzah",
+      "target": "hasana",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "anizzah",
+      "target": "wuld_ali",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "anizzah",
+      "target": "fadan",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "anizzah",
+      "target": "sbaa",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "anizzah",
+      "target": "amarat",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shammar",
+      "target": "abdah_shammar",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shammar",
+      "target": "al_aslam_shammar",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shammar",
+      "target": "sinjarah_shammar",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shammar",
+      "target": "shammar_al_jarba",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shammar",
+      "target": "shammar_toga",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "shammar",
+      "target": "shammar_al_sayeh",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mutayr",
+      "target": "mutayr_bani_abdullah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mutayr",
+      "target": "mutayr_al_ulwa",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "mutayr",
+      "target": "mutayr_braih",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_tamim",
+      "target": "banu_tamim_amr",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_tamim",
+      "target": "banu_hanzala",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_tamim",
+      "target": "banu_sad_tamim",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_tamim",
+      "target": "al_rabbab",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "al_humaid",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "juboor",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "duum",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "al_janah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "al_suhoob",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "grusha",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "al_musallam",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "amayer",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "al_subaih",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "mahashir",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "banu_khalid",
+      "target": "nahood",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "zahran",
+      "target": "banu_daws",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "zahran",
+      "target": "banu_amr_zahran",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "zahran",
+      "target": "banu_aws_zahran",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "zahran",
+      "target": "banu_manhib",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "zahran",
+      "target": "banu_fahm",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "zahran",
+      "target": "banu_ali_zahran",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "zahran",
+      "target": "al_jadara",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_utbah",
+      "target": "al-sabah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_utbah",
+      "target": "al-khalifa",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_utbah",
+      "target": "al-bin-ali",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_utbah",
+      "target": "al-jalahma",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "himyar",
+      "target": "dhu_raydan",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "himyar",
+      "target": "dhul_kala",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "himyar",
+      "target": "dhu_asbah",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "azd",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "hamdan",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "lakhm",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "tayy",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "kinda",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "madhhij",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "azd_uman",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "ghassanids",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "aws_khazraj",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "bariq",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "khuzaa",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "hashid",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "bakil",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_yam",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "al_murrah",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "ujman",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_kathir",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_mashruki",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_harith_jabal_amil",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "shammar",
+      "type": "offshoot",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_muayiya",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_sukun",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_sakasek",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "kahlan",
+      "target": "banu_harith_najran",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_bu_falah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_bu_falasah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_qemzi",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_bu_hemair",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "maharibah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "rumaithat",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "mishagin",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "hawamil",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_bu_muhair",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "sudan",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "qubaisat",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "mazari",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "sabais",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "marar",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "bani_yas",
+      "target": "halalmah",
+      "type": "sub_tribe",
+      "strength": 0.8
+    },
+    {
+      "source": "al_qasimi",
+      "target": "al_qasimi_sharjah",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "anizzah",
+      "target": "al_saud",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "bani_utbah",
+      "target": "al_jalahma",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "al_nahyan",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "al_maktoum",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "al_qasimi_rak",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "naim_confederation",
+      "target": "al_nuaimi",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "al_ali_tribe",
+      "target": "al_mualla",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "sharqiyin",
+      "target": "al_sharqi",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "bani_utbah",
+      "target": "al_khalifa",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "maadhid",
+      "target": "al_thani",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "al_sabah",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "al_maawdah",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "bani_tamim",
+      "target": "al_buainain",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "banu_tayy",
+      "target": "al_fadhil",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "al_kuwari",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "banu_tamim",
+      "target": "al_mannai",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "na_im_confederation",
+      "target": "al_noaimi",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "al_rumaihi",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "al_sulaiti",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "al_thawadi",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "al_attiyah",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "naim_tribe",
+      "target": "al_naimi_qatar",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "dawasir_tribe",
+      "target": "al_dosari",
+      "type": "family_of",
+      "strength": 0.9
+    },
+    {
+      "source": "<UNKNOWN>",
+      "target": "cohen_bahrain",
+      "type": "family_of",
+      "strength": 0.9
+    }
+  ]
+}

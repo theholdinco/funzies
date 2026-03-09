@@ -1,0 +1,23 @@
+{
+  "counts": {
+    "tribes": 445,
+    "families": 68,
+    "notableFigures": 472,
+    "ethnicGroups": 44,
+    "regions": 408,
+    "events": 357,
+    "migrations": 94,
+    "connections": 34,
+    "nameOrigins": 476,
+    "tribalRelations": 200,
+    "tribalAncestry": 284
+  },
+  "coverage": {
+    "tribesWithDescription": 74,
+    "tribesWithArabicName": 195,
+    "familiesWithDescription": 26,
+    "eventsWithDescription": 276,
+    "regionsWithCoordinates": 36
+  },
+  "lastUpdated": "2026-03-09T01:25:08.240Z"
+}

@@ -12,8 +12,12 @@ interface ChatMessage {
 }
 
 interface FollowUpChatProps {
-  analysisId: string;
+  apiUrl: string;
   members: PanelMember[];
+  title?: string;
+  modes?: Mode[];
+  defaultMode?: Mode;
+  placeholders?: Partial<Record<Mode, string>>;
 }
 
 function escapeRegex(str: string) {
@@ -63,8 +67,22 @@ function parseSpeakerBlocks(
   return blocks;
 }
 
-export default function FollowUpChat({ analysisId, members }: FollowUpChatProps) {
-  const [mode, setMode] = useState<Mode>("analyst");
+const DEFAULT_PLACEHOLDERS: Record<Mode, string> = {
+  analyst: "Ask your senior analyst about this credit...",
+  "ask-panel": "Ask the panel a question...",
+  "ask-member": "", // filled dynamically
+  debate: "What should the panel debate?",
+};
+
+export default function FollowUpChat({
+  apiUrl,
+  members,
+  title = "Q&A",
+  modes = ["analyst", "ask-panel", "ask-member", "debate"],
+  defaultMode,
+  placeholders,
+}: FollowUpChatProps) {
+  const [mode, setMode] = useState<Mode>(defaultMode || modes[0]);
   const [selectedMember, setSelectedMember] = useState(members[0]?.name || "");
   const [question, setQuestion] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -76,7 +94,7 @@ export default function FollowUpChat({ analysisId, members }: FollowUpChatProps)
   const isNearBottomRef = useRef(true);
 
   useEffect(() => {
-    fetch(`/api/clo/analyses/${analysisId}/follow-ups`)
+    fetch(apiUrl)
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -90,7 +108,7 @@ export default function FollowUpChat({ analysisId, members }: FollowUpChatProps)
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
-  }, [analysisId]);
+  }, [apiUrl]);
 
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
@@ -135,7 +153,7 @@ export default function FollowUpChat({ analysisId, members }: FollowUpChatProps)
       history,
     };
 
-    const res = await fetch(`/api/clo/analyses/${analysisId}/follow-ups`, {
+    const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -248,7 +266,7 @@ export default function FollowUpChat({ analysisId, members }: FollowUpChatProps)
   return (
     <div style={{ marginTop: "1rem" }}>
       <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", marginBottom: "1rem" }}>
-        Q&A
+        {title}
       </h2>
 
       {messages.length > 0 && (
@@ -278,7 +296,7 @@ export default function FollowUpChat({ analysisId, members }: FollowUpChatProps)
       )}
 
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
-        {(["analyst", "ask-panel", "ask-member", "debate"] as Mode[]).map((m) => (
+        {modes.map((m) => (
           <label
             key={m}
             style={{
@@ -330,13 +348,8 @@ export default function FollowUpChat({ analysisId, members }: FollowUpChatProps)
           onKeyDown={handleKeyDown}
           className="chat-input-textarea"
           placeholder={
-            mode === "analyst"
-              ? "Ask your senior analyst about this credit..."
-              : mode === "ask-member"
-                ? `Ask ${selectedMember} a question...`
-                : mode === "debate"
-                  ? "What should the panel debate?"
-                  : "Ask the panel a question..."
+            placeholders?.[mode]
+              || (mode === "ask-member" ? `Ask ${selectedMember} a question...` : DEFAULT_PLACEHOLDERS[mode])
           }
           rows={2}
           disabled={isStreaming}

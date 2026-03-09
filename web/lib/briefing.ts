@@ -103,6 +103,7 @@ export async function getUserBriefingDigest(
 CRITICAL CLO KNOWLEDGE (apply when summarizing CLO market items):
 - The CLO equity arb = asset spread (loan WAS) minus liability cost (tranche spreads). Tight liabilities (low AAA spreads) HELP the arb by reducing funding costs — do NOT describe tight liabilities as negative.
 - Widening liabilities hurt the arb; declining loan WAS hurts the arb. Only describe "compressed from both sides" when BOTH asset spreads fall AND liability spreads widen.
+- Credit deterioration (defaults, downgrades, sector distress) WIDENS collateral spreads — do NOT call this "spread compression." Spread compression means loans reprice tighter, which happens in strong markets, not distress.
 - Equity distribution cuts can stem from credit losses, OC test diversions, lower reinvestment spreads, or arb compression — distinguish the actual cause.
 - Existing CLO equity benefits from locked-in liability costs from original pricing — current new-issue spreads are irrelevant to existing deal economics.
 

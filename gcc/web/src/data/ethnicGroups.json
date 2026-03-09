@@ -1,0 +1,887 @@
+[
+  {
+    "id": "achomis",
+    "name": "Achomis (Larestani)",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "achumi_khodmooni",
+    "name": "Achumi/Khodmooni",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "afro_bahrainis",
+    "name": "Afro-Bahrainis",
+    "nameAr": null,
+    "ethnicity": "african",
+    "religion": "mixed",
+    "identityType": "historical_minority",
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": "Historical slave trade legacy",
+    "keyTension": null,
+    "description": null,
+    "regions": [
+      {
+        "regionId": "bahrain",
+        "regionName": "Bahrain",
+        "presenceType": "minority",
+        "influenceLevel": null
+      }
+    ]
+  },
+  {
+    "id": "ajam",
+    "name": "Ajam",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "ajam_bahrain",
+    "name": "Ajam (of Bahrain)",
+    "nameAr": "عجم البحرین",
+    "ethnicity": "persian",
+    "religion": "shia",
+    "identityType": "ethnic_group",
+    "preIslamicOrigins": "Migration traces back to the Sassanid and Achaemenid Persian Empire periods, as early as 6th century BCE",
+    "populationEstimate": "<UNKNOWN>",
+    "traditionalEconomy": "<UNKNOWN>",
+    "originNarrative": "Descendants of Iranians who immigrated to Bahrain as early as the 6th century BCE, but the term generally refers to those who arrived between the 19th and 20th centuries (1801-2000 CE) from the southern provinces of Iran",
+    "keyTension": "Terminology debates around 'Ajam', 'Persian', and 'Iranian' identities, with some finding the term 'Ajam' derogatory due to historical negative usage context",
+    "description": "An ethnic group of Bahraini citizens of Iranian descent, including diverse subgroups from various regions of Iran. Most are Shia but include Sunni families of Achomi and Baluchi ancestry. Many are bilingual in Arabic and Persian.",
+    "regions": [
+      {
+        "regionId": "bahrain",
+        "regionName": "Bahrain",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "manama",
+        "regionName": "Manama",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "muharraq",
+        "regionName": "Muharraq",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "northern_governorate",
+        "regionName": "Northern Governorate",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "capital_governorate",
+        "regionName": "Capital Governorate",
+        "presenceType": "significant",
+        "influenceLevel": null
+      }
+    ]
+  },
+  {
+    "id": "al_busaid_dynasty",
+    "name": "Al Busaid Dynasty",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "baharna",
+    "name": "Baharna",
+    "nameAr": "بُحارنة",
+    "ethnicity": "arab",
+    "religion": "shia",
+    "identityType": "ethnoreligious",
+    "preIslamicOrigins": "Ancient pre-Islamic population including partially-Christianized Arabs, Aramaic-speaking agriculturalists, Persian Zoroastrians, and Jews. Archaeological evidence shows Parthian artifacts and Christian churches from 4th-8th centuries CE.",
+    "populationEstimate": "Most Bahraini citizens are Baharna, with populations throughout Eastern Arabia and diaspora communities",
+    "traditionalEconomy": "Agriculture, handcrafts including weaving with palm leaves (mats, baskets, fans) and pottery",
+    "originNarrative": "Debated origins with multiple theories. Western scholars believe they originate from Bahrain's ancient pre-Islamic population consisting of partially-Christianized Arabs, Aramaic-speaking agriculturalists, Persian Zoroastrians, and Jews. Most families claim descent from Rab'ia tribe, particularly Abd al-Qays (Nestorian Christians), Anizah, Bakr Bin Wail, Banu Tamim, and Al-Azd from Yemen.",
+    "keyTension": "Distinguished from other ethnic groups like Sunni Arabs (Al Arab/Bani Utbah) and Bahraini-Iranians (Ajam). Inhabited region before arrival of Banu Utbah in 18th century.",
+    "description": "Arabic-speaking ethnoreligious group mostly of Shia Muslim background, indigenous to the historical region of Bahrain. Regarded by some scholars as the original inhabitants of Eastern Arabia.",
+    "regions": [
+      {
+        "regionId": "manama",
+        "regionName": "Manama",
+        "presenceType": "dominant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "qatif",
+        "regionName": "Qatif",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "al_ahsa",
+        "regionName": "Al-Ahsa",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "kuwait",
+        "regionName": "Kuwait",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "uae",
+        "regionName": "United Arab Emirates",
+        "presenceType": "minority",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "qatar",
+        "regionName": "Qatar",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "oman",
+        "regionName": "Oman",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "iraq",
+        "regionName": "Iraq",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "iran",
+        "regionName": "Iran",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "bahrain",
+        "regionName": "Bahrain",
+        "presenceType": "significant",
+        "influenceLevel": null
+      }
+    ]
+  },
+  {
+    "id": "bahrain_jewish_community",
+    "name": "Bahrain Jewish Community",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "bahraini_jews",
+    "name": "Bahraini Jewish Community",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "baloch",
+    "name": "Baloch",
+    "nameAr": "البلوش",
+    "ethnicity": "baloch",
+    "religion": "sunni",
+    "identityType": "ethnic",
+    "preIslamicOrigins": "Theory of Median descent. The Baloch people themselves did not enter the region until the 14th century CE, after earlier indigenous populations including the Brahui people (Dravidian-speaking).",
+    "populationEstimate": "<UNKNOWN>",
+    "traditionalEconomy": "Agriculture and livestock make up about 47% of Balochistan's economy, despite only 5% of the land being arable due to extremely dry desert climate.",
+    "originNarrative": "A theory suggests the Baloch people are of Median descent. They did not enter the Balochistan region until the 14th century CE, despite earlier indigenous populations existing during the Stone and Bronze Age.",
+    "keyTension": "Ongoing insurgencies and autonomy movements since 1948, with conflicts in 1948-1950, 1958-1960, 1962-1969, 1973-1977, and a new ongoing insurgency since 2003 by autonomy-seeking Baloch groups.",
+    "description": "The Baloch people are an ethnic group primarily found in Pakistan, Iran, and Afghanistan. They are the largest ethnic group in Balochistan region and have a theory of Median descent.",
+    "regions": [
+      {
+        "regionId": "uae",
+        "regionName": "United Arab Emirates",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "bahrain",
+        "regionName": "Bahrain",
+        "presenceType": "minority",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "balochistan_pakistan",
+        "regionName": "Balochistan, Pakistan",
+        "presenceType": "dominant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "iran",
+        "regionName": "Iran",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "afghanistan",
+        "regionName": "Afghanistan",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "makran",
+        "regionName": "Makran",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "kalat",
+        "regionName": "Kalat",
+        "presenceType": "historical_only",
+        "influenceLevel": null
+      }
+    ]
+  },
+  {
+    "id": "baloch_bahrain",
+    "name": "Baloch of Bahrain",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "balochkara",
+    "name": "Balochkara",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "baluchis_kalba",
+    "name": "Baluchis of Kalba",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "banul_ukhaidhir",
+    "name": "Banul Ukhaidhir",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "basseris",
+    "name": "Basseris",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "beja",
+    "name": "Beja peoples",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "bisharin",
+    "name": "Bisharin",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "brahui_people",
+    "name": "Brahui people",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "ghafiri",
+    "name": "Ghafiri",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "hammadids",
+    "name": "Hammadid Dynasty",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "hawala_arabs",
+    "name": "Hawala Arabs",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "huwala",
+    "name": "Huwala",
+    "nameAr": "الهولة",
+    "ethnicity": "mixed",
+    "religion": "sunni",
+    "identityType": "tribal confederation",
+    "preIslamicOrigins": "Some have been residing in Southern Iran since the Sassanians, such as the Bani Tamim tribe",
+    "populationEstimate": "Most remigrated back to Arabian Peninsula between late 19th and early 20th century",
+    "traditionalEconomy": "sailors, traders, fishermen, pearl divers, and cultivators",
+    "originNarrative": "Original Arabs who migrated to Southern Iran from Coastal Eastern Arabia during the 16th and 17th centuries, forming a tribal confederation in Coastal Oman. Includes tribes such as the Qawasem, Hammadi, Al Nasur/Nassour, Obaidli, and Bani Tamim.",
+    "keyTension": "Intentional confusion with Achomis (Sunni Larestani families) and identity disputes over who constitutes 'true' Huwala Arabs versus Persian-origin populations",
+    "description": "Arabian Iranians of tribal lineage who initially migrated to Iran in the 13th and 14th century and intermixed with the indigenous population of older Arabic-speaking background. Sunni Muslim Arabs who settled on the Iranian coast and later remigrated back to the Arabian Peninsula.",
+    "regions": [
+      {
+        "regionId": "bahrain",
+        "regionName": "Bahrain",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "hormozgan_province",
+        "regionName": "Hormozgan Province, Iran",
+        "presenceType": "historical_only",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "fars_province",
+        "regionName": "Fars Province, Iran",
+        "presenceType": "historical_only",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "bandar_abbas",
+        "regionName": "Bandar Abbas",
+        "presenceType": "historical_only",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "qishm",
+        "regionName": "Qishm",
+        "presenceType": "historical_only",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "bandar_lengeh",
+        "regionName": "Bandar Lengeh",
+        "presenceType": "historical_only",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "arabian_peninsula",
+        "regionName": "Arabian Peninsula",
+        "presenceType": "significant",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "shibkoh_region",
+        "regionName": "Shibkoh region (Bandar Kanj to Bandar Kangan)",
+        "presenceType": "historical_only",
+        "influenceLevel": null
+      }
+    ]
+  },
+  {
+    "id": "iraqi_jews_bahrain",
+    "name": "Iraqi Jewish Community in Bahrain",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "jews_of_bahrain",
+    "name": "Jews of Bahrain",
+    "nameAr": null,
+    "ethnicity": "mixed",
+    "religion": "jewish",
+    "identityType": "historical_minority",
+    "preIslamicOrigins": null,
+    "populationEstimate": "~37 today, down from ~600 pre-1948",
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": "Key families: Nonoo, Cohen, Rouben, Khedouri",
+    "regions": [
+      {
+        "regionId": "bahrain",
+        "regionName": "Bahrain",
+        "presenceType": "minority",
+        "influenceLevel": null
+      }
+    ]
+  },
+  {
+    "id": "kamba",
+    "name": "Kamba",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "khuzestani_arabs",
+    "name": "Khuzestani Arabs",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "kikuyu",
+    "name": "Kikuyu",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "kushites",
+    "name": "Kushites",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "larestani_people",
+    "name": "Larestani People",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "lurs_bahrain",
+    "name": "Lurs of Bahrain",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "mamlakat_saba",
+    "name": "Mamlakat Saba'",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "midianites",
+    "name": "Midianites",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": [
+      {
+        "regionId": "saudi_arabia",
+        "regionName": "Saudi Arabia",
+        "presenceType": "historical_only",
+        "influenceLevel": null
+      },
+      {
+        "regionId": "hejaz",
+        "regionName": "Hejaz",
+        "presenceType": "historical_only",
+        "influenceLevel": null
+      }
+    ]
+  },
+  {
+    "id": "minabis",
+    "name": "Minabis",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "nizar_madd",
+    "name": "Nizar ibn Maʿadd",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "nizari",
+    "name": "Nizari",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": [
+      {
+        "regionId": "oman",
+        "regionName": "Oman",
+        "presenceType": "significant",
+        "influenceLevel": null
+      }
+    ]
+  },
+  {
+    "id": "palestinian_americans",
+    "name": "Palestinian Americans",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "persian_al_ali",
+    "name": "Persian Al Ali",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "persians_kalba",
+    "name": "Persians of Kalba",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "qarmatians",
+    "name": "Qarmatians",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": [
+      {
+        "regionId": "bahrain",
+        "regionName": "Bahrain",
+        "presenceType": "historical_only",
+        "influenceLevel": null
+      }
+    ]
+  },
+  {
+    "id": "qays_aylan",
+    "name": "Qays ʿAylān",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "samaritans",
+    "name": "Samaritans",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "socotri_people",
+    "name": "Socotri People",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "umm_al_nar_culture",
+    "name": "Umm Al Nar Culture",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  },
+  {
+    "id": "zirids",
+    "name": "Zirid Dynasty",
+    "nameAr": null,
+    "ethnicity": null,
+    "religion": null,
+    "identityType": null,
+    "preIslamicOrigins": null,
+    "populationEstimate": null,
+    "traditionalEconomy": null,
+    "originNarrative": null,
+    "keyTension": null,
+    "description": null,
+    "regions": []
+  }
+]
