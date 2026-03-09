@@ -13271,5 +13271,405 @@
         }
       ]
     }
+  },
+  {
+    "type": "family",
+    "id": "al_majed",
+    "data": {
+      "history": "The Al Majed family appears to have diverse origins and branches across the Gulf region, with historical presence in Bahrain and other areas. In 18th century Bahrain, Sheikh Mohammed ibn Abdullah Al Majed served as the spiritual leader of Bahrain during a period of Persian rule and political instability. He notably used Huwala forces to combat attacks from the Utub tribes in the early 18th century. The family name appears across multiple contexts in modern times, from football to various professional fields. Contemporary members include notable figures like footballer Majed Abdullah (born 1959 in Jeddah), who became one of Saudi Arabia's greatest strikers, and various other professionals across the Gulf states. The research suggests the Al Majed name has been present in the region for centuries, though specific migration patterns and tribal origins are not clearly documented in the available sources.",
+      "description": "A Gulf family name with historical presence in Bahrain and modern representation across various fields, most notably in sports and business throughout the Arabian Peninsula.",
+      "originStory": null,
+      "tribalOrigin": null,
+      "modernStatus": "The Al Majed name appears among various professionals, athletes, and public figures across the Gulf region in contemporary times",
+      "folkLegends": [],
+      "nameEtymology": "Majed/Majid means 'noble', 'glorious', 'magnificent', 'honor', or 'generosity' in Arabic, generally referring to something abundant",
+      "migrationPath": [],
+      "timelineEvents": [
+        {
+          "year": 1737,
+          "title": "Persian Invasion of Bahrain",
+          "description": "Persian Afsharids led by Nader Shah invaded Bahrain and deposed Sheikh Jabara Al-Holi, ending the government established by Sheikh Mohammed ibn Abdullah Al Majed's Huwala forces",
+          "location": "Bahrain",
+          "coords": [
+            26.0667,
+            50.5577
+          ],
+          "eventType": "political"
+        },
+        {
+          "year": 1782,
+          "title": "Civil War in Bahrain",
+          "description": "Sayid Majed ibn Sayid Ahmad Al-Jidhafsi, Bahrain's vice governor, clashed with political rival Ahmad ibn Muhammad Al-Biladi during civil conflict",
+          "location": "Bahrain",
+          "coords": [
+            26.0667,
+            50.5577
+          ],
+          "eventType": "conflict"
+        }
+      ],
+      "connections": [],
+      "notableFigures": [
+        {
+          "id": "mohammed_al_majed_spiritual_leader",
+          "name": "Sheikh Mohammed ibn Abdullah Al Majed",
+          "title": "Spiritual Leader of Bahrain",
+          "roleDescription": "Led Bahrain during period of anarchy after Safavid fall, used Huwala forces to combat Utub attacks",
+          "bornYear": null,
+          "diedYear": null,
+          "era": "18th century",
+          "biography": "Served as the spiritual leader of Bahrain during a period of political instability following the fall of the Safavid dynasty. He organized Huwala forces to defend against repeated Utub tribal attacks in the early 18th century.",
+          "achievements": [
+            "Established government to combat foreign invasions",
+            "Organized Huwala defense forces"
+          ],
+          "birthPlace": null,
+          "birthCoords": null
+        },
+        {
+          "id": "majed_abdullah",
+          "name": "Majed Ahmed Abdullah",
+          "title": "Professional Footballer",
+          "roleDescription": "All-time leading goal scorer for Saudi Arabia national team and Al-Nassr club",
+          "bornYear": 1959,
+          "diedYear": null,
+          "era": "20th-21st century",
+          "biography": "Born in Jeddah's Al-Baghdadia District, became Saudi Arabia's greatest striker with 72 international goals in 117 games. Known as 'The Arabian Pelé', he spent his entire career at Al-Nassr, scoring 189 league goals over 21 years.",
+          "achievements": [
+            "Saudi Arabia's all-time leading goal scorer",
+            "Al-Nassr's all-time top scorer with 260 goals",
+            "Won 1984 and 1988 Asian Cups",
+            "Six-time Saudi League top scorer"
+          ],
+          "birthPlace": "Jeddah",
+          "birthCoords": [
+            21.4858,
+            39.1925
+          ]
+        },
+        {
+          "id": "sayid_majed_al_jidhafsi",
+          "name": "Sayid Majed ibn Sayid Ahmad Al-Jidhafsi",
+          "title": "Vice Governor of Bahrain",
+          "roleDescription": "Bahrain's vice governor and headman of Jidhafs who invited Al Khalifa invasion",
+          "bornYear": null,
+          "diedYear": null,
+          "era": "18th century",
+          "biography": "Served as Bahrain's vice governor under Persian rule and was headman of Jidhafs village. He personally invited the Al Khalifa forces to invade Bahrain and promised them material aid, ultimately leading to the end of Persian control.",
+          "achievements": [
+            "Facilitated Al Khalifa takeover of Bahrain",
+            "Led loyalist forces in civil war"
+          ],
+          "birthPlace": "Bahrain",
+          "birthCoords": [
+            26.0667,
+            50.5577
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_wadaei",
+    "data": {
+      "history": "The Al Wadaei family appears to be a Bahraini family with members involved in human rights activism and political dissent. Based on the research, Sayed Ahmed Alwadaei emerged as a prominent human rights activist who was involved in the 2011 Arab Spring protests in Bahrain. Following his participation in the pro-democracy movement, he was jailed and tortured by Bahraini authorities, bearing a prominent scar on his forehead from police brutality. He subsequently fled Bahrain around 2012 and established refugee status in the UK, where he became director of advocacy at the UK-based Bahrain Institute for Rights and Democracy (BIRD). The Bahraini government stripped him of his nationality in 2015, rendering him and his UK-born daughter stateless as retaliation for his activism. His case became emblematic of the broader persecution faced by Bahraini opposition figures, with authorities targeting his family members who remained in Bahrain, including the detention of his wife and infant son in 2016, and the sentencing of three of his relatives to three years in prison on terrorism charges in 2017. After years of legal challenges and threats of legal action, Alwadaei was finally granted UK citizenship in 2024.",
+      "description": "A Bahraini family known primarily through human rights activist Sayed Ahmed Alwadaei, who fled Bahrain following the 2011 Arab Spring and became a prominent voice for Bahraini human rights from exile in the UK.",
+      "originStory": null,
+      "tribalOrigin": null,
+      "modernStatus": "The family is represented by Sayed Ahmed Alwadaei, director of advocacy at the Bahrain Institute for Rights and Democracy, operating as a human rights defender from the UK after being stripped of Bahraini citizenship in 2015.",
+      "folkLegends": [],
+      "nameEtymology": null,
+      "migrationPath": [
+        {
+          "year": 2012,
+          "endYear": null,
+          "from": "Bahrain",
+          "fromCoords": [
+            26.0667,
+            50.5577
+          ],
+          "to": "United Kingdom",
+          "toCoords": [
+            51.5074,
+            -0.1278
+          ],
+          "description": "Sayed Ahmed Alwadaei fled Bahrain following torture and imprisonment for his role in 2011 pro-democracy protests, establishing refugee status in the UK"
+        }
+      ],
+      "timelineEvents": [
+        {
+          "year": 2011,
+          "title": "Arab Spring Participation",
+          "description": "Sayed Ahmed Alwadaei participated in pro-democracy protests during the Arab Spring in Bahrain, leading to his arrest and torture",
+          "location": "Bahrain",
+          "coords": [
+            26.0667,
+            50.5577
+          ],
+          "eventType": "political"
+        },
+        {
+          "year": 2012,
+          "title": "Exile to UK",
+          "description": "Alwadaei fled Bahrain and established refugee status in the United Kingdom",
+          "location": "United Kingdom",
+          "coords": [
+            51.5074,
+            -0.1278
+          ],
+          "eventType": "migration"
+        },
+        {
+          "year": 2015,
+          "title": "Citizenship Revocation",
+          "description": "Bahraini government stripped Alwadaei of his nationality, rendering him and his UK-born daughter stateless",
+          "location": "Bahrain",
+          "coords": [
+            26.0667,
+            50.5577
+          ],
+          "eventType": "political"
+        },
+        {
+          "year": 2016,
+          "title": "Family Detention",
+          "description": "Alwadaei's wife and infant son were detained in Bahrain as retaliation for his activism in the UK",
+          "location": "Bahrain",
+          "coords": [
+            26.0667,
+            50.5577
+          ],
+          "eventType": "political"
+        },
+        {
+          "year": 2024,
+          "title": "UK Citizenship Granted",
+          "description": "Alwadaei was finally granted UK citizenship after threatening legal action against the Home Office",
+          "location": "United Kingdom",
+          "coords": [
+            51.5074,
+            -0.1278
+          ],
+          "eventType": "political"
+        }
+      ],
+      "connections": [],
+      "notableFigures": [
+        {
+          "id": "sayed_ahmed_alwadaei",
+          "name": "Sayed Ahmed Alwadaei",
+          "title": "Director of Advocacy, Bahrain Institute for Rights and Democracy",
+          "roleDescription": "Human rights activist and advocate who campaigns against human rights abuses in Bahrain from exile in the UK",
+          "bornYear": null,
+          "diedYear": null,
+          "era": "21st century",
+          "biography": "Alwadaei participated in Bahrain's 2011 Arab Spring protests, was tortured and imprisoned, then fled to the UK where he became a prominent human rights defender. He was stripped of Bahraini citizenship in 2015 and finally granted UK citizenship in 2024.",
+          "achievements": [
+            "Director of advocacy at BIRD",
+            "Awarded Index on Censorship's 2020 Freedom of Expression Campaigning Award",
+            "Recognized as human rights defender by Front Line Defenders",
+            "Successfully challenged UK Home Office to gain citizenship"
+          ],
+          "birthPlace": null,
+          "birthCoords": null
+        }
+      ]
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_thaqeb",
+    "data": {
+      "history": null,
+      "description": null,
+      "originStory": null,
+      "tribalOrigin": null,
+      "modernStatus": null,
+      "folkLegends": [],
+      "nameEtymology": null,
+      "migrationPath": [],
+      "timelineEvents": [],
+      "connections": [],
+      "notableFigures": []
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_rabban",
+    "data": {
+      "history": null,
+      "description": null,
+      "originStory": null,
+      "tribalOrigin": null,
+      "modernStatus": null,
+      "folkLegends": [],
+      "nameEtymology": null,
+      "migrationPath": [],
+      "timelineEvents": [],
+      "connections": [],
+      "notableFigures": [
+        {
+          "id": "ali_ibn_sahl_rabban_al_tabari",
+          "name": "Ali ibn Sahl Rabban al-Tabari",
+          "title": "Persian Muslim Scholar, Physician and Psychologist",
+          "roleDescription": "Produced one of the first Islamic encyclopedia of medicine titled Firdaws al-Hikmah and first discovered that pulmonary tuberculosis is contagious",
+          "bornYear": 838,
+          "diedYear": 870,
+          "era": "9th century",
+          "biography": "Persian Muslim scholar who spoke Syriac and Greek, served Abbasid caliphs al-Mu'tasim and al-Mutawakkil, and was a convert from Christianity to Islam. His most famous student was the physician and alchemist Abu Bakr al-Razi.",
+          "achievements": [
+            "Wrote first encyclopedic work on medicine",
+            "First discovered that pulmonary tuberculosis is contagious",
+            "Produced Firdaws al-Hikmah (Paradise of Wisdom)",
+            "Trained Abu Bakr al-Razi"
+          ],
+          "birthPlace": "Tabaristan Amol",
+          "birthCoords": [
+            36.4761,
+            52.6785
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_ghali",
+    "data": {
+      "history": "The Al Ghali family traces its origins to Egypt, specifically to Boutros Ghali (1846-1910), who was born in Kiman-al-'Arus village in Beni Suef to a Coptic Christian family. His father was Ghali Nayruz, steward of Prince Mustafa Fadil. Boutros Ghali became a prominent Egyptian politician, serving as Prime Minister from 1908 until his assassination in 1910. The family established itself as one of Egypt's most influential Coptic political dynasties through successive generations of high-ranking government officials and diplomats. The most internationally renowned member was Boutros Boutros-Ghali (1922-2016), grandson of the original Boutros Ghali, who served as Egypt's acting foreign minister and later became the sixth Secretary-General of the United Nations from 1992-1996. The family name became synonymous with Egyptian diplomacy and international relations, with multiple members serving in ministerial positions including foreign affairs, finance, and agriculture throughout the 20th and early 21st centuries.",
+      "description": "A prominent Egyptian Coptic Christian political family originating from Beni Suef, known for producing high-ranking government officials including a Prime Minister and UN Secretary-General. The family has maintained significant influence in Egyptian politics and diplomacy for over a century.",
+      "originStory": "The Al Ghali family originated in Egypt with Boutros Ghali (1846-1910), born to Ghali Nayruz in the village of Kiman-al-'Arus in Beni Suef. The family rose to prominence through Boutros Ghali's political career, beginning as a clerk in the Mixed Court in 1875 and culminating in his appointment as Prime Minister in 1908.",
+      "tribalOrigin": null,
+      "modernStatus": "The family continues to hold influence in Egyptian politics and international affairs. Recent notable members include Youssef Boutros Ghali who served as Minister of Finance from 2004-2011, and Teymour Boutros-Ghali who became an internet entrepreneur.",
+      "folkLegends": [],
+      "nameEtymology": null,
+      "migrationPath": [],
+      "timelineEvents": [
+        {
+          "year": 1846,
+          "title": "Birth of Boutros Ghali",
+          "description": "Boutros Ghali born in Kiman-al-'Arus village, Beni Suef",
+          "location": "Beni Suef, Egypt",
+          "coords": [
+            29.0661,
+            31.0994
+          ],
+          "eventType": "founding"
+        },
+        {
+          "year": 1875,
+          "title": "Political Career Begins",
+          "description": "Boutros Ghali appointed as clerk in the newly constituted Mixed Court",
+          "location": "Cairo, Egypt",
+          "coords": [
+            30.0444,
+            31.2357
+          ],
+          "eventType": "political"
+        },
+        {
+          "year": 1908,
+          "title": "Prime Minister Appointment",
+          "description": "Boutros Ghali appointed Prime Minister of Egypt",
+          "location": "Cairo, Egypt",
+          "coords": [
+            30.0444,
+            31.2357
+          ],
+          "eventType": "political"
+        },
+        {
+          "year": 1910,
+          "title": "Assassination of Boutros Ghali",
+          "description": "Prime Minister Boutros Ghali assassinated by Ibrahim Nassif al-Wardani",
+          "location": "Cairo, Egypt",
+          "coords": [
+            30.0444,
+            31.2357
+          ],
+          "eventType": "political"
+        },
+        {
+          "year": 1922,
+          "title": "Birth of Boutros Boutros-Ghali",
+          "description": "Future UN Secretary-General born in Cairo",
+          "location": "Cairo, Egypt",
+          "coords": [
+            30.0444,
+            31.2357
+          ],
+          "eventType": "founding"
+        },
+        {
+          "year": 1992,
+          "title": "UN Secretary-General",
+          "description": "Boutros Boutros-Ghali becomes sixth Secretary-General of the United Nations",
+          "location": "New York, USA",
+          "coords": [
+            40.7128,
+            -74.006
+          ],
+          "eventType": "political"
+        }
+      ],
+      "connections": [],
+      "notableFigures": [
+        {
+          "id": "boutros_ghali_1846",
+          "name": "Boutros Ghali",
+          "title": "Prime Minister of Egypt",
+          "roleDescription": "First Coptic Christian Prime Minister of Egypt, assassinated in 1910",
+          "bornYear": 1846,
+          "diedYear": 1910,
+          "era": "19th-20th century",
+          "biography": "Born to a Coptic Christian family in Beni Suef, served in various government positions including finance minister and foreign minister before becoming Prime Minister in 1908. He was assassinated by a nationalist in 1910.",
+          "achievements": [
+            "First Coptic recipient of Pasha title in Egypt",
+            "Prime Minister of Egypt 1908-1910"
+          ],
+          "birthPlace": "Kiman-al-'Arus, Beni Suef",
+          "birthCoords": [
+            29.0661,
+            31.0994
+          ]
+        },
+        {
+          "id": "boutros_boutros_ghali",
+          "name": "Boutros Boutros-Ghali",
+          "title": "UN Secretary-General",
+          "roleDescription": "Sixth Secretary-General of the United Nations and Egyptian diplomat",
+          "bornYear": 1922,
+          "diedYear": 2016,
+          "era": "20th-21st century",
+          "biography": "Grandson of Prime Minister Boutros Ghali, served as Egypt's acting foreign minister and played key role in Camp David Accords. Became UN Secretary-General from 1992-1996 but was denied second term by US veto.",
+          "achievements": [
+            "UN Secretary-General 1992-1996",
+            "Negotiated Camp David Accords",
+            "Secretary-General of La Francophonie 1997-2002"
+          ],
+          "birthPlace": "Cairo, Egypt",
+          "birthCoords": [
+            30.0444,
+            31.2357
+          ]
+        },
+        {
+          "id": "youssef_boutros_ghali",
+          "name": "Youssef Boutros Ghali",
+          "title": "Minister of Finance",
+          "roleDescription": "Egyptian Minister of Finance during 2004-2011 period",
+          "bornYear": null,
+          "diedYear": null,
+          "era": "21st century",
+          "biography": "Grandson of UN Secretary-General Boutros Boutros-Ghali, served as Egypt's Minister of Finance from 2004 to 2011 during the Mubarak era.",
+          "achievements": [
+            "Minister of Finance 2004-2011"
+          ],
+          "birthPlace": null,
+          "birthCoords": null
+        }
+      ]
+    }
   }
 ]

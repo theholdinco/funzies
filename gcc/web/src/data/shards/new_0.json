@@ -13527,5 +13527,366 @@
         }
       ]
     }
+  },
+  {
+    "type": "family",
+    "id": "rahman",
+    "data": {
+      "history": "The Rahman family mentioned in this research primarily refers to the Sheikh family of Tungipara in Bangladesh, which includes Sheikh Mujibur Rahman, the founder of Bangladesh. The family's earliest documented ancestor was Sheikh Abdul Awal Darwish, who arrived in Bengal with Sufi Muslim missionaries. While the family claims Baghdadi Arab origins, historical evidence suggests an Eastern Persian origin instead - factors such as the family being Persian-speaking until Sheikh Mohammad Zakir's era, Persian naming patterns like 'Darwish', and the lack of verifiable connections to Baghdad families all point to Persian ancestry. The family initially settled in Chittagong for business and Islamic preaching, later moving to Sonargaon and eventually Kolkata for wholesale business before Sheikh Borhanuddin married into the Kazi family of Tungipara and permanently settled there. Sheikh Mujibur Rahman, born to this lineage, became the founding father of Bangladesh and served as its first President, with the family continuing to play a dominant role in Bangladeshi politics through the Awami League party, particularly through his daughter Sheikh Hasina who has served multiple terms as Prime Minister.",
+      "description": "The Sheikh family of Tungipara is one of Bangladesh's most prominent political families, descended from Persian-speaking Sufi missionaries who settled in Bengal, producing the nation's founding father Sheikh Mujibur Rahman.",
+      "originStory": "The family claims descent from Sheikh Abdul Awal Darwish who came to Bengal with Sufi Muslim missionaries, allegedly from Baghdad. However, historical analysis suggests Eastern Persian origins based on linguistic evidence, naming patterns, and lack of verifiable Baghdadi connections.",
+      "tribalOrigin": null,
+      "modernStatus": "The family remains one of Bangladesh's two most prominent political dynasties, controlling the Bangladesh Awami League party with Sheikh Hasina serving as Prime Minister and the family maintaining extensive political and business networks.",
+      "folkLegends": [
+        {
+          "title": "Baghdadi Origin Claim",
+          "story": "The family claims Sheikh Abdul Awal was born in Baghdad in a suburb called Hasnabad and was accompanied by the famous Sufi saint Bayezid Bastami",
+          "source": "family historical records",
+          "plausibility": "disputed"
+        }
+      ],
+      "nameEtymology": null,
+      "migrationPath": [
+        {
+          "year": null,
+          "endYear": null,
+          "from": "Eastern Persia",
+          "fromCoords": [
+            35.0,
+            60.0
+          ],
+          "to": "Chittagong, Bengal",
+          "toCoords": [
+            22.3569,
+            91.7832
+          ],
+          "description": "Sheikh Abdul Awal's initial settlement in Bengal for business and Islamic preaching"
+        },
+        {
+          "year": null,
+          "endYear": null,
+          "from": "Chittagong",
+          "fromCoords": [
+            22.3569,
+            91.7832
+          ],
+          "to": "Sonargaon",
+          "toCoords": [
+            23.6238,
+            90.6119
+          ],
+          "description": "Movement for business expansion and continued preaching"
+        },
+        {
+          "year": null,
+          "endYear": null,
+          "from": "Sonargaon",
+          "fromCoords": [
+            23.6238,
+            90.6119
+          ],
+          "to": "Kolkata",
+          "toCoords": [
+            22.5726,
+            88.3639
+          ],
+          "description": "Sheikh Zahiruddin and Sheikh Jan Mahmud moved for wholesale business operations"
+        },
+        {
+          "year": null,
+          "endYear": null,
+          "from": "Kolkata",
+          "fromCoords": [
+            22.5726,
+            88.3639
+          ],
+          "to": "Tungipara",
+          "toCoords": [
+            23.0601,
+            89.9219
+          ],
+          "description": "Sheikh Borhanuddin's permanent settlement after marrying into the Kazi family"
+        }
+      ],
+      "timelineEvents": [],
+      "connections": [
+        {
+          "entityId": "khandakar_family",
+          "entityType": "family",
+          "relationship": "marriage_alliance",
+          "context": "Sheikh Zahiruddin married into the Khandakar family of Kandirpar, Faridpur"
+        },
+        {
+          "entityId": "kazi_family",
+          "entityType": "family",
+          "relationship": "marriage_alliance",
+          "context": "Sheikh Borhanuddin married into the Kazi family of Tungipara"
+        }
+      ],
+      "notableFigures": [
+        {
+          "id": "mujibur_rahman",
+          "name": "Sheikh Mujibur Rahman",
+          "title": "Father of the Nation of Bangladesh",
+          "roleDescription": "Founding father and first President of Bangladesh, led the independence movement",
+          "bornYear": 1920,
+          "diedYear": 1975,
+          "era": "20th century",
+          "biography": "Sheikh Mujibur Rahman was the founding father of Bangladesh who led the country's independence movement from Pakistan. He served as the first President and later Prime Minister of Bangladesh until his assassination in 1975.",
+          "achievements": [
+            "Founded Bangladesh",
+            "Led independence movement",
+            "First President of Bangladesh"
+          ],
+          "birthPlace": "Tungipara",
+          "birthCoords": [
+            23.0601,
+            89.9219
+          ]
+        },
+        {
+          "id": "hasina_wazed",
+          "name": "Sheikh Hasina",
+          "title": "Prime Minister of Bangladesh",
+          "roleDescription": "Current Prime Minister and daughter of Sheikh Mujibur Rahman, leader of Awami League",
+          "bornYear": 1947,
+          "diedYear": null,
+          "era": "20th-21st century",
+          "biography": "Sheikh Hasina is the daughter of Sheikh Mujibur Rahman and current Prime Minister of Bangladesh. She has served multiple terms as Prime Minister and leads the Bangladesh Awami League.",
+          "achievements": [
+            "Multiple terms as Prime Minister",
+            "Leader of Awami League"
+          ],
+          "birthPlace": "Tungipara",
+          "birthCoords": [
+            23.0601,
+            89.9219
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_kubaisi",
+    "data": {
+      "history": "The Al Kubaisi family represents a prominent Sunni Muslim family with documented presence across Iraq and the broader Arabian Peninsula region. The family's most well-documented member was Basil Al Kubaisi (1934-1973), born in Baghdad to an affluent family. His father, Raouf Al Kubaisi, held significant governmental positions including working for Hussein bin Ali, King of Hejaz, and serving as governor of Basra, indicating the family's established political connections in early 20th century Iraq. The family appears to have maintained influence across multiple generations, with members pursuing diverse careers in academia, politics, entertainment, and media. Contemporary Al Kubaisi family members include Qatari singer Fahad Al Kubaisi (born 1981) and Norwegian-Iraqi intellectual Walid al-Kubaisi (1958-2018), suggesting the family's geographic spread across the Gulf region and diaspora communities. The presence of family members in entertainment, such as former Toyor Al-Janah singer Bilal Al-Kubaisi, and in Qatari intelligence circles, as referenced with Ghanim Khalifa Al-Kubaisi, indicates continued prominence in various sectors of Gulf society.",
+      "description": "A prominent Sunni Muslim family with documented presence in Iraq, Qatar, and the broader Gulf region, known for producing notable figures in politics, academia, entertainment, and government service across multiple generations.",
+      "originStory": null,
+      "tribalOrigin": null,
+      "modernStatus": "The Al Kubaisi family maintains presence across multiple Gulf states with members in entertainment (Fahad Al Kubaisi as a successful Qatari singer), intelligence services (Ghanim Khalifa Al-Kubaisi in Qatari Intelligence), and various professional sectors, indicating continued social and economic prominence.",
+      "folkLegends": [],
+      "nameEtymology": null,
+      "migrationPath": [],
+      "timelineEvents": [
+        {
+          "year": 1934,
+          "title": "Birth of Basil Al Kubaisi",
+          "description": "Basil Al Kubaisi born in Baghdad to affluent Sunni Muslim family",
+          "location": "Baghdad",
+          "coords": [
+            33.3152,
+            44.3661
+          ],
+          "eventType": "founding"
+        },
+        {
+          "year": 1973,
+          "title": "Assassination of Basil Al Kubaisi",
+          "description": "Basil Al Kubaisi assassinated by Mossad agents in Paris",
+          "location": "Paris",
+          "coords": [
+            48.8566,
+            2.3522
+          ],
+          "eventType": "political"
+        },
+        {
+          "year": 1981,
+          "title": "Birth of Fahad Al Kubaisi",
+          "description": "Fahad Al Kubaisi born in Doha, later becoming successful Qatari singer",
+          "location": "Doha",
+          "coords": [
+            25.2854,
+            51.531
+          ],
+          "eventType": "founding"
+        }
+      ],
+      "connections": [],
+      "notableFigures": [
+        {
+          "id": "basil_al_kubaisi",
+          "name": "Basil Al Kubaisi",
+          "title": "Academic and Political Activist",
+          "roleDescription": "Iraqi nationalist activist, academic, and PFLP member who held advanced degrees and worked at universities in Lebanon and Canada",
+          "bornYear": 1934,
+          "diedYear": 1973,
+          "era": "20th century",
+          "biography": "Born in Baghdad to affluent Sunni family, earned PhD from American University in Washington D.C. in 1971 with dissertation on Arab Nationalist Movement. Served as faculty at American University of Beirut and University of Calgary until his assassination by Mossad in Paris.",
+          "achievements": [
+            "Published doctoral thesis on Arab Nationalist Movement",
+            "Served as director of Iraqi Foreign Minister's office",
+            "Faculty positions at prestigious universities"
+          ],
+          "birthPlace": "Baghdad",
+          "birthCoords": [
+            33.3152,
+            44.3661
+          ]
+        },
+        {
+          "id": "fahad_al_kubaisi",
+          "name": "Fahad Al Kubaisi",
+          "title": "Qatari Singer and Producer",
+          "roleDescription": "Successful Qatari singer, record producer, and human rights activist known for Khaliji music and innovative music videos",
+          "bornYear": 1981,
+          "diedYear": null,
+          "era": "21st century",
+          "biography": "Born in Doha and educated at Qatar University with degree in physical education. Rose to prominence as Islamic singer before transitioning to mainstream Arabic pop music, becoming first Gulf singer nominated for Grammy Awards.",
+          "achievements": [
+            "First Gulf singer nominated for Grammy Awards",
+            "Best Male Khaleeji Singer Award 2018",
+            "Pioneer in 360-degree and selfie-style music videos"
+          ],
+          "birthPlace": "Doha",
+          "birthCoords": [
+            25.2854,
+            51.531
+          ]
+        },
+        {
+          "id": "walid_al_kubaisi",
+          "name": "Walid al-Kubaisi",
+          "title": "Norwegian-Iraqi Author and Intellectual",
+          "roleDescription": "Author, journalist, translator and government scholar known for social commentary on immigrant integration and criticism of political Islam",
+          "bornYear": 1958,
+          "diedYear": 2018,
+          "era": "20th-21st century",
+          "biography": "Born in Baghdad, fled Iraq as political refugee in 1981, arriving in Norway in 1986 where he gained citizenship. Became prominent public intellectual writing about immigration, integration, and critiquing political Islam in Europe.",
+          "achievements": [
+            "Brage Prize nomination 1996",
+            "Skjervheim Award 2003",
+            "Fritt Ord Honorary Award 2016"
+          ],
+          "birthPlace": "Baghdad",
+          "birthCoords": [
+            33.3152,
+            44.3661
+          ]
+        },
+        {
+          "id": "raouf_al_kubaisi",
+          "name": "Raouf Al Kubaisi",
+          "title": "Government Official",
+          "roleDescription": "Senior Iraqi government official who worked for Hussein bin Ali, King of Hejaz, and served as governor of Basra",
+          "bornYear": null,
+          "diedYear": null,
+          "era": "20th century",
+          "biography": "Father of Basil Al Kubaisi, held several important government posts in Iraq including governorship of Basra. Also worked for Hussein bin Ali, King of Hejaz, indicating significant political connections in early 20th century.",
+          "achievements": [
+            "Governor of Basra",
+            "Service to King of Hejaz"
+          ],
+          "birthPlace": null,
+          "birthCoords": null
+        }
+      ]
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_oraibi",
+    "data": {
+      "history": "The Al Oraibi family name appears in the research through Hakeem Ali Mohammed Ali al-Araibi, a Bahraini footballer born in 1993 in Bahrain. The family lived in Jidhafs, a few kilometres west of Manama, as of 2009. Hakeem's family background shows they were part of Bahrain's Shia population, with his brother Emad also mentioned as being imprisoned for similar charges. The Al-Araibi name is spelled as 'al-Araibi' in the context of this footballer, though it may be related to the historical 'Oraibi' village name from Hopi Native American territory. However, the research provides no information about the family's origins, tribal connections, or how they came to settle in Bahrain. The only concrete historical information relates to Hakeem al-Araibi's personal story as a political dissident who fled Bahrain in 2014 and became an Australian citizen.",
+      "description": "A Bahraini family known through footballer Hakeem al-Araibi, who fled Bahrain as a political dissident in 2014 and later became an Australian citizen.",
+      "originStory": null,
+      "tribalOrigin": null,
+      "modernStatus": "The family's modern status is unclear beyond Hakeem al-Araibi's case as a refugee and human rights advocate in Australia, while his brother Emad remains imprisoned in Bahrain.",
+      "folkLegends": [],
+      "nameEtymology": null,
+      "migrationPath": [],
+      "timelineEvents": [
+        {
+          "year": 2009,
+          "title": "Family residence in Jidhafs",
+          "description": "Al-Araibi family lived in Jidhafs, west of Manama",
+          "location": "Jidhafs, Bahrain",
+          "coords": [
+            26.2285,
+            50.5414
+          ],
+          "eventType": "cultural"
+        },
+        {
+          "year": 2014,
+          "title": "Hakeem's exile",
+          "description": "Hakeem al-Araibi fled Bahrain while playing for national team in Qatar",
+          "location": "Qatar",
+          "coords": [
+            25.2854,
+            51.531
+          ],
+          "eventType": "political"
+        }
+      ],
+      "connections": [],
+      "notableFigures": [
+        {
+          "id": "hakeem_al_araibi",
+          "name": "Hakeem Ali Mohammed Ali al-Araibi",
+          "title": "Footballer and Human Rights Advocate",
+          "roleDescription": "Professional footballer who became a refugee and human rights advocate after fleeing Bahrain",
+          "bornYear": 1993,
+          "diedYear": null,
+          "era": "21st century",
+          "biography": "Born in Bahrain, played for Al-Shabab club and Bahrain national team before fleeing as political dissident in 2014. Became Australian citizen in 2019 and works as Community and Human Rights Advocate with Football Victoria.",
+          "achievements": [
+            "Became symbol of human rights advocacy through detention case",
+            "Australian citizenship granted 2019",
+            "Community and Human Rights Advocate with Football Victoria"
+          ],
+          "birthPlace": "Bahrain",
+          "birthCoords": [
+            26.2041,
+            50.4781
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_obaidly",
+    "data": {
+      "history": "The research provided contains no information about the Al Obaidly family. The research focuses entirely on the Al Maktoum family of Dubai (descendants of the House of Al-Falasi), Sheikh Zayed bin Sultan Al Nahyan of Abu Dhabi (Al Nahyan family), and other unrelated entities such as Al Sadd Sports Club in Qatar. Without any direct research material about the Al Obaidly family's origins, migration patterns, historical development, or current status, no factual historical narrative can be constructed.",
+      "description": null,
+      "originStory": null,
+      "tribalOrigin": null,
+      "modernStatus": null,
+      "folkLegends": [],
+      "nameEtymology": null,
+      "migrationPath": [],
+      "timelineEvents": [],
+      "connections": [],
+      "notableFigures": []
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_mousalli",
+    "data": {
+      "history": null,
+      "description": null,
+      "originStory": null,
+      "tribalOrigin": null,
+      "modernStatus": null,
+      "folkLegends": [],
+      "nameEtymology": null,
+      "migrationPath": [],
+      "timelineEvents": [],
+      "connections": [],
+      "notableFigures": []
+    }
   }
 ]
