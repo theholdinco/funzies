@@ -12783,5 +12783,442 @@
         }
       ]
     }
+  },
+  {
+    "type": "family",
+    "id": "al_samahiji",
+    "data": {
+      "history": "The Al Samahiji family traces its origins to the village of Samaheej on Muharraq Island in Bahrain, where they emerged as a prominent scholarly family in the 17th-18th centuries. The family's most notable figure was Abdullah ibn Salih al-Samahiji (1675-1722), a renowned Shia Islamic scholar and follower of the Akhbari theological school, despite his father being a strict Usuli who opposed Akhbari doctrine. The family's prominence was disrupted by the 1717 Omani invasion of Bahrain, which forced Abdullah al-Samahiji to flee to Isfahan in Iran, where he briefly served as Sheikh ul-Islam under the Safavid administration. He later settled in Behbehan, Iran, where he died in 1722. The family appears to be part of the broader Bahrani scholarly tradition that produced numerous influential Akhbari clerics and theologians during this period. In modern times, the family continues to be represented through figures like Hasan Mohamed Al-Samahiji (born 1991), a professional handball player representing Bahrain internationally, showing the family's evolution from religious scholarship to contemporary sports achievement.",
+      "description": "The Al Samahiji are a Bahrani family from Samaheej village on Muharraq Island, historically known for producing prominent Shia Islamic scholars, particularly in the Akhbari theological tradition during the 17th-18th centuries.",
+      "originStory": "The family originated in the village of Samaheej on Muharraq Island in Bahrain, emerging as part of the scholarly community that flourished during the Safavid period when Bahrain was under Persian influence.",
+      "tribalOrigin": null,
+      "modernStatus": "The family maintains presence in Bahrain with contemporary members including professional athlete Hasan Al-Samahiji, representing a transition from the family's historical role in Islamic scholarship to modern professional pursuits.",
+      "folkLegends": [],
+      "nameEtymology": "The name 'al-Samahiji' derives from their association with the village of Samaheej on Muharraq Island, Bahrain, following the Arabic naming convention of attributing family names to places of origin.",
+      "migrationPath": [
+        {
+          "year": 1717,
+          "endYear": 1722,
+          "from": "Samaheej, Bahrain",
+          "fromCoords": [
+            26.2541,
+            50.6143
+          ],
+          "to": "Isfahan, Iran",
+          "toCoords": [
+            32.6546,
+            51.668
+          ],
+          "description": "Abdullah al-Samahiji fled to Isfahan after the Omani invasion of Bahrain, where he served as Sheikh ul-Islam"
+        },
+        {
+          "year": 1720,
+          "endYear": 1722,
+          "from": "Isfahan, Iran",
+          "fromCoords": [
+            32.6546,
+            51.668
+          ],
+          "to": "Behbehan, Iran",
+          "toCoords": [
+            30.5962,
+            50.2417
+          ],
+          "description": "Abdullah al-Samahiji's final move to Behbehan where he died in 1722"
+        }
+      ],
+      "timelineEvents": [
+        {
+          "year": 1675,
+          "title": "Birth of Abdullah al-Samahiji",
+          "description": "Birth of the family's most prominent scholar in Samaheej village",
+          "location": "Samaheej, Bahrain",
+          "coords": [
+            26.2541,
+            50.6143
+          ],
+          "eventType": "founding"
+        },
+        {
+          "year": 1717,
+          "title": "Omani Invasion and Flight",
+          "description": "Abdullah al-Samahiji fled Bahrain following the Omani invasion, migrating to Isfahan",
+          "location": "Bahrain to Isfahan",
+          "coords": [
+            26.2041,
+            50.5918
+          ],
+          "eventType": "migration"
+        },
+        {
+          "year": 1722,
+          "title": "Death of Abdullah al-Samahiji",
+          "description": "Death of the prominent scholar in Behbehan, Iran",
+          "location": "Behbehan, Iran",
+          "coords": [
+            30.5962,
+            50.2417
+          ],
+          "eventType": "cultural"
+        }
+      ],
+      "connections": [
+        {
+          "entityId": "yusuf_al_bahrani",
+          "entityType": "scholar",
+          "relationship": "contemporary",
+          "context": "Both were prominent Akhbari scholars who fled Bahrain after the 1717 Omani invasion"
+        },
+        {
+          "entityId": "akhbari_school",
+          "entityType": "theological_movement",
+          "relationship": "adherent",
+          "context": "Abdullah al-Samahiji was a leading figure in the Akhbari theological school"
+        }
+      ],
+      "notableFigures": [
+        {
+          "id": "abdullah_al_samahiji",
+          "name": "Abdullah ibn Salih al-Samahiji",
+          "title": "Islamic Scholar and Sheikh ul-Islam",
+          "roleDescription": "Prominent Akhbari scholar who served as Sheikh ul-Islam in Isfahan and authored works on theological disputes",
+          "bornYear": 1675,
+          "diedYear": 1722,
+          "era": "17th-18th century",
+          "biography": "A renowned Shia Islamic scholar and follower of the Akhbari theological school who fled Bahrain after the 1717 Omani invasion. He briefly served as Sheikh ul-Islam in Isfahan before settling in Behbehan, where he died.",
+          "achievements": [
+            "Authored Munyat al Mumarisin examining the Akhbari-Usuli dispute",
+            "Served as Sheikh ul-Islam in Isfahan",
+            "Leading figure in Akhbari theological school"
+          ],
+          "birthPlace": "Samaheej, Bahrain",
+          "birthCoords": [
+            26.2541,
+            50.6143
+          ]
+        },
+        {
+          "id": "hasan_al_samahiji",
+          "name": "Hasan Mohamed Al-Samahiji",
+          "title": "Professional Handball Player",
+          "roleDescription": "Bahraini national team handball player competing at international level including Olympics",
+          "bornYear": 1991,
+          "diedYear": null,
+          "era": "21st century",
+          "biography": "Contemporary Bahraini handball player representing Al-Ahli club and the Bahraini national team. He has competed at the highest international levels including the Olympics and World Championships.",
+          "achievements": [
+            "Participated in 2017 World Men's Handball Championship",
+            "Competed in 2020 Summer Olympics",
+            "Professional handball player for Al-Ahli"
+          ],
+          "birthPlace": "Bahrain",
+          "birthCoords": [
+            26.2041,
+            50.5918
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_sadd",
+    "data": {
+      "history": "Al Sadd Sports Club was established in 1969 by Ali bin Hamad Al Attiyah and his relatives in the Al Sadd district of Doha, Qatar. The founding family members excelled in football but refused to join existing clubs, deciding instead to create their own. They consulted with Jassim bin Hamad Al Thani, who was the Minister of Youth and Sports at the time, and received approval to form the club on October 21, 1969. The club's initial popularity was significantly attributed to its affiliation with the Al Attiyah tribe, described as a prominent local tribe, and its connection to the recently dissolved Al Ahrar SC club. Many early players and supporters were remnants of Al Ahrar, which had been permanently shut down in 1967-68 following a mass brawl during a match. The club quickly achieved success, winning their first official Qatar Stars League title in 1973-74 and going on to become the most successful sports club in Qatar with 64 official football championships. Al Sadd achieved international recognition by becoming the first Arab club to win the Asian Club Championship in 1989 and later won the 2011 AFC Champions League, establishing itself as a dominant force in regional football.",
+      "description": "Al Sadd is a Qatari sports club founded in 1969 by the Al Attiyah family in Doha's Al Sadd district. It has become Qatar's most successful sports club with strong tribal connections to the prominent Al Attiyah tribe.",
+      "originStory": "The origin of Al Sadd began with Al Attiyah family members who excelled in football but did not wish to join any existing football clubs. After consulting with the Minister of Youth and Sports Jassim bin Hamad Al Thani, the family, led by Ali bin Hamad Al Attiyah, decided to found the club on October 21, 1969, naming it after the Al Sadd district where Ali bin Hamad was born and raised.",
+      "tribalOrigin": "Al Attiyah",
+      "modernStatus": "Al Sadd remains Qatar's most successful sports club, holding a national record of 64 official football championships. The club operates multiple sports teams including football, handball, basketball, volleyball, table tennis, and athletics, with their football team competing in the Qatar Stars League.",
+      "folkLegends": [],
+      "nameEtymology": "The club's name 'Al Sadd' comes from the Al Sadd district of Doha where founder Ali bin Hamad Al Attiyah was born and raised",
+      "migrationPath": [],
+      "timelineEvents": [
+        {
+          "year": 1969,
+          "title": "Al Sadd Sports Club Founded",
+          "description": "Ali bin Hamad Al Attiyah and Al Attiyah family relatives established Al Sadd Sports Club on October 21, 1969",
+          "location": "Al Sadd district, Doha, Qatar",
+          "coords": [
+            25.2854,
+            51.531
+          ],
+          "eventType": "founding"
+        },
+        {
+          "year": 1974,
+          "title": "First Official League Title",
+          "description": "Al Sadd won their first official Qatar Stars League title in the 1973-74 season",
+          "location": "Qatar",
+          "coords": [
+            25.3548,
+            51.1839
+          ],
+          "eventType": "achievement"
+        },
+        {
+          "year": 1989,
+          "title": "First Asian Championship",
+          "description": "Al Sadd became the first Arab club to win the Asian Club Championship by defeating Al Rasheed of Iraq",
+          "location": "Qatar",
+          "coords": [
+            25.3548,
+            51.1839
+          ],
+          "eventType": "achievement"
+        }
+      ],
+      "connections": [
+        {
+          "entityId": "al_attiyah",
+          "entityType": "tribe",
+          "relationship": "founded_by",
+          "context": "Al Sadd Sports Club was founded by members of the Al Attiyah tribe, described as a prominent local tribe, which contributed significantly to the club's initial popularity"
+        }
+      ],
+      "notableFigures": [
+        {
+          "id": "ali_hamad_al_attiyah",
+          "name": "Ali bin Hamad Al Attiyah",
+          "title": "Founder of Al Sadd Sports Club",
+          "roleDescription": "Main founder and overseer of Al Sadd Sports Club, making crucial decisions in its early years",
+          "bornYear": null,
+          "diedYear": null,
+          "era": "20th century",
+          "biography": "Born and raised in the Al Sadd district of Doha, he led his Al Attiyah family relatives in founding Al Sadd Sports Club in 1969. He oversaw the club's performance and made crucial decisions during its initial establishment.",
+          "achievements": [
+            "Founded Al Sadd Sports Club",
+            "Established Qatar's most successful sports club"
+          ],
+          "birthPlace": "Al Sadd district, Doha, Qatar",
+          "birthCoords": [
+            25.2854,
+            51.531
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_horr",
+    "data": {
+      "history": "The Al Horr family traces its origins to the prominent Shia Islamic scholar Muhammad bin al-Hassan bin Ali bin al-Husayn al-Hurr al-Amili al-Mashghari (1624-1693), commonly known as Al-Hurr Al-Amili. Born in the village of Machghara in the Amil mountains of Lebanon, he came from the Al-Hurr family which was descended from Al-Hurr ibn Yazid al-Riyahi al-Tamimi. During the Safavid era, when the empire was promoting Imami Shi'ism in Iran and bringing in Shi'i scholars from Jabal Amil to replace fleeing Sunni ulama, Al-Hurr Al-Amili migrated to Iran in 1663. He first traveled to Isfahan where he met Muhammad Baqir Majlisi, then settled in Mashhad where he became Shaykh al-Islam at the shrine of the 8th Imam, Ali al-Ridha. He remained in this position until his death in 1693, after which he was succeeded by his brother Ahmad. The Al Horr name appears to derive from 'Al-Hurr' meaning 'the free one' in Arabic, reflecting the family's ancestral connection to Al-Hurr ibn Yazid al-Riyahi al-Tamimi.",
+      "description": "The Al Horr family is descended from the prominent 17th-century Shia scholar Al-Hurr Al-Amili, who migrated from Lebanon to Safavid Iran and became a leading religious authority in Mashhad.",
+      "originStory": "The family originates from Al-Hurr Al-Amili, born in 1624 in Machghara village in the Amil mountains of Lebanon. His family claimed descent from the historical figure Al-Hurr ibn Yazid al-Riyahi al-Tamimi. As part of the Safavid-era migration of Lebanese Shia scholars to Iran, he moved to Mashhad in 1663 where he established the family's presence as religious leaders.",
+      "tribalOrigin": "Al-Tamimi (claimed descent from Al-Hurr ibn Yazid al-Riyahi al-Tamimi)",
+      "modernStatus": "The research does not provide information about the current status or activities of the Al Horr family.",
+      "folkLegends": [],
+      "nameEtymology": "Al-Hurr means 'the free one' in Arabic, derived from the ancestor Al-Hurr ibn Yazid al-Riyahi al-Tamimi",
+      "migrationPath": [
+        {
+          "year": 1663,
+          "endYear": null,
+          "from": "Jabal Amil, Lebanon",
+          "fromCoords": [
+            33.2774,
+            35.2027
+          ],
+          "to": "Mashhad, Iran",
+          "toCoords": [
+            36.2605,
+            59.6168
+          ],
+          "description": "Al-Hurr Al-Amili migrated from Lebanon to Iran as part of Safavid recruitment of Shia scholars, first stopping in Isfahan before settling in Mashhad"
+        }
+      ],
+      "timelineEvents": [
+        {
+          "year": 1624,
+          "title": "Birth of Al-Hurr Al-Amili",
+          "description": "Muhammad bin al-Hassan al-Hurr al-Amili was born in Machghara village",
+          "location": "Machghara, Lebanon",
+          "coords": [
+            33.2774,
+            35.2027
+          ],
+          "eventType": "founding"
+        },
+        {
+          "year": 1663,
+          "title": "Migration to Mashhad",
+          "description": "Al-Hurr Al-Amili settled in Mashhad and became Shaykh al-Islam at the shrine of Imam Ali al-Ridha",
+          "location": "Mashhad, Iran",
+          "coords": [
+            36.2605,
+            59.6168
+          ],
+          "eventType": "migration"
+        },
+        {
+          "year": 1693,
+          "title": "Death of Al-Hurr Al-Amili",
+          "description": "Al-Hurr Al-Amili died in Mashhad and was succeeded by his brother Ahmad as shaykh al-Islam",
+          "location": "Mashhad, Iran",
+          "coords": [
+            36.2605,
+            59.6168
+          ],
+          "eventType": "political"
+        }
+      ],
+      "connections": [
+        {
+          "entityId": "al_tamimi",
+          "entityType": "tribe",
+          "relationship": "descended_from",
+          "context": "Al-Hurr family claimed descent from Al-Hurr ibn Yazid al-Riyahi al-Tamimi"
+        }
+      ],
+      "notableFigures": [
+        {
+          "id": "muhammad_hurr_amili",
+          "name": "Muhammad bin al-Hassan al-Hurr al-Amili",
+          "title": "Shaykh al-Islam of Mashhad",
+          "roleDescription": "Prominent Akhbari Twelver Shia scholar, muhaddith, and poet, known for his hadith compilation Wasa'il al-Shia",
+          "bornYear": 1624,
+          "diedYear": 1693,
+          "era": "17th century",
+          "biography": "Born in Lebanon, he migrated to Safavid Iran and became one of the most influential Shia scholars of his era. He compiled the important hadith collection Wasa'il al-Shia and served as Shaykh al-Islam at the shrine of Imam Ali al-Ridha in Mashhad.",
+          "achievements": [
+            "Compiled Wasa'il al-Shia hadith collection",
+            "Served as Shaykh al-Islam in Mashhad",
+            "Known as one of the 'Three Great Muhammads' in Shia history"
+          ],
+          "birthPlace": "Machghara, Lebanon",
+          "birthCoords": [
+            33.2774,
+            35.2027
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_zaman",
+    "data": {
+      "history": "The Al Zaman family has historical roots connected to the broader Islamic scholarly tradition, with the name appearing in classical Arabic literature through the medieval scholar Badi' al-Zaman al-Hamadani (969-1007 CE), known as 'The Wonder of the Age.' In the modern Gulf context, the Al Zaman family established a presence in Qatar, specifically in the Old Al Ghanim district of Doha. In the early 1950s, coinciding with Qatar's oil exploitation period, the Al Zaman family constructed Bayt Al Zaman, a significant family residence that became a notable landmark in the district. The house served both residential and commercial purposes, with neighborhood women purchasing textiles and household goods directly from the family, functioning as an informal marketplace that allowed residents to avoid traveling to the central Souq Waqif. The residence also featured a makeshift movie theater in its courtyard, which became a community gathering space for local children and neighbors to view films, demonstrating the family's role in local social and cultural life.",
+      "description": "The Al Zaman family established themselves in Qatar's capital Doha in the early 1950s, becoming notable residents of the Old Al Ghanim district where they built an important family home that served both residential and commercial functions in the community.",
+      "originStory": null,
+      "tribalOrigin": null,
+      "modernStatus": "The original Al Zaman family residence, Bayt Al Zaman, remains standing as a detached structure overlooking a public square and Grand Hamad Street, though the original inhabitants have departed and it has since housed various commercial enterprises including an Indian restaurant and migrant worker housing.",
+      "folkLegends": [],
+      "nameEtymology": "The name 'Al Zaman' derives from the Arabic word 'zaman' meaning 'time' or 'age,' historically associated with the title 'Badi' al-Zaman' meaning 'Wonder of the Age' used by the classical Arabic scholar al-Hamadani.",
+      "migrationPath": [],
+      "timelineEvents": [
+        {
+          "year": 1950,
+          "title": "Construction of Bayt Al Zaman",
+          "description": "The Al Zaman family constructed their family home in Old Al Ghanim district during Qatar's early oil exploitation period",
+          "location": "Old Al Ghanim, Doha",
+          "coords": [
+            25.2854,
+            51.531
+          ],
+          "eventType": "founding"
+        }
+      ],
+      "connections": [],
+      "notableFigures": []
+    }
+  },
+  {
+    "type": "family",
+    "id": "al_yafei",
+    "data": {
+      "history": "The Al Yafei family traces its origins to the historic Al-Yafei tribe, which ruled Lower Yafa, a sheikhdom in what was then the British Aden Protectorate (present-day Yemen). The tribe's territory was located in the Abyan Governorate region of southern Yemen. The family name appears in various forms across the Arabian Peninsula, with members found in Yemen, Qatar, and the broader Gulf region. In modern times, the Al Yafei name has appeared in political contexts, notably with Ahmed Ghaleb Nasser al-Rahawi al-Yafei, who served as prime minister of the Houthi-led government in Yemen from August 2024 until his death in an Israeli airstrike in August 2025. The family has also been present in Qatar's sporting community, with Saleh Al-Yazidi representing Qatar at youth football levels, though his family maintains connections to their ancestral homeland in Yafa, Yemen. The Al Yafei are also mentioned among the tribal communities present in the Dhofar Governorate of Oman, indicating the family's dispersal across the southern Arabian Peninsula.",
+      "description": "A family of Yemeni tribal origin descended from the Al-Yafei tribe that historically ruled Lower Yafa in the British Aden Protectorate, with members now found across Yemen, Qatar, and Oman.",
+      "originStory": "The Al Yafei family descends from the Al-Yafei tribe, which ruled the sheikhdom of Lower Yafa in what was historically part of the British Aden Protectorate in southern Yemen. The tribe controlled territory in the Abyan Governorate region.",
+      "tribalOrigin": "Al-Yafei tribe",
+      "modernStatus": "Family members are dispersed across the Arabian Peninsula, with notable political figures in Yemen and athletes representing Qatar, while maintaining ancestral connections to the Yafa region of Yemen.",
+      "folkLegends": [],
+      "nameEtymology": "The name derives from the Al-Yafei tribe, which was associated with the historic territory of Yafa (also spelled Yafei) in southern Yemen.",
+      "migrationPath": [],
+      "timelineEvents": [
+        {
+          "year": 2011,
+          "title": "Saleh Al-Yazidi gains Qatari citizenship",
+          "description": "Footballer Saleh Al-Yazidi, descendant of the Al-Yafei sheikhdom rulers, obtained Qatari citizenship while his family remained in Yafa",
+          "location": "Qatar",
+          "coords": [
+            25.2854,
+            51.531
+          ],
+          "eventType": "political"
+        },
+        {
+          "year": 2024,
+          "title": "Ahmed al-Rahawi al-Yafei appointed Prime Minister",
+          "description": "Ahmed Ghaleb Nasser al-Rahawi al-Yafei was appointed prime minister of the Houthi-led government in Yemen",
+          "location": "Sanaa, Yemen",
+          "coords": [
+            15.3694,
+            44.191
+          ],
+          "eventType": "political"
+        },
+        {
+          "year": 2025,
+          "title": "Death of Ahmed al-Rahawi al-Yafei",
+          "description": "Prime Minister Ahmed al-Rahawi al-Yafei was killed in an Israeli airstrike on an apartment building in Sanaa",
+          "location": "Sanaa, Yemen",
+          "coords": [
+            15.3694,
+            44.191
+          ],
+          "eventType": "political"
+        }
+      ],
+      "connections": [
+        {
+          "entityId": "al_yafei_tribe",
+          "entityType": "tribe",
+          "relationship": "descended_from",
+          "context": "The Al Yafei family descends from the historic Al-Yafei tribe that ruled Lower Yafa sheikhdom"
+        }
+      ],
+      "notableFigures": [
+        {
+          "id": "ahmed_al_rahawi",
+          "name": "Ahmed Ghaleb Nasser al-Rahawi al-Yafei",
+          "title": "Prime Minister of Houthi-led Yemen",
+          "roleDescription": "Served as prime minister of the Houthi-led government and was a member of the Supreme Political Council",
+          "bornYear": 1950,
+          "diedYear": 2025,
+          "era": "20th-21st century",
+          "biography": "Born in Khanfar, Abyan Governorate, he served in various local government positions before becoming governor of Abyan Governorate and later prime minister. Despite being from a Sunni background, he worked with the Shia Houthi movement and was killed in an Israeli airstrike.",
+          "achievements": [
+            "Prime Minister of Yemen",
+            "Member of Supreme Political Council",
+            "Governor of Abyan Governorate"
+          ],
+          "birthPlace": "Khanfar, Abyan Governorate, Yemen",
+          "birthCoords": [
+            13.85,
+            45.3667
+          ]
+        },
+        {
+          "id": "saleh_al_yazidi",
+          "name": "Saleh Badr Al-Yazidi",
+          "title": "Professional Footballer",
+          "roleDescription": "Football midfielder who played for various clubs and represented Qatar at youth levels",
+          "bornYear": 1993,
+          "diedYear": null,
+          "era": "21st century",
+          "biography": "Born in Yemen, he moved to Qatar and gained citizenship in 2011. He graduated from Aspire Academy and played for Al Sadd, representing Qatar at youth international levels while his family maintained residence in Yafa.",
+          "achievements": [
+            "Qatar Youth League Top Scorer 2011",
+            "Qatar Stars League winner",
+            "Emir of Qatar Cup winner"
+          ],
+          "birthPlace": "Yemen",
+          "birthCoords": [
+            15.5527,
+            48.5164
+          ]
+        }
+      ]
+    }
   }
 ]
