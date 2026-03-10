@@ -3168,17 +3168,6 @@
       "size": 15
     },
     {
-      "id": "al_bu_said",
-      "name": "Al Bu Said",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 12
-    },
-    {
       "id": "al_darmaki",
       "name": "Al Darmaki",
       "type": "family",
@@ -3333,28 +3322,6 @@
       "size": 23
     },
     {
-      "id": "al_qasimi_rak",
-      "name": "Al Qasimi (RAK)",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": true,
-      "rulesOver": "Ras Al Khaimah",
-      "familyType": "ruling",
-      "size": 18
-    },
-    {
-      "id": "al_qasimi_sharjah",
-      "name": "Al Qasimi (Sharjah)",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": true,
-      "rulesOver": "Sharjah",
-      "familyType": "ruling",
-      "size": 21
-    },
-    {
       "id": "al_rashid",
       "name": "Al Rashid (House of Rashid)",
       "type": "family",
@@ -3388,17 +3355,6 @@
       "size": 15
     },
     {
-      "id": "al_saud",
-      "name": "Al Saud (House of Saud)",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": true,
-      "rulesOver": "Saudi Arabia",
-      "familyType": "ruling",
-      "size": 37
-    },
-    {
       "id": "al_sharqi",
       "name": "Al Sharqi",
       "type": "family",
@@ -3421,7 +3377,7 @@
       "size": 17
     },
     {
-      "id": "al_ash_sheikh_family",
+      "id": "al_ash_sheikh",
       "name": "Al ash-Sheikh",
       "type": "family",
       "nodeType": "family",
@@ -3509,7 +3465,7 @@
       "size": 8
     },
     {
-      "id": "al_musawi",
+      "id": "al_mousawi",
       "name": "Al-Musawi",
       "type": "family",
       "nodeType": "family",
@@ -3685,7 +3641,7 @@
       "size": 9
     },
     {
-      "id": "house_of_sabah",
+      "id": "al_sabah",
       "name": "House of Sabah",
       "type": "family",
       "nodeType": "family",
@@ -4323,7 +4279,7 @@
       "size": 5
     },
     {
-      "id": "al_marzook",
+      "id": "al_marzouq",
       "name": "Al Marzook",
       "type": "family",
       "nodeType": "family",
@@ -4565,7 +4521,7 @@
       "size": 1
     },
     {
-      "id": "al_naghi",
+      "id": "al_naqi",
       "name": "Al Naghi",
       "type": "family",
       "nodeType": "family",
@@ -4840,7 +4796,7 @@
       "size": 8
     },
     {
-      "id": "al_humaidi",
+      "id": "al_humaidhi",
       "name": "Al Humaidi",
       "type": "family",
       "nodeType": "family",
@@ -5115,7 +5071,7 @@
       "size": 4
     },
     {
-      "id": "al_dossary",
+      "id": "al_dossari",
       "name": "Al Dossary",
       "type": "family",
       "nodeType": "family",
@@ -5500,29 +5456,7 @@
       "size": 2
     },
     {
-      "id": "al_humaidhi",
-      "name": "Al Humaidhi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 3
-    },
-    {
-      "id": "al_saqer",
-      "name": "Al Saqer",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 2
-    },
-    {
-      "id": "al_rumi",
+      "id": "al_roumi",
       "name": "Al Rumi",
       "type": "family",
       "nodeType": "family",
@@ -5553,17 +5487,6 @@
       "rulesOver": null,
       "familyType": null,
       "size": 2
-    },
-    {
-      "id": "al_marzouq",
-      "name": "Al Marzouq",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 4
     },
     {
       "id": "al_khaled",
@@ -5630,17 +5553,6 @@
       "rulesOver": null,
       "familyType": null,
       "size": 2
-    },
-    {
-      "id": "al_roumi",
-      "name": "Al Roumi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 5
     },
     {
       "id": "al_failakawi",
@@ -5852,7 +5764,7 @@
       "size": 3
     },
     {
-      "id": "al_kharusi",
+      "id": "al_kharousi",
       "name": "Al Kharusi",
       "type": "family",
       "nodeType": "family",
@@ -5894,17 +5806,6 @@
       "rulesOver": null,
       "familyType": null,
       "size": 1
-    },
-    {
-      "id": "al_sabah",
-      "name": "Al Sabah",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 12
     },
     {
       "id": "ajman_ruling_family",
@@ -5973,7 +5874,7 @@
       "size": 6
     },
     {
-      "id": "kashoggi",
+      "id": "khashoggi",
       "name": "Kashoggi",
       "type": "family",
       "nodeType": "family",
@@ -6072,17 +5973,6 @@
       "size": 3
     },
     {
-      "id": "al_ash_sheikh",
-      "name": "Al Ash Sheikh",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 9
-    },
-    {
       "id": "al_qawasem",
       "name": "Al Qawasem",
       "type": "family",
@@ -6136,17 +6026,6 @@
       "rulesOver": null,
       "familyType": null,
       "size": 1
-    },
-    {
-      "id": "al_anqari",
-      "name": "Al Anqari",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 3
     },
     {
       "id": "al_bassam",
@@ -6457,17 +6336,6 @@
       "size": 2
     },
     {
-      "id": "al_balooshi",
-      "name": "Al Balooshi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 2
-    },
-    {
       "id": "al_neyadi",
       "name": "Al Neyadi",
       "type": "family",
@@ -6488,17 +6356,6 @@
       "rulesOver": null,
       "familyType": null,
       "size": 1
-    },
-    {
-      "id": "al_katheeri",
-      "name": "Al Katheeri",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 3
     },
     {
       "id": "al_jaber",
@@ -6721,7 +6578,7 @@
       "size": 1
     },
     {
-      "id": "kooheji",
+      "id": "al_kooheji",
       "name": "Kooheji",
       "type": "family",
       "nodeType": "family",
@@ -6743,7 +6600,7 @@
       "size": 3
     },
     {
-      "id": "al_matrook",
+      "id": "al_matrouk",
       "name": "Al Matrook",
       "type": "family",
       "nodeType": "family",
@@ -6752,17 +6609,6 @@
       "rulesOver": null,
       "familyType": null,
       "size": 1
-    },
-    {
-      "id": "al_kooheji",
-      "name": "Al Kooheji",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 3
     },
     {
       "id": "al_mahmeed",
@@ -6855,17 +6701,6 @@
     {
       "id": "al_baker",
       "name": "Al Baker",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": null,
-      "size": 1
-    },
-    {
-      "id": "al_jaida",
-      "name": "Al Jaida",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -7051,7 +6886,7 @@
       "size": 3
     },
     {
-      "id": "al_abdullah",
+      "id": "al_abdulla",
       "name": "Al Abdullah",
       "type": "family",
       "nodeType": "family",
@@ -7082,17 +6917,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "al_seif",
-      "name": "Al Seif",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
     },
     {
       "id": "al_sudais",
@@ -7566,17 +7390,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "al_kathiri",
-      "name": "Al Kathiri",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 4
     },
     {
       "id": "al_junaid",
@@ -8129,17 +7942,6 @@
       "size": 1
     },
     {
-      "id": "al_mansouri",
-      "name": "Al Mansouri",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "mixed",
-      "size": 2
-    },
-    {
       "id": "al_midfa",
       "name": "Al Midfa",
       "type": "family",
@@ -8208,17 +8010,6 @@
     {
       "id": "bin_kalban",
       "name": "Bin Kalban",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "mixed",
-      "size": 1
-    },
-    {
-      "id": "al_zarouni",
-      "name": "Al Zarouni",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -8635,7 +8426,7 @@
       "size": 7
     },
     {
-      "id": "al_houti",
+      "id": "al_hooti",
       "name": "Al Houti",
       "type": "family",
       "nodeType": "family",
@@ -8756,7 +8547,7 @@
       "size": 1
     },
     {
-      "id": "al_mousa",
+      "id": "al_moosa",
       "name": "Al Mousa",
       "type": "family",
       "nodeType": "family",
@@ -8822,7 +8613,7 @@
       "size": 4
     },
     {
-      "id": "dashti",
+      "id": "al_dashti",
       "name": "Dashti",
       "type": "family",
       "nodeType": "family",
@@ -8888,7 +8679,7 @@
       "size": 4
     },
     {
-      "id": "tabtabaei",
+      "id": "al_tabtabaei",
       "name": "Tabtabaei",
       "type": "family",
       "nodeType": "family",
@@ -8987,17 +8778,6 @@
       "size": 1
     },
     {
-      "id": "al_mudaf",
-      "name": "Al Mudaf",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_shamlan",
       "name": "Al Shamlan",
       "type": "family",
@@ -9042,7 +8822,7 @@
       "size": 1
     },
     {
-      "id": "al_mashan",
+      "id": "al_mashaan",
       "name": "Al Mashan",
       "type": "family",
       "nodeType": "family",
@@ -9273,17 +9053,6 @@
       "size": 1
     },
     {
-      "id": "al_matrouk",
-      "name": "Al Matrouk",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
       "id": "al_shalfan",
       "name": "Al Shalfan",
       "type": "family",
@@ -9361,7 +9130,7 @@
       "size": 2
     },
     {
-      "id": "al_qadhi",
+      "id": "al_qadi",
       "name": "Al Qadhi",
       "type": "family",
       "nodeType": "family",
@@ -9447,17 +9216,6 @@
       "rulesOver": null,
       "familyType": "political",
       "size": 1
-    },
-    {
-      "id": "behbahani",
-      "name": "Behbahani",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 5
     },
     {
       "id": "al_omar",
@@ -9581,7 +9339,7 @@
       "size": 1
     },
     {
-      "id": "bucheery",
+      "id": "bucheeri",
       "name": "Bucheery",
       "type": "family",
       "nodeType": "family",
@@ -9603,18 +9361,7 @@
       "size": 1
     },
     {
-      "id": "al_moosa",
-      "name": "Al Moosa",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "mishal",
+      "id": "al_mishal",
       "name": "Mishal",
       "type": "family",
       "nodeType": "family",
@@ -9702,17 +9449,6 @@
       "size": 3
     },
     {
-      "id": "al_abdulla",
-      "name": "Al Abdulla",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_derazi",
       "name": "Al Derazi",
       "type": "family",
@@ -9755,17 +9491,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "al_musallam",
-      "name": "Al Musallam",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 5
     },
     {
       "id": "al_mahfoodh",
@@ -9900,7 +9625,7 @@
       "size": 2
     },
     {
-      "id": "mahmood",
+      "id": "al_mahmood",
       "name": "Mahmood",
       "type": "family",
       "nodeType": "family",
@@ -9944,18 +9669,7 @@
       "size": 3
     },
     {
-      "id": "omar",
-      "name": "Omar",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
-    },
-    {
-      "id": "khalil",
+      "id": "al_khalil",
       "name": "Khalil",
       "type": "family",
       "nodeType": "family",
@@ -9966,7 +9680,7 @@
       "size": 3
     },
     {
-      "id": "yousif",
+      "id": "al_yousif",
       "name": "Yousif",
       "type": "family",
       "nodeType": "family",
@@ -9988,17 +9702,6 @@
       "size": 2
     },
     {
-      "id": "abdulla",
-      "name": "Abdulla",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "salman",
       "name": "Salman",
       "type": "family",
@@ -10010,18 +9713,7 @@
       "size": 1
     },
     {
-      "id": "khalid",
-      "name": "Khalid",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "nasser",
+      "id": "al_nasser",
       "name": "Nasser",
       "type": "family",
       "nodeType": "family",
@@ -10032,7 +9724,7 @@
       "size": 1
     },
     {
-      "id": "saeed",
+      "id": "al_saeed",
       "name": "Saeed",
       "type": "family",
       "nodeType": "family",
@@ -10241,17 +9933,6 @@
       "size": 4
     },
     {
-      "id": "al_said",
-      "name": "Al Said",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": true,
-      "rulesOver": null,
-      "familyType": "ruling",
-      "size": 6
-    },
-    {
       "id": "al_khonji",
       "name": "Al Khonji",
       "type": "family",
@@ -10261,17 +9942,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "al_harthy",
-      "name": "Al Harthy",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 4
     },
     {
       "id": "al_ghafri",
@@ -10417,28 +10087,6 @@
       "size": 3
     },
     {
-      "id": "al_sadi",
-      "name": "Al Sadi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "al_ismaily",
-      "name": "Al Ismaily",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_azri",
       "name": "Al Azri",
       "type": "family",
@@ -10505,7 +10153,7 @@
       "size": 1
     },
     {
-      "id": "al_shueili",
+      "id": "al_shuaili",
       "name": "Al Shueili",
       "type": "family",
       "nodeType": "family",
@@ -10582,7 +10230,7 @@
       "size": 3
     },
     {
-      "id": "al_kharousi",
+      "id": "al_kharoosi",
       "name": "Al Kharousi",
       "type": "family",
       "nodeType": "family",
@@ -10645,17 +10293,6 @@
       "isRuling": true,
       "rulesOver": null,
       "familyType": "ruling",
-      "size": 1
-    },
-    {
-      "id": "al_wahibi",
-      "name": "Al Wahibi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
       "size": 1
     },
     {
@@ -10835,7 +10472,7 @@
       "size": 1
     },
     {
-      "id": "al_toobi",
+      "id": "al_toubi",
       "name": "Al Toobi",
       "type": "family",
       "nodeType": "family",
@@ -10901,18 +10538,7 @@
       "size": 1
     },
     {
-      "id": "al_toubi",
-      "name": "Al Toubi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
-      "id": "al_shikeili",
+      "id": "al_shikaili",
       "name": "Al Shikeili",
       "type": "family",
       "nodeType": "family",
@@ -10920,17 +10546,6 @@
       "isRuling": false,
       "rulesOver": null,
       "familyType": "political",
-      "size": 1
-    },
-    {
-      "id": "al_raeesi",
-      "name": "Al Raeesi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
       "size": 1
     },
     {
@@ -10976,17 +10591,6 @@
       "rulesOver": null,
       "familyType": "mixed",
       "size": 1
-    },
-    {
-      "id": "al_shuaili",
-      "name": "Al Shuaili",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 2
     },
     {
       "id": "al_hatali",
@@ -11099,7 +10703,7 @@
       "size": 1
     },
     {
-      "id": "al_shalan",
+      "id": "al_shaalan",
       "name": "Al Shalan",
       "type": "family",
       "nodeType": "family",
@@ -11110,7 +10714,7 @@
       "size": 3
     },
     {
-      "id": "al_ruwaily",
+      "id": "al_ruwaili",
       "name": "Al Ruwaily",
       "type": "family",
       "nodeType": "family",
@@ -11121,7 +10725,7 @@
       "size": 1
     },
     {
-      "id": "al_dhafiri",
+      "id": "al_dhafeeri",
       "name": "Al Dhafiri",
       "type": "family",
       "nodeType": "family",
@@ -11176,17 +10780,6 @@
       "size": 2
     },
     {
-      "id": "al_mashaan",
-      "name": "Al Mashaan",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
       "id": "al_mijrin",
       "name": "Al Mijrin",
       "type": "family",
@@ -11231,17 +10824,6 @@
       "size": 3
     },
     {
-      "id": "al_freih",
-      "name": "Al Freih",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
       "id": "al_ghaith",
       "name": "Al Ghaith",
       "type": "family",
@@ -11275,17 +10857,6 @@
       "size": 1
     },
     {
-      "id": "al_nasser",
-      "name": "Al Nasser",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 2
-    },
-    {
       "id": "al_shalhoub",
       "name": "Al Shalhoub",
       "type": "family",
@@ -11295,17 +10866,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 1
-    },
-    {
-      "id": "al_ruwaili",
-      "name": "Al Ruwaili",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 2
     },
     {
       "id": "al_mahanna",
@@ -11418,17 +10978,6 @@
       "size": 1
     },
     {
-      "id": "al_humaid",
-      "name": "Al Humaid",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 4
-    },
-    {
       "id": "al_mihanna",
       "name": "Al Mihanna",
       "type": "family",
@@ -11438,28 +10987,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 1
-    },
-    {
-      "id": "al_suwait",
-      "name": "Al Suwait",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
-      "id": "al_dhafeer",
-      "name": "Al Dhafeer",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 18
     },
     {
       "id": "al_daham",
@@ -11484,17 +11011,6 @@
       "size": 3
     },
     {
-      "id": "al_ahmad",
-      "name": "Al Ahmad",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 4
-    },
-    {
       "id": "al_sabah_al_shammari",
       "name": "Al Sabah Al Shammari",
       "type": "family",
@@ -11508,28 +11024,6 @@
     {
       "id": "al_duwaish",
       "name": "Al Duwaish",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
-      "id": "al_mishal",
-      "name": "Al Mishal",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
-      "id": "al_awadi",
-      "name": "Al Awadi",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -11570,17 +11064,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 1
-    },
-    {
-      "id": "al_saeed",
-      "name": "Al Saeed",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 2
     },
     {
       "id": "al_hameli",
@@ -11636,17 +11119,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 1
-    },
-    {
-      "id": "al_mannaei",
-      "name": "Al Mannaei",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 2
     },
     {
       "id": "al_mazroui",
@@ -11715,17 +11187,6 @@
       "size": 4
     },
     {
-      "id": "al_murra",
-      "name": "Al Murra",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
       "id": "al_manaseer",
       "name": "Al Manaseer",
       "type": "family",
@@ -11770,29 +11231,7 @@
       "size": 1
     },
     {
-      "id": "al_arrayedh",
-      "name": "Al Arrayedh",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
-      "id": "al_sudairy",
-      "name": "Al Sudairy",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 4
-    },
-    {
-      "id": "al_dakhil",
+      "id": "al_dakheel",
       "name": "Al Dakhil",
       "type": "family",
       "nodeType": "family",
@@ -11913,17 +11352,6 @@
       "size": 5
     },
     {
-      "id": "al_murrah",
-      "name": "Al Murrah",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 7
-    },
-    {
       "id": "al_quaiti",
       "name": "Al Qu'aiti",
       "type": "family",
@@ -11966,17 +11394,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 5
-    },
-    {
-      "id": "al_bloushi",
-      "name": "Al Bloushi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 2
     },
     {
       "id": "al_yammahi",
@@ -12034,17 +11451,6 @@
       "size": 4
     },
     {
-      "id": "al_baloushi",
-      "name": "Al Baloushi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 3
-    },
-    {
       "id": "al_dawsari",
       "name": "Al Dawsari",
       "type": "family",
@@ -12067,7 +11473,7 @@
       "size": 1
     },
     {
-      "id": "al_musa",
+      "id": "al_mousa",
       "name": "Al Musa",
       "type": "family",
       "nodeType": "family",
@@ -12076,17 +11482,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 3
-    },
-    {
-      "id": "al_sulayti",
-      "name": "Al Sulayti",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 2
     },
     {
       "id": "al_saad",
@@ -12199,28 +11594,6 @@
       "size": 3
     },
     {
-      "id": "al_bu_kharaiban",
-      "name": "Al Bu Kharaiban",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 6
-    },
-    {
-      "id": "al_bu_shamis",
-      "name": "Al Bu Shamis",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 14
-    },
-    {
       "id": "al_hefeiti",
       "name": "Al Hefeiti",
       "type": "family",
@@ -12241,17 +11614,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 1
-    },
-    {
-      "id": "al_bu_falah",
-      "name": "Al Bu Falah",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 21
     },
     {
       "id": "al_bu_khadra",
@@ -12342,17 +11704,6 @@
       "size": 1
     },
     {
-      "id": "al_mahmoud",
-      "name": "Al Mahmoud",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
       "id": "al_bu_saif",
       "name": "Al Bu Saif",
       "type": "family",
@@ -12419,17 +11770,6 @@
       "size": 1
     },
     {
-      "id": "al_jalahmah",
-      "name": "Al Jalahmah",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
       "id": "al_mudairis",
       "name": "Al Mudairis",
       "type": "family",
@@ -12450,28 +11790,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 1
-    },
-    {
-      "id": "al_mahmud",
-      "name": "Al Mahmud",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
-      "id": "al_manasir",
-      "name": "Al Manasir",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 3
     },
     {
       "id": "al_zayed",
@@ -12518,7 +11836,7 @@
       "size": 1
     },
     {
-      "id": "al_mansour",
+      "id": "al_mansoor",
       "name": "Al Mansour",
       "type": "family",
       "nodeType": "family",
@@ -12529,7 +11847,7 @@
       "size": 3
     },
     {
-      "id": "al_khamis",
+      "id": "al_khamees",
       "name": "Al Khamis",
       "type": "family",
       "nodeType": "family",
@@ -12553,17 +11871,6 @@
     {
       "id": "al_bu_khayl",
       "name": "Al Bu Khayl",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
-    },
-    {
-      "id": "al_duweish",
-      "name": "Al Duweish",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -12703,17 +12010,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 2
-    },
-    {
-      "id": "al_tabtabaei",
-      "name": "Al Tabtabaei",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
     },
     {
       "id": "al_bu_mundhir",
@@ -12881,17 +12177,6 @@
       "size": 1
     },
     {
-      "id": "al_shaalan",
-      "name": "Al Shaalan",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 5
-    },
-    {
       "id": "al_mujammai",
       "name": "Al Mujammai",
       "type": "family",
@@ -12923,28 +12208,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 1
-    },
-    {
-      "id": "al_mazrui",
-      "name": "Al Mazrui",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 2
-    },
-    {
-      "id": "al_mehairbi",
-      "name": "Al Mehairbi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 2
     },
     {
       "id": "al_ghafli",
@@ -13167,17 +12430,6 @@
       "size": 3
     },
     {
-      "id": "al_dashti",
-      "name": "Al Dashti",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 3
-    },
-    {
       "id": "al_hooth",
       "name": "Al Hooth",
       "type": "family",
@@ -13211,17 +12463,6 @@
       "size": 1
     },
     {
-      "id": "al_mahmood",
-      "name": "Al Mahmood",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 2
-    },
-    {
       "id": "al_shawi",
       "name": "Al Shawi",
       "type": "family",
@@ -13242,17 +12483,6 @@
       "rulesOver": null,
       "familyType": "tribal_leader",
       "size": 3
-    },
-    {
-      "id": "al_rasheedi",
-      "name": "Al Rasheedi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "tribal_leader",
-      "size": 1
     },
     {
       "id": "al_suhail",
@@ -13332,30 +12562,8 @@
       "size": 1
     },
     {
-      "id": "al_saggaf",
-      "name": "Al Saggaf",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 6
-    },
-    {
       "id": "al_mojel",
       "name": "Al Mojel",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "al_dosary",
-      "name": "Al Dosary",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -13530,17 +12738,6 @@
       "size": 1
     },
     {
-      "id": "al_qadi",
-      "name": "Al Qadi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
       "id": "al_wohaibi",
       "name": "Al Wohaibi",
       "type": "family",
@@ -13572,17 +12769,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 2
-    },
-    {
-      "id": "al_shaikh",
-      "name": "Al Shaikh",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 4
     },
     {
       "id": "bin_talal",
@@ -13706,17 +12892,6 @@
       "size": 2
     },
     {
-      "id": "khashoggi",
-      "name": "Khashoggi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
-    },
-    {
       "id": "hazeem",
       "name": "Hazeem",
       "type": "family",
@@ -13761,17 +12936,6 @@
       "size": 2
     },
     {
-      "id": "kurdi",
-      "name": "Kurdi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
-    },
-    {
       "id": "safadi",
       "name": "Safadi",
       "type": "family",
@@ -13794,7 +12958,7 @@
       "size": 3
     },
     {
-      "id": "attar",
+      "id": "al_attar",
       "name": "Attar",
       "type": "family",
       "nodeType": "family",
@@ -13862,17 +13026,6 @@
     {
       "id": "noorallah",
       "name": "Noorallah",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
-      "id": "bukhari",
-      "name": "Bukhari",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -14091,17 +13244,6 @@
       "size": 1
     },
     {
-      "id": "al_kurdi",
-      "name": "Al Kurdi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
       "id": "al_circassi",
       "name": "Al Circassi",
       "type": "family",
@@ -14223,17 +13365,6 @@
       "size": 2
     },
     {
-      "id": "al_attar",
-      "name": "Al Attar",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
       "id": "al_bakkal",
       "name": "Al Bakkal",
       "type": "family",
@@ -14289,7 +13420,7 @@
       "size": 1
     },
     {
-      "id": "al_mannaie",
+      "id": "al_mannaei",
       "name": "Al Mannaie",
       "type": "family",
       "nodeType": "family",
@@ -14355,17 +13486,6 @@
       "size": 1
     },
     {
-      "id": "al_bu_falasah",
-      "name": "Al Bu Falasah",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 6
-    },
-    {
       "id": "bin_dasmal",
       "name": "Bin Dasmal",
       "type": "family",
@@ -14408,17 +13528,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "al_maktoom",
-      "name": "Al Maktoom",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 5
     },
     {
       "id": "mohammed_bin_rashid_al_maktoum",
@@ -14894,17 +14003,6 @@
       "size": 1
     },
     {
-      "id": "al_marzooqi",
-      "name": "Al Marzooqi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_qudra",
       "name": "Al Qudra",
       "type": "family",
@@ -14936,17 +14034,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 4
-    },
-    {
-      "id": "al_qubaysi",
-      "name": "Al Qubaysi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
     },
     {
       "id": "al_haili",
@@ -15013,17 +14100,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "al_naqi",
-      "name": "Al Naqi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
     },
     {
       "id": "al_farhan",
@@ -15180,17 +14256,6 @@
       "size": 1
     },
     {
-      "id": "jishi",
-      "name": "Jishi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
       "id": "shura",
       "name": "Shura",
       "type": "family",
@@ -15235,28 +14300,6 @@
       "size": 2
     },
     {
-      "id": "khouri",
-      "name": "Khouri",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
-      "id": "al_yousif",
-      "name": "Al Yousif",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "ramdas",
       "name": "Ramdas",
       "type": "family",
@@ -15290,17 +14333,6 @@
       "size": 1
     },
     {
-      "id": "abdullatif",
-      "name": "Abdullatif",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
       "id": "al_sairafi",
       "name": "Al Sairafi",
       "type": "family",
@@ -15310,17 +14342,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "moosa",
-      "name": "Moosa",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
     },
     {
       "id": "ajami",
@@ -15378,28 +14399,6 @@
       "size": 2
     },
     {
-      "id": "safar",
-      "name": "Safar",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
-      "id": "al_khalil",
-      "name": "Al Khalil",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
       "id": "al_juffairi",
       "name": "Al Juffairi",
       "type": "family",
@@ -15409,28 +14408,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 2
-    },
-    {
-      "id": "yusuf",
-      "name": "Yusuf",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
-    },
-    {
-      "id": "al_kubaisi",
-      "name": "Al Kubaisi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 4
     },
     {
       "id": "al_sada",
@@ -15510,30 +14487,8 @@
       "size": 1
     },
     {
-      "id": "al_attiya",
-      "name": "Al Attiya",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
-    },
-    {
       "id": "bin_omran",
       "name": "Bin Omran",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "al_obaidly",
-      "name": "Al Obaidly",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -15743,17 +14698,6 @@
     {
       "id": "al_salmi",
       "name": "Al Salmi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "al_mahruqi",
-      "name": "Al Mahruqi",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -15974,17 +14918,6 @@
     {
       "id": "sobha",
       "name": "Sobha",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
-    },
-    {
-      "id": "sultan",
-      "name": "Sultan",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -16225,17 +15158,6 @@
       "size": 1
     },
     {
-      "id": "al_khudairy",
-      "name": "Al Khudairy",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 1
-    },
-    {
       "id": "al_shamrani",
       "name": "Al Shamrani",
       "type": "family",
@@ -16245,17 +15167,6 @@
       "rulesOver": null,
       "familyType": "political",
       "size": 4
-    },
-    {
-      "id": "al_thunaian",
-      "name": "Al Thunaian",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
     },
     {
       "id": "al_tuwejri",
@@ -16322,28 +15233,6 @@
       "rulesOver": null,
       "familyType": "political",
       "size": 1
-    },
-    {
-      "id": "al_rabeeah",
-      "name": "Al Rabeeah",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 1
-    },
-    {
-      "id": "al_khayat",
-      "name": "Al Khayat",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 2
     },
     {
       "id": "al_mohanna",
@@ -16511,17 +15400,6 @@
       "size": 1
     },
     {
-      "id": "al_subeai",
-      "name": "Al Subeai",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 1
-    },
-    {
       "id": "al_mohsen",
       "name": "Al Mohsen",
       "type": "family",
@@ -16546,17 +15424,6 @@
     {
       "id": "al_ghalib",
       "name": "Al Ghalib",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 1
-    },
-    {
-      "id": "al_suwaiyed",
-      "name": "Al Suwaiyed",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -16612,28 +15479,6 @@
     {
       "id": "al_jarman",
       "name": "Al Jarman",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 1
-    },
-    {
-      "id": "al_khoori",
-      "name": "Al Khoori",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 2
-    },
-    {
-      "id": "al_qemzi",
-      "name": "Al Qemzi",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -16841,17 +15686,6 @@
       "size": 2
     },
     {
-      "id": "al_sabeeh",
-      "name": "Al Sabeeh",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 1
-    },
-    {
       "id": "al_mekaimi",
       "name": "Al Mekaimi",
       "type": "family",
@@ -16874,17 +15708,6 @@
       "size": 1
     },
     {
-      "id": "al_maawda",
-      "name": "Al Maawda",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_khurainej",
       "name": "Al Khurainej",
       "type": "family",
@@ -16898,17 +15721,6 @@
     {
       "id": "al_hashel",
       "name": "Al Hashel",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 1
-    },
-    {
-      "id": "al_dakheel",
-      "name": "Al Dakheel",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -17074,17 +15886,6 @@
     {
       "id": "al_qaed",
       "name": "Al Qaed",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 1
-    },
-    {
-      "id": "al_dhahrani",
-      "name": "Al Dhahrani",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -17358,17 +16159,6 @@
       "size": 1
     },
     {
-      "id": "al_sharif",
-      "name": "Al Sharif",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 3
-    },
-    {
       "id": "al_wadi",
       "name": "Al Wadi",
       "type": "family",
@@ -17600,7 +16390,7 @@
       "size": 1
     },
     {
-      "id": "jolo",
+      "id": "al_jolo",
       "name": "Jolo",
       "type": "family",
       "nodeType": "family",
@@ -17644,7 +16434,7 @@
       "size": 2
     },
     {
-      "id": "obaid",
+      "id": "al_obaid",
       "name": "Obaid",
       "type": "family",
       "nodeType": "family",
@@ -17655,7 +16445,7 @@
       "size": 2
     },
     {
-      "id": "yaqoub",
+      "id": "al_yaqoub",
       "name": "Yaqoub",
       "type": "family",
       "nodeType": "family",
@@ -17675,28 +16465,6 @@
       "rulesOver": null,
       "familyType": "political",
       "size": 1
-    },
-    {
-      "id": "al_maamari",
-      "name": "Al Maamari",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 4
-    },
-    {
-      "id": "al_hooti",
-      "name": "Al Hooti",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 3
     },
     {
       "id": "al_ruqaishi",
@@ -17787,7 +16555,7 @@
       "size": 1
     },
     {
-      "id": "al_yarubi",
+      "id": "al_yaarubi",
       "name": "Al Yarubi",
       "type": "family",
       "nodeType": "family",
@@ -17800,17 +16568,6 @@
     {
       "id": "al_khanjari",
       "name": "Al Khanjari",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 1
-    },
-    {
-      "id": "al_shikaili",
-      "name": "Al Shikaili",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -17855,17 +16612,6 @@
     {
       "id": "al_shekaili",
       "name": "Al Shekaili",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "political",
-      "size": 1
-    },
-    {
-      "id": "al_kharoosi",
-      "name": "Al Kharoosi",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -18040,17 +16786,6 @@
       "size": 3
     },
     {
-      "id": "al_hokail",
-      "name": "Al Hokail",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_othaimeen",
       "name": "Al Othaimeen",
       "type": "family",
@@ -18194,17 +16929,6 @@
       "size": 1
     },
     {
-      "id": "al_kadi",
-      "name": "Al Kadi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_hathloul",
       "name": "Al Hathloul",
       "type": "family",
@@ -18306,17 +17030,6 @@
     {
       "id": "al_mazeedi",
       "name": "Al Mazeedi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
-    },
-    {
-      "id": "al_dawoud",
-      "name": "Al Dawoud",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -18502,17 +17215,6 @@
       "size": 1
     },
     {
-      "id": "al_amoodi",
-      "name": "Al Amoodi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 4
-    },
-    {
       "id": "al_ruwaitea",
       "name": "Al Ruwaitea",
       "type": "family",
@@ -18581,17 +17283,6 @@
     {
       "id": "al_khozama",
       "name": "Al Khozama",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "al_jeraisi",
-      "name": "Al Jeraisi",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -18676,17 +17367,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "al_dossari",
-      "name": "Al Dossari",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
     },
     {
       "id": "al_shihri",
@@ -18964,17 +17644,6 @@
       "size": 2
     },
     {
-      "id": "al_marzuki",
-      "name": "Al Marzuki",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_dhahiri",
       "name": "Al Dhahiri",
       "type": "family",
@@ -19017,17 +17686,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 2
-    },
-    {
-      "id": "al_mansoor",
-      "name": "Al Mansoor",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
     },
     {
       "id": "al_murad",
@@ -19261,17 +17919,6 @@
       "size": 1
     },
     {
-      "id": "al_dhafeeri",
-      "name": "Al Dhafeeri",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_jasem",
       "name": "Al Jasem",
       "type": "family",
@@ -19316,17 +17963,6 @@
       "size": 2
     },
     {
-      "id": "al_marzouk",
-      "name": "Al Marzouk",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
-    },
-    {
       "id": "al_dulaim",
       "name": "Al Dulaim",
       "type": "family",
@@ -19351,17 +17987,6 @@
     {
       "id": "al_shamali",
       "name": "Al Shamali",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "al_khamees",
-      "name": "Al Khamees",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -19437,17 +18062,6 @@
       "size": 3
     },
     {
-      "id": "al_mahrous",
-      "name": "Al Mahrous",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_dukhan",
       "name": "Al Dukhan",
       "type": "family",
@@ -19468,17 +18082,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "al_mousawi",
-      "name": "Al Mousawi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 5
     },
     {
       "id": "al_sherooqi",
@@ -19635,41 +18238,8 @@
       "size": 1
     },
     {
-      "id": "al_wadei",
-      "name": "Al Wadei",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
-    },
-    {
-      "id": "al_yaqoub",
-      "name": "Al Yaqoub",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "bouhaji",
       "name": "Bouhaji",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "bucheeri",
-      "name": "Bucheeri",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -19723,39 +18293,6 @@
       "size": 1
     },
     {
-      "id": "karam",
-      "name": "Karam",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 4
-    },
-    {
-      "id": "mansoor",
-      "name": "Mansoor",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
-      "id": "matar",
-      "name": "Matar",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 2
-    },
-    {
       "id": "mirza",
       "name": "Mirza",
       "type": "family",
@@ -19765,17 +18302,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 4
-    },
-    {
-      "id": "murad",
-      "name": "Murad",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
     },
     {
       "id": "nabeel",
@@ -19800,7 +18326,7 @@
       "size": 1
     },
     {
-      "id": "sharif",
+      "id": "al_sharif",
       "name": "Sharif",
       "type": "family",
       "nodeType": "family",
@@ -19809,17 +18335,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 5
-    },
-    {
-      "id": "suleiman",
-      "name": "Suleiman",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
     },
     {
       "id": "taher",
@@ -19866,30 +18381,8 @@
       "size": 1
     },
     {
-      "id": "al_jolo",
-      "name": "Al Jolo",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_mohd",
       "name": "Al Mohd",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "al_obaid",
-      "name": "Al Obaid",
       "type": "family",
       "nodeType": "family",
       "lineage": null,
@@ -19921,28 +18414,6 @@
       "size": 1
     },
     {
-      "id": "al_maadhid",
-      "name": "Al Maadhid",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "al_hawaaj",
-      "name": "Al Hawaaj",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_jeham",
       "name": "Al Jeham",
       "type": "family",
@@ -19952,17 +18423,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "al_nuaymi",
-      "name": "Al Nuaymi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
     },
     {
       "id": "al_darwishi",
@@ -20086,28 +18546,6 @@
       "size": 1
     },
     {
-      "id": "al_kiyoumi",
-      "name": "Al Kiyoumi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
-      "id": "al_amry",
-      "name": "Al Amry",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 1
-    },
-    {
       "id": "al_bimani",
       "name": "Al Bimani",
       "type": "family",
@@ -20130,17 +18568,6 @@
       "size": 1
     },
     {
-      "id": "al_hadrami",
-      "name": "Al Hadrami",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
-    },
-    {
       "id": "al_lawatia",
       "name": "Al Lawatia",
       "type": "family",
@@ -20161,17 +18588,6 @@
       "rulesOver": null,
       "familyType": "merchant",
       "size": 1
-    },
-    {
-      "id": "al_yaarubi",
-      "name": "Al Yaarubi",
-      "type": "family",
-      "nodeType": "family",
-      "lineage": null,
-      "isRuling": false,
-      "rulesOver": null,
-      "familyType": "merchant",
-      "size": 3
     },
     {
       "id": "al_zidjali",
@@ -22112,7 +20528,7 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_anqari",
+      "source": "al_angari",
       "target": "al_saud",
       "edgeType": "intermarriage",
       "confidence": "oral_tradition"
@@ -22148,13 +20564,13 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_ash_sheikh_family",
+      "source": "al_ash_sheikh",
       "target": "al_saud_family",
       "edgeType": "alliance",
       "confidence": "confirmed"
     },
     {
-      "source": "al_ash_sheikh_family",
+      "source": "al_ash_sheikh",
       "target": "banu_tamim_tribe",
       "edgeType": "branch",
       "confidence": "oral_tradition"
@@ -22610,13 +21026,13 @@
       "confidence": "confirmed"
     },
     {
-      "source": "al_dossary",
+      "source": "al_dossari",
       "target": "dawasir_tribe",
       "edgeType": "descent",
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_dossary",
+      "source": "al_dossari",
       "target": "house_of_saud",
       "edgeType": "alliance",
       "confidence": "confirmed"
@@ -23060,19 +21476,19 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_katheeri",
+      "source": "al_kathiri",
       "target": "banu_hamdan",
       "edgeType": "alliance",
       "confidence": "confirmed"
     },
     {
-      "source": "al_katheeri",
+      "source": "al_kathiri",
       "target": "banu_lam",
       "edgeType": "alliance",
       "confidence": "confirmed"
     },
     {
-      "source": "al_katheeri",
+      "source": "al_kathiri",
       "target": "banu_qudaa",
       "edgeType": "branch",
       "confidence": "oral_tradition"
@@ -23174,7 +21590,7 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_kharusi",
+      "source": "al_kharousi",
       "target": "ibadi_movement",
       "edgeType": "descent",
       "confidence": "oral_tradition"
@@ -23372,7 +21788,7 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_marzook",
+      "source": "al_marzouq",
       "target": "bani_yas",
       "edgeType": "branch",
       "confidence": "oral_tradition"
@@ -23564,7 +21980,7 @@
       "confidence": "confirmed"
     },
     {
-      "source": "al_musawi",
+      "source": "al_mousawi",
       "target": "banu_hashim",
       "edgeType": "branch",
       "confidence": "oral_tradition"
@@ -24165,7 +22581,7 @@
     },
     {
       "source": "al_riyami",
-      "target": "al_harthy",
+      "target": "al_harthi",
       "edgeType": "alliance",
       "confidence": "confirmed"
     },
@@ -24423,7 +22839,7 @@
     },
     {
       "source": "al_shobokshi",
-      "target": "kashoggi",
+      "target": "khashoggi",
       "edgeType": "alliance",
       "confidence": "confirmed"
     },
@@ -25946,7 +24362,7 @@
       "confidence": "confirmed"
     },
     {
-      "source": "house_of_sabah",
+      "source": "al_sabah",
       "target": "bani_utbah",
       "edgeType": "branch",
       "confidence": "oral_tradition"
@@ -26234,7 +24650,7 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "kashoggi",
+      "source": "khashoggi",
       "target": "al_fayed",
       "edgeType": "alliance",
       "confidence": "confirmed"
@@ -27620,60 +26036,6 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "adnan",
-      "target": "anizzah",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "adnan",
-      "target": "bani_tamim",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "adnan",
-      "target": "bani_yas",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "adnan",
-      "target": "otaibah",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "adnan",
-      "target": "harb",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "adnan",
-      "target": "mutayr",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "adnan",
-      "target": "banu_khalid",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "adnan",
-      "target": "subay",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "adnan",
-      "target": "banu_hanifa",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "azd",
       "target": "zahran",
       "edgeType": "descent",
@@ -27698,200 +26060,14 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "banu_hanifa",
-      "target": "anizzah",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "dhawahir",
       "target": "daramikah",
       "edgeType": "descent",
       "confidence": "oral_tradition"
     },
     {
-      "source": "himyar",
-      "target": "dhul_kala",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "himyar",
-      "target": "dhu_asbah",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "kahlan",
-      "target": "azd_uman",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "kahlan",
-      "target": "ghassanids",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "kahlan",
-      "target": "aws_khazraj",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "kahlan",
-      "target": "bariq",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "kahlan",
-      "target": "khuzaa",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "kahlan",
-      "target": "al_murrah",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "kahlan",
-      "target": "ujman",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "kahlan",
-      "target": "shammar",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "hourani",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "al_abdul_dayem",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "al_shaleikh",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "al_bahri",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "ayal_abdo",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "abu_karaki",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "kiawan",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "alkhudur",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "alsawalima",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "alhamamada",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "almusaeada",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "alhasasana",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "aljeayisa",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "dar_alearabi",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "al_asead",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mahamid",
-      "target": "al_ahmad",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mazari",
-      "target": "mazari_emirati",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "mazari",
-      "target": "mazari_baloch",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "qahtan",
-      "target": "qahtan_tribe",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "rabiah",
       "target": "banu_hanifa",
-      "edgeType": "descent",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "rabiah",
-      "target": "banu_kanz",
       "edgeType": "descent",
       "confidence": "oral_tradition"
     },
@@ -27926,32 +26102,8 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_darmaki",
-      "target": "dhawahir",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_dosari",
-      "target": "dawasir",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_jaberi",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "al_jalahma",
       "target": "bani_utbah",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_jarba",
-      "target": "shammar",
       "edgeType": "family_of",
       "confidence": "oral_tradition"
     },
@@ -27962,37 +26114,13 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_maktoum",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "al_muammar",
       "target": "tamim",
       "edgeType": "family_of",
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_mualla",
-      "target": "bani_ali",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_nahyan",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "al_naimi_qatar",
-      "target": "naim",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_nuaimi",
       "target": "naim",
       "edgeType": "family_of",
       "confidence": "oral_tradition"
@@ -28022,12 +26150,6 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_sabhan",
-      "target": "anaza",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "al_saud",
       "target": "anizzah",
       "edgeType": "family_of",
@@ -28046,56 +26168,14 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_ash_sheikh_family",
+      "source": "al_ash_sheikh",
       "target": "tamim",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_amru",
-      "target": "bani_yas",
       "edgeType": "family_of",
       "confidence": "oral_tradition"
     },
     {
       "source": "al_buainain",
       "target": "bani_tamim",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_fadhil",
-      "target": "tayy",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_kuwari",
-      "target": "tamim",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_mannai",
-      "target": "bani_tamim",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_musawi",
-      "target": "banu_hashim",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_noaimi",
-      "target": "naim",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_qassab",
-      "target": "bani_yas",
       "edgeType": "family_of",
       "confidence": "oral_tradition"
     },
@@ -28112,12 +26192,6 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "albuflasa_clan",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "almuhannada",
       "target": "qahtan_tribe",
       "edgeType": "family_of",
@@ -28130,86 +26204,14 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "hamdanid_dynasty",
-      "target": "banu_taghlib",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "sudairi_seven",
       "target": "sudairi",
       "edgeType": "family_of",
       "confidence": "oral_tradition"
     },
     {
-      "source": "uyunid_dynasty",
-      "target": "banu_abdul_qays",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_fahim",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_ghurair",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_futtaim",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_habtoor",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_tayer",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "al_mulla_family",
       "target": "tamim",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_serkal",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_majid",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_owais",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_ansari_family",
-      "target": "banu_khazraj",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_zarooni",
-      "target": "bani_yas",
       "edgeType": "family_of",
       "confidence": "oral_tradition"
     },
@@ -28256,12 +26258,6 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_rumaithi",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "al_mazrouei",
       "target": "bani_yas",
       "edgeType": "family_of",
@@ -28281,12 +26277,6 @@
     },
     {
       "source": "al_kaabi_family",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "juma_al_majid",
       "target": "bani_yas",
       "edgeType": "family_of",
       "confidence": "oral_tradition"
@@ -28322,12 +26312,6 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_fardan",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "al_misnad",
       "target": "tamim",
       "edgeType": "family_of",
@@ -28340,44 +26324,8 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_zayani",
-      "target": "utub",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "al_kharafi",
       "target": "utub",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_sager",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_bahar",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_marzook",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_maskiry",
-      "target": "bani_yas",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_rawas",
-      "target": "azd",
       "edgeType": "family_of",
       "confidence": "oral_tradition"
     },
@@ -28412,20 +26360,8 @@
       "confidence": "oral_tradition"
     },
     {
-      "source": "al_mohannadi",
-      "target": "bani_hajer",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
       "source": "fakhro",
       "target": "tamim",
-      "edgeType": "family_of",
-      "confidence": "oral_tradition"
-    },
-    {
-      "source": "al_zubair",
-      "target": "quraysh",
       "edgeType": "family_of",
       "confidence": "oral_tradition"
     },
@@ -28456,13 +26392,6 @@
       "edgeType": "ruling_house",
       "confidence": "confirmed",
       "note": "Al Nahyan are the ruling house of the Al Bu Falah section, ruling Abu Dhabi since 1793"
-    },
-    {
-      "source": "al_maktoum",
-      "target": "al_bu_falasah",
-      "edgeType": "ruling_house",
-      "confidence": "confirmed",
-      "note": "Al Maktoum are the ruling house of Al Bu Falasah, ruling Dubai since 1833 split from Abu Dhabi"
     },
     {
       "source": "al_bu_falasah",
@@ -31012,11 +28941,22 @@
       "anizah_tribe",
       "utub_confederation"
     ],
-    "al_ash_sheikh_family": [
-      "al_ash_sheikh_family",
+    "al_ash_sheikh": [
+      "al_ash_sheikh",
       "banu_tamim_tribe",
       "tamim",
-      "adnani_root"
+      "adnani_root",
+      "al_tamimi",
+      "al_thani",
+      "banu_tamim",
+      "al_mannai",
+      "bani_tamim",
+      "al_buainain",
+      "al_rabbab",
+      "banu_hanzala",
+      "banu_sad_tamim",
+      "banu_tamim_amr",
+      "maadhid"
     ],
     "al_moayyed": [
       "al_moayyed",
@@ -31097,8 +29037,8 @@
       "mutair_ikhwan",
       "adnani_root"
     ],
-    "al_musawi": [
-      "al_musawi",
+    "al_mousawi": [
+      "al_mousawi",
       "banu_hashim",
       "adnani_root"
     ],
@@ -31117,7 +29057,8 @@
     ],
     "al_kathiri": [
       "al_kathiri",
-      "qahtani_root"
+      "qahtani_root",
+      "banu_qudaa"
     ],
     "banu_uqayl": [
       "banu_uqayl",
@@ -31547,8 +29488,8 @@
       "maadhid",
       "al_thani"
     ],
-    "house_of_sabah": [
-      "house_of_sabah",
+    "al_sabah": [
+      "al_sabah",
       "bani_utbah",
       "al-bin-ali",
       "al-jalahma",
@@ -31565,8 +29506,8 @@
       "bakr_bin_wail",
       "adnani_root"
     ],
-    "al_marzook": [
-      "al_marzook",
+    "al_marzouq": [
+      "al_marzouq",
       "bani_yas",
       "al_bu_falah",
       "al_bu_falasah",
@@ -31614,7 +29555,19 @@
       "banu_yam",
       "mazari_emirati",
       "mazari_baloch",
-      "qahtani_root"
+      "qahtani_root",
+      "al_ghanim",
+      "bani_utub",
+      "bani_utbah",
+      "al-bin-ali",
+      "al-jalahma",
+      "al-khalifa",
+      "al-sabah",
+      "al_jalahma",
+      "al_khalifa",
+      "anizah",
+      "anizah_tribe",
+      "utub_confederation"
     ],
     "al_mohannadi": [
       "al_mohannadi",
@@ -31807,22 +29760,6 @@
       "khawlaniyah_al_qahtaniyah_harb",
       "qahtani_root"
     ],
-    "al_marzouq": [
-      "al_marzouq",
-      "al_ghanim",
-      "bani_utub",
-      "bani_utbah",
-      "al-bin-ali",
-      "al-jalahma",
-      "al-khalifa",
-      "al-sabah",
-      "al_jalahma",
-      "al_khalifa",
-      "adnani_root",
-      "anizah",
-      "anizah_tribe",
-      "utub_confederation"
-    ],
     "banu_abs": [
       "banu_abs",
       "adnani_root"
@@ -31925,8 +29862,8 @@
       "al_shathri",
       "hawazin_tribe"
     ],
-    "al_kharusi": [
-      "al_kharusi",
+    "al_kharousi": [
+      "al_kharousi",
       "ibadi_movement"
     ],
     "anazzah": [
@@ -32317,8 +30254,8 @@
       "al_shanfari",
       "tribe_shanfar"
     ],
-    "al_dossary": [
-      "al_dossary",
+    "al_dossari": [
+      "al_dossari",
       "dawasir_tribe",
       "al_dosari",
       "dawasir",
@@ -32797,10 +30734,6 @@
       "al_qawasim",
       "adnani_root"
     ],
-    "al_katheeri": [
-      "al_katheeri",
-      "banu_qudaa"
-    ],
     "bin_ali": [
       "bin_ali",
       "al_maadeed",
@@ -32815,22 +30748,6 @@
       "jawabir",
       "daramikah",
       "adnani_root"
-    ],
-    "al_ash_sheikh": [
-      "al_ash_sheikh",
-      "al_tamimi",
-      "al_thani",
-      "banu_tamim",
-      "tamim",
-      "al_mannai",
-      "adnani_root",
-      "bani_tamim",
-      "al_buainain",
-      "al_rabbab",
-      "banu_hanzala",
-      "banu_sad_tamim",
-      "banu_tamim_amr",
-      "maadhid"
     ],
     "khawatir": [
       "khawatir",

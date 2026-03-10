@@ -360,7 +360,7 @@ export default function MapView() {
 
     // Clear the param so it doesn't re-trigger on navigation
     setSearchParams({}, { replace: true });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build GeoJSON for markers
   const buildGeoJson = useCallback(
