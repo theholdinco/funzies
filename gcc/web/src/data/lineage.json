@@ -20296,6 +20296,457 @@
       "nodeType": "family",
       "lineage": null,
       "size": 1
+    },
+    {
+      "id": "al_ash_sheikh_family",
+      "name": "Al ash-Sheikh",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": null,
+      "size": 3
+    },
+    {
+      "id": "al_musawi",
+      "name": "Al-Musawi",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": null,
+      "size": 3
+    },
+    {
+      "id": "house_of_sabah",
+      "name": "House of Sabah",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": null,
+      "size": 3
+    },
+    {
+      "id": "al_marzook",
+      "name": "Al Marzook",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "al_humaidi",
+      "name": "Al Humaidi",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": null,
+      "size": 3
+    },
+    {
+      "id": "al_dossary",
+      "name": "Al Dossary",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": null,
+      "size": 3
+    },
+    {
+      "id": "kashoggi",
+      "name": "Kashoggi",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": null,
+      "size": 3
+    },
+    {
+      "id": "al_balooshi",
+      "name": "Al Balooshi",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": null,
+      "size": 3
+    },
+    {
+      "id": "al_abdullah",
+      "name": "Al Abdullah",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": true,
+      "rulesOver": null,
+      "familyType": "ruling",
+      "size": 3
+    },
+    {
+      "id": "al_seif",
+      "name": "Al Seif",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "dashti",
+      "name": "Dashti",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "al_qadhi",
+      "name": "Al Qadhi",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "religious",
+      "size": 3
+    },
+    {
+      "id": "bucheery",
+      "name": "Bucheery",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "omar",
+      "name": "Omar",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "saeed",
+      "name": "Saeed",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "al_bloushi",
+      "name": "Al Bloushi",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "tribal_leader",
+      "size": 3
+    },
+    {
+      "id": "al_baloushi",
+      "name": "Al Baloushi",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "tribal_leader",
+      "size": 3
+    },
+    {
+      "id": "al_musa",
+      "name": "Al Musa",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "tribal_leader",
+      "size": 3
+    },
+    {
+      "id": "al_manasir",
+      "name": "Al Manasir",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "tribal_leader",
+      "size": 3
+    },
+    {
+      "id": "al_mansour",
+      "name": "Al Mansour",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "tribal_leader",
+      "size": 3
+    },
+    {
+      "id": "al_shaikh",
+      "name": "Al Shaikh",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "kurdi",
+      "name": "Kurdi",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "al_mannaie",
+      "name": "Al Mannaie",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "khouri",
+      "name": "Khouri",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "moosa",
+      "name": "Moosa",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "safar",
+      "name": "Safar",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "yusuf",
+      "name": "Yusuf",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "sultan",
+      "name": "Sultan",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "obaid",
+      "name": "Obaid",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "political",
+      "size": 3
+    },
+    {
+      "id": "al_maamari",
+      "name": "Al Maamari",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "political",
+      "size": 3
+    },
+    {
+      "id": "al_kadi",
+      "name": "Al Kadi",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "al_dawoud",
+      "name": "Al Dawoud",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "al_marzouk",
+      "name": "Al Marzouk",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "al_wadei",
+      "name": "Al Wadei",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "karam",
+      "name": "Karam",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "matar",
+      "name": "Matar",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "murad",
+      "name": "Murad",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "sharif",
+      "name": "Sharif",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "al_hawaaj",
+      "name": "Al Hawaaj",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "al_hadrami",
+      "name": "Al Hadrami",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
+    },
+    {
+      "id": "al_zaim",
+      "name": "Al Zaim",
+      "type": "family",
+      "nodeType": "family",
+      "lineage": null,
+      "isRuling": false,
+      "rulesOver": null,
+      "familyType": "merchant",
+      "size": 3
     }
   ],
   "edges": [
@@ -27812,6 +28263,492 @@
       "target": "adnani_root",
       "edgeType": "lineage",
       "confidence": "oral_tradition"
+    },
+    {
+      "source": "tamim",
+      "target": "aghlabids",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "banu_khalid",
+      "target": "al_urayir",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "shammar",
+      "target": "al_ali_hail",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_attiyah",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "azd",
+      "target": "al_bu_said",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "dhawahir",
+      "target": "al_darmaki",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "dawasir",
+      "target": "al_dosari",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_jaberi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "shammar",
+      "target": "al_jarba",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_maktoum",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_muammar",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_ali",
+      "target": "al_mualla",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_nahyan",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "naim",
+      "target": "al_naimi_qatar",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "naim",
+      "target": "al_nuaimi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "al_qawasim",
+      "target": "al_qasimi_rak",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "shammar",
+      "target": "al_rashid",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_saadi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "anaza",
+      "target": "al_sabhan",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_thani_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_ash_sheikh_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_amru",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tayy",
+      "target": "al_fadhil",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_kuwari",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_tamim",
+      "target": "al_mannai",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "banu_hashim",
+      "target": "al_musawi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "naim",
+      "target": "al_noaimi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_qassab",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_rumaihi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "banu_khalid",
+      "target": "al_thawadi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "albuflasa_clan",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "qahtan_tribe",
+      "target": "almuhannada",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "bani_hafiz_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "banu_taghlib",
+      "target": "hamdanid_dynasty",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "sudairi",
+      "target": "sudairi_seven",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "banu_abdul_qays",
+      "target": "uyunid_dynasty",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_fahim",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_ghurair",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_futtaim",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_habtoor",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_tayer",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_mulla_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_serkal",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_majid",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_owais",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "banu_khazraj",
+      "target": "al_ansari_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_zarooni",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_ketbi_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_shamsi_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "azd",
+      "target": "al_azzawi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_suwaidi_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "dhawahir",
+      "target": "al_dhaheri_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_mansoori_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_rumaithi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_hammadi_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_ameri_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_kaabi_family",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "juma_al_majid",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_olayan",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "anizah",
+      "target": "al_zamil",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_muhaidib",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "subay",
+      "target": "al_subeaei",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_mana",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_fardan",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_misnad",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_moayyed",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "utub",
+      "target": "al_zayani",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "utub",
+      "target": "al_kharafi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_sager",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_bahar",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_marzook",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_yas",
+      "target": "al_maskiry",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "azd",
+      "target": "al_rawas",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "banu_khalid",
+      "target": "al_juffali",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_tamimi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_wazzan",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "mutayr",
+      "target": "al_nafisi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "al_khater",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "bani_hajer",
+      "target": "al_mohannadi",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "tamim",
+      "target": "fakhro",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
+    },
+    {
+      "source": "quraysh",
+      "target": "al_zubair",
+      "edgeType": "family_of",
+      "confidence": "confirmed"
     }
   ],
   "ancestryChains": {
