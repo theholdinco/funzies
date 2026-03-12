@@ -40,6 +40,7 @@ const COLUMN_MAP: Record<string, string> = {
   maturity_date: "maturityDate",
   facility_size: "facilitySize",
   size: "facilitySize",
+  max_size: "facilitySize",
   leverage: "leverage",
   interest_coverage: "interestCoverage",
   ic: "interestCoverage",

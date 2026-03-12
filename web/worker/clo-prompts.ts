@@ -2,7 +2,7 @@ import type { CloProfile, PanelMember, LoanAnalysis, ExtractedPortfolio, Extract
 
 function formatBuyList(items: BuyListItem[]): string {
   if (items.length === 0) return "";
-  return items
+  const lines = items
     .map((item) => {
       const parts: string[] = [`Obligor: ${item.obligorName}`];
       if (item.facilityName) parts.push(`Facility: ${item.facilityName}`);
@@ -14,7 +14,7 @@ function formatBuyList(items: BuyListItem[]): string {
       if (item.spreadBps != null) parts.push(`Spread: ${item.spreadBps}bps`);
       if (item.price != null) parts.push(`Price: ${item.price}`);
       if (item.maturityDate) parts.push(`Maturity: ${item.maturityDate}`);
-      if (item.facilitySize != null) parts.push(`Size: ${item.facilitySize}`);
+      if (item.facilitySize != null) parts.push(`Max Size: ${item.facilitySize}`);
       if (item.leverage != null) parts.push(`Leverage: ${item.leverage}x`);
       if (item.interestCoverage != null) parts.push(`IC: ${item.interestCoverage}x`);
       if (item.isCovLite != null) parts.push(`Cov-Lite: ${item.isCovLite ? "Yes" : "No"}`);
@@ -24,6 +24,7 @@ function formatBuyList(items: BuyListItem[]): string {
       return parts.join(" | ");
     })
     .join("\n");
+  return `Note: "Max Size" is the maximum facility size available — the manager can buy or swap up to that amount, not necessarily the full size.\n${lines}`;
 }
 
 const QUALITY_RULES = `
@@ -994,7 +995,7 @@ ${formatProfile(profile)}
 ${formatConstraints(profile.extractedConstraints, "full") ? `\nPPM CONSTRAINTS (use for CLO Fit Assessment math):\n${formatConstraints(profile.extractedConstraints, "full")}` : ""}
 ${formatPortfolioState(profile.extractedPortfolio) ? `\nCURRENT PORTFOLIO STATE (use as baseline for impact calculations):\n${formatPortfolioState(profile.extractedPortfolio)}` : ""}
 ${reportPeriodContext ? `\nCOMPLIANCE REPORT DATA (extracted from latest compliance report — use for all compliance test numbers, pool metrics, concentration breakdowns, and portfolio composition):\n${reportPeriodContext}` : ""}
-${buyList && buyList.length > 0 ? `\nBUY LIST CONTEXT (other loans under consideration — compare this loan against alternatives):\n${formatBuyList(buyList)}` : ""}`,
+${buyList && buyList.length > 0 ? `\nBUY LIST CONTEXT (other loans under consideration — compare this loan against alternatives. Max Size is the upper bound available; the manager can buy any amount up to that size, so consider partial allocations when discussing trade sizing):\n${formatBuyList(buyList)}` : ""}`,
   };
 }
 
@@ -1533,7 +1534,7 @@ Where the portfolio diverges from stated goals — WARF drift, WAL mismatches, s
 Factors that limit available options — reference ALL PPM constraints: eligibility criteria, portfolio profile tests, concentration limits, coverage tests, collateral quality tests, reinvestment criteria, hedging limits, and transfer restrictions. Reference specific PPM thresholds and current utilization.
 
 ## Buy List Evaluation
-If a buy list is provided, evaluate each buy list loan against the identified gaps. For each buy list loan, assess whether it would help close a gap, which constraints it satisfies or violates, and rank buy list candidates by portfolio fit. Use web search to research buy list companies for recent credit events, rating actions, and sector developments.
+If a buy list is provided, evaluate each buy list loan against the identified gaps. For each buy list loan, assess whether it would help close a gap, which constraints it satisfies or violates, and rank buy list candidates by portfolio fit. Max Size is the upper bound available — the manager can buy any amount up to that size. When recommending buy list candidates, suggest specific allocation amounts (e.g., "$5M of the $20M available") based on how much is needed to close each gap without breaching limits. Use web search to research buy list companies for recent credit events, rating actions, and sector developments.
 
 ${QUALITY_RULES}`,
     user: `Analyze CLO portfolio gaps:
@@ -1567,7 +1568,7 @@ The CLO's PPM/Listing Particulars and compliance reports are attached as documen
 
 The panel should:
 1. React to the gap analysis — do they agree with the identified portfolio gaps?
-2. Ground discussion in SPECIFIC buy list loans as primary context when a buy list is provided. Discuss named loans from the buy list first — their credit quality, portfolio fit, and compliance impact — before suggesting ideas outside the list. Use web search to research companies on the buy list for recent news, rating actions, and credit developments.
+2. Ground discussion in SPECIFIC buy list loans as primary context when a buy list is provided. Discuss named loans from the buy list first — their credit quality, portfolio fit, and compliance impact — before suggesting ideas outside the list. Max Size is the upper bound available, not a required allocation — discuss specific sizing (e.g., "take $5M of the $20M available") based on portfolio needs. Use web search to research companies on the buy list for recent news, rating actions, and credit developments.
 3. Propose specific loan characteristics, sectors, or credit themes within the focus area
 4. Challenge each other's proposals on credit quality AND portfolio fit — does adding this type of credit breach any concentration limit, portfolio profile test, or eligibility criterion? Does it help or hurt WARF/WAS/WAL/coverage tests?
 5. Build on promising screening criteria collaboratively
@@ -1610,7 +1611,7 @@ export function screeningSynthesisPrompt(
 
 The CLO's PPM/Listing Particulars and compliance reports are attached as document content. Every constraint check must reference the actual current portfolio state and PPM limits.
 
-IMPORTANT: When a buy list is provided, synthesized ideas should primarily come FROM the buy list with actual loan names and metrics. Use the specific obligor names, spreads, ratings, and other data from the buy list items. You may include 1-2 ideas outside the buy list if the debate surfaced compelling opportunities, but the majority of ideas should reference real buy list candidates.
+IMPORTANT: When a buy list is provided, synthesized ideas should primarily come FROM the buy list with actual loan names and metrics. Use the specific obligor names, spreads, ratings, and other data from the buy list items. You may include 1-2 ideas outside the buy list if the debate surfaced compelling opportunities, but the majority of ideas should reference real buy list candidates. Max Size is the upper bound available — suggest specific allocation amounts (e.g., "$5M of the $20M max available") rather than assuming the full size must be purchased.
 
 For each idea, output:
 
@@ -1627,6 +1628,9 @@ The loan structure (e.g., first lien term loan, second lien, unitranche).
 
 ### Risk Level
 low / moderate / high / very-high
+
+### Suggested Allocation
+Recommended purchase amount and rationale (e.g., "$5M of $20M max available — enough to move WAS +1bp without breaching single-name concentration"). If from the buy list, reference the max size available.
 
 ### Expected Spread
 Qualitative or quantitative spread expectation (e.g., "L+400-450bps").

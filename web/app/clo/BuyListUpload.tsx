@@ -137,7 +137,7 @@ export default function BuyListUpload({ initialItems }: { initialItems: BuyListI
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
-                {["Obligor", "Sector", "Rating", "Spread", "Price", "Maturity", "Size", "Leverage", "Avg Life", "Recovery"].map((h) => (
+                {["Obligor", "Sector", "Rating", "Spread", "Price", "Maturity", "Max Size", "Leverage", "Avg Life", "Recovery"].map((h) => (
                   <th key={h} style={{ textAlign: "left", padding: "0.4rem 0.6rem", fontWeight: 600, color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
                     {h}
                   </th>

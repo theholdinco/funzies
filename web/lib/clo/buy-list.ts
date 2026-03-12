@@ -110,7 +110,7 @@ export async function clearBuyList(profileId: string): Promise<void> {
 export function formatBuyList(items: BuyListItem[]): string {
   if (items.length === 0) return "";
 
-  return items
+  const lines = items
     .map((item) => {
       const parts: string[] = [`Obligor: ${item.obligorName}`];
       if (item.facilityName) parts.push(`Facility: ${item.facilityName}`);
@@ -122,7 +122,7 @@ export function formatBuyList(items: BuyListItem[]): string {
       if (item.spreadBps != null) parts.push(`Spread: ${item.spreadBps}bps`);
       if (item.price != null) parts.push(`Price: ${item.price}`);
       if (item.maturityDate) parts.push(`Maturity: ${item.maturityDate}`);
-      if (item.facilitySize != null) parts.push(`Size: ${item.facilitySize}`);
+      if (item.facilitySize != null) parts.push(`Max Size: ${item.facilitySize}`);
       if (item.leverage != null) parts.push(`Leverage: ${item.leverage}x`);
       if (item.interestCoverage != null) parts.push(`IC: ${item.interestCoverage}x`);
       if (item.isCovLite != null) parts.push(`Cov-Lite: ${item.isCovLite ? "Yes" : "No"}`);
@@ -132,4 +132,5 @@ export function formatBuyList(items: BuyListItem[]): string {
       return parts.join(" | ");
     })
     .join("\n");
+  return `Note: "Max Size" is the maximum facility size available — the manager can buy or swap up to that amount, not necessarily the full size.\n${lines}`;
 }
