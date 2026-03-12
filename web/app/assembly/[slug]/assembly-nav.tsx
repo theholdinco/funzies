@@ -35,6 +35,28 @@ function formatStructure(structure: string): string {
   );
 }
 
+interface SidebarAssembly {
+  id: string;
+  slug: string;
+  topic_input: string;
+  status: string;
+  created_at: string;
+}
+
+function formatRelativeDate(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export function AssemblyNav({ slug }: { topic?: Topic; slug: string }) {
   const topic = useAssembly();
   const assemblyId = useAssemblyId();
@@ -42,6 +64,18 @@ export function AssemblyNav({ slug }: { topic?: Topic; slug: string }) {
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [history, setHistory] = useState<SidebarAssembly[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/assemblies?sidebar=true")
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data: SidebarAssembly[]) => {
+        setHistory(data);
+        setHistoryLoaded(true);
+      })
+      .catch(() => setHistoryLoaded(true));
+  }, []);
 
   const base = `/assembly/${slug}`;
   const shortTitle = truncate(cleanTitle(topic.title), 30);
@@ -167,6 +201,31 @@ export function AssemblyNav({ slug }: { topic?: Topic; slug: string }) {
             </button>
           </>
         )}
+
+        <div className="nav-divider" />
+        <div className="nav-history-header">
+          <span className="nav-section-title" style={{ padding: 0 }}>History</span>
+          <Link href="/new" className="nav-history-new" onClick={closeNav}>+ New</Link>
+        </div>
+        <div className="nav-history-list">
+          {!historyLoaded ? (
+            <div className="nav-history-loading" />
+          ) : history.length === 0 ? (
+            <span className="nav-history-empty">No assemblies yet</span>
+          ) : (
+            history.map((a) => (
+              <Link
+                key={a.id}
+                href={`/assembly/${a.slug}`}
+                className={`nav-history-item${a.slug === slug ? " active" : ""}`}
+                onClick={closeNav}
+              >
+                <span className="nav-history-title">{truncate(a.topic_input, 35)}</span>
+                <span className="nav-history-date">{formatRelativeDate(a.created_at)}</span>
+              </Link>
+            ))
+          )}
+        </div>
       </nav>
 
       {shareOpen && (
