@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       `SELECT * FROM (
         SELECT a.id, a.slug, a.topic_input, a.status, a.created_at
         FROM assemblies a WHERE a.user_id = $1
-        UNION ALL
+        UNION
         SELECT a.id, a.slug, a.topic_input, a.status, a.created_at
         FROM assembly_shares s JOIN assemblies a ON s.assembly_id = a.id
         WHERE s.user_id = $1

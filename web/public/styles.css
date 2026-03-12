@@ -119,6 +119,8 @@ nav {
   left: 0;
   width: var(--nav-width);
   height: 100vh;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
@@ -3545,9 +3547,14 @@ details > .details-content {
   opacity: 0.7;
 }
 
+.nav-history-header .nav-section-title {
+  padding: 0;
+}
+
 .nav-history-list {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  max-height: 40vh;
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
 }

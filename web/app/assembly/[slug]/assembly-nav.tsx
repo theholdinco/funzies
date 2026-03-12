@@ -204,14 +204,14 @@ export function AssemblyNav({ slug }: { topic?: Topic; slug: string }) {
 
         <div className="nav-divider" />
         <div className="nav-history-header">
-          <span className="nav-section-title" style={{ padding: 0 }}>History</span>
+          <span className="nav-section-title">History</span>
           <Link href="/new" className="nav-history-new" onClick={closeNav}>+ New</Link>
         </div>
         <div className="nav-history-list">
           {!historyLoaded ? (
             <div className="nav-history-loading" />
           ) : history.length === 0 ? (
-            <span className="nav-history-empty">No assemblies yet</span>
+            <span className="nav-history-empty">No other assemblies yet</span>
           ) : (
             history.map((a) => (
               <Link
