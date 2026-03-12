@@ -1634,6 +1634,8 @@
   display: flex;
   min-height: 100vh;
   width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 .ic-sidebar {
@@ -2320,6 +2322,8 @@
   max-width: 780px;
   margin: 0 auto;
   animation: fadeInUp 0.5s ease both;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .ic-generating {
@@ -2576,6 +2580,23 @@
 /* ─── IC Memo ─── */
 
 .ic-memo {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ic-memo .markdown-content {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.ic-memo .markdown-content table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.ic-memo .markdown-content pre {
+  overflow-x: auto;
   max-width: 100%;
 }
 
