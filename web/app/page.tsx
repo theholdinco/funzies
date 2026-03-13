@@ -159,7 +159,7 @@ function LandingPage() {
           </div>
 
           <div className="landing-colophon">
-            Bring your own Anthropic API key &middot; Full panel in ~5 minutes
+            Try your first panel free &middot; No API key required &middot; Full panel in ~5 minutes
           </div>
         </div>
       </div>
