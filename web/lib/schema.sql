@@ -869,3 +869,12 @@ CREATE TABLE IF NOT EXISTS clo_buy_list_items (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_clo_buy_list_items_profile ON clo_buy_list_items(profile_id);
+
+-- ============================================================
+-- Free Trial System
+-- ============================================================
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS free_trial_used BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE assemblies ADD COLUMN IF NOT EXISTS is_free_trial BOOLEAN DEFAULT FALSE;
+ALTER TABLE assemblies ADD COLUMN IF NOT EXISTS trial_interactions_used INTEGER DEFAULT 0;
