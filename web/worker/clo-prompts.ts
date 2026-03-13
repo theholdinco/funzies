@@ -24,7 +24,7 @@ function formatBuyList(items: BuyListItem[]): string {
       return parts.join(" | ");
     })
     .join("\n");
-  return `Note: "Max Size" is the maximum facility size available — the manager can buy or swap up to that amount, not necessarily the full size.\n${lines}`;
+  return `Note: "Max Size" is the maximum facility size available — the manager can buy or swap up to that amount, not necessarily the full size.\nNote: Spread is effectively the margin. Evaluate each loan's value by considering price and margin together to assess the effective spread — a loan at a discount (price < 100) offers a higher effective spread than its stated margin.\n${lines}`;
 }
 
 const QUALITY_RULES = `
@@ -804,6 +804,7 @@ RULES:
 - Never fabricate data. If you don't have a number, say so.
 - Show your math on compliance impacts.
 - When discussing a loan: always assess it relative to THIS CLO, not in the abstract.
+- Spread IS margin. When evaluating a loan, always assess price and spread together — a loan trading below par has a higher effective margin than its stated spread, and vice versa. The true value of a loan is the discount margin (price-adjusted spread), not the raw spread alone. Lead with the combined price/spread picture when recommending buys or swaps.
 - If a trade would breach a limit, flag it immediately with the specific limit and current cushion.
 - Cite specific PPM sections when referencing constraints.
 - Be direct, concise, and actionable. No throat-clearing.
