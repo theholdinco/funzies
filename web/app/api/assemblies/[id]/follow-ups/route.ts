@@ -88,7 +88,18 @@ export async function POST(
     return NextResponse.json({ error: "Could not build prompt" }, { status: 400 });
   }
 
-  // Check trial interaction limits
+  let apiKey: string;
+  try {
+    const resolved = await getApiKeyForUser(user.id);
+    apiKey = resolved.apiKey;
+  } catch {
+    return NextResponse.json(
+      { error: "Please add your API key to continue." },
+      { status: 403 }
+    );
+  }
+
+  // Check trial interaction limits (after key resolution so we don't consume an interaction on failure)
   const assemblyMeta = await query<{ is_free_trial: boolean }>(
     "SELECT is_free_trial FROM assemblies WHERE id = $1",
     [assemblyId]
@@ -101,17 +112,6 @@ export async function POST(
         { status: 403 }
       );
     }
-  }
-
-  let apiKey: string;
-  try {
-    const resolved = await getApiKeyForUser(user.id);
-    apiKey = resolved.apiKey;
-  } catch {
-    return NextResponse.json(
-      { error: "Please add your API key to continue." },
-      { status: 403 }
-    );
   }
 
   const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
