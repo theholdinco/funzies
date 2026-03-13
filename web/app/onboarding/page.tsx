@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function OnboardingPage() {
@@ -10,6 +10,21 @@ export default function OnboardingPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const router = useRouter();
+  const [trialAvailable, setTrialAvailable] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/keys")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.hasApiKey) {
+          router.push("/");
+          router.refresh();
+        } else if (data.freeTrialAvailable) {
+          setTrialAvailable(true);
+        }
+      })
+      .catch(() => {});
+  }, [router]);
 
   async function handleValidateAndStore() {
     if (!apiKey.trim()) return;
@@ -170,6 +185,26 @@ export default function OnboardingPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {trialAvailable && !success && (
+            <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
+              <button
+                onClick={() => { router.push("/"); router.refresh(); }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--color-text-muted)",
+                  fontSize: "0.85rem",
+                  padding: "0.25rem 0",
+                  textDecoration: "underline",
+                  textUnderlineOffset: "2px",
+                }}
+              >
+                Skip — try a free panel first
+              </button>
             </div>
           )}
         </div>
