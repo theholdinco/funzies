@@ -5,7 +5,9 @@ import { marked } from "marked";
 import { parseFollowUpResponse, getLoadingMessage } from "@/lib/follow-up-rendering";
 import { findAvatarUrl } from "@/lib/character-utils";
 import AttachmentWidget, { type AttachedFile, type AttachmentWidgetHandle } from "@/components/AttachmentWidget";
-import { useAssemblyAccess } from "@/lib/assembly-context";
+import { useAssemblyAccess, useAssemblyTrial } from "@/lib/assembly-context";
+
+const FREE_TRIAL_INTERACTION_LIMIT = 5;
 import type { FollowUp } from "@/lib/types";
 
 type Mode = "ask-assembly" | "ask-character" | "ask-library" | "debate";
@@ -24,6 +26,7 @@ interface FollowUpModalProps {
   defaultCharacter?: string;
   pageType?: PageType;
   followUps?: FollowUp[];
+  onUpdateDeliverable?: (conversationHistory: { role: string; content: string }[]) => Promise<void>;
 }
 
 function getPageConfig(pageType: PageType | undefined, characterName?: string) {
@@ -71,9 +74,14 @@ export default function FollowUpModal({
   defaultCharacter,
   pageType,
   followUps = [],
+  onUpdateDeliverable,
 }: FollowUpModalProps) {
   const accessLevel = useAssemblyAccess();
+  const { isFreeTrialAssembly, trialInteractionsUsed } = useAssemblyTrial();
   const config = getPageConfig(pageType, defaultCharacter);
+
+  const trialExhausted = isFreeTrialAssembly && trialInteractionsUsed >= FREE_TRIAL_INTERACTION_LIMIT;
+  const trialRemaining = FREE_TRIAL_INTERACTION_LIMIT - trialInteractionsUsed;
 
   const [mode, setMode] = useState<Mode>(config.fixedMode ?? (defaultCharacter ? "ask-character" : "ask-assembly"));
   const [question, setQuestion] = useState("");
@@ -81,6 +89,7 @@ export default function FollowUpModal({
   const [isChallenge, setIsChallenge] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isUpdatingDeliverable, setIsUpdatingDeliverable] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const initial: ChatMessage[] = [];
     for (const fu of followUps) {
@@ -234,6 +243,18 @@ export default function FollowUpModal({
     }
   }
 
+  const hasFullExchange = messages.length >= 2
+    && messages.some((m) => m.role === "user")
+    && messages.some((m) => m.role === "assistant");
+  const showUpdateDeliverable = onUpdateDeliverable && hasFullExchange && !isStreaming;
+
+  async function handleUpdateDeliverable() {
+    if (!onUpdateDeliverable || isUpdatingDeliverable) return;
+    setIsUpdatingDeliverable(true);
+    await onUpdateDeliverable(messages.map((m) => ({ role: m.role, content: m.content })));
+    setIsUpdatingDeliverable(false);
+  }
+
   const loadingMsg = getLoadingMessage(activeMode, isChallenge);
 
   function renderAssistantMessage(content: string) {
@@ -372,26 +393,42 @@ export default function FollowUpModal({
 
         <AttachmentWidget files={attachedFiles} onChange={setAttachedFiles} disabled={isStreaming} hideButton handleRef={setAttachHandle} />
 
-        <textarea
-          ref={textareaRef}
-          value={question}
-          onChange={(e) => { setQuestion(e.target.value); autoResize(); }}
-          onKeyDown={handleKeyDown}
-          className="chat-input-textarea"
-          placeholder={
-            activeMode === "ask-character"
-              ? `Ask ${selectedCharacter} a question...`
-              : activeMode === "ask-library"
-                ? "Ask about these sources..."
-                : activeMode === "debate"
-                  ? "What should the panel debate?"
-                  : "Ask the panel a question..."
-          }
-          rows={2}
-          disabled={isStreaming}
-        />
+        {isFreeTrialAssembly && !trialExhausted && (
+          <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", margin: "0 0 0.5rem" }}>
+            {trialRemaining} of {FREE_TRIAL_INTERACTION_LIMIT} interactions remaining
+          </p>
+        )}
 
-        <div className="chat-input-toolbar">
+        {trialExhausted ? (
+          <p style={{ fontSize: "0.85rem", color: "var(--color-text-secondary)", margin: "0.5rem 0" }}>
+            Free trial interactions used.{" "}
+            <a href="/onboarding" style={{ color: "var(--color-accent)", textDecoration: "underline" }}>
+              Add your API key
+            </a>{" "}
+            for unlimited access.
+          </p>
+        ) : (
+          <textarea
+            ref={textareaRef}
+            value={question}
+            onChange={(e) => { setQuestion(e.target.value); autoResize(); }}
+            onKeyDown={handleKeyDown}
+            className="chat-input-textarea"
+            placeholder={
+              activeMode === "ask-character"
+                ? `Ask ${selectedCharacter} a question...`
+                : activeMode === "ask-library"
+                  ? "Ask about these sources..."
+                  : activeMode === "debate"
+                    ? "What should the panel debate?"
+                    : "Ask the panel a question..."
+            }
+            rows={2}
+            disabled={isStreaming}
+          />
+        )}
+
+        {!trialExhausted && <div className="chat-input-toolbar">
           <div className="chat-input-toolbar-left">
             <button
               type="button"
@@ -406,6 +443,15 @@ export default function FollowUpModal({
             </button>
           </div>
           <div className="chat-input-toolbar-right">
+            {showUpdateDeliverable && (
+              <button
+                onClick={handleUpdateDeliverable}
+                disabled={isUpdatingDeliverable}
+                className="chat-input-btn chat-input-btn-update-deliverable"
+              >
+                {isUpdatingDeliverable ? "Updating..." : "Update Deliverable"}
+              </button>
+            )}
             {config.showChallenge && (
               <button
                 onClick={() => handleSubmit(true)}
@@ -423,7 +469,7 @@ export default function FollowUpModal({
               {isStreaming ? loadingMsg : config.submitLabel}
             </button>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

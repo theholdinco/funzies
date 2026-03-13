@@ -16,6 +16,8 @@ interface AssemblyRow {
   topic_input: string;
   status: string;
   parsed_data: Topic | null;
+  is_free_trial: boolean;
+  trial_interactions_used: number;
 }
 
 interface FollowUpRow {
@@ -49,7 +51,7 @@ export default async function AssemblyLayout({
 
   const [rows, followUpRows] = await Promise.all([
     query<AssemblyRow>(
-      "SELECT id, slug, topic_input, status, parsed_data FROM assemblies WHERE slug = $1 LIMIT 1",
+      "SELECT id, slug, topic_input, status, parsed_data, is_free_trial, trial_interactions_used FROM assemblies WHERE slug = $1 LIMIT 1",
       [slug]
     ),
     query<FollowUpRow>(
@@ -111,7 +113,14 @@ export default async function AssemblyLayout({
   }
 
   return (
-    <AssemblyProvider topic={topic} assemblyId={rows[0].id} isComplete={isComplete} accessLevel={access}>
+    <AssemblyProvider
+      topic={topic}
+      assemblyId={rows[0].id}
+      isComplete={isComplete}
+      accessLevel={access}
+      isFreeTrialAssembly={rows[0].is_free_trial ?? false}
+      trialInteractionsUsed={rows[0].trial_interactions_used ?? 0}
+    >
       <AssemblyNav topic={topic} slug={slug} />
       <div className="nav-overlay" />
       <AssemblyErrorBoundary>
