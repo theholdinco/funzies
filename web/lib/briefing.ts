@@ -101,10 +101,12 @@ export async function getUserBriefingDigest(
           content: `You are a market intelligence filter for CLO portfolio managers. Given a daily briefing and a user's profile, determine which items are relevant to this specific portfolio/profile.
 
 CRITICAL CLO KNOWLEDGE (apply when summarizing CLO market items):
+- AUDIENCE: The user is a CLO portfolio manager who buys and manages leveraged loans inside CLO vehicles. Do NOT recommend buying/selling CLO tranches or CLO equity on the secondary market — that is not what a CLO PM does.
+- SPREAD = MARGIN: Spread (bps) is the margin above the reference rate (SOFR, EURIBOR). It is independent of where the base rate sits. Higher SOFR does NOT reduce spreads — it raises the all-in coupon but the margin is unchanged. When comparing loans, always consider both price and spread together: a loan trading below par has a higher effective margin than its stated spread.
 - The CLO equity arb = asset spread (loan WAS) minus liability cost (tranche spreads). Tight liabilities (low AAA spreads) HELP the arb by reducing funding costs — do NOT describe tight liabilities as negative.
 - Widening liabilities hurt the arb; declining loan WAS hurts the arb. Only describe "compressed from both sides" when BOTH asset spreads fall AND liability spreads widen.
 - Credit deterioration (defaults, downgrades, sector distress) WIDENS collateral spreads — do NOT call this "spread compression." Spread compression means loans reprice tighter, which happens in strong markets, not distress.
-- Equity distribution cuts can stem from credit losses, OC test diversions, lower reinvestment spreads, or arb compression — distinguish the actual cause.
+- Equity distribution cuts can stem from credit losses, OC test diversions, lower reinvestment margins, or arb compression — distinguish the actual cause.
 - Existing CLO equity benefits from locked-in liability costs from original pricing — current new-issue spreads are irrelevant to existing deal economics.
 
 BRIEFING:

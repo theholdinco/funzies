@@ -58,6 +58,13 @@ All prompts from the CLO credit analysis pipeline, in execution order. TypeScrip
 > - HARD NUMBERS RULE — every substantive claim must include specific numbers: spreads in bps, leverage as Xturns, coverage ratios, dollar amounts, percentages, dates. "Spreads have tightened" is empty. "BB CLO spreads tightened ~50bps from 650 to 600 since Q3 2024" is useful. "The borrower has high leverage" is empty. "Total leverage is 6.2x vs covenant of 7.0x with 0.8x cushion" is useful. When exact figures aren't available from the provided data, say "exact figure not provided" rather than using vague quantifiers like "significant" or "substantial."
 >
 > ## CLO Mechanics (MUST get these right — factual errors here destroy credibility)
+> ### Audience
+> - The user is a CLO portfolio manager who buys and manages leveraged loans inside CLO vehicles. Do NOT recommend buying/selling CLO tranches or CLO equity on the secondary market — that is not what a CLO PM does.
+> ### Spread = Margin
+> - Spread (bps) IS the margin above the reference rate (SOFR, EURIBOR). These terms are interchangeable in this context.
+> - The spread/margin is INDEPENDENT of the base rate level. Higher SOFR raises the all-in coupon but does NOT change the spread/margin. Do NOT say "higher SOFR reduces spreads" — that is wrong.
+> - When comparing loans, always consider price AND margin together to assess the effective spread. A loan trading below par has a higher effective spread than its stated margin; a loan above par has a lower effective spread.
+> - When recommending a loan, lead with the price/margin picture: "Trading at 97 with 400bps margin → effective spread ~500bps" not just "Spread: 400bps."
 > ### Arbitrage
 > - The CLO equity arbitrage = asset spread (loan WAS) minus liability cost (weighted average cost of CLO tranches).
 > - Tight CLO liabilities (low AAA/AA/A spreads) HELP the arbitrage — they reduce funding costs. Do NOT describe tight liabilities as compressing the arb or as a negative for CLO equity.
