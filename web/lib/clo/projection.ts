@@ -133,10 +133,6 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
     spreadBps: number;
   }
 
-  const rpEndQuarter = reinvestmentPeriodEnd
-    ? Math.min(Math.max(1, quartersBetween(currentDate, reinvestmentPeriodEnd)), totalQuarters)
-    : 0;
-
   const loanStates: LoanState[] = loans.map((l) => ({
     survivingPar: l.parBalance,
     maturityQuarter: Math.max(1, Math.min(quartersBetween(currentDate, l.maturityDate), totalQuarters)),
@@ -145,6 +141,20 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
   }));
 
   const hasLoans = loanStates.length > 0;
+
+  // Compute portfolio's par-weighted modal rating bucket for reinvestment
+  const reinvestmentRating = (() => {
+    const parByRating: Record<string, number> = {};
+    for (const l of loans) {
+      parByRating[l.ratingBucket] = (parByRating[l.ratingBucket] ?? 0) + l.parBalance;
+    }
+    let best = "NR";
+    let bestPar = 0;
+    for (const [rating, par] of Object.entries(parByRating)) {
+      if (par > bestPar) { best = rating; bestPar = par; }
+    }
+    return best;
+  })();
 
   // Track tranche balances (debt outstanding per tranche)
   const trancheBalances: Record<string, number> = {};
@@ -269,9 +279,9 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
       if (hasLoans && reinvestment > 0) {
         loanStates.push({
           survivingPar: reinvestment,
-          ratingBucket: "NR",
+          ratingBucket: reinvestmentRating,
           spreadBps: reinvestmentSpreadBps,
-          maturityQuarter: Math.min(rpEndQuarter, totalQuarters),
+          maturityQuarter: totalQuarters,
         });
       }
     }
