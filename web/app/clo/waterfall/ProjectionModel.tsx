@@ -54,26 +54,57 @@ const TRANCHE_COLORS = [
   "#2d6a4f", "#5a7c2f", "#92641a", "#b54a32", "#7c3aed", "#2563eb",
 ];
 
-const MODEL_ASSUMPTIONS = [
+const WATERFALL_MECHANICS = [
+  {
+    label: "1. Collateral cash flows",
+    detail: "Each quarter, the portfolio generates cash from three sources: interest collected on performing loans, principal from maturing and prepaying loans, and recovery cash from previously defaulted loans. Defaults and prepayments reduce the performing pool each period.",
+  },
+  {
+    label: "2. Senior fees",
+    detail: "Trustee, administrative, and collateral manager senior fees are deducted first from interest collections before any tranche receives payment.",
+  },
+  {
+    label: "3. Interest waterfall",
+    detail: "After senior fees, interest is paid to debt tranches in seniority order (most senior first). After paying each tranche, the OC and IC tests at that level are checked. If a test fails, all remaining interest is diverted to principal paydown — junior tranches receive nothing.",
+  },
+  {
+    label: "4. OC test (overcollateralization)",
+    detail: "OC ratio = performing collateral par / debt outstanding at-and-above the tested class. If the ratio falls below the trigger (e.g. 120%), the test fails. This protects senior investors by diverting cash from equity to pay down debt when collateral erodes.",
+  },
+  {
+    label: "5. IC test (interest coverage)",
+    detail: "IC ratio = interest collected (after senior fees) / interest due on debt at-and-above the tested class. If the ratio falls below the trigger, the test fails. This ensures there's enough interest income to service the debt before equity gets paid.",
+  },
+  {
+    label: "6. Principal waterfall",
+    detail: "Principal proceeds (prepayments + maturities + recoveries − reinvestment + any diverted interest) pay down debt tranches in seniority order. During the reinvestment period, most principal is reinvested rather than used for paydown. At deal maturity, all remaining collateral is liquidated.",
+  },
+  {
+    label: "7. Equity distribution",
+    detail: "Whatever remains after senior fees, tranche interest, and tranche principal goes to equity holders. This includes residual interest (if no OC/IC diversion consumed it) plus any leftover principal proceeds.",
+  },
+  {
+    label: "8. Equity IRR",
+    detail: "The annualized internal rate of return on equity cash flows, computed via Newton-Raphson. The initial investment (collateral par minus total debt) is the negative cash flow at time zero; quarterly equity distributions are the positive cash flows.",
+  },
+];
+
+const MODEL_SIMPLIFICATIONS = [
   {
     label: "Per-loan default model",
-    detail: "Each loan is modeled individually with a rating-based annual default rate (converted to a quarterly hazard rate). Defaults reduce a loan's expected surviving par each quarter. At maturity, only the surviving portion exits the pool — eliminating orphan par.",
+    detail: "Each loan is modeled individually with a rating-based annual default rate (converted to a quarterly hazard rate). Defaults reduce a loan's expected surviving par each quarter. At maturity, only the surviving portion exits the pool.",
   },
   {
     label: "Recovery pipeline",
-    detail: "Defaulted par generates recovery cash equal to the recovery rate (default 60%), arriving after a configurable lag (default 12 months / 4 quarters). Recovery cash flows to the principal waterfall — it does not restore pool par. At deal maturity, all pending recoveries are accelerated.",
+    detail: "Defaulted par generates recovery cash equal to the recovery rate, arriving after a configurable lag. Recovery is cash, not par restoration — it flows to the principal waterfall. At deal maturity, all pending recoveries are accelerated.",
   },
   {
     label: "Reinvestment",
-    detail: "During the reinvestment period, maturity + prepayment + recovery proceeds are reinvested into a synthetic loan each quarter. The synthetic loan uses the configured reinvestment rating (default: portfolio average), spread, and maturity tenor from purchase date.",
+    detail: "During the reinvestment period, proceeds are reinvested into a synthetic loan each quarter using the configured rating, spread, and maturity tenor. Post-RP, all proceeds flow to the principal waterfall instead.",
   },
   {
-    label: "Per-loan interest",
-    detail: "Interest is computed per-loan using each loan's actual spread (base rate + loan spread), not the aggregate WAC. This is more accurate as loans with different spreads default and mature at different rates.",
-  },
-  {
-    label: "Order of operations",
-    detail: "Each quarter: defaults first (per-loan, rating-based), then maturities (surviving par exits), then prepayments (uniform CPR on remaining loans). This ensures you can't prepay a loan that just matured.",
+    label: "Constant assumption rates",
+    detail: "Default rates, CPR, recovery rate, and base rate are held constant across all periods. Real performance will vary over time.",
   },
   {
     label: "Quarterly periodicity",
@@ -82,10 +113,6 @@ const MODEL_ASSUMPTIONS = [
   {
     label: "Full diversion on OC/IC failure",
     detail: "When an OC or IC test fails, all remaining interest is diverted to principal paydown. Real indentures may allow partial cure.",
-  },
-  {
-    label: "Constant assumption rates",
-    detail: "Default rates, CPR, recovery rate, and base rate are held constant across all periods. Real performance will vary over time.",
   },
 ];
 
@@ -860,6 +887,36 @@ function SelectInput({
   );
 }
 
+function DisclosureItem({ label, detail }: { label: string; detail: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "0.5rem",
+        padding: "0.4rem 0",
+        borderTop: "1px solid var(--color-border-light)",
+        fontSize: "0.75rem",
+        lineHeight: 1.4,
+      }}
+    >
+      <span
+        style={{
+          flexShrink: 0,
+          width: "0.35rem",
+          height: "0.35rem",
+          marginTop: "0.35rem",
+          borderRadius: "50%",
+          background: "var(--color-text-muted)",
+        }}
+      />
+      <div>
+        <span style={{ fontWeight: 600 }}>{label}:</span>{" "}
+        <span style={{ color: "var(--color-text-muted)" }}>{detail}</span>
+      </div>
+    </div>
+  );
+}
+
 function ModelAssumptions() {
   const [open, setOpen] = useState(false);
 
@@ -890,37 +947,21 @@ function ModelAssumptions() {
         }}
       >
         <span style={{ fontSize: "0.65rem" }}>{open ? "▾" : "▸"}</span>
-        Model Simplifications &amp; Assumptions
+        How This Model Works
       </button>
       {open && (
         <div style={{ padding: "0 0.8rem 0.8rem" }}>
-          {MODEL_ASSUMPTIONS.map((a) => (
-            <div
-              key={a.label}
-              style={{
-                display: "flex",
-                gap: "0.5rem",
-                padding: "0.4rem 0",
-                borderTop: "1px solid var(--color-border-light)",
-                fontSize: "0.75rem",
-                lineHeight: 1.4,
-              }}
-            >
-              <span
-                style={{
-                  flexShrink: 0,
-                  width: "0.35rem",
-                  height: "0.35rem",
-                  marginTop: "0.35rem",
-                  borderRadius: "50%",
-                  background: "var(--color-text-muted)",
-                }}
-              />
-              <div>
-                <span style={{ fontWeight: 600 }}>{a.label}:</span>{" "}
-                <span style={{ color: "var(--color-text-muted)" }}>{a.detail}</span>
-              </div>
-            </div>
+          <div style={{ fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--color-text-muted)", marginBottom: "0.5rem", paddingTop: "0.25rem" }}>
+            Waterfall Mechanics
+          </div>
+          {WATERFALL_MECHANICS.map((a) => (
+            <DisclosureItem key={a.label} label={a.label} detail={a.detail} />
+          ))}
+          <div style={{ fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--color-text-muted)", marginTop: "1rem", marginBottom: "0.5rem" }}>
+            Model Simplifications
+          </div>
+          {MODEL_SIMPLIFICATIONS.map((a) => (
+            <DisclosureItem key={a.label} label={a.label} detail={a.detail} />
           ))}
         </div>
       )}
