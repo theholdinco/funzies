@@ -43,7 +43,7 @@ export function SpendByYearChart({ data }: { data: SpendByYear[] }) {
         <XAxis dataKey="year" />
         <YAxis yAxisId="left" tickFormatter={formatEuro} />
         <YAxis yAxisId="right" orientation="right" />
-        <Tooltip formatter={(value: number, name: string) => name === "total_amount" ? formatEuro(value) : value} />
+        <Tooltip formatter={(value) => typeof value === "number" ? formatEuro(value) : value} />
         <Bar yAxisId="left" dataKey="total_amount" fill="var(--color-accent)" fillOpacity={0.7} />
         <Line
           yAxisId="right"
@@ -120,7 +120,7 @@ export function ProcedureBreakdownChart({ data }: { data: ProcedureBreakdown[] }
             <Cell key={i} fill={COLORS[i % COLORS.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(value: number) => formatEuro(value)} />
+        <Tooltip formatter={(value) => typeof value === "number" ? formatEuro(value) : value} />
       </PieChart>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
         {data.map((item, i) => (
