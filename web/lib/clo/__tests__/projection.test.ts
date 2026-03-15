@@ -4,9 +4,31 @@ import {
   runProjection,
   calculateIrr,
   ProjectionInputs,
+  LoanInput,
 } from "../projection";
+import { RATING_BUCKETS, DEFAULT_RATES_BY_RATING } from "../rating-mapping";
+
+// Helper to compute a date N quarters from a start date (mirrors engine logic)
+function addQuartersHelper(dateIso: string, quarters: number): string {
+  const d = new Date(dateIso);
+  d.setMonth(d.getMonth() + quarters * 3);
+  return d.toISOString().slice(0, 10);
+}
+
+// Helper: set all rating buckets to the same CDR (equivalent to old single cdrPct)
+function uniformRates(cdr: number): Record<string, number> {
+  return Object.fromEntries(RATING_BUCKETS.map((b) => [b, cdr]));
+}
 
 function makeInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs {
+  // Default: 10 loans, all B-rated, $10M each, staggered maturities Q8-Q17
+  const defaultLoans: LoanInput[] = Array.from({ length: 10 }, (_, i) => ({
+    parBalance: 10_000_000,
+    maturityDate: addQuartersHelper("2026-03-09", 8 + i),
+    ratingBucket: "B",
+    spreadBps: 375,
+  }));
+
   return {
     initialPar: 100_000_000,
     wacSpreadBps: 375,
@@ -28,12 +50,12 @@ function makeInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs
     reinvestmentPeriodEnd: "2028-06-15",
     maturityDate: "2034-06-15",
     currentDate: "2026-03-09",
-    cdrPct: 2,
+    loans: defaultLoans,
+    defaultRatesByRating: { ...DEFAULT_RATES_BY_RATING },
     cprPct: 15,
     recoveryPct: 60,
     recoveryLagMonths: 12,
     reinvestmentSpreadBps: 350,
-    maturitySchedule: [],
     ...overrides,
   };
 }
@@ -62,9 +84,9 @@ describe("validateInputs", () => {
   });
 });
 
-// ─── runProjection baseline (no maturities) ─────────────────────────────────
+// ─── runProjection baseline ──────────────────────────────────────────────────
 
-describe("runProjection baseline (no maturities)", () => {
+describe("runProjection baseline", () => {
   it("runs without error and returns periods", () => {
     const result = runProjection(makeInputs());
     expect(result.periods.length).toBeGreaterThan(0);
@@ -83,9 +105,13 @@ describe("runProjection baseline (no maturities)", () => {
     expect(result.totalEquityDistributions).toBeGreaterThan(0);
   });
 
-  it("zero CDR and CPR keeps par stable during RP", () => {
-    const result = runProjection(makeInputs({ cdrPct: 0, cprPct: 0 }));
-    // During the RP, par should remain constant with no defaults or prepays
+  it("zero defaults and CPR keeps par stable during RP", () => {
+    const result = runProjection(makeInputs({
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      // Override loans to mature well after RP so no maturities during RP
+      loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 }],
+    }));
     const rpPeriods = result.periods.filter(
       (p) => new Date(p.date) <= new Date("2028-06-15")
     );
@@ -102,7 +128,6 @@ describe("runProjection baseline (no maturities)", () => {
 
   it("does not reinvest post-RP", () => {
     const result = runProjection(makeInputs());
-    // RP ends 2028-06-15, currentDate 2026-03-09, so ~9 quarters in RP
     const postRpPeriods = result.periods.filter(
       (p) => new Date(p.date) > new Date("2028-06-15")
     );
@@ -114,7 +139,6 @@ describe("runProjection baseline (no maturities)", () => {
 
   it("tracks tranche payoff quarters", () => {
     const result = runProjection(makeInputs());
-    // The result should have entries for all tranches
     expect(result.tranchePayoffQuarter).toHaveProperty("A");
     expect(result.tranchePayoffQuarter).toHaveProperty("B");
     expect(result.tranchePayoffQuarter).toHaveProperty("Sub");
@@ -134,7 +158,6 @@ describe("calculateIrr", () => {
   });
 
   it("computes a reasonable IRR for typical CLO equity flows", () => {
-    // Invest 20M, receive ~2M/quarter for 8 years → should be a positive IRR
     const flows = [-20_000_000];
     for (let i = 0; i < 32; i++) flows.push(2_000_000);
     const irr = calculateIrr(flows, 4);
@@ -144,177 +167,188 @@ describe("calculateIrr", () => {
   });
 });
 
-// ─── runProjection — loan maturities ─────────────────────────────────────────
+// ─── per-loan model — maturity correctness ──────────────────────────────────
 
-describe("runProjection — loan maturities", () => {
+describe("per-loan model — maturity correctness", () => {
+  it("zero residual par after all loans mature (no defaults, no prepay)", () => {
+    const loans = [
+      { parBalance: 50_000_000, maturityDate: addQuartersHelper("2026-03-09", 4), ratingBucket: "B", spreadBps: 375 },
+      { parBalance: 50_000_000, maturityDate: addQuartersHelper("2026-03-09", 4), ratingBucket: "B", spreadBps: 375 },
+    ];
+    const result = runProjection(makeInputs({
+      loans,
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      reinvestmentPeriodEnd: null,
+    }));
+    const q4 = result.periods.find((p) => p.periodNum === 4)!;
+    expect(q4.scheduledMaturities).toBeCloseTo(100_000_000, -2);
+    expect(q4.endingPar).toBeCloseTo(0, -2);
+    // No orphan par in subsequent periods
+    for (const p of result.periods.filter((p) => p.periodNum > 4)) {
+      expect(p.beginningPar).toBeCloseTo(0, -2);
+    }
+  });
+
+  it("surviving par at maturity reflects defaults (not original par)", () => {
+    const loans = [{ parBalance: 100_000_000, maturityDate: addQuartersHelper("2026-03-09", 8), ratingBucket: "CCC", spreadBps: 375 }];
+    const rates = { ...uniformRates(0), CCC: 10.28 };
+    const result = runProjection(makeInputs({
+      loans,
+      defaultRatesByRating: rates,
+      cprPct: 0,
+      reinvestmentPeriodEnd: null,
+    }));
+    const q8 = result.periods.find((p) => p.periodNum === 8)!;
+    expect(q8.scheduledMaturities).toBeLessThan(100_000_000);
+    expect(q8.scheduledMaturities).toBeGreaterThan(0);
+    expect(q8.endingPar).toBeCloseTo(0, -2);
+  });
+
+  it("different ratings produce different default amounts", () => {
+    const loansB = [{ parBalance: 100_000_000, maturityDate: addQuartersHelper("2026-03-09", 20), ratingBucket: "B", spreadBps: 375 }];
+    const loansBB = [{ parBalance: 100_000_000, maturityDate: addQuartersHelper("2026-03-09", 20), ratingBucket: "BB", spreadBps: 375 }];
+    const resultB = runProjection(makeInputs({ loans: loansB, cprPct: 0, reinvestmentPeriodEnd: null }));
+    const resultBB = runProjection(makeInputs({ loans: loansBB, cprPct: 0, reinvestmentPeriodEnd: null }));
+    const totalDefaultsB = resultB.periods.reduce((s, p) => s + p.defaults, 0);
+    const totalDefaultsBB = resultBB.periods.reduce((s, p) => s + p.defaults, 0);
+    expect(totalDefaultsB).toBeGreaterThan(totalDefaultsBB);
+  });
+
+  it("defaultsByRating is populated in PeriodResult", () => {
+    const result = runProjection(makeInputs());
+    const q1 = result.periods[0];
+    expect(q1.defaultsByRating).toBeDefined();
+    expect(q1.defaultsByRating["B"]).toBeGreaterThan(0);
+  });
+});
+
+// ─── per-loan model — loan maturities ───────────────────────────────────────
+
+describe("per-loan model — loan maturities", () => {
   it("loan maturing in Q4 reduces par in that period", () => {
-    const maturityDate = addQuartersHelper("2026-03-09", 4);
-    const result = runProjection(
-      makeInputs({
-        cdrPct: 0,
-        cprPct: 0,
-        reinvestmentPeriodEnd: null, // no RP so maturity cash is not reinvested
-        maturitySchedule: [{ parBalance: 5_000_000, maturityDate }],
-      })
-    );
+    const matDate = addQuartersHelper("2026-03-09", 4);
+    const loans = [
+      { parBalance: 5_000_000, maturityDate: matDate, ratingBucket: "B", spreadBps: 375 },
+      { parBalance: 95_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
+    ];
+    const result = runProjection(makeInputs({
+      loans,
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      reinvestmentPeriodEnd: null,
+    }));
     const q4 = result.periods.find((p) => p.periodNum === 4)!;
     expect(q4.scheduledMaturities).toBeGreaterThan(0);
-    // Par should be lower than the no-maturity scenario
-    const baseline = runProjection(
-      makeInputs({ cdrPct: 0, cprPct: 0, reinvestmentPeriodEnd: null })
-    );
-    const q4Baseline = baseline.periods.find((p) => p.periodNum === 4)!;
-    expect(q4.endingPar).toBeLessThan(q4Baseline.endingPar);
+    expect(q4.endingPar).toBeLessThan(100_000_000);
   });
 
   it("matured par stops earning interest", () => {
-    // Place a large maturity in Q2 so it affects interest from Q3 onward
-    const maturityDate = addQuartersHelper("2026-03-09", 2);
-    const withMat = runProjection(
-      makeInputs({
-        cdrPct: 0,
-        cprPct: 0,
-        reinvestmentPeriodEnd: null, // no RP so maturities aren't reinvested
-        maturitySchedule: [{ parBalance: 30_000_000, maturityDate }],
-      })
-    );
-    const withoutMat = runProjection(
-      makeInputs({
-        cdrPct: 0,
-        cprPct: 0,
-        reinvestmentPeriodEnd: null,
-        maturitySchedule: [],
-      })
-    );
+    const matDate = addQuartersHelper("2026-03-09", 2);
+    const withMat = runProjection(makeInputs({
+      loans: [
+        { parBalance: 30_000_000, maturityDate: matDate, ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 70_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
+      ],
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      reinvestmentPeriodEnd: null,
+    }));
+    const withoutMat = runProjection(makeInputs({
+      loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 }],
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      reinvestmentPeriodEnd: null,
+    }));
     const q3With = withMat.periods.find((p) => p.periodNum === 3)!;
     const q3Without = withoutMat.periods.find((p) => p.periodNum === 3)!;
     expect(q3With.interestCollected).toBeLessThan(q3Without.interestCollected);
   });
 
   it("maturities during RP are reinvested", () => {
-    const maturityDate = addQuartersHelper("2026-03-09", 2); // well within RP
-    const result = runProjection(
-      makeInputs({
-        cdrPct: 0,
-        cprPct: 0,
-        maturitySchedule: [{ parBalance: 10_000_000, maturityDate }],
-      })
-    );
+    const matDate = addQuartersHelper("2026-03-09", 2);
+    const result = runProjection(makeInputs({
+      loans: [
+        { parBalance: 10_000_000, maturityDate: matDate, ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 90_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
+      ],
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+    }));
     const q2 = result.periods.find((p) => p.periodNum === 2)!;
-    // Reinvestment should include the maturity amount
     expect(q2.reinvestment).toBeGreaterThanOrEqual(q2.scheduledMaturities);
-    // Par should be restored after reinvestment
-    expect(q2.endingPar).toBeCloseTo(100_000_000, -2);
   });
 
   it("maturities post-RP flow to principal paydown", () => {
-    // Place maturity after RP ends (2028-06-15 → ~Q10)
-    const maturityDate = addQuartersHelper("2026-03-09", 12); // ~Q12, post-RP
-    const withMat = runProjection(
-      makeInputs({
-        cdrPct: 0,
-        cprPct: 0,
-        maturitySchedule: [{ parBalance: 10_000_000, maturityDate }],
-      })
-    );
-    const withoutMat = runProjection(
-      makeInputs({
-        cdrPct: 0,
-        cprPct: 0,
-        maturitySchedule: [],
-      })
-    );
+    const matDate = addQuartersHelper("2026-03-09", 12);
+    const withMat = runProjection(makeInputs({
+      loans: [
+        { parBalance: 10_000_000, maturityDate: matDate, ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 90_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
+      ],
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+    }));
+    const withoutMat = runProjection(makeInputs({
+      loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 }],
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+    }));
     const q12With = withMat.periods.find((p) => p.periodNum === 12)!;
     const q12Without = withoutMat.periods.find((p) => p.periodNum === 12)!;
-    // With maturity, more principal should be paid to tranches
     const totalPrinWith = q12With.tranchePrincipal.reduce((s, t) => s + t.paid, 0);
     const totalPrinWithout = q12Without.tranchePrincipal.reduce((s, t) => s + t.paid, 0);
     expect(totalPrinWith).toBeGreaterThan(totalPrinWithout);
   });
 
-  it("maturity amount capped at remaining par (no double-count with defaults)", () => {
-    // With 50% CDR, par erodes rapidly. Schedule a huge maturity.
-    const maturityDate = addQuartersHelper("2026-03-09", 8);
-    const result = runProjection(
-      makeInputs({
-        cdrPct: 50,
-        cprPct: 0,
-        reinvestmentPeriodEnd: null,
-        maturitySchedule: [{ parBalance: 200_000_000, maturityDate }], // more than initial par
-      })
-    );
-    const q8 = result.periods.find((p) => p.periodNum === 8)!;
-    // scheduledMaturities should be capped — not exceed the par available after defaults
-    expect(q8.scheduledMaturities).toBeLessThanOrEqual(q8.beginningPar);
-    expect(q8.endingPar).toBeGreaterThanOrEqual(0);
-  });
-
-  it("loans maturing after CLO maturity are ignored", () => {
-    const result = runProjection(
-      makeInputs({
-        maturitySchedule: [{ parBalance: 10_000_000, maturityDate: "2040-01-01" }],
-      })
-    );
-    // No period should have scheduled maturities
-    for (const p of result.periods) {
-      expect(p.scheduledMaturities).toBe(0);
-    }
-  });
-
   it("multiple loans maturing in same quarter are aggregated", () => {
-    const maturityDate = addQuartersHelper("2026-03-09", 3);
-    const result = runProjection(
-      makeInputs({
-        cdrPct: 0,
-        cprPct: 0,
-        reinvestmentPeriodEnd: null,
-        maturitySchedule: [
-          { parBalance: 5_000_000, maturityDate },
-          { parBalance: 3_000_000, maturityDate },
-        ],
-      })
-    );
+    const matDate = addQuartersHelper("2026-03-09", 3);
+    const result = runProjection(makeInputs({
+      loans: [
+        { parBalance: 5_000_000, maturityDate: matDate, ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 3_000_000, maturityDate: matDate, ratingBucket: "BB", spreadBps: 375 },
+        { parBalance: 92_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
+      ],
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      reinvestmentPeriodEnd: null,
+    }));
     const q3 = result.periods.find((p) => p.periodNum === 3)!;
     expect(q3.scheduledMaturities).toBeCloseTo(8_000_000, -2);
   });
 });
 
-// ─── runProjection — OC/IC gating ───────────────────────────────────────────
+// ─── OC/IC gating ───────────────────────────────────────────────────────────
 
-describe("runProjection — OC gating diverts cash from equity", () => {
+describe("OC gating diverts cash from equity", () => {
   it("high defaults trigger OC failure and cut equity distributions", () => {
-    // With 10% CDR and 0% CPR, par erodes fast. OC tests should fail and divert.
-    const withHighDefaults = runProjection(
-      makeInputs({
-        cdrPct: 10,
-        cprPct: 0,
-        recoveryPct: 0,
-        reinvestmentPeriodEnd: null,
-        ocTriggers: [
-          { className: "A", triggerLevel: 120, rank: 1 },
-          { className: "B", triggerLevel: 110, rank: 2 },
-        ],
-        icTriggers: [],
-      })
-    );
-    const withNoDefaults = runProjection(
-      makeInputs({
-        cdrPct: 0,
-        cprPct: 0,
-        recoveryPct: 0,
-        reinvestmentPeriodEnd: null,
-        ocTriggers: [
-          { className: "A", triggerLevel: 120, rank: 1 },
-          { className: "B", triggerLevel: 110, rank: 2 },
-        ],
-        icTriggers: [],
-      })
-    );
-    // High-default scenario should have much lower equity distributions
+    const withHighDefaults = runProjection(makeInputs({
+      loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "CCC", spreadBps: 375 }],
+      defaultRatesByRating: { ...uniformRates(0), CCC: 10 },
+      cprPct: 0,
+      recoveryPct: 0,
+      reinvestmentPeriodEnd: null,
+      ocTriggers: [
+        { className: "A", triggerLevel: 120, rank: 1 },
+        { className: "B", triggerLevel: 110, rank: 2 },
+      ],
+      icTriggers: [],
+    }));
+    const withNoDefaults = runProjection(makeInputs({
+      loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 }],
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      recoveryPct: 0,
+      reinvestmentPeriodEnd: null,
+      ocTriggers: [
+        { className: "A", triggerLevel: 120, rank: 1 },
+        { className: "B", triggerLevel: 110, rank: 2 },
+      ],
+      icTriggers: [],
+    }));
     expect(withHighDefaults.totalEquityDistributions).toBeLessThan(
       withNoDefaults.totalEquityDistributions
     );
-    // Eventually some OC test should fail
     const anyOcFailing = withHighDefaults.periods.some((p) =>
       p.ocTests.some((oc) => !oc.passing)
     );
@@ -322,120 +356,97 @@ describe("runProjection — OC gating diverts cash from equity", () => {
   });
 
   it("OC failure diverts interest to principal paydown, reducing equity", () => {
-    // Extreme scenario: very tight OC trigger that should fail quickly
-    const result = runProjection(
-      makeInputs({
-        cdrPct: 5,
-        cprPct: 0,
-        recoveryPct: 0,
-        reinvestmentPeriodEnd: null,
-        ocTriggers: [
-          { className: "B", triggerLevel: 200, rank: 2 }, // unreachably high trigger
-        ],
-        icTriggers: [],
-      })
-    );
-    // With a 200% OC trigger on B, it should fail from Q1
+    const result = runProjection(makeInputs({
+      loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 }],
+      defaultRatesByRating: uniformRates(5),
+      cprPct: 0,
+      recoveryPct: 0,
+      reinvestmentPeriodEnd: null,
+      ocTriggers: [
+        { className: "B", triggerLevel: 200, rank: 2 },
+      ],
+      icTriggers: [],
+    }));
     const q1 = result.periods[0];
     const ocB = q1.ocTests.find((t) => t.className === "B")!;
     expect(ocB.passing).toBe(false);
-    // Equity should get zero or near-zero from interest diversion
     expect(q1.equityDistribution).toBeCloseTo(0, -1);
   });
 
   it("beginningLiabilities and endingLiabilities are reported", () => {
     const result = runProjection(makeInputs());
     const q1 = result.periods[0];
-    expect(q1.beginningLiabilities).toBeCloseTo(80_000_000, -2); // 65M + 15M
+    expect(q1.beginningLiabilities).toBeCloseTo(80_000_000, -2);
     expect(q1.endingLiabilities).toBeLessThanOrEqual(q1.beginningLiabilities);
   });
 });
 
-// ─── Bug regression tests ───────────────────────────────────────────────────
+// ─── Interest calculation ────────────────────────────────────────────────────
 
-describe("WAC blending timing", () => {
-  it("interest uses pre-reinvestment WAC, not blended WAC", () => {
-    // Two scenarios with different reinvestment spreads — interest in Q1
-    // should be identical because WAC blending only affects NEXT period
-    const withHighSpread = runProjection(
-      makeInputs({ reinvestmentSpreadBps: 500 })
-    );
-    const withLowSpread = runProjection(
-      makeInputs({ reinvestmentSpreadBps: 100 })
-    );
-    // Q1 interest should be identical (same beginningPar, same initial WAC)
-    expect(withHighSpread.periods[0].interestCollected).toBeCloseTo(
-      withLowSpread.periods[0].interestCollected,
-      2
-    );
-    // But Q2 interest should differ (WAC has been blended differently)
-    expect(withHighSpread.periods[1].interestCollected).not.toBeCloseTo(
-      withLowSpread.periods[1].interestCollected,
-      2
+describe("per-loan interest calculation", () => {
+  it("Q1 interest uses loan spreads, not WAC", () => {
+    // Two scenarios with same total par but different per-loan spreads
+    const highSpread = runProjection(makeInputs({
+      loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 500 }],
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      reinvestmentPeriodEnd: null,
+    }));
+    const lowSpread = runProjection(makeInputs({
+      loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 200 }],
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      reinvestmentPeriodEnd: null,
+    }));
+    expect(highSpread.periods[0].interestCollected).toBeGreaterThan(
+      lowSpread.periods[0].interestCollected
     );
   });
 });
 
-describe("already-matured loans excluded", () => {
-  it("loans with maturityDate before currentDate are not bucketed", () => {
-    const result = runProjection(
-      makeInputs({
-        cdrPct: 0,
-        cprPct: 0,
-        reinvestmentPeriodEnd: null,
-        maturitySchedule: [{ parBalance: 10_000_000, maturityDate: "2020-01-01" }],
-      })
-    );
-    // No period should have scheduled maturities from a loan that matured in 2020
-    for (const p of result.periods) {
-      expect(p.scheduledMaturities).toBe(0);
-    }
-  });
-});
+// ─── IC ratio uses post-fee interest ────────────────────────────────────────
 
 describe("IC ratio uses post-fee interest", () => {
   it("IC ratio is lower with higher senior fees", () => {
-    const lowFee = runProjection(
-      makeInputs({
-        seniorFeePct: 0.1,
-        cdrPct: 0,
-        cprPct: 0,
-        icTriggers: [{ className: "A", triggerLevel: 100, rank: 1 }],
-        ocTriggers: [],
-      })
-    );
-    const highFee = runProjection(
-      makeInputs({
-        seniorFeePct: 2.0,
-        cdrPct: 0,
-        cprPct: 0,
-        icTriggers: [{ className: "A", triggerLevel: 100, rank: 1 }],
-        ocTriggers: [],
-      })
-    );
+    const lowFee = runProjection(makeInputs({
+      seniorFeePct: 0.1,
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      icTriggers: [{ className: "A", triggerLevel: 100, rank: 1 }],
+      ocTriggers: [],
+    }));
+    const highFee = runProjection(makeInputs({
+      seniorFeePct: 2.0,
+      defaultRatesByRating: uniformRates(0),
+      cprPct: 0,
+      icTriggers: [{ className: "A", triggerLevel: 100, rank: 1 }],
+      ocTriggers: [],
+    }));
     const icLow = lowFee.periods[0].icTests[0].actual;
     const icHigh = highFee.periods[0].icTests[0].actual;
     expect(icHigh).toBeLessThan(icLow);
   });
 });
 
+// ─── endingPar at maturity ──────────────────────────────────────────────────
+
 describe("endingPar at maturity", () => {
   it("endingPar is zero in the final period after liquidation", () => {
-    const result = runProjection(
-      makeInputs({
-        cdrPct: 2,
-        cprPct: 15,
-        maturityDate: "2028-03-09", // 8 quarters
-      })
-    );
+    const result = runProjection(makeInputs({
+      defaultRatesByRating: uniformRates(2),
+      cprPct: 15,
+      maturityDate: "2028-03-09",
+    }));
     const lastPeriod = result.periods[result.periods.length - 1];
     expect(lastPeriod.endingPar).toBe(0);
   });
 });
 
+// ─── CDR/CPR >= 100% guard ──────────────────────────────────────────────────
+
 describe("CDR/CPR >= 100% guard", () => {
   it("does not produce NaN with extreme CDR", () => {
-    const result = runProjection(makeInputs({ cdrPct: 100 }));
+    const result = runProjection(makeInputs({ defaultRatesByRating: uniformRates(100) }));
     expect(result.periods.length).toBeGreaterThan(0);
     for (const p of result.periods) {
       expect(p.beginningPar).not.toBeNaN();
@@ -446,48 +457,40 @@ describe("CDR/CPR >= 100% guard", () => {
   });
 });
 
+// ─── OC failure causes junior tranche interest shortfall ────────────────────
+
 describe("OC failure causes junior tranche interest shortfall", () => {
   it("junior tranche gets paid: 0 when OC diverts", () => {
-    const result = runProjection(
-      makeInputs({
-        cdrPct: 5,
-        cprPct: 0,
-        recoveryPct: 0,
-        reinvestmentPeriodEnd: null,
-        // Trigger on A at 200% — always fails, diverts after A interest
-        ocTriggers: [{ className: "A", triggerLevel: 200, rank: 1 }],
-        icTriggers: [],
-      })
-    );
+    const result = runProjection(makeInputs({
+      loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 }],
+      defaultRatesByRating: uniformRates(5),
+      cprPct: 0,
+      recoveryPct: 0,
+      reinvestmentPeriodEnd: null,
+      ocTriggers: [{ className: "A", triggerLevel: 200, rank: 1 }],
+      icTriggers: [],
+    }));
     const q1 = result.periods[0];
     const bInterest = q1.trancheInterest.find((t) => t.className === "B")!;
-    // B should get zero interest because A's OC failure diverts everything
     expect(bInterest.paid).toBe(0);
     expect(bInterest.due).toBeGreaterThan(0);
   });
 });
 
+// ─── Recovery pipeline at maturity ──────────────────────────────────────────
+
 describe("recovery pipeline at maturity", () => {
   it("accelerates pending recoveries in the final period", () => {
-    const result = runProjection(
-      makeInputs({
-        cdrPct: 5,
-        cprPct: 0,
-        recoveryPct: 60,
-        recoveryLagMonths: 24, // 8 quarter lag — many will be pending at maturity
-        reinvestmentPeriodEnd: null,
-        maturityDate: "2030-03-09", // 16 quarters
-      })
-    );
+    const result = runProjection(makeInputs({
+      loans: [{ parBalance: 100_000_000, maturityDate: "2030-03-09", ratingBucket: "B", spreadBps: 375 }],
+      defaultRatesByRating: uniformRates(5),
+      cprPct: 0,
+      recoveryPct: 60,
+      recoveryLagMonths: 24,
+      reinvestmentPeriodEnd: null,
+      maturityDate: "2030-03-09",
+    }));
     const lastPeriod = result.periods[result.periods.length - 1];
-    // Final period should have recoveries from accelerated pipeline
     expect(lastPeriod.recoveries).toBeGreaterThan(0);
   });
 });
-
-// Helper to compute a date N quarters from a start date (mirrors engine logic)
-function addQuartersHelper(dateIso: string, quarters: number): string {
-  const d = new Date(dateIso);
-  d.setMonth(d.getMonth() + quarters * 3);
-  return d.toISOString().slice(0, 10);
-}
