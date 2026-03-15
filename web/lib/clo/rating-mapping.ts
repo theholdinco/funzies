@@ -1,7 +1,7 @@
 export const RATING_BUCKETS = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC", "NR"] as const;
 export type RatingBucket = typeof RATING_BUCKETS[number];
 
-// Moody's historical 1Y average default rates
+// Moody's historical 1Y average default rates (values are percentages, e.g. 3.41 means 3.41%)
 export const DEFAULT_RATES_BY_RATING: Record<RatingBucket, number> = {
   AAA: 0.00,
   AA: 0.02,
@@ -33,7 +33,7 @@ const SP_FITCH_MAP: Record<string, RatingBucket> = {
   "b+": "B", b: "B", "b-": "B",
   "ccc+": "CCC", ccc: "CCC", "ccc-": "CCC",
   "cc+": "CCC", cc: "CCC", "cc-": "CCC",
-  c: "CCC", d: "CCC",
+  c: "CCC",
 };
 
 function tryMap(rating: string | null, map: Record<string, RatingBucket>): RatingBucket | null {

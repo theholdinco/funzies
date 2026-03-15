@@ -38,7 +38,13 @@ describe("mapToRatingBucket", () => {
     expect(mapToRatingBucket(null, "CCC+", null, null)).toBe("CCC");
     expect(mapToRatingBucket(null, "CCC", null, null)).toBe("CCC");
     expect(mapToRatingBucket(null, "CC", null, null)).toBe("CCC");
-    expect(mapToRatingBucket(null, "D", null, null)).toBe("CCC");
+    expect(mapToRatingBucket(null, "D", null, null)).toBe("NR");
+  });
+
+  it("maps Fitch ratings to buckets", () => {
+    expect(mapToRatingBucket(null, null, "BBB-", null)).toBe("BBB");
+    expect(mapToRatingBucket(null, null, "AA+", null)).toBe("AA");
+    expect(mapToRatingBucket(null, null, "CCC", null)).toBe("CCC");
   });
 
   it("uses Moody's first, then S&P, then Fitch, then composite", () => {
@@ -46,6 +52,8 @@ describe("mapToRatingBucket", () => {
     expect(mapToRatingBucket(null, "BB+", "A+", "BBB")).toBe("BB");
     expect(mapToRatingBucket(null, null, "A+", "BBB")).toBe("A");
     expect(mapToRatingBucket(null, null, null, "BBB")).toBe("BBB");
+    // Moody's-style string in composite slot
+    expect(mapToRatingBucket(null, null, null, "Baa2")).toBe("BBB");
   });
 
   it("maps unrecognizable strings to NR", () => {
