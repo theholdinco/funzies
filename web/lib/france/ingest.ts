@@ -54,17 +54,17 @@ function extractBuyerName(c: DecpContract): string | null {
 }
 
 function extractTitulaires(c: DecpContract): DecpTitulaire[] {
-  if (!c.titulaires) return [];
+  if (!Array.isArray(c.titulaires)) return [];
   return c.titulaires.map((t) => {
-    if ("titulaire" in t && t.titulaire) return t.titulaire as DecpTitulaire;
+    if (t && typeof t === "object" && "titulaire" in t && t.titulaire) return t.titulaire as DecpTitulaire;
     return t as DecpTitulaire;
   });
 }
 
 function extractModifications(c: DecpContract): DecpModification[] {
-  if (!c.modifications) return [];
+  if (!Array.isArray(c.modifications)) return [];
   return c.modifications.map((m) => {
-    if ("modification" in m && m.modification) return m.modification as DecpModification;
+    if (m && typeof m === "object" && "modification" in m && m.modification) return m.modification as DecpModification;
     return m as DecpModification;
   });
 }
@@ -429,7 +429,7 @@ async function processBatch(
 
     // Collect modifications
     for (const mod of extractModifications(c)) {
-      const modTitulaires = mod.titulaires
+      const modTitulaires = Array.isArray(mod.titulaires)
         ? mod.titulaires.map((t) => {
             if ("titulaire" in t && t.titulaire) return t.titulaire as DecpTitulaire;
             return t as DecpTitulaire;
