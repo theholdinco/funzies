@@ -44,7 +44,7 @@ Migration: `004_france_tables.sql`
 
 ### france_contracts
 
-One row per unique contract award.
+One row per unique contract (identified by `market_id` + `buyer_siret`). A contract may have multiple vendors via `france_contract_vendors`.
 
 ```sql
 CREATE TABLE france_contracts (
@@ -52,11 +52,10 @@ CREATE TABLE france_contracts (
   market_id TEXT,
   buyer_siret CHAR(14),
   buyer_name TEXT,
-  vendor_id TEXT,
-  vendor_name TEXT,
   nature TEXT,
   object TEXT,
   cpv_code TEXT,
+  cpv_division CHAR(2),
   procedure TEXT,
   amount_ht NUMERIC(18,2),
   duration_months INTEGER,
@@ -67,17 +66,31 @@ CREATE TABLE france_contracts (
   bids_received INTEGER,
   form_of_price TEXT,
   framework_id TEXT,
-  is_current BOOLEAN DEFAULT TRUE,
   anomalies TEXT,
   synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_france_contracts_buyer ON france_contracts(buyer_siret);
-CREATE INDEX idx_france_contracts_vendor ON france_contracts(vendor_id);
 CREATE INDEX idx_france_contracts_cpv ON france_contracts(cpv_code);
+CREATE INDEX idx_france_contracts_cpv_div ON france_contracts(cpv_division);
 CREATE INDEX idx_france_contracts_date ON france_contracts(notification_date);
 CREATE INDEX idx_france_contracts_amount ON france_contracts(amount_ht);
 CREATE INDEX idx_france_contracts_procedure ON france_contracts(procedure);
+```
+
+### france_contract_vendors
+
+Join table for contracts with multiple vendors (consortiums). One row per contract-vendor pair.
+
+```sql
+CREATE TABLE france_contract_vendors (
+  contract_uid TEXT NOT NULL REFERENCES france_contracts(uid),
+  vendor_id TEXT NOT NULL,
+  vendor_name TEXT,
+  PRIMARY KEY (contract_uid, vendor_id)
+);
+
+CREATE INDEX idx_france_cv_vendor ON france_contract_vendors(vendor_id);
 ```
 
 ### france_vendors
@@ -118,24 +131,27 @@ CREATE TABLE france_buyers (
 
 ### france_modifications
 
-One row per contract modification.
+One row per contract modification. Uses a source row hash for deduplication since amount and date alone may collide.
 
 ```sql
 CREATE TABLE france_modifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  contract_uid TEXT REFERENCES france_contracts(uid),
+  contract_uid TEXT NOT NULL,
   modification_object TEXT,
   new_amount_ht NUMERIC(18,2),
   new_duration_months INTEGER,
   new_vendor_id TEXT,
   new_vendor_name TEXT,
   publication_date DATE,
+  source_hash TEXT NOT NULL,
   synced_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(contract_uid, publication_date, new_amount_ht)
+  UNIQUE(contract_uid, source_hash)
 );
 
 CREATE INDEX idx_france_modifications_contract ON france_modifications(contract_uid);
 ```
+
+Note: `contract_uid` is NOT a foreign key. Modifications are inserted in a second pass after contracts, and orphaned modifications (where the parent contract has `donneesActuelles = false`) are logged and skipped rather than causing FK violations.
 
 ### france_sync_meta
 
@@ -167,30 +183,40 @@ CREATE TABLE france_sync_meta (
 
 3. **Parse.** Read the Parquet file in row batches (~10,000 rows) using a Parquet reader library (`parquet-wasm` or `@duckdb/duckdb-wasm`).
 
-4. **Split & classify per row:**
+4. **Two-pass processing.** The ingestion processes rows in two passes to avoid FK-like issues:
+
+   **Pass 1 — Contracts, vendors, buyers:**
    - If `donneesActuelles = false` → skip (superseded)
-   - If `objetModification` is present → upsert into `france_modifications`
-   - Otherwise → upsert into `france_contracts`
+   - If `objetModification` is present → buffer for pass 2
+   - Otherwise → upsert into `france_contracts`, insert into `france_contract_vendors`, extract vendor/buyer
    - Extract vendor → upsert into `france_vendors`
    - Extract buyer → upsert into `france_buyers`
 
-5. **Upsert logic:**
-   - Contracts: `INSERT ... ON CONFLICT (uid) DO UPDATE SET ... WHERE france_contracts.synced_at < EXCLUDED.synced_at`
-   - Vendors: `INSERT ... ON CONFLICT (id) DO UPDATE` — update name, id_type, last_seen
-   - Buyers: `INSERT ... ON CONFLICT (siret) DO UPDATE` — update name, last_seen
-   - Modifications: `INSERT ... ON CONFLICT (contract_uid, publication_date, new_amount_ht) DO NOTHING`
+   **Pass 2 — Modifications:**
+   - For each buffered modification row, check if `contract_uid` exists in `france_contracts`
+   - If yes → upsert into `france_modifications` (keyed on `contract_uid` + `source_hash`)
+   - If no → log as orphaned modification, skip
 
-6. **Post-ingest aggregation.** Update denormalized counts on `france_vendors` and `france_buyers`:
+5. **Upsert logic:**
+   - Contracts: `INSERT ... ON CONFLICT (uid) DO UPDATE SET ...` (unconditional update — a single batch timestamp is set at the start of the run)
+   - Contract-vendors: `INSERT ... ON CONFLICT (contract_uid, vendor_id) DO UPDATE SET vendor_name = EXCLUDED.vendor_name`
+   - Vendors: `INSERT ... ON CONFLICT (id) DO UPDATE` — update name, id_type, `last_seen = GREATEST(france_vendors.last_seen, EXCLUDED.last_seen)`, `first_seen = LEAST(france_vendors.first_seen, EXCLUDED.first_seen)`
+   - Buyers: `INSERT ... ON CONFLICT (siret) DO UPDATE` — same LEAST/GREATEST pattern for first_seen/last_seen
+   - Modifications: `INSERT ... ON CONFLICT (contract_uid, source_hash) DO NOTHING`
+
+6. **Post-ingest aggregation.** Update denormalized counts on `france_vendors` and `france_buyers`. Uses `france_contract_vendors` join table for vendor counts:
    ```sql
    UPDATE france_vendors SET
      contract_count = sub.cnt,
      total_amount_ht = sub.total
    FROM (
-     SELECT vendor_id, COUNT(*) cnt, SUM(amount_ht) total
-     FROM france_contracts GROUP BY vendor_id
+     SELECT cv.vendor_id, COUNT(*) cnt, COALESCE(SUM(c.amount_ht), 0) total
+     FROM france_contract_vendors cv
+     JOIN france_contracts c ON c.uid = cv.contract_uid
+     GROUP BY cv.vendor_id
    ) sub WHERE france_vendors.id = sub.vendor_id;
    ```
-   (Same pattern for buyers.)
+   (Same pattern for buyers, grouping by `buyer_siret` directly on `france_contracts`.)
 
 7. **Update sync metadata.** Write stats to `france_sync_meta`.
 
@@ -289,10 +315,12 @@ web/
 
 ## Technical Decisions
 
-- **Parquet reading:** Use `duckdb-wasm` or `parquet-wasm` for reading the Parquet file in Node.js. Evaluate both; prefer whichever has simpler Node.js (non-browser) support.
+- **Parquet reading:** Use `duckdb-node-bindings` (`@duckdb/node-api`) for reading the Parquet file. This is the native Node.js binding (not the WASM browser variant) and supports streaming row batches efficiently.
 - **Charts:** `recharts` — React-native, lightweight, handles bar/line/donut well.
 - **Pagination:** Server components with URL search params for filtering/pagination. No separate API routes unless client-side interactivity demands it.
 - **Styling:** Follow existing app patterns — Playfair Display + Source Sans 3 fonts, existing color system from `globals.css`. Dense, information-rich layouts.
+- **Auth:** `/france` routes are public (no authentication required). This is public transparency data.
+- **New dependencies:** `recharts`, `@duckdb/node-api`.
 
 ## Future Extensions (not in scope for v1)
 
