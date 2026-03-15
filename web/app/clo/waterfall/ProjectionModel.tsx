@@ -56,6 +56,26 @@ const TRANCHE_COLORS = [
 
 const MODEL_ASSUMPTIONS = [
   {
+    label: "Per-loan default model",
+    detail: "Each loan is modeled individually with a rating-based annual default rate (converted to a quarterly hazard rate). Defaults reduce a loan's expected surviving par each quarter. At maturity, only the surviving portion exits the pool — eliminating orphan par.",
+  },
+  {
+    label: "Recovery pipeline",
+    detail: "Defaulted par generates recovery cash equal to the recovery rate (default 60%), arriving after a configurable lag (default 12 months / 4 quarters). Recovery cash flows to the principal waterfall — it does not restore pool par. At deal maturity, all pending recoveries are accelerated.",
+  },
+  {
+    label: "Reinvestment",
+    detail: "During the reinvestment period, maturity + prepayment + recovery proceeds are reinvested into a synthetic loan each quarter. The synthetic loan uses the portfolio's modal rating bucket, the reinvestment spread, and a 5-year maturity from purchase date.",
+  },
+  {
+    label: "Per-loan interest",
+    detail: "Interest is computed per-loan using each loan's actual spread (base rate + loan spread), not the aggregate WAC. This is more accurate as loans with different spreads default and mature at different rates.",
+  },
+  {
+    label: "Order of operations",
+    detail: "Each quarter: defaults first (per-loan, rating-based), then maturities (surviving par exits), then prepayments (uniform CPR on remaining loans). This ensures you can't prepay a loan that just matured.",
+  },
+  {
     label: "Quarterly periodicity",
     detail: "Cash flows are modeled in quarterly periods. Interest accrues on beginning-of-period par rather than daily accrual.",
   },
@@ -64,20 +84,8 @@ const MODEL_ASSUMPTIONS = [
     detail: "When an OC or IC test fails, all remaining interest is diverted to principal paydown. Real indentures may allow partial cure.",
   },
   {
-    label: "No deferred interest",
-    detail: "Interest shortfalls on junior tranches do not accrue or compound into future periods.",
-  },
-  {
-    label: "Floating-rate collateral",
-    detail: "All portfolio assets are assumed to be floating-rate (base rate + WAC spread). Fixed-rate collateral is not modeled separately.",
-  },
-  {
-    label: "Per-loan default model",
-    detail: "Each loan is modeled individually with a rating-based annual default rate. Defaults reduce a loan's expected surviving par each quarter. At maturity, only the surviving portion exits the pool.",
-  },
-  {
     label: "Constant assumption rates",
-    detail: "CDR, CPR, recovery rate, and base rate are held constant across all periods. Real performance will vary over time.",
+    detail: "Default rates, CPR, recovery rate, and base rate are held constant across all periods. Real performance will vary over time.",
   },
 ];
 

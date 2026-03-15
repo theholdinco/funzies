@@ -88,7 +88,7 @@ For each quarter `q`:
 
 4. **Reinvestment (during RP):**
    - Reinvest maturity + prepayment + recovery proceeds into a single new synthetic loan per quarter
-   - New loan uses the reinvestment spread, the NR bucket default rate, and matures at RP end date
+   - New loan uses the reinvestment spread, the portfolio's par-weighted modal rating bucket, and a 5-year maturity from purchase date (clamped to CLO maturity)
    - Merging into one synthetic loan per quarter keeps the loan array manageable (avoids growing by N loans per RP quarter)
 
 5. **Waterfall** — OC/IC tests, interest waterfall, principal waterfall, equity distribution — all unchanged, operating on aggregated figures.
