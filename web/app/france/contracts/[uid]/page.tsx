@@ -5,7 +5,7 @@ import {
   getContractVendors,
   getContractModifications,
 } from "@/lib/france/queries";
-import { formatEuro } from "@/components/france/Charts";
+import { formatEuro } from "@/lib/france/format";
 
 export default async function ContractDetailPage({
   params,

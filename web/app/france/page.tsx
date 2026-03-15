@@ -9,8 +9,8 @@ import {
   SpendByYearChart,
   TopEntitiesChart,
   ProcedureBreakdownChart,
-  formatEuro,
 } from "@/components/france/Charts";
+import { formatEuro } from "@/lib/france/format";
 
 export default async function FranceDashboard() {
   const [summary, spendByYear, topBuyers, topVendors, procedureBreakdown] =

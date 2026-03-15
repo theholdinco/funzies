@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import Link from "next/link";
 import type { SpendByYear, TopEntity, ProcedureBreakdown } from "@/lib/france/types";
+import { formatEuro } from "@/lib/france/format";
 
 const COLORS = [
   "var(--color-accent)",
@@ -28,12 +29,7 @@ const COLORS = [
   "var(--color-speaker-5)",
 ];
 
-export function formatEuro(value: number): string {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}Md€`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M€`;
-  if (value >= 1_000) return `${Math.round(value / 1_000)}K€`;
-  return `${Math.round(value)}€`;
-}
+export { formatEuro } from "@/lib/france/format";
 
 export function SpendByYearChart({ data }: { data: SpendByYear[] }) {
   return (

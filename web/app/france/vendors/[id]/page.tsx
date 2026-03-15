@@ -5,7 +5,8 @@ import {
   getVendorContracts,
   getVendorTopBuyers,
 } from "@/lib/france/queries";
-import { TopEntitiesChart, formatEuro } from "@/components/france/Charts";
+import { TopEntitiesChart } from "@/components/france/Charts";
+import { formatEuro } from "@/lib/france/format";
 
 const cardStyle: React.CSSProperties = {
   padding: "0.6rem 0.8rem",

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getContracts, ContractFilters } from "@/lib/france/queries";
-import { formatEuro } from "@/components/france/Charts";
+import { formatEuro } from "@/lib/france/format";
 
 const inputStyle: React.CSSProperties = {
   padding: "0.4rem 0.6rem",
