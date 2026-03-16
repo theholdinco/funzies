@@ -42,7 +42,7 @@ Flags | Explore | Contracts | Analytics
 ```
 
 - **Flags** (`/france`) — anomaly-first homepage (NEW content)
-- **Explore** (`/france/explore`) — current neutral dashboard moved here (NEW route)
+- **Explore** (`/france/explore`) — current neutral dashboard moved here (NEW route, no existing file at this path)
 - **Contracts** (`/france/contracts`) — existing, enhanced with new filters
 - **Analytics** (`/france/analytics`) — existing, unchanged
 
@@ -68,11 +68,11 @@ Flags | Explore | Contracts | Analytics
 
 2. **Top no-competition spenders** — Buyers ranked by spend via no-competition procedures.
    - Columns: buyer name (linked), no-comp contracts, total no-comp spend.
-   - Query: WHERE procedure ILIKE '%sans%concurrence%' OR '%sans publicite%' OR '%negocie sans%', group by buyer.
+   - Query: WHERE procedure ILIKE '%sans%concurrence%' OR procedure ILIKE '%sans publicite%' OR procedure ILIKE '%negocie sans%', group by buyer.
 
-3. **Worst amendment inflations** — Contracts where modifications increased amount >100%.
+3. **Worst amendment inflations** — Contracts where the last modification (by publication_date) increased amount >100%.
    - Columns: contract object (linked), buyer, original amount, final amount, % increase.
-   - Query: JOIN modifications, compute max(new_amount) vs original, filter >100% increase. Exclude obvious data bugs (>100,000% increase).
+   - Query: JOIN modifications, take the last modification by publication_date (not MAX amount — we want the final state, not the peak), filter >100% increase. Exclude data bugs where pct_increase > 100,000% (defined as constant `MAX_PLAUSIBLE_INFLATION_PCT`).
 
 ### 2. Explore Page (`/france/explore`)
 
@@ -93,7 +93,7 @@ New filters added below the existing search/year row:
 | Filter | Type | Query mapping |
 |--------|------|--------------|
 | Single bid only | Checkbox | `bids_received = 1` |
-| No competition | Checkbox | `procedure ILIKE '%sans%concurrence%' OR '%sans publicite%'` |
+| No competition | Checkbox | `procedure ILIKE '%sans%concurrence%' OR procedure ILIKE '%sans publicite%' OR procedure ILIKE '%negocie sans%'` |
 | Nature | Dropdown: All / Marches / Accords-cadres | `LOWER(nature) IN (...)` |
 | Has amendments | Checkbox | `uid IN (SELECT contract_uid FROM france_modifications)` |
 | Amount min | Number input | `amount_ht >= X` |
@@ -133,7 +133,7 @@ Flags computed per-buyer via a single query:
 
 - **"X% single-bid rate"** — shown if >50% of contracts with bid data had bids_received=1. Badge variant: danger if >80%, warning if >50%.
 - **"X contracts via no-competition"** — shown if any contracts used no-competition procedure. Badge variant: warning.
-- **"X contracts with >50% amendment inflation"** — shown if any modifications exceeded 50% increase. Badge variant: danger.
+- **"X contracts with >100% amendment inflation"** — shown if any contract's final modification amount exceeded double the original. Badge variant: danger. Uses same threshold as flags homepage (>100% increase).
 
 Each flag renders as a `fr-badge` with icon, stat value, and one-line explanation.
 
@@ -143,8 +143,8 @@ Same section pattern as buyer profiles.
 
 Flags computed per-vendor:
 
-- **"On X multi-vendor frameworks"** — shown if vendor appears on contracts with 3+ vendors. Badge variant: info.
-- **"X% spend from single buyer"** — shown if >60% of their total comes from one buyer_siret. Badge variant: warning.
+- **"On X multi-vendor contracts"** — count of distinct contract_uids where this vendor appears AND the contract has 3+ vendors total (requires self-join on france_contract_vendors: count vendors per contract_uid, filter >=3, then count contracts for this vendor). Badge variant: info.
+- **"X% spend from single buyer"** — shown if >60% of their total comes from one buyer_siret. Computed via: join france_contract_vendors -> france_contracts, group by buyer_siret, take max(sum(amount_ht)) / total. buyer_name is denormalized on france_contracts. Badge variant: warning.
 - **"X no-competition awards"** — shown if they won contracts via no-competition procedure. Badge variant: warning.
 
 ### 6. Data Quality Banner
@@ -163,6 +163,15 @@ Two specific locations:
 
 1. **Explore page** total spend stat card — small muted text: "Includes framework ceilings"
 2. **Vendor profile** total spend stat card — small muted text: "May include shared framework ceilings"
+
+## Constants
+
+Defined in `lib/france/queries.ts` alongside existing `SANE_AMOUNT`, `SANE_DATE`, `SANE_BIDS`:
+
+```typescript
+const NO_COMP_FILTER = "procedure ILIKE '%sans%concurrence%' OR procedure ILIKE '%sans publicite%' OR procedure ILIKE '%negocie sans%'";
+const MAX_PLAUSIBLE_INFLATION_PCT = 100_000; // exclude data bugs above this %
+```
 
 ## New Query Functions
 
@@ -183,13 +192,15 @@ Added to `lib/france/types.ts`:
 
 ```typescript
 export interface FlagStats {
-  singleBidRate: number;         // percentage
-  singleBidRateBaseline: number; // 2019 baseline for trend
+  singleBidRate: number;         // current overall percentage
+  singleBidRate2019: number;     // 2019 percentage for trend comparison
   noCompetitionSpend: number;    // EUR
   noCompetitionContracts: number;
-  doubledContracts: number;      // count
+  doubledContracts: number;      // count where last mod > 2x original
   missingBidDataPct: number;     // percentage
 }
+// getFlagStats() computes singleBidRate as overall and singleBidRate2019
+// via two separate aggregations filtered by year range.
 
 export interface BuyerFlag {
   singleBidPct: number | null;   // null if insufficient data
@@ -226,9 +237,11 @@ export interface InflatedContract {
   object: string;
   buyerName: string;
   originalAmount: number;
-  finalAmount: number;
+  finalAmount: number;   // last modification by publication_date, not MAX
   pctIncrease: number;
 }
+// Query uses DISTINCT ON (contract_uid) ORDER BY publication_date DESC
+// to get the final modification state, not the peak amount.
 ```
 
 ## File Changes Summary
