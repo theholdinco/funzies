@@ -1,7 +1,7 @@
 import Link from "next/link";
 import "./france.css";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600; // cache pages for 1 hour
 
 export default async function FranceLayout({
   children,
