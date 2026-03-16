@@ -9,14 +9,34 @@ import { formatEuro } from "@/lib/france/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function FranceFlagsPage() {
+const PAGE_SIZE = 25;
+
+export default async function FranceFlagsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const params = await searchParams;
+  const showComp = Math.min(parseInt(params.comp ?? "10", 10) || 10, 200);
+  const showNoComp = Math.min(parseInt(params.nocomp ?? "10", 10) || 10, 200);
+  const showInflation = Math.min(parseInt(params.inflation ?? "10", 10) || 10, 200);
+
   const [stats, lowestCompetition, topNoComp, worstInflations] =
     await Promise.all([
       getFlagStats(),
-      getLowestCompetitionBuyers(10),
-      getTopNoCompetitionSpenders(10),
-      getWorstAmendmentInflations(10),
+      getLowestCompetitionBuyers(showComp),
+      getTopNoCompetitionSpenders(showNoComp),
+      getWorstAmendmentInflations(showInflation),
     ]);
+
+  function moreUrl(key: string, current: number): string {
+    const p = new URLSearchParams();
+    if (params.comp && key !== "comp") p.set("comp", params.comp);
+    if (params.nocomp && key !== "nocomp") p.set("nocomp", params.nocomp);
+    if (params.inflation && key !== "inflation") p.set("inflation", params.inflation);
+    p.set(key, String(current + PAGE_SIZE));
+    return `/france?${p.toString()}`;
+  }
 
   return (
     <div className="fr-page">
@@ -80,6 +100,11 @@ export default async function FranceFlagsPage() {
             </tbody>
           </table>
         </div>
+        {lowestCompetition.length >= showComp && (
+          <Link href={moreUrl("comp", showComp)} className="fr-btn fr-btn--secondary fr-show-more">
+            Show {PAGE_SIZE} more
+          </Link>
+        )}
       </section>
 
       <section className="fr-section">
@@ -110,6 +135,11 @@ export default async function FranceFlagsPage() {
             </tbody>
           </table>
         </div>
+        {topNoComp.length >= showNoComp && (
+          <Link href={moreUrl("nocomp", showNoComp)} className="fr-btn fr-btn--secondary fr-show-more">
+            Show {PAGE_SIZE} more
+          </Link>
+        )}
       </section>
 
       <section className="fr-section">
@@ -146,6 +176,11 @@ export default async function FranceFlagsPage() {
             </tbody>
           </table>
         </div>
+        {worstInflations.length >= showInflation && (
+          <Link href={moreUrl("inflation", showInflation)} className="fr-btn fr-btn--secondary fr-show-more">
+            Show {PAGE_SIZE} more
+          </Link>
+        )}
       </section>
     </div>
   );
