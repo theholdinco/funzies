@@ -1,4 +1,5 @@
 import Link from "next/link";
+import "./france.css";
 
 export const dynamic = "force-dynamic";
 
@@ -8,34 +9,49 @@ export default async function FranceLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="ic-layout">
-      <aside className="ic-sidebar">
-        <div className="ic-sidebar-header">
-          <Link href="/" className="ic-sidebar-logo">
-            <img src="/logo/black-text.png" alt="Million Minds" className="sidebar-logo-img" />
+    <div className="fr-layout">
+      <aside className="fr-sidebar">
+        <div className="fr-sidebar-header">
+          <Link href="/">
+            <img
+              src="/logo/black-text.png"
+              alt="Million Minds"
+              className="sidebar-logo-img"
+            />
           </Link>
-          <span className="ic-sidebar-badge">FRANCE</span>
+          <span className="fr-sidebar-badge">FRANCE</span>
         </div>
 
-        <nav className="ic-sidebar-nav">
-          <Link href="/france" className="ic-nav-link">
-            <span className="ic-nav-icon">&#9670;</span>
+        <nav className="fr-sidebar-nav">
+          <Link href="/france" className="fr-nav-link">
+            <span className="fr-nav-icon">&#9632;</span>
             Dashboard
           </Link>
-          <Link href="/france/contracts" className="ic-nav-link">
-            <span className="ic-nav-icon">&#9670;</span>
+          <Link href="/france/contracts" className="fr-nav-link">
+            <span className="fr-nav-icon">&#9670;</span>
             Contracts
           </Link>
-          <Link href="/france/analytics" className="ic-nav-link">
-            <span className="ic-nav-icon">&#9670;</span>
+          <Link href="/france/analytics" className="fr-nav-link">
+            <span className="fr-nav-icon">&#9679;</span>
             Analytics
           </Link>
         </nav>
+
+        <div className="fr-sidebar-footer">
+          Source:{" "}
+          <a
+            href="https://data.gouv.fr"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            data.gouv.fr
+          </a>
+          <br />
+          BOAMP &middot; DECP
+        </div>
       </aside>
 
-      <main className="ic-main">
-        {children}
-      </main>
+      <main className="fr-main">{children}</main>
     </div>
   );
 }

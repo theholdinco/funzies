@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BarChart,
   Bar,
   XAxis,
   YAxis,
@@ -11,42 +10,95 @@ import {
   Pie,
   Cell,
   ComposedChart,
-  CartesianGrid,
   Line,
 } from "recharts";
 import Link from "next/link";
 import type { SpendByYear, TopEntity, ProcedureBreakdown } from "@/lib/france/types";
 import { formatEuro } from "@/lib/france/format";
 
-const COLORS = [
-  "var(--color-accent)",
-  "var(--color-high)",
-  "var(--color-medium)",
-  "var(--color-speaker-1)",
-  "var(--color-speaker-2)",
-  "var(--color-speaker-3)",
-  "var(--color-speaker-4)",
-  "var(--color-speaker-5)",
+const WARM_PALETTE = [
+  "#c96b52",
+  "#2d6a4f",
+  "#d4a373",
+  "#6b705c",
+  "#b5838d",
+  "#e6ccb2",
+  "#a68a64",
+  "#7f5539",
 ];
 
 export { formatEuro } from "@/lib/france/format";
 
+function CustomTooltip({ active, payload, label }: Record<string, unknown>) {
+  if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+  return (
+    <div className="fr-chart-tooltip">
+      <p className="fr-chart-tooltip-label">{String(label)}</p>
+      {payload.map((entry: Record<string, unknown>, i: number) => (
+        <p key={i} className="fr-chart-tooltip-row">
+          <span
+            className="fr-chart-tooltip-dot"
+            style={{ background: String(entry.color) }}
+          />
+          {String(entry.name)}:{" "}
+          <strong>
+            {typeof entry.value === "number"
+              ? entry.name === "contract_count"
+                ? entry.value.toLocaleString()
+                : formatEuro(entry.value)
+              : String(entry.value)}
+          </strong>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export function SpendByYearChart({ data }: { data: SpendByYear[] }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <ComposedChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="year" />
-        <YAxis yAxisId="left" tickFormatter={formatEuro} />
-        <YAxis yAxisId="right" orientation="right" />
-        <Tooltip formatter={(value) => typeof value === "number" ? formatEuro(value) : value} />
-        <Bar yAxisId="left" dataKey="total_amount" fill="var(--color-accent)" fillOpacity={0.7} />
+      <ComposedChart data={data} margin={{ left: 20, right: 12, top: 8, bottom: 4 }}>
+        <defs>
+          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#c96b52" />
+            <stop offset="100%" stopColor="#b54a32" />
+          </linearGradient>
+        </defs>
+        <XAxis
+          dataKey="year"
+          tick={{ fontSize: 12 }}
+          tickLine={false}
+          axisLine={false}
+        />
+        <YAxis
+          yAxisId="left"
+          tickFormatter={formatEuro}
+          tick={{ fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+          width={80}
+        />
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          tick={{ fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+          width={40}
+        />
+        <Tooltip content={<CustomTooltip />} />
+        <Bar
+          yAxisId="left"
+          dataKey="total_amount"
+          fill="url(#barGradient)"
+          radius={[4, 4, 0, 0]}
+        />
         <Line
           yAxisId="right"
           type="monotone"
           dataKey="contract_count"
-          stroke="var(--color-high)"
-          strokeWidth={2}
+          stroke="#2d6a4f"
+          strokeWidth={2.5}
           dot={false}
         />
       </ComposedChart>
@@ -64,36 +116,21 @@ export function TopEntitiesChart({
   const max = Math.max(...data.map((d) => d.total_amount), 1);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+    <div className="fr-entity-list">
       {data.map((item) => (
         <Link
           key={item.id}
           href={`${linkPrefix}/${encodeURIComponent(item.id)}`}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem", textDecoration: "none", color: "inherit" }}
+          className="fr-entity-row"
         >
-          <span
-            style={{
-              minWidth: 200,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {item.name}
-          </span>
-          <div style={{ flex: 1, height: "1.2rem", background: "var(--color-surface)" }}>
+          <span className="fr-entity-name">{item.name}</span>
+          <div className="fr-entity-bar">
             <div
-              style={{
-                width: `${(item.total_amount / max) * 100}%`,
-                height: "100%",
-                background: "var(--color-accent)",
-                opacity: 0.6,
-              }}
+              className="fr-entity-bar-fill"
+              style={{ width: `${(item.total_amount / max) * 100}%` }}
             />
           </div>
-          <span style={{ width: 80, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-            {formatEuro(item.total_amount)}
-          </span>
+          <span className="fr-entity-amount">{formatEuro(item.total_amount)}</span>
         </Link>
       ))}
     </div>
@@ -101,8 +138,10 @@ export function TopEntitiesChart({
 }
 
 export function ProcedureBreakdownChart({ data }: { data: ProcedureBreakdown[] }) {
+  const total = data.reduce((sum, d) => sum + d.total_amount, 0);
+
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+    <div className="fr-procedure-chart">
       <PieChart width={200} height={200}>
         <Pie
           data={data}
@@ -110,27 +149,27 @@ export function ProcedureBreakdownChart({ data }: { data: ProcedureBreakdown[] }
           nameKey="procedure"
           innerRadius={50}
           outerRadius={80}
-          stroke="var(--color-bg)"
+          stroke="none"
+          paddingAngle={2}
         >
           {data.map((_, i) => (
-            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            <Cell key={i} fill={WARM_PALETTE[i % WARM_PALETTE.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(value) => typeof value === "number" ? formatEuro(value) : value} />
+        <Tooltip content={<CustomTooltip />} />
       </PieChart>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+      <div className="fr-procedure-legend">
         {data.map((item, i) => (
-          <div key={item.procedure} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                flexShrink: 0,
-                background: COLORS[i % COLORS.length],
-              }}
+          <div key={item.procedure} className="fr-procedure-legend-row">
+            <span
+              className="fr-procedure-legend-dot"
+              style={{ background: WARM_PALETTE[i % WARM_PALETTE.length] }}
             />
-            <span>{item.procedure}</span>
-            <span style={{ opacity: 0.7 }}>{item.pct.toFixed(1)}%</span>
+            <span className="fr-procedure-legend-label">{item.procedure}</span>
+            <span className="fr-procedure-legend-pct">{item.pct.toFixed(1)}%</span>
+            <span className="fr-procedure-legend-amount">
+              {formatEuro(total * (item.pct / 100))}
+            </span>
           </div>
         ))}
       </div>

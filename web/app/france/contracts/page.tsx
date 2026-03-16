@@ -2,14 +2,6 @@ import Link from "next/link";
 import { getContracts, ContractFilters } from "@/lib/france/queries";
 import { formatEuro } from "@/lib/france/format";
 
-const inputStyle: React.CSSProperties = {
-  padding: "0.4rem 0.6rem",
-  fontSize: "0.85rem",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-sm)",
-  background: "var(--color-surface)",
-};
-
 export default async function ContractExplorerPage({
   searchParams,
 }: {
@@ -53,119 +45,88 @@ export default async function ContractExplorerPage({
   }
 
   return (
-    <div className="ic-dashboard">
-      <header className="ic-dashboard-header">
-        <div>
-          <h1>Contract Explorer</h1>
-          <p>{total.toLocaleString()} contracts found</p>
-        </div>
+    <div className="fr-page">
+      <header className="fr-page-header">
+        <h1>Contract Explorer</h1>
+        <p>{total.toLocaleString()} contracts found</p>
       </header>
 
       <form
         method="GET"
         action="/france/contracts"
-        style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}
+        className="fr-filter-form"
       >
         <input
           name="q"
           defaultValue={params.q ?? ""}
           placeholder="Search contracts..."
-          style={inputStyle}
+          className="fr-input"
         />
         <input
           name="yearFrom"
           defaultValue={params.yearFrom ?? ""}
           placeholder="Year from"
-          style={{ ...inputStyle, width: 100 }}
+          className="fr-input fr-input--narrow"
         />
         <input
           name="yearTo"
           defaultValue={params.yearTo ?? ""}
           placeholder="Year to"
-          style={{ ...inputStyle, width: 100 }}
+          className="fr-input fr-input--narrow"
         />
-        <button type="submit" className="btn-primary">
+        <button type="submit" className="fr-btn fr-btn--primary">
           Filter
         </button>
       </form>
 
-      <div style={{ overflowX: "auto", marginTop: "1rem" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+      <div className="fr-table-wrap">
+        <table className="fr-table">
           <thead>
             <tr>
-              {["Date", "Buyer", "Object", "Procedure", "Amount", "Bids"].map((col) => (
-                <th
-                  key={col}
-                  style={{
-                    padding: "0.5rem 0.6rem",
-                    fontWeight: 600,
-                    color: "var(--color-text-muted)",
-                    textAlign: col === "Amount" ? "right" : "left",
-                  }}
-                >
-                  {col}
-                </th>
-              ))}
+              <th>Date</th>
+              <th>Buyer</th>
+              <th>Object</th>
+              <th>Procedure</th>
+              <th className="fr-table-right">Amount</th>
+              <th>Bids</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((c) => (
-              <tr key={c.uid} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                <td style={{ padding: "0.4rem 0.6rem", whiteSpace: "nowrap" }}>
+              <tr key={c.uid}>
+                <td className="fr-table-nowrap">
                   {c.notification_date
                     ? new Date(c.notification_date).toLocaleDateString("fr-FR")
-                    : "—"}
+                    : "\u2014"}
                 </td>
-                <td style={{ padding: "0.4rem 0.6rem" }}>
+                <td>
                   <Link href={`/france/buyers/${c.buyer_siret}`}>{c.buyer_name}</Link>
                 </td>
-                <td
-                  style={{
-                    padding: "0.4rem 0.6rem",
-                    maxWidth: 300,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
+                <td className="fr-table-truncate">
                   <Link href={`/france/contracts/${c.uid}`}>{c.object}</Link>
                 </td>
-                <td style={{ padding: "0.4rem 0.6rem" }}>{c.procedure ?? "—"}</td>
-                <td
-                  style={{
-                    padding: "0.4rem 0.6rem",
-                    textAlign: "right",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {c.amount_ht != null ? formatEuro(Number(c.amount_ht)) : "—"}
+                <td>{c.procedure ?? "\u2014"}</td>
+                <td className="fr-table-right fr-table-num">
+                  {c.amount_ht != null ? formatEuro(Number(c.amount_ht)) : "\u2014"}
                 </td>
-                <td style={{ padding: "0.4rem 0.6rem" }}>{c.bids_received ?? "—"}</td>
+                <td>{c.bids_received ?? "\u2014"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "1rem",
-          marginTop: "1.5rem",
-        }}
-      >
+      <div className="fr-pagination">
         {currentPage > 1 && (
-          <Link href={buildUrl(currentPage - 1)} className="btn-secondary">
+          <Link href={buildUrl(currentPage - 1)} className="fr-btn fr-btn--secondary">
             Previous
           </Link>
         )}
-        <span style={{ fontSize: "0.85rem" }}>
+        <span className="fr-pagination-info">
           Page {currentPage} of {totalPages}
         </span>
         {currentPage < totalPages && (
-          <Link href={buildUrl(currentPage + 1)} className="btn-secondary">
+          <Link href={buildUrl(currentPage + 1)} className="fr-btn fr-btn--secondary">
             Next
           </Link>
         )}

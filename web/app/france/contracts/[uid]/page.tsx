@@ -56,74 +56,40 @@ export default async function ContractDetailPage({
   ].filter(Boolean) as { label: string; value: string | number }[];
 
   return (
-    <div className="ic-dashboard">
-      <header className="ic-dashboard-header">
-        <div>
-          <h1>{contract.object || "Contract Detail"}</h1>
-          <p>
-            <Link href={`/france/buyers/${encodeURIComponent(contract.buyer_siret)}`}>
-              {contract.buyer_name}
-            </Link>
-            {contract.amount_ht != null && (
-              <> &mdash; {formatEuro(contract.amount_ht)}</>
-            )}
-          </p>
-        </div>
+    <div className="fr-page">
+      <header className="fr-page-header">
+        <h1>{contract.object || "Contract Detail"}</h1>
+        <p>
+          <Link href={`/france/buyers/${encodeURIComponent(contract.buyer_siret)}`}>
+            {contract.buyer_name}
+          </Link>
+          {contract.amount_ht != null && (
+            <> &mdash; {formatEuro(contract.amount_ht)}</>
+          )}
+        </p>
       </header>
 
-      <section className="ic-section">
-        <h2>Contract Details</h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-            gap: "0.5rem",
-          }}
-        >
+      <section className="fr-section">
+        <h2 className="fr-section-title">Contract Details</h2>
+        <div className="fr-detail-grid">
           {fields.map((field) => (
-            <div
-              key={field.label}
-              style={{
-                padding: "0.5rem 0.8rem",
-                background: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "0.7rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                {field.label}
-              </div>
-              <div style={{ fontSize: "0.9rem", marginTop: "0.2rem" }}>
-                {field.value}
-              </div>
+            <div key={field.label} className="fr-detail-card">
+              <div className="fr-detail-label">{field.label}</div>
+              <div className="fr-detail-value">{field.value}</div>
             </div>
           ))}
         </div>
       </section>
 
       {vendors.length > 0 && (
-        <section className="ic-section">
-          <h2>Vendors</h2>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+        <section className="fr-section">
+          <h2 className="fr-section-title">Vendors</h2>
+          <div className="fr-tag-list">
             {vendors.map((v) => (
               <Link
                 key={v.vendor_id}
                 href={`/france/vendors/${encodeURIComponent(v.vendor_id)}`}
-                style={{
-                  padding: "0.4rem 0.8rem",
-                  background: "var(--color-accent-subtle)",
-                  color: "var(--color-accent)",
-                  borderRadius: "var(--radius-sm)",
-                  fontSize: "0.85rem",
-                  textDecoration: "none",
-                }}
+                className="fr-tag"
               >
                 {v.vendor_name}
               </Link>
@@ -133,15 +99,9 @@ export default async function ContractDetailPage({
       )}
 
       {modifications.length > 0 && (
-        <section className="ic-section">
-          <h2>Modifications</h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-              gap: "0.75rem",
-            }}
-          >
+        <section className="fr-section">
+          <h2 className="fr-section-title">Modifications</h2>
+          <div className="fr-mod-grid">
             {modifications.map((mod) => {
               const pctChange =
                 mod.new_amount_ht != null && contract.amount_ht
@@ -149,36 +109,20 @@ export default async function ContractDetailPage({
                   : null;
 
               return (
-                <div
-                  key={mod.id}
-                  style={{
-                    padding: "0.5rem 0.8rem",
-                    background: "var(--color-surface)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "var(--color-text-muted)",
-                      marginBottom: "0.25rem",
-                    }}
-                  >
+                <div key={mod.id} className="fr-mod-card">
+                  <div className="fr-mod-date">
                     {mod.publication_date
                       ? new Date(mod.publication_date).toLocaleDateString("fr-FR")
-                      : "—"}
+                      : "\u2014"}
                   </div>
                   {mod.new_amount_ht != null && (
-                    <div style={{ fontWeight: 600 }}>
+                    <div className="fr-mod-amount">
                       {formatEuro(mod.new_amount_ht)}
                       {pctChange != null && (
                         <span
-                          style={{
-                            marginLeft: "0.5rem",
-                            fontSize: "0.8rem",
-                            color: pctChange > 0 ? "var(--color-danger)" : "var(--color-success)",
-                          }}
+                          className={
+                            pctChange > 0 ? "fr-mod-change--up" : "fr-mod-change--down"
+                          }
                         >
                           {pctChange > 0 ? "+" : ""}
                           {pctChange.toFixed(1)}%
@@ -187,15 +131,7 @@ export default async function ContractDetailPage({
                     </div>
                   )}
                   {mod.modification_object && (
-                    <div
-                      style={{
-                        fontSize: "0.8rem",
-                        color: "var(--color-text-muted)",
-                        marginTop: "0.25rem",
-                      }}
-                    >
-                      {mod.modification_object}
-                    </div>
+                    <div className="fr-mod-desc">{mod.modification_object}</div>
                   )}
                 </div>
               );
@@ -205,11 +141,9 @@ export default async function ContractDetailPage({
       )}
 
       {contract.anomalies && (
-        <section className="ic-section">
-          <h2>Anomalies</h2>
-          <p style={{ color: "var(--color-text-muted)", fontSize: "0.9rem" }}>
-            {contract.anomalies}
-          </p>
+        <section className="fr-section">
+          <h2 className="fr-section-title">Anomalies</h2>
+          <p className="fr-text-muted">{contract.anomalies}</p>
         </section>
       )}
     </div>

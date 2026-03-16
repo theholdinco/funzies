@@ -41,107 +41,62 @@ export default async function BuyerPage({
   ];
 
   return (
-    <div className="ic-dashboard">
-      <header className="ic-dashboard-header">
-        <div>
-          <h1>{buyer.name}</h1>
-          <p>SIRET: {buyer.siret}</p>
-        </div>
+    <div className="fr-page">
+      <header className="fr-page-header">
+        <h1>{buyer.name}</h1>
+        <p>SIRET: {buyer.siret}</p>
       </header>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "0.75rem",
-        }}
-      >
+      <div className="fr-stats-grid">
         {cards.map((card) => (
-          <div
-            key={card.label}
-            style={{
-              padding: "0.8rem 1rem",
-              background: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-sm)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.7rem",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                color: "var(--color-text-muted)",
-              }}
-            >
-              {card.label}
-            </div>
-            <div style={{ fontSize: "1.3rem", fontWeight: 700 }}>
-              {card.value}
-            </div>
+          <div key={card.label} className="fr-stat-card">
+            <div className="fr-stat-label">{card.label}</div>
+            <div className="fr-stat-value">{card.value}</div>
           </div>
         ))}
       </div>
 
-      <section className="ic-section">
-        <h2>Procedure Types</h2>
+      <section className="fr-section">
+        <h2 className="fr-section-title">Procedure Types</h2>
         <ProcedureBreakdownChart data={procedureBreakdown} />
       </section>
 
-      <section className="ic-section">
-        <h2>Top Vendors</h2>
+      <section className="fr-section">
+        <h2 className="fr-section-title">Top Vendors</h2>
         <TopEntitiesChart data={topVendors} linkPrefix="/france/vendors" />
       </section>
 
-      <section className="ic-section">
-        <h2>Contracts</h2>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+      <section className="fr-section">
+        <h2 className="fr-section-title">Contracts</h2>
+        <table className="fr-table">
           <thead>
-            <tr
-              style={{
-                borderBottom: "1px solid var(--color-border)",
-                textAlign: "left",
-              }}
-            >
-              <th style={{ padding: "0.4rem 0.6rem", color: "var(--color-text-muted)" }}>Date</th>
-              <th style={{ padding: "0.4rem 0.6rem", color: "var(--color-text-muted)" }}>Object</th>
-              <th style={{ padding: "0.4rem 0.6rem", color: "var(--color-text-muted)" }}>Procedure</th>
-              <th style={{ padding: "0.4rem 0.6rem", color: "var(--color-text-muted)", textAlign: "right" }}>Amount</th>
-              <th style={{ padding: "0.4rem 0.6rem", color: "var(--color-text-muted)", textAlign: "right" }}>Bids</th>
+            <tr>
+              <th>Date</th>
+              <th>Object</th>
+              <th>Procedure</th>
+              <th className="fr-table-right">Amount</th>
+              <th className="fr-table-right">Bids</th>
             </tr>
           </thead>
           <tbody>
             {contracts.map((c) => (
-              <tr
-                key={c.uid}
-                style={{ borderBottom: "1px solid var(--color-border)" }}
-              >
-                <td style={{ padding: "0.4rem 0.6rem", whiteSpace: "nowrap" }}>
+              <tr key={c.uid}>
+                <td className="fr-table-nowrap">
                   {c.notification_date
                     ? new Date(c.notification_date).toLocaleDateString("fr-FR")
-                    : "—"}
+                    : "\u2014"}
                 </td>
-                <td style={{ padding: "0.4rem 0.6rem", maxWidth: 400 }}>
-                  <Link
-                    href={`/france/contracts/${encodeURIComponent(c.uid)}`}
-                    style={{
-                      color: "var(--color-accent)",
-                      textDecoration: "none",
-                      overflow: "hidden",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                    }}
-                  >
-                    {c.object || "—"}
+                <td>
+                  <Link href={`/france/contracts/${encodeURIComponent(c.uid)}`}>
+                    {c.object || "\u2014"}
                   </Link>
                 </td>
-                <td style={{ padding: "0.4rem 0.6rem" }}>{c.procedure || "—"}</td>
-                <td style={{ padding: "0.4rem 0.6rem", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                  {c.amount_ht != null ? formatEuro(c.amount_ht) : "—"}
+                <td>{c.procedure || "\u2014"}</td>
+                <td className="fr-table-right fr-table-num">
+                  {c.amount_ht != null ? formatEuro(c.amount_ht) : "\u2014"}
                 </td>
-                <td style={{ padding: "0.4rem 0.6rem", textAlign: "right" }}>
-                  {c.bids_received ?? "—"}
+                <td className="fr-table-right">
+                  {c.bids_received ?? "\u2014"}
                 </td>
               </tr>
             ))}
