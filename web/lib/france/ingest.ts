@@ -9,13 +9,23 @@ import type { DecpContract, DecpTitulaire, DecpModification } from "./types";
 
 const { chain } = require("stream-chain");
 
-const DATA_URLS: Record<string, string> = {
-  "2019": "https://static.data.gouv.fr/resources/donnees-essentielles-de-la-commande-publique-fichiers-consolides/20260315-031537/decp-2019.json",
-  "2022": "https://static.data.gouv.fr/resources/donnees-essentielles-de-la-commande-publique-fichiers-consolides/20241114-000009/decp-2022.json",
-  "2024": "https://static.data.gouv.fr/resources/donnees-essentielles-de-la-commande-publique-fichiers-consolides/20260306-170918/decp-2024.json",
-  "2025": "https://static.data.gouv.fr/resources/donnees-essentielles-de-la-commande-publique-fichiers-consolides/20260220-091642/decp-2025.json",
-  "2026": "https://static.data.gouv.fr/resources/donnees-essentielles-de-la-commande-publique-fichiers-consolides/20260306-152434/decp-2026.json",
+// Stable resource IDs from data.gouv.fr — the static URLs rotate daily, but these don't change.
+const RESOURCE_IDS: Record<string, string> = {
+  "2019": "16962018-5c31-4296-9454-5998585496d2",
+  "2022": "59ba0edb-cf94-4bf1-a546-61f561553917",
+  "2024": "4fafdaff-b697-4494-9523-e9f56916fea8",
+  "2025": "d00a6a5a-beef-442e-8aee-5867f47a87d0",
+  "2026": "2551ad40-584a-42fd-b3cc-e8906183287e",
 };
+
+const DATASET_API = "https://www.data.gouv.fr/api/1/datasets/donnees-essentielles-de-la-commande-publique-fichiers-consolides/";
+
+async function resolveResourceUrl(resourceId: string): Promise<string> {
+  const res = await fetch(`${DATASET_API}resources/${resourceId}/`);
+  if (!res.ok) throw new Error(`Failed to resolve resource ${resourceId}: ${res.status}`);
+  const data = await res.json();
+  return data.url;
+}
 
 const BATCH_SIZE = 500;
 
@@ -493,7 +503,7 @@ async function processBatch(
 }
 
 export async function checkForUpdates(pool: Pool): Promise<UpdateCheck> {
-  const url = DATA_URLS["2026"];
+  const url = await resolveResourceUrl(RESOURCE_IDS["2026"]);
   const res = await fetch(url, { method: "HEAD" });
   const lastModified = res.headers.get("last-modified");
   const contentLength = res.headers.get("content-length");
@@ -649,14 +659,16 @@ export async function ingestAllYears(
     buyersUpserted: 0,
   };
 
-  const yearsToProcess = years || Object.keys(DATA_URLS).sort();
+  const yearsToProcess = years || Object.keys(RESOURCE_IDS).sort();
 
   for (const year of yearsToProcess) {
-    const url = DATA_URLS[year];
-    if (!url) {
-      console.warn(`No URL configured for year ${year}, skipping`);
+    const resourceId = RESOURCE_IDS[year];
+    if (!resourceId) {
+      console.warn(`No resource ID configured for year ${year}, skipping`);
       continue;
     }
+
+    const url = await resolveResourceUrl(resourceId);
 
     console.log(`\n=== Processing year ${year} ===`);
     let filePath: string | null = null;
