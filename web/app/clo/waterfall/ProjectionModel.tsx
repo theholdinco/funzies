@@ -280,6 +280,7 @@ export default function ProjectionModel({
   const [reinvestmentRating, setReinvestmentRating] = useState<string>("auto");
   const [baseRatePct, setBaseRatePct] = useState(4.5);
   const [seniorFeePct, setSeniorFeePct] = useState(0.45);
+  const [subFeePct, setSubFeePct] = useState(0.20);
   const [showCashFlows, setShowCashFlows] = useState(false);
 
   const loanInputs: LoanInput[] = useMemo(() => {
@@ -324,6 +325,7 @@ export default function ProjectionModel({
       })(),
       baseRatePct,
       seniorFeePct,
+      subFeePct,
       tranches: trancheInputs,
       ocTriggers,
       icTriggers,
@@ -340,7 +342,7 @@ export default function ProjectionModel({
       reinvestmentRating: reinvestmentRating === "auto" ? null : reinvestmentRating,
     }),
     [
-      poolSummary, baseRatePct, seniorFeePct, trancheInputs, ocTriggers, icTriggers,
+      poolSummary, baseRatePct, seniorFeePct, subFeePct, trancheInputs, ocTriggers, icTriggers,
       maturityDate, reinvestmentPeriodEnd, loanInputs, defaultRates, cprPct, recoveryPct, recoveryLagMonths,
       reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating,
     ]
@@ -464,6 +466,7 @@ export default function ProjectionModel({
           />
           <SliderInput label="Base Rate (SOFR)" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" />
           <SliderInput label="Senior Fee Rate" value={seniorFeePct} onChange={setSeniorFeePct} min={0} max={1} step={0.05} suffix="%" />
+          <SliderInput label="Sub Mgmt Fee" value={subFeePct} onChange={setSubFeePct} min={0} max={0.5} step={0.05} suffix="%" />
         </div>
         <div style={{ marginTop: "1rem" }}>
           <DefaultRatePanel
@@ -739,6 +742,8 @@ export default function ProjectionModel({
               <div
                 style={{
                   overflowX: "auto",
+                  overflowY: "auto",
+                  maxHeight: "520px",
                   marginTop: "0.75rem",
                   border: "1px solid var(--color-border-light)",
                   borderRadius: "var(--radius-sm)",
@@ -754,7 +759,7 @@ export default function ProjectionModel({
                   }}
                 >
                   <thead>
-                    <tr style={{ borderBottom: "2px solid var(--color-border)", textAlign: "right", background: "var(--color-surface)" }}>
+                    <tr style={{ borderBottom: "2px solid var(--color-border)", textAlign: "right", background: "var(--color-surface)", position: "sticky", top: 0, zIndex: 1 }}>
                       <th style={{ padding: "0.5rem 0.6rem", textAlign: "left", fontWeight: 600, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--color-text-muted)" }}>Date</th>
                       <th style={{ padding: "0.5rem 0.6rem", fontWeight: 600, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--color-text-muted)" }}>Beg Par</th>
                       <th style={{ padding: "0.5rem 0.6rem", fontWeight: 600, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--color-text-muted)" }}>Defaults</th>

@@ -13,6 +13,7 @@ export interface ProjectionInputs {
   wacSpreadBps: number;
   baseRatePct: number;
   seniorFeePct: number;
+  subFeePct: number;
   tranches: {
     className: string;
     currentBalance: number;
@@ -107,7 +108,7 @@ function trancheCouponRate(t: ProjectionInputs["tranches"][number], baseRatePct:
 
 export function runProjection(inputs: ProjectionInputs): ProjectionResult {
   const {
-    initialPar, wacSpreadBps, baseRatePct, seniorFeePct,
+    initialPar, wacSpreadBps, baseRatePct, seniorFeePct, subFeePct,
     tranches, ocTriggers, icTriggers,
     reinvestmentPeriodEnd, maturityDate, currentDate,
     loans, defaultRatesByRating, cprPct, recoveryPct, recoveryLagMonths,
@@ -305,10 +306,44 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
       ? loanStates.reduce((s, l) => s + l.survivingPar, 0)
       : currentPar;
 
-    // ── 8. Compute OC & IC ratios ───────────────────────────────
+    // ── 8. Preliminary principal paydown ─────────────────────────
+    // Pay down tranches from principal proceeds BEFORE computing OC
+    // tests so the ratios use post-paydown liability balances. This
+    // avoids a false OC breach at the RP boundary where par drops
+    // (no reinvestment) but liabilities haven't been reduced yet.
     const seniorFeeAmount = beginningPar * (seniorFeePct / 100) / 4;
     const interestAfterFees = Math.max(0, interestCollected - seniorFeeAmount);
 
+    const liquidationProceeds = isMaturity ? endingPar : 0;
+    let prelimPrincipal = prepayments + scheduledMaturities + recoveries - reinvestment + liquidationProceeds;
+    if (prelimPrincipal < 0) prelimPrincipal = 0;
+    if (isMaturity) {
+      if (hasLoans) {
+        for (const loan of loanStates) {
+          loan.survivingPar = 0;
+        }
+      }
+      currentPar = 0;
+      endingPar = 0;
+    }
+
+    // Track principal paid per tranche across preliminary + diversion passes
+    const principalPaid: Record<string, number> = {};
+    for (const t of sortedTranches) {
+      principalPaid[t.className] = 0;
+    }
+
+    // First pass: pay down from principal proceeds only
+    let remainingPrelim = prelimPrincipal;
+    for (const t of sortedTranches) {
+      if (t.isIncomeNote) continue;
+      const paid = Math.min(trancheBalances[t.className], remainingPrelim);
+      trancheBalances[t.className] -= paid;
+      principalPaid[t.className] += paid;
+      remainingPrelim -= paid;
+    }
+
+    // ── 9. Compute OC & IC ratios (post-paydown balances) ─────
     const ocResults: PeriodResult["ocTests"] = [];
     const icResults: PeriodResult["icTests"] = [];
 
@@ -341,10 +376,9 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
         .map((ic) => ic.rank)
     );
 
-    // ── 9. Interest waterfall (OC/IC-gated) ─────────────────────
+    // ── 10. Interest waterfall (OC/IC-gated) ─────────────────────
     let availableInterest = interestCollected;
     const trancheInterest: PeriodResult["trancheInterest"] = [];
-    let diversionToPaydown = 0;
 
     availableInterest -= Math.min(seniorFeeAmount, availableInterest);
 
@@ -364,28 +398,28 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
       trancheInterest.push({ className: t.className, due, paid });
 
       if (failingOcRanks.has(t.seniorityRank) || failingIcRanks.has(t.seniorityRank)) {
-        diversionToPaydown += availableInterest;
+        // Divert remaining interest to pay down senior tranches
+        let diversion = availableInterest;
         availableInterest = 0;
         diverted = true;
+        for (const dt of sortedTranches) {
+          if (dt.isIncomeNote || diversion <= 0) continue;
+          const dp = Math.min(trancheBalances[dt.className], diversion);
+          trancheBalances[dt.className] -= dp;
+          principalPaid[dt.className] += dp;
+          diversion -= dp;
+        }
       }
     }
+
+    // Subordinated management fee — paid after all debt tranches, before equity
+    const subFeeAmount = beginningPar * (subFeePct / 100) / 4;
+    availableInterest -= Math.min(subFeeAmount, availableInterest);
 
     const equityFromInterest = availableInterest;
 
-    // ── 10. Principal waterfall ──────────────────────────────────
-    const liquidationProceeds = isMaturity ? endingPar : 0;
-    let availablePrincipal = prepayments + scheduledMaturities + recoveries - reinvestment + diversionToPaydown + liquidationProceeds;
-    if (availablePrincipal < 0) availablePrincipal = 0;
-    if (isMaturity) {
-      // Liquidate all loans
-      if (hasLoans) {
-        for (const loan of loanStates) {
-          loan.survivingPar = 0;
-        }
-      }
-      currentPar = 0;
-      endingPar = 0;
-    }
+    // ── 11. Build principal results ──────────────────────────────
+    let availablePrincipal = remainingPrelim;
 
     const tranchePrincipal: PeriodResult["tranchePrincipal"] = [];
     for (const t of sortedTranches) {
@@ -393,10 +427,7 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
         tranchePrincipal.push({ className: t.className, paid: 0, endBalance: trancheBalances[t.className] });
         continue;
       }
-      const paid = Math.min(trancheBalances[t.className], availablePrincipal);
-      trancheBalances[t.className] -= paid;
-      availablePrincipal -= paid;
-      tranchePrincipal.push({ className: t.className, paid, endBalance: trancheBalances[t.className] });
+      tranchePrincipal.push({ className: t.className, paid: principalPaid[t.className], endBalance: trancheBalances[t.className] });
 
       if (trancheBalances[t.className] <= 0.01 && tranchePayoffQuarter[t.className] === null) {
         tranchePayoffQuarter[t.className] = q;
