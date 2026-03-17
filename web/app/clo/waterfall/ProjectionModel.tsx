@@ -146,6 +146,7 @@ function buildTranchesFromConstraints(constraints: ExtractedConstraints) {
       seniorityRank: idx + 1,
       isFloating,
       isIncomeNote: isSubordinated,
+      isDeferrable: e.deferrable ?? false,
     };
   });
 }
@@ -223,6 +224,7 @@ export default function ProjectionModel({
             seniorityRank: t.seniorityRank ?? 99,
             isFloating: t.isFloating ?? true,
             isIncomeNote: t.isIncomeNote ?? t.isSubordinate ?? false,
+            isDeferrable: t.isDeferrable ?? false,
           };
         });
     }
@@ -281,6 +283,8 @@ export default function ProjectionModel({
   const [baseRatePct, setBaseRatePct] = useState(4.5);
   const [seniorFeePct, setSeniorFeePct] = useState(0.45);
   const [subFeePct, setSubFeePct] = useState(0.20);
+  const [cccBucketLimitPct, setCccBucketLimitPct] = useState(7.5);
+  const [cccMarketValuePct, setCccMarketValuePct] = useState(70);
   const [showCashFlows, setShowCashFlows] = useState(false);
 
   const loanInputs: LoanInput[] = useMemo(() => {
@@ -340,11 +344,13 @@ export default function ProjectionModel({
       reinvestmentSpreadBps,
       reinvestmentTenorQuarters: reinvestmentTenorYears * 4,
       reinvestmentRating: reinvestmentRating === "auto" ? null : reinvestmentRating,
+      cccBucketLimitPct,
+      cccMarketValuePct,
     }),
     [
       poolSummary, baseRatePct, seniorFeePct, subFeePct, trancheInputs, ocTriggers, icTriggers,
       maturityDate, reinvestmentPeriodEnd, loanInputs, defaultRates, cprPct, recoveryPct, recoveryLagMonths,
-      reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating,
+      reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating, cccBucketLimitPct, cccMarketValuePct,
     ]
   );
 
@@ -430,6 +436,22 @@ export default function ProjectionModel({
         </div>
       )}
 
+      {loanInputs.length === 0 && validationErrors.length === 0 && (
+        <div
+          style={{
+            padding: "0.75rem 1rem",
+            border: "1px solid var(--color-warning-border, #e5c07b)",
+            borderRadius: "var(--radius-sm)",
+            background: "var(--color-warning-bg, #fdf6e3)",
+            marginBottom: "1rem",
+            fontSize: "0.82rem",
+            color: "var(--color-warning, #946c00)",
+          }}
+        >
+          No per-loan holdings data — projection uses aggregate CDR/CPR applied to total par, which is less accurate than per-loan modeling.
+        </div>
+      )}
+
       {/* Input section */}
       <div
         style={{
@@ -467,6 +489,8 @@ export default function ProjectionModel({
           <SliderInput label="Base Rate (SOFR)" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" />
           <SliderInput label="Senior Fee Rate" value={seniorFeePct} onChange={setSeniorFeePct} min={0} max={1} step={0.05} suffix="%" />
           <SliderInput label="Sub Mgmt Fee" value={subFeePct} onChange={setSubFeePct} min={0} max={0.5} step={0.05} suffix="%" />
+          <SliderInput label="CCC Bucket Limit" value={cccBucketLimitPct} onChange={setCccBucketLimitPct} min={0} max={15} step={0.5} suffix="%" />
+          <SliderInput label="CCC Mkt Value" value={cccMarketValuePct} onChange={setCccMarketValuePct} min={0} max={100} step={5} suffix="%" />
         </div>
         <div style={{ marginTop: "1rem" }}>
           <DefaultRatePanel

@@ -21,6 +21,7 @@ export interface ProjectionInputs {
     seniorityRank: number;
     isFloating: boolean;
     isIncomeNote: boolean;
+    isDeferrable: boolean;
   }[];
   ocTriggers: { className: string; triggerLevel: number; rank: number }[];
   icTriggers: { className: string; triggerLevel: number; rank: number }[];
@@ -35,6 +36,8 @@ export interface ProjectionInputs {
   reinvestmentSpreadBps: number;
   reinvestmentTenorQuarters: number;
   reinvestmentRating: string | null; // null = use portfolio modal
+  cccBucketLimitPct: number; // CCC excess above this % of par is haircut in OC test
+  cccMarketValuePct: number; // market value assumption for CCC excess haircut (% of par)
 }
 
 export interface PeriodResult {
@@ -113,6 +116,7 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
     reinvestmentPeriodEnd, maturityDate, currentDate,
     loans, defaultRatesByRating, cprPct, recoveryPct, recoveryLagMonths,
     reinvestmentSpreadBps, reinvestmentTenorQuarters, reinvestmentRating: reinvestmentRatingOverride,
+    cccBucketLimitPct, cccMarketValuePct,
   } = inputs;
 
   const totalQuarters = maturityDate ? Math.max(1, quartersBetween(currentDate, maturityDate)) : 40;
@@ -249,12 +253,24 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
     }
 
     // ── Aggregate ──────────────────────────────────────────────────
-    const defaults = hasLoans ? totalDefaults : currentPar * 0;
+    let defaults: number;
+    let prepayments: number;
     const scheduledMaturities = totalMaturities;
-    const prepayments = hasLoans ? totalPrepayments : 0;
+    if (hasLoans) {
+      defaults = totalDefaults;
+      prepayments = totalPrepayments;
+    } else {
+      // Fallback: apply aggregate CDR/CPR to currentPar
+      const avgAnnualCdr = Object.values(defaultRatesByRating).reduce((s, v) => s + v, 0) / Math.max(1, Object.values(defaultRatesByRating).length);
+      const qHazard = 1 - Math.pow(1 - Math.min(avgAnnualCdr, 99.99) / 100, 0.25);
+      defaults = currentPar * qHazard;
+      currentPar -= defaults;
+      prepayments = currentPar * qPrepayRate;
+      currentPar -= prepayments;
 
-    if (!hasLoans) {
-      // Fallback: no per-loan tracking, just keep currentPar stable (no defaults/prepay/maturity)
+      if (defaults > 0 && recoveryPct > 0) {
+        recoveryPipeline.push({ quarter: q + recoveryLagQ, amount: defaults * (recoveryPct / 100) });
+      }
     }
 
     // ── 5. Recoveries ───────────────────────────────────────────
@@ -311,8 +327,17 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
     // tests so the ratios use post-paydown liability balances. This
     // avoids a false OC breach at the RP boundary where par drops
     // (no reinvestment) but liabilities haven't been reduced yet.
+    //
+    // IMPORTANT: Save BOP tranche balances first — interest DUE and
+    // IC tests must use beginning-of-period balances since interest
+    // accrues on the balance before any principal paydown.
     const seniorFeeAmount = beginningPar * (seniorFeePct / 100) / 4;
     const interestAfterFees = Math.max(0, interestCollected - seniorFeeAmount);
+
+    const bopTrancheBalances: Record<string, number> = {};
+    for (const t of debtTranches) {
+      bopTrancheBalances[t.className] = trancheBalances[t.className];
+    }
 
     const liquidationProceeds = isMaturity ? endingPar : 0;
     let prelimPrincipal = prepayments + scheduledMaturities + recoveries - reinvestment + liquidationProceeds;
@@ -343,7 +368,27 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
       remainingPrelim -= paid;
     }
 
-    // ── 9. Compute OC & IC ratios (post-paydown balances) ─────
+    // ── 9. Compute OC & IC ratios ────────────────────────────────
+    // OC uses post-paydown balances (liability position after payments).
+    // IC uses BOP balances (interest due accrued on beginning balance).
+    //
+    // CCC bucket haircut: if CCC-rated par exceeds the bucket limit,
+    // the excess is carried at market value instead of par in the OC
+    // numerator. This reduces the Adjusted Collateral Principal Amount.
+    let ocNumerator = endingPar;
+    if (hasLoans && cccBucketLimitPct > 0) {
+      const cccPar = loanStates
+        .filter((l) => l.ratingBucket === "CCC" && l.survivingPar > 0)
+        .reduce((s, l) => s + l.survivingPar, 0);
+      const cccLimitAbs = endingPar * (cccBucketLimitPct / 100);
+      const cccExcess = Math.max(0, cccPar - cccLimitAbs);
+      if (cccExcess > 0) {
+        // Haircut: replace par with market value for the excess amount
+        const haircut = cccExcess * (1 - cccMarketValuePct / 100);
+        ocNumerator -= haircut;
+      }
+    }
+
     const ocResults: PeriodResult["ocTests"] = [];
     const icResults: PeriodResult["icTests"] = [];
 
@@ -351,7 +396,7 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
       const debtAtAndAbove = debtTranches
         .filter((t) => t.seniorityRank <= oc.rank)
         .reduce((s, t) => s + trancheBalances[t.className], 0);
-      const actual = debtAtAndAbove > 0 ? (endingPar / debtAtAndAbove) * 100 : 999;
+      const actual = debtAtAndAbove > 0 ? (ocNumerator / debtAtAndAbove) * 100 : 999;
       const passing = actual >= oc.triggerLevel;
       ocResults.push({ className: oc.className, actual, trigger: oc.triggerLevel, passing });
     }
@@ -359,7 +404,7 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
     for (const ic of icTriggersByClass) {
       const interestDueAtAndAbove = debtTranches
         .filter((t) => t.seniorityRank <= ic.rank)
-        .reduce((s, t) => s + trancheBalances[t.className] * trancheCouponRate(t, baseRatePct) / 4, 0);
+        .reduce((s, t) => s + bopTrancheBalances[t.className] * trancheCouponRate(t, baseRatePct) / 4, 0);
       const actual = interestDueAtAndAbove > 0 ? (interestAfterFees / interestDueAtAndAbove) * 100 : 999;
       const passing = actual >= ic.triggerLevel;
       icResults.push({ className: ic.className, actual, trigger: ic.triggerLevel, passing });
@@ -377,6 +422,7 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
     );
 
     // ── 10. Interest waterfall (OC/IC-gated) ─────────────────────
+    // Interest DUE uses BOP balances (accrued before paydown).
     let availableInterest = interestCollected;
     const trancheInterest: PeriodResult["trancheInterest"] = [];
 
@@ -384,18 +430,25 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
 
     let diverted = false;
     for (const t of debtTranches) {
+      const rate = trancheCouponRate(t, baseRatePct);
+      const due = bopTrancheBalances[t.className] * rate / 4;
+
       if (diverted) {
-        const rate = trancheCouponRate(t, baseRatePct);
-        const due = trancheBalances[t.className] * rate / 4;
         trancheInterest.push({ className: t.className, due, paid: 0 });
+        // PIK: capitalize unpaid interest onto deferrable tranche balance
+        if (t.isDeferrable && due > 0) {
+          trancheBalances[t.className] += due;
+        }
         continue;
       }
 
-      const rate = trancheCouponRate(t, baseRatePct);
-      const due = trancheBalances[t.className] * rate / 4;
       const paid = Math.min(due, availableInterest);
       availableInterest -= paid;
       trancheInterest.push({ className: t.className, due, paid });
+      // PIK: capitalize any shortfall onto deferrable tranche balance
+      if (t.isDeferrable && paid < due) {
+        trancheBalances[t.className] += (due - paid);
+      }
 
       if (failingOcRanks.has(t.seniorityRank) || failingIcRanks.has(t.seniorityRank)) {
         // Divert remaining interest to pay down senior tranches

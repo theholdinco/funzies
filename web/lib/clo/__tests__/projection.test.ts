@@ -30,9 +30,9 @@ function makeInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs
     seniorFeePct: 0.45,
     subFeePct: 0.50,
     tranches: [
-      { className: "A", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false },
-      { className: "B", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false },
-      { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true },
+      { className: "A", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+      { className: "B", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: true },
+      { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
     ],
     ocTriggers: [
       { className: "A", triggerLevel: 120, rank: 1 },
@@ -53,6 +53,8 @@ function makeInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs
     reinvestmentSpreadBps: 350,
     reinvestmentTenorQuarters: 20,
     reinvestmentRating: null,
+    cccBucketLimitPct: 7.5,
+    cccMarketValuePct: 70,
     ...overrides,
   };
 }
