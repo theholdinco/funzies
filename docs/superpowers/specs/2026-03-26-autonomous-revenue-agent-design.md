@@ -48,12 +48,27 @@ An autonomous AI agent that runs on Railway, powered by Claude Code in headless 
 
 Event-driven, not clock-driven. Each cycle:
 
-1. Run ASSESS → DECIDE → execute chosen phase → REPORT
-2. Send Telegram update
-3. Wait 30 minutes
-4. Repeat
+1. **INBOX** → check Telegram for owner messages
+2. ASSESS → DECIDE → execute chosen phase → REPORT
+3. Send Telegram update
+4. Wait 30 minutes
+5. Repeat
 
 No concurrency. One phase at a time. If a phase takes 45 minutes, it finishes naturally, then the 30-minute cooldown starts.
+
+### Owner Inbox (pre-phase step, every cycle)
+
+Before anything else, the agent checks Telegram for messages from the owner. These are processed as **directives** that influence the current cycle:
+
+- **Ideas:** "You should build X" or "What about a tool that does Y" → added to ideas backlog in `STATE.json` with high priority, DECIDE will likely pick IDEATE or BUILD next
+- **Feedback:** "Product X needs a better landing page" or "The pricing is too high" → attached to the relevant project in `STATE.json`, next BUILD/MAINTAIN cycle addresses it
+- **Strategy:** "Focus on Twitter this week" or "Stop building PDFs, try micro-tools" → written directly into `STRATEGY.md` as an owner directive (takes precedence over agent's own strategy)
+- **Requests:** "Make me a personal website" or "Can you set up a blog?" → treated as top-priority task, overrides normal DECIDE logic
+- **Approvals:** "YES" / "NO" responses to pending approval requests → resolved immediately
+
+If there are no messages, the agent proceeds normally. If there are multiple messages, they're all processed before ASSESS runs.
+
+The agent acknowledges each message with a short Telegram reply: "Got it — I'll build X next cycle" or "Noted, updating strategy to focus on Twitter."
 
 ## Phases
 
