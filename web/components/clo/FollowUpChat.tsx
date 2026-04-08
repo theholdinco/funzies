@@ -91,6 +91,7 @@ export default function FollowUpChat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [files, setFiles] = useState<AttachedFile[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const attachmentHandleRef = useRef<AttachmentWidgetHandle | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -341,7 +342,20 @@ export default function FollowUpChat({
         ))}
       </div>
 
-      <div className="chat-input-container">
+      <div
+        className={`chat-input-container${dragOver ? " drag-over" : ""}`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          if (!isStreaming && e.dataTransfer.files.length > 0) {
+            attachmentHandleRef.current?.addFiles(e.dataTransfer.files);
+          }
+        }}
+      >
         {mode === "ask-member" && members.length > 0 && (
           <div className="chat-input-character-row">
             <span className="chat-input-character-label">Speaking with</span>

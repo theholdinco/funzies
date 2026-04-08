@@ -23,6 +23,7 @@ export interface AttachedFile {
 
 export interface AttachmentWidgetHandle {
   openPicker: () => void;
+  addFiles: (files: FileList | File[]) => void;
 }
 
 interface AttachmentWidgetProps {
@@ -82,9 +83,9 @@ export default function AttachmentWidget({ files, onChange, disabled, hideButton
 
   useEffect(() => {
     if (handleRef) {
-      handleRef({ openPicker: () => inputRef.current?.click() });
+      handleRef({ openPicker: () => inputRef.current?.click(), addFiles });
     }
-  }, [handleRef]);
+  }, [handleRef, addFiles]);
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();

@@ -29,6 +29,7 @@ function CLOChatInner() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [files, setFiles] = useState<AttachedFile[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const attachmentHandleRef = useRef<AttachmentWidgetHandle | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -258,7 +259,21 @@ function CLOChatInner() {
         </div>
       )}
 
-      <div className="chat-input-container" style={{ marginTop: "1rem" }}>
+      <div
+        className={`chat-input-container${dragOver ? " drag-over" : ""}`}
+        style={{ marginTop: "1rem" }}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          if (!isStreaming && e.dataTransfer.files.length > 0) {
+            attachmentHandleRef.current?.addFiles(e.dataTransfer.files);
+          }
+        }}
+      >
         <AttachmentWidget
           files={files}
           onChange={setFiles}

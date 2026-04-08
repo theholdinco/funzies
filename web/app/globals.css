@@ -1458,6 +1458,11 @@
   border-color: var(--color-accent);
 }
 
+.chat-input-container.drag-over {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
 .chat-input-character-row {
   display: flex;
   align-items: center;
