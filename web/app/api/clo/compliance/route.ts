@@ -34,6 +34,10 @@ async function verifyReportPeriodAccess(reportPeriodId: string, userId: string):
   return rows.length > 0;
 }
 
+function camelToSnake(str: string): string {
+  return str.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+}
+
 function buildUpdateQuery(
   table: string,
   id: string,
@@ -48,8 +52,9 @@ function buildUpdateQuery(
   let paramIndex = 1;
 
   for (const [key, value] of Object.entries(updates)) {
-    if (!allowed.has(key)) continue;
-    setClauses.push(`${key} = $${paramIndex}`);
+    const snakeKey = camelToSnake(key);
+    if (!allowed.has(snakeKey)) continue;
+    setClauses.push(`${snakeKey} = $${paramIndex}`);
     values.push(value);
     paramIndex++;
   }
