@@ -14,6 +14,7 @@ import {
   rowToProfile,
 } from "@/lib/clo/access";
 import type { ExtractedConstraints } from "@/lib/clo/types";
+import { resolveWaterfallInputs } from "@/lib/clo/resolver";
 import WaterfallVisualization from "./WaterfallVisualization";
 import ProjectionModel from "./ProjectionModel";
 import DataQualityCheck from "./DataQualityCheck";
@@ -55,6 +56,15 @@ export default async function WaterfallPage() {
     deal?.statedMaturityDate ?? constraints.keyDates?.maturityDate ?? null;
   const reinvestmentPeriodEnd =
     deal?.reinvestmentPeriodEnd ?? constraints.keyDates?.reinvestmentPeriodEnd ?? null;
+
+  const { resolved, warnings: resolutionWarnings } = resolveWaterfallInputs(
+    constraints,
+    periodData ? { poolSummary: periodData.poolSummary, complianceTests: periodData.complianceTests, concentrations: periodData.concentrations } : null,
+    tranches,
+    trancheSnapshots,
+    holdings,
+    { maturity: maturityDate, reinvestmentPeriodEnd },
+  );
 
   // Build deal context for AI features
   const dealContext = {
@@ -118,6 +128,8 @@ export default async function WaterfallPage() {
         holdings={holdings}
         panelId={panel?.id ?? null}
         dealContext={dealContext}
+        resolved={resolved}
+        resolutionWarnings={resolutionWarnings}
       />
     </div>
   );
