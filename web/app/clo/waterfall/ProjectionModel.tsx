@@ -240,11 +240,13 @@ export default function ProjectionModel({
       const snapshotByTrancheId = new Map(trancheSnapshots.map((s) => [s.trancheId, s]));
       const classXAmort = constraints.dealSizing?.classXAmortisation;
       const classXAmortPerQuarter = classXAmort ? parseAmount(classXAmort) : null;
-      // Build a lookup from PPM constraints to fill in missing spreadBps from DB tranches
+      // Build a lookup from PPM constraints to fill in missing spreadBps from DB tranches.
+      // Normalize class names: "Class A", "A", "Class A Notes" all map to "a".
+      const normClass = (s: string) => s.replace(/^class\s+/i, "").replace(/\s+notes?$/i, "").trim().toLowerCase();
       const ppmSpreadByClass = new Map<string, number>();
       for (const e of constraints.capitalStructure ?? []) {
         const bps = parseSpreadBps(e.spreadBps, e.spread);
-        if (bps > 0) ppmSpreadByClass.set(e.class, bps);
+        if (bps > 0) ppmSpreadByClass.set(normClass(e.class), bps);
       }
       return [...tranches]
         .sort((a, b) => (a.seniorityRank ?? 99) - (b.seniorityRank ?? 99))
@@ -257,7 +259,7 @@ export default function ProjectionModel({
             spreadBps: t.spreadBps ?? ppmSpreadByClass.get(t.className) ?? 0,
             seniorityRank: t.seniorityRank ?? 99,
             isFloating: t.isFloating ?? true,
-            isIncomeNote: t.isIncomeNote ?? t.isSubordinate ?? false,
+            isIncomeNote: t.isIncomeNote ?? t.isSubordinate ?? t.className.toLowerCase().includes("sub") ?? false,
             isDeferrable: t.isDeferrable ?? false,
             isAmortising: isClassX,
             amortisationPerPeriod: isClassX ? classXAmortPerQuarter : null,
