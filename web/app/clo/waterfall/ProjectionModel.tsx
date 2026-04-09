@@ -561,6 +561,21 @@ export default function ProjectionModel({
             />
           </div>
 
+          {/* Monte Carlo Analysis — visible by default */}
+          <div style={{ marginBottom: "1.5rem" }}>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.75rem" }}>
+              Monte Carlo Simulation
+              <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--color-text-muted)", marginLeft: "0.5rem" }}>
+                {mc.running ? "running..." : mc.result ? `${mc.result.runCount.toLocaleString()} runs` : ""}
+              </span>
+            </h3>
+            <MonteCarloChart
+              result={mc.result}
+              running={mc.running}
+              progress={mc.progress}
+            />
+          </div>
+
           {/* Transparency section */}
           <div
             style={{
@@ -595,23 +610,6 @@ export default function ProjectionModel({
             {showTransparency && (
               <div style={{ padding: "0 0.8rem 0.8rem" }}>
                 <SensitivityTable rows={sensitivity} baseIrr={result.equityIrr} />
-                {/* Monte Carlo Analysis */}
-                <div style={{
-                  fontSize: "0.68rem",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                  color: "var(--color-text-muted)",
-                  marginBottom: "0.5rem",
-                  marginTop: "1rem",
-                }}>
-                  Monte Carlo Analysis (10,000 runs)
-                </div>
-                <MonteCarloChart
-                  result={mc.result}
-                  running={mc.running}
-                  progress={mc.progress}
-                />
                 {resolved && <ModelInputsPanel resolved={resolved} inputs={inputs} />}
 
                 {/* Cash Flow Table with expandable period traces */}
