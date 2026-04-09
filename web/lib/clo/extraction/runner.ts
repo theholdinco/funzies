@@ -16,6 +16,28 @@ import { parseComplianceSummaryTables } from "./table-parser";
 import { reconcileDates } from "./date-reconciler";
 import { mergeAllPasses, EXTRACTION_PASSES } from "./multi-pass-merger";
 import type { DocumentMap, SectionEntry } from "./document-mapper";
+import { validateAndNormalizeConstraints, normalizeComplianceTestType } from "../ingestion-gate";
+
+/** Adapter: run normalizeComplianceTestType on snake_case DB rows */
+function normalizeComplianceTestRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  const camelTests = rows.map(r => ({
+    testType: (r.test_type as string | null) ?? null,
+    testName: (r.test_name as string) ?? "",
+    isPassing: (r.is_passing as boolean | null) ?? null,
+    actualValue: (r.actual_value as number | null) ?? null,
+    triggerLevel: (r.trigger_level as number | null) ?? null,
+  }));
+  const { tests: normalized, fixes } = normalizeComplianceTestType(camelTests);
+  if (fixes.length > 0) {
+    console.log(`[extraction] Normalized ${fixes.length} compliance test fields:`,
+      fixes.map(f => f.message));
+  }
+  for (let i = 0; i < rows.length; i++) {
+    rows[i].test_type = normalized[i].testType;
+    rows[i].is_passing = normalized[i].isPassing;
+  }
+  return rows;
+}
 
 // ---------------------------------------------------------------------------
 // BNY Mellon compliance report template — known section layout.
@@ -483,6 +505,7 @@ export async function runExtraction(
   // Insert Pass 1 data
   const p1Normalized = normalizePass1(pass1Data, reportPeriodId);
   await replaceIfPresent("clo_pool_summary", [p1Normalized.poolSummary]);
+  normalizeComplianceTestRows(p1Normalized.complianceTests);
   await replaceIfPresent("clo_compliance_tests", p1Normalized.complianceTests);
   await replaceIfPresent("clo_account_balances", p1Normalized.accountBalances);
   await replaceIfPresent("clo_par_value_adjustments", p1Normalized.parValueAdjustments);
@@ -1045,6 +1068,7 @@ export async function runSectionExtraction(
   }
 
   // Insert compliance tests
+  normalizeComplianceTestRows(normalized.complianceTests);
   await replaceIfPresent("clo_compliance_tests", normalized.complianceTests);
   if (normalized.complianceTests.length > 0) console.log(`[extraction] → clo_compliance_tests: ${normalized.complianceTests.length} rows`);
 
@@ -1430,10 +1454,12 @@ export async function runSectionExtraction(
             await replaceIfPresent("clo_holdings", reNormalized.holdings);
             break;
           case "par_value_tests":
+            normalizeComplianceTestRows(reNormalized.complianceTests);
             await replaceIfPresent("clo_compliance_tests", reNormalized.complianceTests);
             await replaceIfPresent("clo_par_value_adjustments", reNormalized.parValueAdjustments);
             break;
           case "interest_coverage_tests":
+            normalizeComplianceTestRows(reNormalized.complianceTests);
             await replaceIfPresent("clo_compliance_tests", reNormalized.complianceTests);
             break;
           case "concentration_tables":

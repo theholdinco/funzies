@@ -7,6 +7,8 @@ import { extractAllSections, extractSection } from "./section-extractor";
 import { normalizePpmSectionResults } from "./normalizer";
 import { mergeAllPasses, EXTRACTION_PASSES } from "./multi-pass-merger";
 import type { SectionExtractionResult } from "./section-extractor";
+import { validateAndNormalizeConstraints } from "../ingestion-gate";
+import type { ExtractedConstraints } from "../types";
 
 // ---------------------------------------------------------------------------
 // Single PPM extraction pass: mapping → text → structured extraction.
@@ -156,7 +158,19 @@ export async function runSectionPpmExtraction(
   console.log(`[ppm-extraction] ═══════════════════════════`);
 
   // Merge into extractedConstraints format
-  const extractedConstraints = normalizePpmSectionResults(sections);
+  let extractedConstraints = normalizePpmSectionResults(sections);
+
+  // Validate and normalize before persisting
+  const gateResult = validateAndNormalizeConstraints(extractedConstraints as ExtractedConstraints);
+  if (!gateResult.ok) {
+    console.error("[extraction] Ingestion validation failed:", gateResult.errors);
+  } else {
+    if (gateResult.fixes.length > 0) {
+      console.log(`[extraction] Applied ${gateResult.fixes.length} normalizations:`,
+        gateResult.fixes.map(f => f.message));
+    }
+    extractedConstraints = gateResult.data as unknown as Record<string, unknown>;
+  }
 
   // Log the final merged constraints
   console.log(`[ppm-extraction] ═══ FINAL CONSTRAINTS ═══`);
