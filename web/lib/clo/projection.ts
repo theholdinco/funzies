@@ -725,3 +725,101 @@ export function calculateIrr(cashFlows: number[], periodsPerYear: number = 4): n
   if (!isFinite(annualized) || isNaN(annualized)) return null;
   return annualized;
 }
+
+export interface SensitivityRow {
+  assumption: string;
+  base: string;
+  down: string;
+  up: string;
+  downIrr: number | null;
+  upIrr: number | null;
+}
+
+export function computeSensitivity(
+  baseInputs: ProjectionInputs,
+  baseIrr: number | null,
+): SensitivityRow[] {
+  const scenarios: { assumption: string; base: string; down: string; up: string; makeDown: () => ProjectionInputs; makeUp: () => ProjectionInputs }[] = [
+    {
+      assumption: "CDR (uniform)",
+      base: formatSensPct(avgCdr(baseInputs.defaultRatesByRating)),
+      down: formatSensPct(Math.max(0, avgCdr(baseInputs.defaultRatesByRating) - 1)),
+      up: formatSensPct(avgCdr(baseInputs.defaultRatesByRating) + 1),
+      makeDown: () => ({ ...baseInputs, defaultRatesByRating: shiftAllRates(baseInputs.defaultRatesByRating, -1) }),
+      makeUp: () => ({ ...baseInputs, defaultRatesByRating: shiftAllRates(baseInputs.defaultRatesByRating, 1) }),
+    },
+    {
+      assumption: "CPR",
+      base: formatSensPct(baseInputs.cprPct),
+      down: formatSensPct(Math.max(0, baseInputs.cprPct - 5)),
+      up: formatSensPct(baseInputs.cprPct + 5),
+      makeDown: () => ({ ...baseInputs, cprPct: Math.max(0, baseInputs.cprPct - 5) }),
+      makeUp: () => ({ ...baseInputs, cprPct: baseInputs.cprPct + 5 }),
+    },
+    {
+      assumption: "Base Rate",
+      base: formatSensPct(baseInputs.baseRatePct),
+      down: formatSensPct(Math.max(0, baseInputs.baseRatePct - 1)),
+      up: formatSensPct(baseInputs.baseRatePct + 1),
+      makeDown: () => ({ ...baseInputs, baseRatePct: Math.max(0, baseInputs.baseRatePct - 1) }),
+      makeUp: () => ({ ...baseInputs, baseRatePct: baseInputs.baseRatePct + 1 }),
+    },
+    {
+      assumption: "Recovery Rate",
+      base: formatSensPct(baseInputs.recoveryPct),
+      down: formatSensPct(Math.max(0, baseInputs.recoveryPct - 10)),
+      up: formatSensPct(Math.min(100, baseInputs.recoveryPct + 10)),
+      makeDown: () => ({ ...baseInputs, recoveryPct: Math.max(0, baseInputs.recoveryPct - 10) }),
+      makeUp: () => ({ ...baseInputs, recoveryPct: Math.min(100, baseInputs.recoveryPct + 10) }),
+    },
+    {
+      assumption: "Reinvestment Spread",
+      base: `${baseInputs.reinvestmentSpreadBps} bps`,
+      down: `${Math.max(0, baseInputs.reinvestmentSpreadBps - 50)} bps`,
+      up: `${baseInputs.reinvestmentSpreadBps + 50} bps`,
+      makeDown: () => ({ ...baseInputs, reinvestmentSpreadBps: Math.max(0, baseInputs.reinvestmentSpreadBps - 50) }),
+      makeUp: () => ({ ...baseInputs, reinvestmentSpreadBps: baseInputs.reinvestmentSpreadBps + 50 }),
+    },
+  ];
+
+  const rows: SensitivityRow[] = scenarios.map((s) => {
+    if (baseIrr === null) {
+      return { assumption: s.assumption, base: s.base, down: s.down, up: s.up, downIrr: null, upIrr: null };
+    }
+    const downResult = runProjection(s.makeDown());
+    const upResult = runProjection(s.makeUp());
+    return {
+      assumption: s.assumption,
+      base: s.base,
+      down: s.down,
+      up: s.up,
+      downIrr: downResult.equityIrr,
+      upIrr: upResult.equityIrr,
+    };
+  });
+
+  rows.sort((a, b) => {
+    const impactA = Math.max(Math.abs((a.downIrr ?? 0) - (baseIrr ?? 0)), Math.abs((a.upIrr ?? 0) - (baseIrr ?? 0)));
+    const impactB = Math.max(Math.abs((b.downIrr ?? 0) - (baseIrr ?? 0)), Math.abs((b.upIrr ?? 0) - (baseIrr ?? 0)));
+    return impactB - impactA;
+  });
+
+  return rows;
+}
+
+function formatSensPct(val: number): string {
+  return `${val.toFixed(1)}%`;
+}
+
+function avgCdr(rates: Record<string, number>): number {
+  const vals = Object.values(rates);
+  return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+}
+
+function shiftAllRates(rates: Record<string, number>, delta: number): Record<string, number> {
+  const shifted: Record<string, number> = {};
+  for (const [k, v] of Object.entries(rates)) {
+    shifted[k] = Math.max(0, v + delta);
+  }
+  return shifted;
+}

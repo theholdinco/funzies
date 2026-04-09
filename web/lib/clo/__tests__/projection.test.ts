@@ -4,6 +4,7 @@ import {
   runProjection,
   calculateIrr,
   addQuarters,
+  computeSensitivity,
   ProjectionInputs,
   LoanInput,
 } from "../projection";
@@ -499,5 +500,47 @@ describe("recovery pipeline at maturity", () => {
     }));
     const lastPeriod = result.periods[result.periods.length - 1];
     expect(lastPeriod.recoveries).toBeGreaterThan(0);
+  });
+});
+
+describe("computeSensitivity", () => {
+  it("returns 5 rows sorted by absolute IRR impact", () => {
+    const inputs = makeInputs();
+    const baseResult = runProjection(inputs);
+    const baseIrr = baseResult.equityIrr!;
+    const rows = computeSensitivity(inputs, baseIrr);
+
+    expect(rows.length).toBe(5);
+    const impacts = rows.map((r) =>
+      Math.max(
+        Math.abs((r.downIrr ?? baseIrr) - baseIrr),
+        Math.abs((r.upIrr ?? baseIrr) - baseIrr)
+      )
+    );
+    for (let i = 1; i < impacts.length; i++) {
+      expect(impacts[i]).toBeLessThanOrEqual(impacts[i - 1]);
+    }
+  });
+
+  it("perturbs only one input per scenario", () => {
+    const inputs = makeInputs({ cprPct: 15, recoveryPct: 60 });
+    const baseResult = runProjection(inputs);
+    const rows = computeSensitivity(inputs, baseResult.equityIrr!);
+
+    const cprRow = rows.find((r) => r.assumption === "CPR");
+    expect(cprRow).toBeDefined();
+    expect(cprRow!.base).toBe("15.0%");
+    expect(cprRow!.down).toBe("10.0%");
+    expect(cprRow!.up).toBe("20.0%");
+  });
+
+  it("handles null base IRR gracefully", () => {
+    const inputs = makeInputs();
+    const rows = computeSensitivity(inputs, null);
+    expect(rows.length).toBe(5);
+    for (const row of rows) {
+      expect(row.downIrr).toBeNull();
+      expect(row.upIrr).toBeNull();
+    }
   });
 });
