@@ -135,10 +135,14 @@ function buildTranchesFromConstraints(constraints: ExtractedConstraints) {
     }
   }
 
+  const classXAmort = constraints.dealSizing?.classXAmortisation;
+  const classXAmortPerQuarter = classXAmort ? parseAmount(classXAmort) : null;
+
   return Array.from(byClass.values()).map((e, idx) => {
     const isSubordinated = e.isSubordinated ?? e.class.toLowerCase().includes("sub");
     const isFloating = e.rateType?.toLowerCase().includes("float") ??
       (e.spread?.toLowerCase().includes("euribor") || e.spread?.toLowerCase().includes("sofr") || false);
+    const isClassX = /^(class\s+)?x$/i.test(e.class.trim());
     return {
       className: e.class,
       currentBalance: parseAmount(e.principalAmount),
@@ -147,6 +151,8 @@ function buildTranchesFromConstraints(constraints: ExtractedConstraints) {
       isFloating,
       isIncomeNote: isSubordinated,
       isDeferrable: e.deferrable ?? false,
+      isAmortising: isClassX,
+      amortisationPerPeriod: isClassX ? classXAmortPerQuarter : null,
     };
   });
 }
@@ -213,10 +219,13 @@ export default function ProjectionModel({
   const trancheInputs = useMemo(() => {
     if (tranches.length > 0) {
       const snapshotByTrancheId = new Map(trancheSnapshots.map((s) => [s.trancheId, s]));
+      const classXAmort = constraints.dealSizing?.classXAmortisation;
+      const classXAmortPerQuarter = classXAmort ? parseAmount(classXAmort) : null;
       return [...tranches]
         .sort((a, b) => (a.seniorityRank ?? 99) - (b.seniorityRank ?? 99))
         .map((t) => {
           const snap = snapshotByTrancheId.get(t.id);
+          const isClassX = /^(class\s+)?x$/i.test(t.className.trim());
           return {
             className: t.className,
             currentBalance: snap?.currentBalance ?? t.originalBalance ?? 0,
@@ -225,6 +234,8 @@ export default function ProjectionModel({
             isFloating: t.isFloating ?? true,
             isIncomeNote: t.isIncomeNote ?? t.isSubordinate ?? false,
             isDeferrable: t.isDeferrable ?? false,
+            isAmortising: isClassX,
+            amortisationPerPeriod: isClassX ? classXAmortPerQuarter : null,
           };
         });
     }

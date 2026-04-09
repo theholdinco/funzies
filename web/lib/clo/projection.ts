@@ -22,6 +22,8 @@ export interface ProjectionInputs {
     isFloating: boolean;
     isIncomeNote: boolean;
     isDeferrable: boolean;
+    isAmortising?: boolean; // Class X: principal paid from interest waterfall on fixed schedule
+    amortisationPerPeriod?: number | null; // fixed amount per quarter (null = pay full remaining balance)
   }[];
   ocTriggers: { className: string; triggerLevel: number; rank: number }[];
   icTriggers: { className: string; triggerLevel: number; rank: number }[];
@@ -177,9 +179,16 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
   const deferredBalances: Record<string, number> = {};
   const sortedTranches = [...tranches].sort((a, b) => a.seniorityRank - b.seniorityRank);
   const debtTranches = sortedTranches.filter((t) => !t.isIncomeNote);
+  // For amortising tranches without an explicit schedule, estimate even amortisation
+  // over 5 payment dates (standard Class X pattern).
+  const DEFAULT_AMORT_PERIODS = 5;
+  const resolvedAmortPerPeriod: Record<string, number> = {};
   for (const t of sortedTranches) {
     trancheBalances[t.className] = t.currentBalance;
     deferredBalances[t.className] = 0;
+    if (t.isAmortising) {
+      resolvedAmortPerPeriod[t.className] = t.amortisationPerPeriod ?? (t.currentBalance / DEFAULT_AMORT_PERIODS);
+    }
   }
 
   const ocTriggersByClass = ocTriggers;
@@ -370,9 +379,10 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
 
     // First pass: pay down from principal proceeds only
     // Deferred interest on a tranche is paid before its principal.
+    // Amortising tranches (Class X) are SKIPPED here — they pay down from interest proceeds.
     let remainingPrelim = prelimPrincipal;
     for (const t of sortedTranches) {
-      if (t.isIncomeNote) continue;
+      if (t.isIncomeNote || t.isAmortising) continue;
       // Pay off deferred interest first, then principal
       const deferredPay = Math.min(deferredBalances[t.className], remainingPrelim);
       deferredBalances[t.className] -= deferredPay;
@@ -407,8 +417,12 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
     const ocResults: PeriodResult["ocTests"] = [];
     const icResults: PeriodResult["icTests"] = [];
 
+    // Amortising tranches (Class X) are excluded from OC/IC denominators per PPM definitions.
+    // Par Value Ratio denominators only reference the rated notes (A through F), not Class X.
+    const ocEligibleTranches = debtTranches.filter((t) => !t.isAmortising);
+
     for (const oc of ocTriggersByClass) {
-      const debtAtAndAbove = debtTranches
+      const debtAtAndAbove = ocEligibleTranches
         .filter((t) => t.seniorityRank <= oc.rank)
         .reduce((s, t) => s + trancheBalances[t.className] + deferredBalances[t.className], 0);
       const actual = debtAtAndAbove > 0 ? (ocNumerator / debtAtAndAbove) * 100 : 999;
@@ -417,7 +431,7 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
     }
 
     for (const ic of icTriggersByClass) {
-      const interestDueAtAndAbove = debtTranches
+      const interestDueAtAndAbove = ocEligibleTranches
         .filter((t) => t.seniorityRank <= ic.rank)
         .reduce((s, t) => s + bopTrancheBalances[t.className] * trancheCouponRate(t, baseRatePct) / 4, 0);
       const actual = interestDueAtAndAbove > 0 ? (interestAfterFees / interestDueAtAndAbove) * 100 : 999;
@@ -438,15 +452,64 @@ export function runProjection(inputs: ProjectionInputs): ProjectionResult {
 
     // ── 10. Interest waterfall (OC/IC-gated) ─────────────────────
     // Interest DUE uses BOP balances (accrued before paydown).
+    // Simplification: Class X interest is paid sequentially before Class A interest
+    // rather than strictly pro rata (PPM Step G). The amounts are so asymmetric
+    // (~€10K vs ~€2.4M) that this only matters in extreme distress scenarios.
     let availableInterest = interestCollected;
     const trancheInterest: PeriodResult["trancheInterest"] = [];
 
     availableInterest -= Math.min(seniorFeeAmount, availableInterest);
 
+    // Step G (PPM): Class X amort + Class A interest are paid pro rata / pari passu.
+    // Class X amort starts on the second payment date (q >= 2) per PPM definition.
+    // Compute Class X amort demand alongside the most senior non-amortising tranche
+    // interest so they share proportionally in a shortfall scenario.
+    const amortDemand: Record<string, number> = {};
+    for (const t of debtTranches) {
+      if (!t.isAmortising || trancheBalances[t.className] <= 0.01) continue;
+      if (q < 2) continue; // Class X amort starts on second payment date
+      const scheduleAmt = resolvedAmortPerPeriod[t.className] ?? trancheBalances[t.className];
+      amortDemand[t.className] = Math.min(scheduleAmt, trancheBalances[t.className]);
+    }
+
+    // Find the most senior non-amortising tranche rank (typically Class A)
+    const seniorNonAmortRank = debtTranches.find((t) => !t.isAmortising)?.seniorityRank;
+
     let diverted = false;
     for (const t of debtTranches) {
       const rate = trancheCouponRate(t, baseRatePct);
       const due = bopTrancheBalances[t.className] * rate / 4;
+
+      // Step G (PPM): Class X interest, Class X amort, and Class A interest are
+      // paid pro rata and pari passu. When we reach Class A's rank, pay all three
+      // components proportionally if there's a shortfall.
+      if (!diverted && seniorNonAmortRank != null && t.seniorityRank === seniorNonAmortRank) {
+        const totalAmortDue = Object.values(amortDemand).reduce((s, v) => s + v, 0);
+        // Class X interest was already paid above (earlier iteration). Here we handle
+        // Class X amort + Class A interest as the remaining pari passu components.
+        const totalStepGDue = totalAmortDue + due;
+        if (totalStepGDue > 0 && totalStepGDue > availableInterest) {
+          // Pro rata shortfall — split available funds between amort and Class A interest
+          const ratio = availableInterest / totalStepGDue;
+          for (const [cls, amt] of Object.entries(amortDemand)) {
+            const amortPay = amt * ratio;
+            trancheBalances[cls] -= amortPay;
+            principalPaid[cls] += amortPay;
+          }
+          const interestPay = due * ratio;
+          availableInterest = 0;
+          trancheInterest.push({ className: t.className, due, paid: interestPay });
+          continue; // skip the normal interest payment below
+        } else {
+          // Enough to pay both in full
+          for (const [cls, amt] of Object.entries(amortDemand)) {
+            trancheBalances[cls] -= amt;
+            availableInterest -= amt;
+            principalPaid[cls] += amt;
+          }
+          // Class A interest falls through to normal payment below
+        }
+      }
 
       if (diverted) {
         trancheInterest.push({ className: t.className, due, paid: 0 });

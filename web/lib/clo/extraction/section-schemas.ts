@@ -350,6 +350,7 @@ export const ppmCapitalStructureSchema = z.object({
     totalSubordinatedNotes: z.string().optional(),
     totalDealSize: z.string().optional(),
     equityPctOfDeal: z.string().optional(),
+    classXAmortisation: z.string().optional(),
   }).passthrough().optional(),
 }).passthrough();
 
