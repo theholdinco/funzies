@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   InlineText,
   InlineNumber,
@@ -26,7 +26,12 @@ import type {
   RedemptionProvision,
   EventOfDefault,
   CMDetails,
+  CloTranche,
+  CloTrancheSnapshot,
+  CloHolding,
 } from "@/lib/clo/types";
+import { resolveWaterfallInputs } from "@/lib/clo/resolver";
+import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -55,6 +60,10 @@ interface ContextEditorProps {
     complianceTests: CloComplianceTest[];
     concentrations: CloConcentration[];
   } | null;
+  tranches?: CloTranche[];
+  trancheSnapshots?: CloTrancheSnapshot[];
+  holdings?: CloHolding[];
+  dealDates?: { maturity?: string | null; reinvestmentPeriodEnd?: string | null };
 }
 
 // ---------------------------------------------------------------------------
@@ -232,10 +241,30 @@ export default function ContextEditor({
   constraints: initialConstraints,
   fundProfile: initialProfile,
   complianceData: initialCompliance,
+  tranches,
+  trancheSnapshots,
+  holdings,
+  dealDates,
 }: ContextEditorProps) {
   const [constraints, setConstraints] = useState<ExtractedConstraints>(initialConstraints);
   const [fundProfile, setFundProfile] = useState(initialProfile);
   const [complianceData, setComplianceData] = useState(initialCompliance);
+
+  const [resolved, setResolved] = useState<ResolvedDealData | null>(null);
+  const [resolutionWarnings, setResolutionWarnings] = useState<ResolutionWarning[]>([]);
+
+  useEffect(() => {
+    const { resolved: r, warnings: w } = resolveWaterfallInputs(
+      constraints,
+      complianceData ? { poolSummary: complianceData.poolSummary, complianceTests: complianceData.complianceTests, concentrations: complianceData.concentrations } : null,
+      tranches ?? [],
+      trancheSnapshots ?? [],
+      holdings ?? [],
+      dealDates,
+    );
+    setResolved(r);
+    setResolutionWarnings(w);
+  }, [constraints, complianceData, tranches, trancheSnapshots, holdings, dealDates]);
 
   const [constraintsDirty, setConstraintsDirty] = useState(false);
   const [profileDirty, setProfileDirty] = useState(false);
@@ -353,11 +382,11 @@ export default function ContextEditor({
     updateConstraint("collateralQualityTests", ((constraints.collateralQualityTests || []) as CollateralQualityTest[]).filter((_, i) => i !== index));
   }
 
-  function updateCapStructRow(index: number, field: string, value: string) {
+  function updateCapStructRow(index: number, field: string, value: string | number) {
     const rows = [...((constraints.capitalStructure || []) as CapitalStructureEntry[])];
     if (field === "ratingFitch" || field === "ratingSp") {
       const ratingKey = field === "ratingFitch" ? "fitch" : "sp";
-      rows[index] = { ...rows[index], rating: { ...rows[index].rating, [ratingKey]: value } };
+      rows[index] = { ...rows[index], rating: { ...rows[index].rating, [ratingKey]: value as string } };
     } else {
       rows[index] = { ...rows[index], [field]: value } as CapitalStructureEntry;
     }
@@ -609,7 +638,9 @@ export default function ContextEditor({
   const keyPartyRows = asArray<KeyParty>(constraints.keyParties);
 
   function exportContext() {
-    const data = { constraints, fundProfile, complianceData };
+    const data = resolved
+      ? { resolved, warnings: resolutionWarnings, raw: { constraints, fundProfile, complianceData } }
+      : { constraints, fundProfile, complianceData };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -652,6 +683,32 @@ export default function ContextEditor({
           />
         </label>
       </div>
+
+      {resolutionWarnings.length > 0 && (
+        <div style={{
+          marginBottom: "1rem",
+          padding: "0.75rem 1rem",
+          border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--color-surface)",
+        }}>
+          <h3 style={{ margin: "0 0 0.5rem", fontSize: "0.85rem", fontWeight: 600 }}>
+            Resolution Warnings ({resolutionWarnings.length})
+          </h3>
+          {resolutionWarnings.map((w, i) => (
+            <div key={i} style={{
+              fontSize: "0.8rem",
+              padding: "0.25rem 0",
+              color: w.severity === "error" ? "var(--color-error, #c00)"
+                   : w.severity === "warn" ? "var(--color-warning, #a60)"
+                   : "var(--color-text-muted)",
+            }}>
+              <strong>{w.field}:</strong> {w.message}
+              {w.resolvedFrom && <span style={{ opacity: 0.7 }}> ({w.resolvedFrom})</span>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ================================================================= */}
       {/* GROUP 1: Compliance & Tests                                       */}
@@ -834,7 +891,35 @@ export default function ContextEditor({
                   <td style={tdStyle}><InlineText value={row.class} onChange={(v) => updateCapStructRow(i, "class", v)} /></td>
                   <td style={tdStyle}><InlineText value={row.principalAmount} onChange={(v) => updateCapStructRow(i, "principalAmount", v)} /></td>
                   <td style={tdStyle}><InlineText value={row.rateType || ""} onChange={(v) => updateCapStructRow(i, "rateType", v)} /></td>
-                  <td style={tdStyle}><InlineText value={row.spread} onChange={(v) => updateCapStructRow(i, "spread", v)} /></td>
+                  <td style={tdStyle}>
+                    {(() => {
+                      const normCls = (s: string) => s.replace(/^class\s+/i, "").replace(/\s+notes?$/i, "").trim().toLowerCase();
+                      const resolvedTranche = resolved?.tranches.find(t => normCls(t.className) === normCls(row.class));
+                      if (resolvedTranche && !resolvedTranche.isIncomeNote) {
+                        return (
+                          <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <InlineNumber
+                              value={resolvedTranche.spreadBps}
+                              onChange={(v) => {
+                                updateCapStructRow(i, "spreadBps", v ?? 0);
+                                updateCapStructRow(i, "spread", v != null ? `${v}bps` : "");
+                              }}
+                            />
+                            <span style={{
+                              fontSize: "0.65rem",
+                              padding: "0.1rem 0.3rem",
+                              borderRadius: "3px",
+                              background: resolvedTranche.source === "ppm" ? "#e8f0fe" : resolvedTranche.source === "snapshot" ? "#e6f4ea" : "#fef7e0",
+                              color: "#555",
+                            }}>
+                              {resolvedTranche.source}
+                            </span>
+                          </span>
+                        );
+                      }
+                      return <span style={{ color: "var(--color-text-muted)" }}>&mdash;</span>;
+                    })()}
+                  </td>
                   <td style={tdStyle}><InlineText value={row.rating?.fitch || ""} onChange={(v) => updateCapStructRow(i, "ratingFitch", v)} /></td>
                   <td style={tdStyle}><InlineText value={row.rating?.sp || ""} onChange={(v) => updateCapStructRow(i, "ratingSp", v)} /></td>
                   <td style={tdStyle}><button type="button" onClick={() => removeCapStructRow(i)} style={removeBtnStyle} title="Remove">&times;</button></td>
