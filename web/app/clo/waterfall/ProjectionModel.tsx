@@ -23,6 +23,8 @@ import {
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
 import { DEFAULT_RATES_BY_RATING, RATING_BUCKETS, type RatingBucket } from "@/lib/clo/rating-mapping";
 import SuggestAssumptions from "./SuggestAssumptions";
+import { useMonteCarlo } from "@/lib/clo/useMonteCarlo";
+import MonteCarloChart from "./MonteCarloChart";
 
 interface Props {
   maturityDate: string | null;
@@ -322,6 +324,8 @@ export default function ProjectionModel({
     [inputs, result]
   );
 
+  const mc = useMonteCarlo(validationErrors.length === 0 ? inputs : null);
+
   const handleApplyAssumptions = (assumptions: {
     cdrPct: number;
     cprPct: number;
@@ -591,6 +595,23 @@ export default function ProjectionModel({
             {showTransparency && (
               <div style={{ padding: "0 0.8rem 0.8rem" }}>
                 <SensitivityTable rows={sensitivity} baseIrr={result.equityIrr} />
+                {/* Monte Carlo Analysis */}
+                <div style={{
+                  fontSize: "0.68rem",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  color: "var(--color-text-muted)",
+                  marginBottom: "0.5rem",
+                  marginTop: "1rem",
+                }}>
+                  Monte Carlo Analysis (10,000 runs)
+                </div>
+                <MonteCarloChart
+                  result={mc.result}
+                  running={mc.running}
+                  progress={mc.progress}
+                />
                 {resolved && <ModelInputsPanel resolved={resolved} inputs={inputs} />}
 
                 {/* Cash Flow Table with expandable period traces */}
