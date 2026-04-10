@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import type { ResolvedDealData, ResolvedLoan } from "@/lib/clo/resolver-types";
-import type { CloHolding, BuyListItem } from "@/lib/clo/types";
+import type { BuyListItem, CloHolding } from "@/lib/clo/types";
 import type { UserAssumptions } from "@/lib/clo/build-projection-inputs";
 import { applySwitch } from "@/lib/clo/switch-simulator";
 import { runProjection, type ProjectionResult } from "@/lib/clo/projection";
@@ -47,15 +47,17 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions }
     if (sellLoan) setBuyParAmount(sellLoan.parBalance);
   }, [sellLoan]);
 
+  // Sync buyMaturity when deal changes
+  React.useEffect(() => {
+    setBuyMaturity(resolved.dates.maturity);
+  }, [resolved.dates.maturity]);
+
   const sellOptions = useMemo(() => {
     return resolved.loans.map((loan, idx) => {
-      const holding = holdings.find(
-        (h) => h.spreadBps === loan.spreadBps && Math.abs((h.parBalance ?? 0) - loan.parBalance) < 1
-      );
-      const name = holding?.obligorName ?? `Loan ${idx + 1}`;
+      const name = loan.obligorName ?? `Loan ${idx + 1}`;
       return { idx, name, loan };
     });
-  }, [resolved.loans, holdings]);
+  }, [resolved.loans]);
 
   const handleBuyListSelect = (item: BuyListItem) => {
     if (item.spreadBps) setBuySpreadBps(item.spreadBps);
@@ -63,7 +65,7 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions }
       setBuyRating(mapToRatingBucket(item.moodysRating ?? null, item.spRating ?? null, null, null));
     }
     if (item.maturityDate) setBuyMaturity(item.maturityDate);
-    if (item.facilitySize) setBuyParAmount(item.facilitySize);
+    // Don't pre-fill par from facilitySize — it's the full syndicated facility, not the CLO allocation
   };
 
   const buyLoan: ResolvedLoan = useMemo(() => ({

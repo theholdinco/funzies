@@ -88,11 +88,11 @@ export default function ProjectionModel({
   const [cccMarketValuePct, setCccMarketValuePct] = useState<number>(CLO_DEFAULTS.cccMarketValuePct);
   // Fee assumptions — pre-filled from resolved PPM data if available, otherwise defaults (zero).
   const initFees = resolved?.fees;
-  const [seniorFeePct, setSeniorFeePct] = useState<number>(initFees?.seniorFeePct || CLO_DEFAULTS.seniorFeePct);
-  const [subFeePct, setSubFeePct] = useState<number>(initFees?.subFeePct || CLO_DEFAULTS.subFeePct);
-  const [trusteeFeeBps, setTrusteeFeeBps] = useState<number>(initFees?.trusteeFeeBps || CLO_DEFAULTS.trusteeFeeBps);
+  const [seniorFeePct, setSeniorFeePct] = useState<number>(initFees?.seniorFeePct ?? CLO_DEFAULTS.seniorFeePct);
+  const [subFeePct, setSubFeePct] = useState<number>(initFees?.subFeePct ?? CLO_DEFAULTS.subFeePct);
+  const [trusteeFeeBps, setTrusteeFeeBps] = useState<number>(initFees?.trusteeFeeBps ?? CLO_DEFAULTS.trusteeFeeBps);
   const [hedgeCostBps, setHedgeCostBps] = useState<number>(CLO_DEFAULTS.hedgeCostBps);
-  const [incentiveFeePct, setIncentiveFeePct] = useState<number>(initFees?.incentiveFeePct || CLO_DEFAULTS.incentiveFeePct);
+  const [incentiveFeePct, setIncentiveFeePct] = useState<number>(initFees?.incentiveFeePct ?? CLO_DEFAULTS.incentiveFeePct);
   const [incentiveFeeHurdleIrr, setIncentiveFeeHurdleIrr] = useState<number>(
     initFees?.incentiveFeeHurdleIrr ? initFees.incentiveFeeHurdleIrr * 100 : CLO_DEFAULTS.incentiveFeeHurdleIrr
   );
@@ -109,11 +109,11 @@ export default function ProjectionModel({
     if (!resolved || feesInitialized.current) return;
     feesInitialized.current = true;
     const f = resolved.fees;
-    if (f.seniorFeePct > 0) setSeniorFeePct(f.seniorFeePct);
-    if (f.subFeePct > 0) setSubFeePct(f.subFeePct);
-    if (f.trusteeFeeBps > 0) setTrusteeFeeBps(f.trusteeFeeBps);
-    if (f.incentiveFeePct > 0) setIncentiveFeePct(f.incentiveFeePct);
-    if (f.incentiveFeeHurdleIrr > 0) setIncentiveFeeHurdleIrr(f.incentiveFeeHurdleIrr * 100); // stored as decimal, display as %
+    if (f.seniorFeePct != null) setSeniorFeePct(f.seniorFeePct);
+    if (f.subFeePct != null) setSubFeePct(f.subFeePct);
+    if (f.trusteeFeeBps != null) setTrusteeFeeBps(f.trusteeFeeBps);
+    if (f.incentiveFeePct != null) setIncentiveFeePct(f.incentiveFeePct);
+    if (f.incentiveFeeHurdleIrr != null) setIncentiveFeeHurdleIrr(f.incentiveFeeHurdleIrr * 100); // stored as decimal, display as %
     if (resolved.dates.nonCallPeriodEnd) setCallDate(null);
   }, [resolved]);
 
