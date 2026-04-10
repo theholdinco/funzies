@@ -11,6 +11,7 @@ export function FeeAssumptions({
   incentiveFeePct, onIncentiveFeeChange,
   incentiveFeeHurdleIrr, onHurdleChange,
   hasResolvedFees,
+  callDate, onCallDateChange,
 }: {
   seniorFeePct: number; onSeniorFeeChange: (v: number) => void;
   subFeePct: number; onSubFeeChange: (v: number) => void;
@@ -19,6 +20,7 @@ export function FeeAssumptions({
   incentiveFeePct: number; onIncentiveFeeChange: (v: number) => void;
   incentiveFeeHurdleIrr: number; onHurdleChange: (v: number) => void;
   hasResolvedFees: boolean;
+  callDate: string | null; onCallDateChange: (v: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -50,6 +52,33 @@ export function FeeAssumptions({
             <SliderInput label="Hedge Cost" value={hedgeCostBps} onChange={onHedgeCostChange} min={0} max={50} step={1} suffix=" bps p.a. on par" hint="Approximation of FX hedge costs, paid from interest before tranche payments" />
             <SliderInput label="Incentive Fee" value={incentiveFeePct} onChange={onIncentiveFeeChange} min={0} max={30} step={1} suffix="% of residual" hint="Applied each quarter to remaining interest and principal after all other payments" />
             <SliderInput label="Incentive Hurdle" value={incentiveFeeHurdleIrr} onChange={onHurdleChange} min={0} max={20} step={0.5} suffix="% IRR" hint="Incentive fee only kicks in when cumulative equity return exceeds this annualized rate" />
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.25rem" }}>
+                <label style={{ fontSize: "0.72rem", color: "var(--color-text-muted)", fontWeight: 500 }}>Call Date</label>
+                <span style={{ fontSize: "0.82rem", fontWeight: 600, fontFamily: "var(--font-mono)", color: "var(--color-text)" }}>
+                  {callDate ?? "Not set"}
+                </span>
+              </div>
+              <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginBottom: "0.3rem", lineHeight: 1.4, opacity: 0.8 }}>
+                If set, projection ends here with full liquidation. Most CLOs are called at or near the non-call period end date.
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <input
+                  type="date"
+                  value={callDate ?? ""}
+                  onChange={(e) => onCallDateChange(e.target.value || null)}
+                  style={{ fontSize: "0.75rem", fontFamily: "var(--font-mono)", padding: "0.3rem 0.5rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text)" }}
+                />
+                {callDate && (
+                  <button
+                    onClick={() => onCallDateChange(null)}
+                    style={{ fontSize: "0.65rem", padding: "0.2rem 0.5rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text-muted)", cursor: "pointer" }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

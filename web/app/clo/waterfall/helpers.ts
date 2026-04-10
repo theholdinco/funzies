@@ -3,9 +3,9 @@ export function formatPct(val: number): string {
 }
 
 export function formatAmount(val: number): string {
-  if (Math.abs(val) >= 1e6) return `$${(val / 1e6).toFixed(2)}M`;
-  if (Math.abs(val) >= 1e3) return `$${(val / 1e3).toFixed(1)}K`;
-  return `$${val.toFixed(0)}`;
+  if (Math.abs(val) >= 1e6) return `€${(val / 1e6).toFixed(2)}M`;
+  if (Math.abs(val) >= 1e3) return `€${(val / 1e3).toFixed(1)}K`;
+  return `€${val.toFixed(0)}`;
 }
 
 export function formatDate(isoDate: string): string {

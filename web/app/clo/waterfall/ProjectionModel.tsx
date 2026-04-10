@@ -89,6 +89,7 @@ export default function ProjectionModel({
   const [incentiveFeePct, setIncentiveFeePct] = useState<number>(CLO_DEFAULTS.incentiveFeePct);
   const [incentiveFeeHurdleIrr, setIncentiveFeeHurdleIrr] = useState<number>(CLO_DEFAULTS.incentiveFeeHurdleIrr);
   const [postRpReinvestmentPct, setPostRpReinvestmentPct] = useState<number>(CLO_DEFAULTS.postRpReinvestmentPct);
+  const [callDate, setCallDate] = useState<string | null>(null);
   const [showTransparency, setShowTransparency] = useState(false);
   const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null);
 
@@ -101,6 +102,7 @@ export default function ProjectionModel({
     if (f.trusteeFeeBps > 0) setTrusteeFeeBps(f.trusteeFeeBps);
     if (f.incentiveFeePct > 0) setIncentiveFeePct(f.incentiveFeePct);
     if (f.incentiveFeeHurdleIrr > 0) setIncentiveFeeHurdleIrr(f.incentiveFeeHurdleIrr * 100); // stored as decimal, display as %
+    if (resolved.dates.nonCallPeriodEnd) setCallDate(null);
   }, [resolved]);
 
   const loanInputs: LoanInput[] = resolved?.loans ?? [];
@@ -176,7 +178,7 @@ export default function ProjectionModel({
         deferredInterestCompounds: constraints.interestMechanics?.deferredInterestCompounds ?? true,
         postRpReinvestmentPct,
         hedgeCostBps,
-        callDate: null,
+        callDate,
         seniorFeePct,
         subFeePct,
         trusteeFeeBps,
@@ -189,6 +191,7 @@ export default function ProjectionModel({
       reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating, cccBucketLimitPct, cccMarketValuePct,
       constraints.interestMechanics?.deferredInterestCompounds,
       seniorFeePct, subFeePct, trusteeFeeBps, hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr, postRpReinvestmentPct,
+      callDate,
     ]
   );
 
@@ -198,12 +201,15 @@ export default function ProjectionModel({
     [inputs, validationErrors]
   );
 
+  const deferredInputs = React.useDeferredValue(inputs);
+  const deferredResult = React.useDeferredValue(result);
+
   const sensitivity: SensitivityRow[] = useMemo(
     () => {
-      if (!result || result.equityIrr === null) return [];
-      return computeSensitivity(inputs, result.equityIrr);
+      if (!deferredResult || deferredResult.equityIrr === null) return [];
+      return computeSensitivity(deferredInputs, deferredResult.equityIrr);
     },
-    [inputs, result]
+    [deferredInputs, deferredResult]
   );
 
   const mc = useMonteCarlo(validationErrors.length === 0 ? inputs : null);
@@ -320,11 +326,11 @@ export default function ProjectionModel({
             gap: "1.25rem",
           }}
         >
-          <SliderInput label="CPR (Annual Prepay Rate)" value={cprPct} onChange={setCprPct} min={0} max={30} step={0.5} suffix="%" />
-          <SliderInput label="Recovery Rate" value={recoveryPct} onChange={setRecoveryPct} min={0} max={80} step={1} suffix="%" />
-          <SliderInput label="Recovery Lag" value={recoveryLagMonths} onChange={setRecoveryLagMonths} min={0} max={24} step={1} suffix=" mo" />
-          <SliderInput label="Reinvestment Spread" value={reinvestmentSpreadBps} onChange={setReinvestmentSpreadBps} min={0} max={500} step={10} suffix=" bps" />
-          <SliderInput label="Reinvestment Tenor" value={reinvestmentTenorYears} onChange={setReinvestmentTenorYears} min={1} max={10} step={1} suffix=" yr" />
+          <SliderInput label="CPR (Annual Prepay Rate)" value={cprPct} onChange={setCprPct} min={0} max={30} step={0.5} suffix="%" hint="Constant annual prepayment rate. Higher CPR means faster par decline and earlier principal return." />
+          <SliderInput label="Recovery Rate" value={recoveryPct} onChange={setRecoveryPct} min={0} max={80} step={1} suffix="%" hint="Percentage of defaulted par recovered as cash after the recovery lag period." />
+          <SliderInput label="Recovery Lag" value={recoveryLagMonths} onChange={setRecoveryLagMonths} min={0} max={24} step={1} suffix=" mo" hint="Months between a loan default and when recovery cash is received." />
+          <SliderInput label="Reinvestment Spread" value={reinvestmentSpreadBps} onChange={setReinvestmentSpreadBps} min={0} max={500} step={10} suffix=" bps" hint="Spread (over base rate) earned on newly purchased loans during the reinvestment period." />
+          <SliderInput label="Reinvestment Tenor" value={reinvestmentTenorYears} onChange={setReinvestmentTenorYears} min={1} max={10} step={1} suffix=" yr" hint="Average maturity of newly reinvested loans, in years from purchase." />
           <SelectInput
             label="Reinvestment Rating"
             value={reinvestmentRating}
@@ -334,10 +340,13 @@ export default function ProjectionModel({
               ...RATING_BUCKETS.map((b) => ({ value: b, label: b })),
             ]}
           />
-          <SliderInput label="Base Rate (EURIBOR)" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" />
-          <SliderInput label="Post-RP Reinvestment" value={postRpReinvestmentPct} onChange={setPostRpReinvestmentPct} min={0} max={100} step={5} suffix="%" />
-          <SliderInput label="CCC Bucket Limit" value={cccBucketLimitPct} onChange={setCccBucketLimitPct} min={0} max={15} step={0.5} suffix="%" />
-          <SliderInput label="CCC Mkt Value" value={cccMarketValuePct} onChange={setCccMarketValuePct} min={0} max={100} step={5} suffix="%" />
+          <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginTop: "-0.8rem", lineHeight: 1.4, opacity: 0.8 }}>
+            Rating bucket for reinvested loans. &quot;Portfolio Avg&quot; uses the par-weighted modal rating.
+          </div>
+          <SliderInput label="Base Rate (EURIBOR)" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" hint="3-month EURIBOR assumption, held flat for the entire projection. Floored at 0%." />
+          <SliderInput label="Post-RP Reinvestment" value={postRpReinvestmentPct} onChange={setPostRpReinvestmentPct} min={0} max={100} step={5} suffix="%" hint="Percentage of principal proceeds reinvested after the reinvestment period ends. 0% means all proceeds go to tranche paydown." />
+          <SliderInput label="CCC Bucket Limit" value={cccBucketLimitPct} onChange={setCccBucketLimitPct} min={0} max={15} step={0.5} suffix="%" hint="CCC-rated par exceeding this % of total par gets haircut to market value in the OC test numerator." />
+          <SliderInput label="CCC Mkt Value" value={cccMarketValuePct} onChange={setCccMarketValuePct} min={0} max={100} step={5} suffix="%" hint="Market value assumption (as % of par) for CCC excess in the OC haircut calculation." />
         </div>
 
         {/* Fees & Expenses — collapsible, pre-filled from PPM extraction */}
@@ -349,6 +358,7 @@ export default function ProjectionModel({
           incentiveFeePct={incentiveFeePct} onIncentiveFeeChange={setIncentiveFeePct}
           incentiveFeeHurdleIrr={incentiveFeeHurdleIrr} onHurdleChange={setIncentiveFeeHurdleIrr}
           hasResolvedFees={!!resolved && (resolved.fees.seniorFeePct > 0 || resolved.fees.subFeePct > 0)}
+          callDate={callDate} onCallDateChange={setCallDate}
         />
         <div style={{ marginTop: "1rem" }}>
           <DefaultRatePanel
