@@ -201,10 +201,9 @@ export async function compareReportPeriods(
          COALESCE(t1.test_name, t2.test_name) AS test_name,
          t1.cushion_pct AS old_cushion,
          t2.cushion_pct AS new_cushion
-       FROM clo_compliance_tests t1
-       FULL OUTER JOIN clo_compliance_tests t2
-         ON t1.test_name = t2.test_name
-       WHERE t1.report_period_id = $1 AND t2.report_period_id = $2`,
+       FROM (SELECT test_name, cushion_pct FROM clo_compliance_tests WHERE report_period_id = $1) t1
+       FULL OUTER JOIN (SELECT test_name, cushion_pct FROM clo_compliance_tests WHERE report_period_id = $2) t2
+         ON t1.test_name = t2.test_name`,
       [periodId1, periodId2]
     ),
     // Holdings diff (by obligor_name)

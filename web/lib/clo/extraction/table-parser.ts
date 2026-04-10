@@ -85,8 +85,14 @@ export function parseNumber(cell: string | null | undefined): number | null {
   if (!cell) return null;
   const trimmed = cell.trim();
   const isNegative = trimmed.startsWith("(") && trimmed.endsWith(")");
-  const cleaned = trimmed.replace(/[,%\s()]/g, "");
+  let cleaned = trimmed.replace(/[%\s()]/g, "");
   if (cleaned === "" || cleaned === "N/A" || cleaned === "-" || cleaned === "n/a") return null;
+  // Handle European format: dots as thousands separators, comma as decimal (e.g. "1.500.000,00")
+  if (/\d\.\d{3}[.,]/.test(cleaned) || /\d\.\d{3}\.\d{3}/.test(cleaned)) {
+    cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+  } else {
+    cleaned = cleaned.replace(/,/g, "");
+  }
   const num = Number(cleaned);
   if (isNaN(num)) return null;
   return isNegative ? -num : num;
@@ -117,16 +123,17 @@ export function parseDate(cell: string | null | undefined): string | null {
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
 
   // Slash-delimited dates: could be MM/DD/YYYY (US) or DD/MM/YYYY (European).
-  // Disambiguate: if first part > 12, it must be DD (European format).
+  // Disambiguate when possible; default to DD/MM/YYYY (European) since CLO
+  // documents are predominantly from European trustees.
   const slashDate = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (slashDate) {
     const [, a, b, year] = slashDate;
-    if (parseInt(a, 10) > 12) {
-      // Must be DD/MM/YYYY (European) — first part can't be a month
-      return `${year}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+    if (parseInt(b, 10) > 12) {
+      // Second part can't be a month — must be MM/DD/YYYY (US format)
+      return `${year}-${a.padStart(2, "0")}-${b.padStart(2, "0")}`;
     }
-    // Assume MM/DD/YYYY (US format, common in BNY Mellon reports)
-    return `${year}-${a.padStart(2, "0")}-${b.padStart(2, "0")}`;
+    // Default to DD/MM/YYYY (European format, standard for European CLO trustees)
+    return `${year}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
   }
 
   return null;

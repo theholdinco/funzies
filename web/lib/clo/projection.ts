@@ -721,6 +721,16 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       defaultsByRating,
     });
 
+    // Prune exhausted loans to keep iteration cost O(active loans) per period.
+    // Critical for Monte Carlo performance where thousands of runs accumulate dead entries.
+    if (hasLoans) {
+      let write = 0;
+      for (let read = 0; read < loanStates.length; read++) {
+        if (loanStates[read].survivingPar > 0) loanStates[write++] = loanStates[read];
+      }
+      loanStates.length = write;
+    }
+
     // Stop early if all debt paid off and collateral is depleted
     const remainingDebt = debtTranches.reduce((s, t) => s + trancheBalances[t.className] + deferredBalances[t.className], 0);
     if (remainingDebt <= 0.01 && endingPar <= 0.01) break;

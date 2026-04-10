@@ -11,22 +11,33 @@ function normClass(s: string): string {
   return base;
 }
 
+/** Normalize a numeric string handling both US (1,500,000.00) and European (1.500.000,00) formats. */
+function normalizeNumericString(raw: string): string {
+  // European format: dots as thousands separators, comma as decimal (e.g. "1.500.000,00")
+  if (/\d\.\d{3}[.,]/.test(raw) || /\d\.\d{3}\.\d{3}/.test(raw)) {
+    return raw.replace(/\./g, "").replace(",", ".");
+  }
+  // Standard: strip commas (thousands separators), keep dots (decimal)
+  return raw.replace(/,/g, "");
+}
+
 function parseAmount(s: string | undefined | null): number {
   if (!s) return 0;
   // Detect ranges like "100,000,000-200,000,000" or "100,000,000 - 200,000,000"
   // and take the first value (lower bound) instead of concatenating.
   const rangeMatch = s.match(/^[^0-9]*?([\d,._]+)\s*[-–—]\s*([\d,._]+)/);
   if (rangeMatch) {
-    const cleaned = rangeMatch[1].replace(/[^0-9.]/g, "");
+    const cleaned = normalizeNumericString(rangeMatch[1]).replace(/[^0-9.]/g, "");
     return parseFloat(cleaned) || 0;
   }
   // Preserve leading minus sign for negative values.
   const negMatch = s.match(/^[^0-9]*(-)\s*([\d,._]+)/);
   if (negMatch) {
-    const cleaned = negMatch[2].replace(/[^0-9.]/g, "");
+    const cleaned = normalizeNumericString(negMatch[2]).replace(/[^0-9.]/g, "");
     return -(parseFloat(cleaned) || 0);
   }
-  const cleaned = s.replace(/[^0-9.]/g, "");
+  const normalized = normalizeNumericString(s);
+  const cleaned = normalized.replace(/[^0-9.]/g, "");
   return parseFloat(cleaned) || 0;
 }
 
@@ -426,8 +437,19 @@ export function resolveWaterfallInputs(
   let reinvestmentOcTrigger: ResolvedReinvestmentOcTrigger | null = null;
   const reinvOcRaw = constraints.reinvestmentOcTest;
   if (reinvOcRaw?.trigger) {
-    const triggerLevel = parseFloat(reinvOcRaw.trigger);
+    let triggerLevel = parseFloat(reinvOcRaw.trigger);
     if (!isNaN(triggerLevel) && triggerLevel > 0) {
+      // Apply the same ratio→percentage normalization as standard OC triggers:
+      // values < 10 are almost certainly ratios (e.g. 1.05 → 105%).
+      if (triggerLevel < 10) {
+        warnings.push({ field: "reinvestmentOcTrigger", message: `Reinvestment OC trigger ${triggerLevel} looks like a ratio, converting to ${triggerLevel * 100}%`, severity: "warn" });
+        triggerLevel = triggerLevel * 100;
+      } else if (triggerLevel >= 10 && triggerLevel < 90) {
+        warnings.push({ field: "reinvestmentOcTrigger", message: `Reinvestment OC trigger ${triggerLevel}% is implausible (10-90%). Check extraction and set manually.`, severity: "error" });
+      }
+      if (triggerLevel > 200) {
+        warnings.push({ field: "reinvestmentOcTrigger", message: `Reinvestment OC trigger ${triggerLevel}% seems unusually high`, severity: "warn" });
+      }
       // Use the most junior OC test rank (typically Class F)
       const sortedOc = [...ocTriggers].sort((a, b) => b.rank - a.rank);
       reinvestmentOcTrigger = { triggerLevel, rank: sortedOc[0]?.rank ?? 99 };
