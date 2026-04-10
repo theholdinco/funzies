@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { query } from "@/lib/db";
-import Link from "next/link";
 
 async function verifyAnalysisAccess(analysisId: string, userId: string): Promise<boolean> {
   const rows = await query<{ id: string }>(
@@ -34,9 +33,12 @@ export default async function WaterfallPage({
     switch_borrower_name: string | null;
     switch_spread_coupon: string | null;
     switch_rating: string | null;
+    switch_maturity: string | null;
+    switch_facility_size: string | null;
   }>(
     `SELECT analysis_type, borrower_name, spread_coupon, rating,
-            switch_borrower_name, switch_spread_coupon, switch_rating
+            switch_borrower_name, switch_spread_coupon, switch_rating,
+            switch_maturity, switch_facility_size
      FROM clo_analyses WHERE id = $1`,
     [id]
   );
@@ -47,54 +49,17 @@ export default async function WaterfallPage({
 
   const a = analyses[0];
 
-  return (
-    <div style={{ padding: "1.5rem 0" }}>
-      <div
-        style={{
-          border: "1px solid var(--color-border-light)",
-          borderRadius: "var(--radius-sm)",
-          padding: "1.25rem",
-          background: "var(--color-surface)",
-          maxWidth: "36rem",
-        }}
-      >
-        <div style={{ fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--color-text-muted)", marginBottom: "0.75rem" }}>
-          Switch Summary
-        </div>
-        <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1rem", fontSize: "0.85rem" }}>
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: "0.15rem" }}>Sell</div>
-            <div style={{ color: "var(--color-text-muted)" }}>
-              {a.borrower_name ?? "Unknown"} · {a.rating ?? "—"} · {a.spread_coupon ?? "—"}
-            </div>
-          </div>
-          <div style={{ color: "var(--color-text-muted)", alignSelf: "center", fontSize: "1.1rem" }}>→</div>
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: "0.15rem" }}>Buy</div>
-            <div style={{ color: "var(--color-text-muted)" }}>
-              {a.switch_borrower_name ?? "Unknown"} · {a.switch_rating ?? "—"} · {a.switch_spread_coupon ?? "—"}
-            </div>
-          </div>
-        </div>
-        <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginBottom: "1rem", lineHeight: 1.5 }}>
-          For full waterfall impact analysis with adjustable assumptions, use the Switch Simulator on the Waterfall page.
-        </p>
-        <Link
-          href="/clo/waterfall"
-          style={{
-            display: "inline-block",
-            padding: "0.5rem 1rem",
-            fontSize: "0.8rem",
-            fontWeight: 600,
-            background: "var(--color-accent)",
-            color: "#fff",
-            borderRadius: "var(--radius-sm)",
-            textDecoration: "none",
-          }}
-        >
-          Open Switch Simulator →
-        </Link>
-      </div>
-    </div>
-  );
+  // Parse buy spread from "EURIBOR + 325bps" or "325" format
+  const buySpreadMatch = a.switch_spread_coupon?.match(/([\d.]+)/);
+  const buySpread = buySpreadMatch ? buySpreadMatch[1] : "";
+
+  const params2 = new URLSearchParams();
+  params2.set("tab", "switch");
+  if (a.borrower_name) params2.set("sell", a.borrower_name);
+  if (buySpread) params2.set("buySpread", buySpread);
+  if (a.switch_rating) params2.set("buyRating", a.switch_rating);
+  if (a.switch_maturity) params2.set("buyMaturity", a.switch_maturity);
+  if (a.switch_facility_size) params2.set("buyPar", a.switch_facility_size);
+
+  redirect(`/clo/waterfall?${params2.toString()}`);
 }

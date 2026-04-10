@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type {
   CloTranche,
@@ -70,6 +71,20 @@ export default function ProjectionModel({
   resolutionWarnings,
   buyList,
 }: Props) {
+  // Read URL params for pre-filling switch simulator from analysis page
+  const searchParams = useSearchParams();
+  const urlTab = searchParams.get("tab");
+  const switchPrefill = useMemo(() => {
+    if (urlTab !== "switch") return null;
+    return {
+      sellName: searchParams.get("sell"),
+      buySpread: searchParams.get("buySpread"),
+      buyRating: searchParams.get("buyRating"),
+      buyMaturity: searchParams.get("buyMaturity"),
+      buyPar: searchParams.get("buyPar"),
+    };
+  }, [urlTab, searchParams]);
+
   const trancheInputs = resolved?.tranches ?? [];
   const ocTriggers = resolved?.ocTriggers ?? [];
   const icTriggers = resolved?.icTriggers ?? [];
@@ -100,7 +115,7 @@ export default function ProjectionModel({
   const [callDate, setCallDate] = useState<string | null>(null);
   const [showTransparency, setShowTransparency] = useState(false);
   const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"projection" | "switch">("projection");
+  const [activeTab, setActiveTab] = useState<"projection" | "switch">(urlTab === "switch" ? "switch" : "projection");
 
   // Pre-fill fee sliders when resolved data changes (only on first load, not on re-renders
   // that would stomp user edits). Track whether fees have been initialized.
@@ -771,6 +786,7 @@ export default function ProjectionModel({
             holdings={holdings}
             buyList={buyList ?? []}
             userAssumptions={userAssumptions}
+            prefill={switchPrefill}
           />
           {/* Assumptions — identical to Projection tab */}
           <div

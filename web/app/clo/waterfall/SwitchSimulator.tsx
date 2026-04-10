@@ -9,11 +9,20 @@ import { runProjection, type ProjectionResult } from "@/lib/clo/projection";
 import { RATING_BUCKETS, mapToRatingBucket } from "@/lib/clo/rating-mapping";
 import { formatAmount, formatPct } from "./helpers";
 
+interface SwitchPrefill {
+  sellName: string | null;
+  buySpread: string | null;
+  buyRating: string | null;
+  buyMaturity: string | null;
+  buyPar: string | null;
+}
+
 interface Props {
   resolved: ResolvedDealData;
   holdings: CloHolding[];
   buyList: BuyListItem[];
   userAssumptions: UserAssumptions;
+  prefill?: SwitchPrefill | null;
 }
 
 function formatDelta(before: number | null, after: number | null): { text: string; color: string } {
@@ -33,7 +42,7 @@ function formatAmountDelta(before: number, after: number): { text: string; color
   };
 }
 
-export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions }: Props) {
+export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, prefill }: Props) {
   const [sellLoanIndex, setSellLoanIndex] = useState<number | null>(null);
   const [sellParAmount, setSellParAmount] = useState(0);
   const [buySpreadBps, setBuySpreadBps] = useState(350);
@@ -42,6 +51,35 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions }
   const [buyParAmount, setBuyParAmount] = useState(0);
   const [sellPrice, setSellPrice] = useState(100);
   const [buyPrice, setBuyPrice] = useState(100);
+
+  // Pre-fill from URL params (analysis page redirect) — runs once
+  const prefillApplied = React.useRef(false);
+  React.useEffect(() => {
+    if (!prefill || prefillApplied.current) return;
+    prefillApplied.current = true;
+
+    if (prefill.sellName) {
+      const validHoldings = holdings.filter((h) => h.parBalance != null && h.parBalance > 0 && !h.isDefaulted);
+      const matchIdx = validHoldings.findIndex((h) =>
+        h.obligorName?.toLowerCase().includes(prefill.sellName!.toLowerCase())
+      );
+      if (matchIdx >= 0 && resolved.loans[matchIdx]) {
+        setSellLoanIndex(matchIdx);
+        setSellParAmount(resolved.loans[matchIdx].parBalance);
+        setBuyParAmount(resolved.loans[matchIdx].parBalance);
+      }
+    }
+    if (prefill.buySpread) {
+      const spread = parseFloat(prefill.buySpread);
+      if (!isNaN(spread)) setBuySpreadBps(spread >= 10 ? spread : spread * 100);
+    }
+    if (prefill.buyRating) setBuyRating(mapToRatingBucket(null, null, null, prefill.buyRating));
+    if (prefill.buyMaturity) setBuyMaturity(prefill.buyMaturity);
+    if (prefill.buyPar) {
+      const par = parseFloat(prefill.buyPar.replace(/[^0-9.]/g, ""));
+      if (!isNaN(par) && par > 0) setBuyParAmount(par);
+    }
+  }, [prefill, holdings, resolved.loans]);
 
   const sellLoan = sellLoanIndex !== null ? resolved.loans[sellLoanIndex] : null;
 
