@@ -298,6 +298,10 @@ export default function ProjectionModel({
           <SliderInput label="Recovery Lag" value={recoveryLagMonths} onChange={setRecoveryLagMonths} min={0} max={24} step={1} suffix=" mo" hint="Months between a loan default and when recovery cash is received." />
           <SliderInput label="Reinvestment Spread" value={reinvestmentSpreadBps} onChange={setReinvestmentSpreadBps} min={0} max={500} step={10} suffix=" bps" hint="Spread (over base rate) earned on newly purchased loans during the reinvestment period." />
           <SliderInput label="Reinvestment Tenor" value={reinvestmentTenorYears} onChange={setReinvestmentTenorYears} min={1} max={10} step={1} suffix=" yr" hint="Average maturity of newly reinvested loans, in years from purchase." />
+          <SliderInput label="Base Rate (EURIBOR)" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" hint="3-month EURIBOR assumption, held flat for the entire projection. Floored at 0%." />
+          <SliderInput label="Post-RP Reinvestment" value={postRpReinvestmentPct} onChange={setPostRpReinvestmentPct} min={0} max={100} step={5} suffix="%" hint="Percentage of principal proceeds reinvested after the reinvestment period ends. 0% means all proceeds go to tranche paydown." />
+          <SliderInput label="CCC Bucket Limit" value={cccBucketLimitPct} onChange={setCccBucketLimitPct} min={0} max={15} step={0.5} suffix="%" hint="CCC-rated par exceeding this % of total par gets haircut to market value in the OC test numerator." />
+          <SliderInput label="CCC Mkt Value" value={cccMarketValuePct} onChange={setCccMarketValuePct} min={0} max={100} step={5} suffix="%" hint="Market value assumption (as % of par) for CCC excess in the OC haircut calculation." />
           <SelectInput
             label="Reinvestment Rating"
             value={reinvestmentRating}
@@ -310,10 +314,6 @@ export default function ProjectionModel({
           <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginTop: "-0.8rem", lineHeight: 1.4, opacity: 0.8 }}>
             Rating bucket for reinvested loans. &quot;Portfolio Avg&quot; uses the par-weighted modal rating.
           </div>
-          <SliderInput label="Base Rate (EURIBOR)" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" hint="3-month EURIBOR assumption, held flat for the entire projection. Floored at 0%." />
-          <SliderInput label="Post-RP Reinvestment" value={postRpReinvestmentPct} onChange={setPostRpReinvestmentPct} min={0} max={100} step={5} suffix="%" hint="Percentage of principal proceeds reinvested after the reinvestment period ends. 0% means all proceeds go to tranche paydown." />
-          <SliderInput label="CCC Bucket Limit" value={cccBucketLimitPct} onChange={setCccBucketLimitPct} min={0} max={15} step={0.5} suffix="%" hint="CCC-rated par exceeding this % of total par gets haircut to market value in the OC test numerator." />
-          <SliderInput label="CCC Mkt Value" value={cccMarketValuePct} onChange={setCccMarketValuePct} min={0} max={100} step={5} suffix="%" hint="Market value assumption (as % of par) for CCC excess in the OC haircut calculation." />
         </div>
 
         {/* Fees & Expenses — collapsible, pre-filled from PPM extraction */}
