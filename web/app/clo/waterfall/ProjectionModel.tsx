@@ -9,6 +9,7 @@ import type {
   CloComplianceTest,
   CloHolding,
   ExtractedConstraints,
+  BuyListItem,
 } from "@/lib/clo/types";
 import {
   runProjection,
@@ -49,6 +50,7 @@ interface Props {
   dealContext: Record<string, unknown>;
   resolved?: ResolvedDealData;
   resolutionWarnings?: ResolutionWarning[];
+  buyList?: BuyListItem[];
 }
 
 export default function ProjectionModel({
@@ -64,6 +66,7 @@ export default function ProjectionModel({
   dealContext,
   resolved,
   resolutionWarnings,
+  buyList,
 }: Props) {
   const trancheInputs = resolved?.tranches ?? [];
   const ocTriggers = resolved?.ocTriggers ?? [];

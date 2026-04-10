@@ -13,6 +13,7 @@ import {
   getPanelForUser,
   rowToProfile,
 } from "@/lib/clo/access";
+import { getBuyListForUser } from "@/lib/clo/buy-list";
 import type { ExtractedConstraints } from "@/lib/clo/types";
 import { resolveWaterfallInputs } from "@/lib/clo/resolver";
 import WaterfallVisualization from "./WaterfallVisualization";
@@ -48,6 +49,7 @@ export default async function WaterfallPage() {
     ]);
 
   const panel = await getPanelForUser(session.user.id);
+  const buyList = await getBuyListForUser(session.user.id);
 
   // Resolve deal dates — prefer clo_deals, fall back to extractedConstraints
   const dealName =
@@ -130,6 +132,7 @@ export default async function WaterfallPage() {
         dealContext={dealContext}
         resolved={resolved}
         resolutionWarnings={resolutionWarnings}
+        buyList={buyList}
       />
     </div>
   );
