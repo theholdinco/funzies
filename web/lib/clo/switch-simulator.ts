@@ -4,7 +4,8 @@ import { buildFromResolved, type UserAssumptions } from "./build-projection-inpu
 
 export interface SwitchParams {
   sellLoanIndex: number;
-  buyLoan: ResolvedLoan;
+  sellParAmount: number; // how much par to sell (can be less than the full position for partial sales)
+  buyLoan: ResolvedLoan; // the buy loan with its own par amount
   sellPrice: number; // percent of par, e.g. 98
   buyPrice: number; // percent of par, e.g. 101
 }
@@ -22,26 +23,28 @@ export function applySwitch(
   params: SwitchParams,
   assumptions: UserAssumptions,
 ): SwitchResult {
-  const { sellLoanIndex, buyLoan, sellPrice, buyPrice } = params;
+  const { sellLoanIndex, sellParAmount, buyLoan, sellPrice, buyPrice } = params;
   const sellLoan = resolved.loans[sellLoanIndex];
 
   const baseInputs = buildFromResolved(resolved, assumptions);
 
-  // Clone loans, remove sell, add buy
+  // Build switched loan pool
   const switchedLoans = [...resolved.loans];
-  switchedLoans.splice(sellLoanIndex, 1);
+  const actualSellPar = Math.min(sellParAmount, sellLoan.parBalance);
+
+  if (actualSellPar >= sellLoan.parBalance - 0.01) {
+    // Full sale — remove the loan entirely
+    switchedLoans.splice(sellLoanIndex, 1);
+  } else {
+    // Partial sale — reduce the loan's par
+    switchedLoans[sellLoanIndex] = { ...sellLoan, parBalance: sellLoan.parBalance - actualSellPar };
+  }
+
+  // Add buy loan with its specified par amount
   switchedLoans.push(buyLoan);
 
-  // Cash-adjusted par impact: selling at discount means fewer cash proceeds,
-  // buying at premium means the cash buys less par than the notional suggests.
-  // cashProceeds = sellPar * (sellPrice/100); parBought = cashProceeds / (buyPrice/100)
-  const cashProceeds = sellLoan.parBalance * (sellPrice / 100);
-  const parBought = cashProceeds / (buyPrice / 100);
-  const parDelta = parBought - sellLoan.parBalance;
-
-  // Adjust the buy loan's par balance to reflect what the cash actually buys
-  const adjustedBuyLoan: ResolvedLoan = { ...buyLoan, parBalance: parBought };
-  switchedLoans[switchedLoans.length - 1] = adjustedBuyLoan;
+  // Par delta = buy par - sell par (straightforward, prices don't change par)
+  const parDelta = buyLoan.parBalance - actualSellPar;
 
   // Recalculate WAC spread from the updated loan list
   const switchedTotalPar = switchedLoans.reduce((s, l) => s + l.parBalance, 0);
@@ -65,7 +68,7 @@ export function applySwitch(
     baseInputs,
     switchedInputs,
     parDelta,
-    spreadDelta: adjustedBuyLoan.spreadBps - sellLoan.spreadBps,
-    ratingChange: { from: sellLoan.ratingBucket, to: adjustedBuyLoan.ratingBucket },
+    spreadDelta: buyLoan.spreadBps - sellLoan.spreadBps,
+    ratingChange: { from: sellLoan.ratingBucket, to: buyLoan.ratingBucket },
   };
 }

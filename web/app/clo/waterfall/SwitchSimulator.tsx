@@ -35,6 +35,7 @@ function formatAmountDelta(before: number, after: number): { text: string; color
 
 export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions }: Props) {
   const [sellLoanIndex, setSellLoanIndex] = useState<number | null>(null);
+  const [sellParAmount, setSellParAmount] = useState(0);
   const [buySpreadBps, setBuySpreadBps] = useState(350);
   const [buyRating, setBuyRating] = useState("B");
   const [buyMaturity, setBuyMaturity] = useState(resolved.dates.maturity);
@@ -43,9 +44,16 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions }
   const [buyPrice, setBuyPrice] = useState(100);
 
   const sellLoan = sellLoanIndex !== null ? resolved.loans[sellLoanIndex] : null;
-  React.useEffect(() => {
-    if (sellLoan) setBuyParAmount(sellLoan.parBalance);
-  }, [sellLoan]);
+
+  // When sell loan selection changes, default sell amount to full position and buy par to match
+  const handleSellSelect = (idx: number | null) => {
+    setSellLoanIndex(idx);
+    if (idx !== null) {
+      const loan = resolved.loans[idx];
+      setSellParAmount(loan.parBalance);
+      setBuyParAmount(loan.parBalance);
+    }
+  };
 
   // Sync buyMaturity when deal changes
   React.useEffect(() => {
@@ -77,7 +85,7 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions }
 
   const { switchResult, baseResult, switchedResult } = useMemo(() => {
     if (sellLoanIndex === null) return { switchResult: null, baseResult: null, switchedResult: null };
-    const sr = applySwitch(resolved, { sellLoanIndex, buyLoan, sellPrice, buyPrice }, userAssumptions);
+    const sr = applySwitch(resolved, { sellLoanIndex, sellParAmount, buyLoan, sellPrice, buyPrice }, userAssumptions);
     const br = runProjection(sr.baseInputs);
     const swr = runProjection(sr.switchedInputs);
     return { switchResult: sr, baseResult: br, switchedResult: swr };
@@ -99,8 +107,24 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions }
         label="Sell Loan"
         holdings={sellOptions}
         selectedIndex={sellLoanIndex}
-        onSelect={setSellLoanIndex}
+        onSelect={handleSellSelect}
       />
+
+      {/* Sell amount — can be partial */}
+      {sellLoan && (
+        <div style={{ marginBottom: "1.25rem", display: "flex", gap: "1rem", alignItems: "center" }}>
+          <div>
+            <div style={labelStyle}>Sell Amount</div>
+            <input type="number" value={sellParAmount} onChange={(e) => setSellParAmount(parseFloat(e.target.value) || 0)} style={{ ...inputStyle, width: "10rem" }} />
+          </div>
+          <div style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", marginTop: "1.2rem" }}>
+            of {formatAmount(sellLoan.parBalance)} position
+            {sellParAmount < sellLoan.parBalance - 0.01 && (
+              <span style={{ color: "var(--color-warning, #d97706)", marginLeft: "0.5rem" }}>(partial sale)</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Buy loan — from buy list or manual entry */}
       {buyList.length > 0 && (

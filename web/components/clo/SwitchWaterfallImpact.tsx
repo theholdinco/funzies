@@ -83,7 +83,7 @@ export default function SwitchWaterfallImpact({ resolved, sellLoan, buyLoan, ass
     if (sellIndex < 0 || !resolved.loans[sellIndex]) return null;
     return applySwitch(
       resolved,
-      { sellLoanIndex: sellIndex, buyLoan: buyResolvedLoan, sellPrice, buyPrice },
+      { sellLoanIndex: sellIndex, sellParAmount: resolved.loans[sellIndex].parBalance, buyLoan: buyResolvedLoan, sellPrice, buyPrice },
       assumptions ?? DEFAULT_ASSUMPTIONS,
     );
   }, [resolved, sellIndex, buyResolvedLoan, sellPrice, buyPrice]);
