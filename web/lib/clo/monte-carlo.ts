@@ -37,10 +37,13 @@ export function runMonteCarlo(
   const irrs = new Float64Array(runCount);
   const equityDists = new Float64Array(runCount);
 
-  // Determine total quarters for OC tracking
-  // Use a quick deterministic run to get the period count
+  // Determine total quarters for OC tracking.
+  // Use the maximum possible projection length so MC runs with different
+  // default paths don't silently lose OC data for later quarters.
   const calibration = runProjection(inputs);
-  const totalQuarters = calibration.periods.length;
+  const totalQuarters = Math.max(calibration.periods.length, inputs.maturityDate
+    ? Math.ceil((new Date(inputs.maturityDate).getTime() - new Date(inputs.currentDate).getTime()) / (1000 * 60 * 60 * 24 * 91.25))
+    : calibration.periods.length);
   // Track OC failures per quarter per class
   const ocClasses = calibration.periods[0]?.ocTests.map(t => t.className) ?? [];
   const ocFailureCounts = new Uint32Array(totalQuarters); // any class
@@ -52,7 +55,7 @@ export function runMonteCarlo(
   for (let i = 0; i < runCount; i++) {
     const result = runProjection(inputs, bernoulliDraw);
 
-    irrs[i] = result.equityIrr ?? -1;
+    irrs[i] = result.equityIrr ?? -Infinity;
     equityDists[i] = result.totalEquityDistributions;
 
     // Track OC failures per quarter per class
@@ -82,11 +85,11 @@ export function runMonteCarlo(
   const sortedDists = new Float64Array(equityDists);
   sortedDists.sort();
 
-  // Compute mean IRR (excluding nulls represented as -1)
+  // Compute mean IRR (excluding nulls represented as -Infinity)
   let irrSum = 0;
   let irrCount = 0;
   for (let i = 0; i < irrs.length; i++) {
-    if (irrs[i] > -0.9999) {
+    if (isFinite(irrs[i])) {
       irrSum += irrs[i];
       irrCount++;
     }

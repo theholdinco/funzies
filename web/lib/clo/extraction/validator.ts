@@ -274,7 +274,7 @@ export function validateExtraction(
   return {
     checks,
     score: passed,
-    totalChecks: 11,
+    totalChecks: checks.length + skipped,
     checksRun: checks.length,
     checksSkipped: skipped,
   };
@@ -645,7 +645,7 @@ export function validateSectionExtraction(
   return {
     checks,
     score: passed,
-    totalChecks: 11,
+    totalChecks: checks.length + skipped,
     checksRun: checks.length,
     checksSkipped: skipped,
   };

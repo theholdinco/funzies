@@ -1,6 +1,7 @@
 import type { ResolvedDealData } from "./resolver-types";
 import type { ProjectionInputs } from "./projection";
 import { CLO_DEFAULTS } from "./defaults";
+import { DEFAULT_RATES_BY_RATING } from "./rating-mapping";
 
 // Empty resolved data — used when no deal data has been loaded yet.
 // Produces a ProjectionInputs that will fail validation (initialPar = 0)
@@ -43,16 +44,7 @@ export interface UserAssumptions {
 
 export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
   baseRatePct: CLO_DEFAULTS.baseRatePct,
-  defaultRates: {
-    AAA: 0,
-    AA: 0.02,
-    A: 0.06,
-    BBB: 0.18,
-    BB: 1.06,
-    B: 3.41,
-    CCC: 10.28,
-    NR: 2.0,
-  },
+  defaultRates: { ...DEFAULT_RATES_BY_RATING },
   cprPct: CLO_DEFAULTS.cprPct,
   recoveryPct: CLO_DEFAULTS.recoveryPct,
   recoveryLagMonths: CLO_DEFAULTS.recoveryLagMonths,

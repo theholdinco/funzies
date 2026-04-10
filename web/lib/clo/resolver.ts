@@ -13,8 +13,19 @@ function normClass(s: string): string {
 
 function parseAmount(s: string | undefined | null): number {
   if (!s) return 0;
-  // Strip everything except digits, dots, and a leading minus sign.
-  // Hyphens in ranges (e.g. "1,000-2,000") must NOT be preserved.
+  // Detect ranges like "100,000,000-200,000,000" or "100,000,000 - 200,000,000"
+  // and take the first value (lower bound) instead of concatenating.
+  const rangeMatch = s.match(/^[^0-9]*?([\d,._]+)\s*[-–—]\s*([\d,._]+)/);
+  if (rangeMatch) {
+    const cleaned = rangeMatch[1].replace(/[^0-9.]/g, "");
+    return parseFloat(cleaned) || 0;
+  }
+  // Preserve leading minus sign for negative values.
+  const negMatch = s.match(/^[^0-9]*(-)\s*([\d,._]+)/);
+  if (negMatch) {
+    const cleaned = negMatch[2].replace(/[^0-9.]/g, "");
+    return -(parseFloat(cleaned) || 0);
+  }
   const cleaned = s.replace(/[^0-9.]/g, "");
   return parseFloat(cleaned) || 0;
 }
@@ -212,9 +223,14 @@ function resolveTriggers(
 
   const oc: ResolvedTrigger[] = dedupTriggers(ocRaw, warnings).map(t => {
     let triggerLevel = t.triggerLevel;
-    if (triggerLevel > 0 && triggerLevel < 10) {
+    // Values < 2 are almost certainly ratios (e.g. 1.05 → 105%). Values 2–10
+    // are ambiguous but rare for OC triggers — warn but still convert.
+    // Values >= 10 are treated as percentages (e.g. 105.0% stays 105.0%).
+    if (triggerLevel > 0 && triggerLevel < 2) {
       triggerLevel = triggerLevel * 100;
       warnings.push({ field: `ocTrigger.${t.className}`, message: `OC trigger ${t.triggerLevel} looks like a ratio, converting to ${triggerLevel}%`, severity: "warn" });
+    } else if (triggerLevel >= 2 && triggerLevel < 10) {
+      warnings.push({ field: `ocTrigger.${t.className}`, message: `OC trigger ${triggerLevel}% for ${t.className} is unusually low — verify this is not a ratio (expected range: 100-150%)`, severity: "error" });
     }
     if (triggerLevel > 200) {
       warnings.push({ field: `ocTrigger.${t.className}`, message: `OC trigger ${triggerLevel}% for ${t.className} seems unusually high`, severity: "warn" });
@@ -224,9 +240,13 @@ function resolveTriggers(
 
   const ic: ResolvedTrigger[] = dedupTriggers(icRaw, warnings).map(t => {
     let triggerLevel = t.triggerLevel;
-    if (triggerLevel > 0 && triggerLevel < 10) {
+    // IC triggers: values < 2 are ratios (e.g. 1.20 → 120%). IC triggers are
+    // typically 100-200%, so the 2 boundary safely separates ratios from percentages.
+    if (triggerLevel > 0 && triggerLevel < 2) {
       triggerLevel = triggerLevel * 100;
       warnings.push({ field: `icTrigger.${t.className}`, message: `IC trigger ${t.triggerLevel} looks like a ratio, converting to ${triggerLevel}%`, severity: "warn" });
+    } else if (triggerLevel >= 2 && triggerLevel < 10) {
+      warnings.push({ field: `icTrigger.${t.className}`, message: `IC trigger ${triggerLevel}% for ${t.className} is unusually low — verify this is not a ratio (expected range: 100-200%)`, severity: "error" });
     }
     if (triggerLevel > 500) {
       warnings.push({ field: `icTrigger.${t.className}`, message: `IC trigger ${triggerLevel}% for ${t.className} seems unusually high`, severity: "warn" });
@@ -292,7 +312,7 @@ function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarn
         // Standard European CLO equity hurdle is ~12% IRR. Using 0% would mean
         // the incentive fee fires on any positive return, which is too aggressive.
         incentiveFeeHurdleIrr = 0.12;
-        warnings.push({ field: "fees.incentiveFeeHurdleIrr", message: `Incentive fee present (${incentiveFeePct}%) but no hurdle rate found — assuming 12% IRR hurdle`, severity: "warn" });
+        warnings.push({ field: "fees.incentiveFeeHurdleIrr", message: `Incentive fee present (${incentiveFeePct}%) but no hurdle rate found — assuming 12% IRR hurdle. Set manually if different.`, severity: "error" });
       }
     }
   }
@@ -373,7 +393,7 @@ export function resolveWaterfallInputs(
   // --- Dates ---
   const maturity = dealDates?.maturity ?? constraints.keyDates?.maturityDate ?? null;
   if (!maturity) {
-    warnings.push({ field: "dates.maturity", message: "No maturity date found", severity: "error" });
+    warnings.push({ field: "dates.maturity", message: "No maturity date found — using fallback 2037-01-01. Projection timeline will be inaccurate. Set maturity manually.", severity: "error" });
   }
 
   const dates: ResolvedDates = {

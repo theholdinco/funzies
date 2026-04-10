@@ -103,7 +103,7 @@ export function mergeChunkResults(
   for (const result of results) {
     if (!result.data) continue;
     if (Object.keys(merged).length === 0) {
-      merged = result.data;
+      merged = { ...result.data };
     } else {
       for (const [key, val] of Object.entries(result.data)) {
         if (val == null) continue;

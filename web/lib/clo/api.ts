@@ -3,6 +3,7 @@ import { chunkDocuments, MAX_PDF_PAGES } from "./pdf-chunking";
 
 interface AnthropicBlock { type: string; text?: string }
 
+const ANTHROPIC_API_VERSION = "2023-06-01";
 const RETRY_DELAYS = [5000, 15000, 30000]; // 3 retries with backoff
 const FETCH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes — large PDFs need time
 
@@ -94,7 +95,7 @@ export async function callAnthropic(
     method: "POST",
     headers: {
       "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+      "anthropic-version": ANTHROPIC_API_VERSION,
       "content-type": "application/json",
     },
     body: JSON.stringify({
@@ -151,7 +152,7 @@ export async function callAnthropicWithTool(
     method: "POST",
     headers: {
       "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+      "anthropic-version": ANTHROPIC_API_VERSION,
       "content-type": "application/json",
     },
     body: JSON.stringify({

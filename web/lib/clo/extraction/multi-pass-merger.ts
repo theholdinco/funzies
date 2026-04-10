@@ -61,7 +61,7 @@ function preMergeArrayField(
 ): unknown[] {
   const arrays = values.filter((v): v is unknown[] => Array.isArray(v) && v.length > 0);
   if (arrays.length === 0) return [];
-  if (arrays.length === 1) return arrays[0];
+  if (arrays.length === 1) return [...arrays[0]];
 
   if (arrays[0].length > 0 && typeof arrays[0][0] === "string") {
     const seen = new Set<string>();

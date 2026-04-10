@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import type {
   CloTranche,
@@ -86,13 +86,16 @@ export default function ProjectionModel({
   const [baseRatePct, setBaseRatePct] = useState<number>(CLO_DEFAULTS.baseRatePct);
   const [cccBucketLimitPct, setCccBucketLimitPct] = useState<number>(CLO_DEFAULTS.cccBucketLimitPct);
   const [cccMarketValuePct, setCccMarketValuePct] = useState<number>(CLO_DEFAULTS.cccMarketValuePct);
-  // Fee assumptions — start at 0 (no hidden impact), pre-filled from resolved PPM data
-  const [seniorFeePct, setSeniorFeePct] = useState<number>(CLO_DEFAULTS.seniorFeePct);
-  const [subFeePct, setSubFeePct] = useState<number>(CLO_DEFAULTS.subFeePct);
-  const [trusteeFeeBps, setTrusteeFeeBps] = useState<number>(CLO_DEFAULTS.trusteeFeeBps);
+  // Fee assumptions — pre-filled from resolved PPM data if available, otherwise defaults (zero).
+  const initFees = resolved?.fees;
+  const [seniorFeePct, setSeniorFeePct] = useState<number>(initFees?.seniorFeePct || CLO_DEFAULTS.seniorFeePct);
+  const [subFeePct, setSubFeePct] = useState<number>(initFees?.subFeePct || CLO_DEFAULTS.subFeePct);
+  const [trusteeFeeBps, setTrusteeFeeBps] = useState<number>(initFees?.trusteeFeeBps || CLO_DEFAULTS.trusteeFeeBps);
   const [hedgeCostBps, setHedgeCostBps] = useState<number>(CLO_DEFAULTS.hedgeCostBps);
-  const [incentiveFeePct, setIncentiveFeePct] = useState<number>(CLO_DEFAULTS.incentiveFeePct);
-  const [incentiveFeeHurdleIrr, setIncentiveFeeHurdleIrr] = useState<number>(CLO_DEFAULTS.incentiveFeeHurdleIrr);
+  const [incentiveFeePct, setIncentiveFeePct] = useState<number>(initFees?.incentiveFeePct || CLO_DEFAULTS.incentiveFeePct);
+  const [incentiveFeeHurdleIrr, setIncentiveFeeHurdleIrr] = useState<number>(
+    initFees?.incentiveFeeHurdleIrr ? initFees.incentiveFeeHurdleIrr * 100 : CLO_DEFAULTS.incentiveFeeHurdleIrr
+  );
   const [postRpReinvestmentPct, setPostRpReinvestmentPct] = useState<number>(CLO_DEFAULTS.postRpReinvestmentPct);
   const [callDate, setCallDate] = useState<string | null>(null);
   const [showTransparency, setShowTransparency] = useState(false);
@@ -100,9 +103,12 @@ export default function ProjectionModel({
   const [activeTab, setActiveTab] = useState<"projection" | "switch">("projection");
   const [showSwitchAssumptions, setShowSwitchAssumptions] = useState(false);
 
-  // Pre-fill fee sliders when resolved data arrives (extraction found real values)
+  // Pre-fill fee sliders when resolved data changes (only on first load, not on re-renders
+  // that would stomp user edits). Track whether fees have been initialized.
+  const feesInitialized = useRef(false);
   React.useEffect(() => {
-    if (!resolved) return;
+    if (!resolved || feesInitialized.current) return;
+    feesInitialized.current = true;
     const f = resolved.fees;
     if (f.seniorFeePct > 0) setSeniorFeePct(f.seniorFeePct);
     if (f.subFeePct > 0) setSubFeePct(f.subFeePct);

@@ -357,10 +357,10 @@ export function normalizeSectionResults(
         if (row.par_balance == null && row.principal_balance != null) {
           row.par_balance = row.principal_balance;
         }
-        // Fallback: market_value → par_balance as last resort (flagged — MV ≠ par for distressed loans)
+        // Fallback: market_value → par_balance as last resort (MV ≠ par for distressed loans)
         if (row.par_balance == null && row.market_value != null) {
           row.par_balance = row.market_value;
-          row._par_from_market_value = true;
+          console.warn(`[normalizer] Using market_value as par_balance for holding "${row.obligor_name ?? "unknown"}" — may understate par for distressed loans`);
         }
         return row;
       });

@@ -52,12 +52,11 @@ export function useMonteCarlo(inputs: ProjectionInputs | null) {
   }, [createWorker]);
 
   useEffect(() => {
-    workerRef.current = createWorker();
     return () => {
       workerRef.current?.terminate();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [createWorker]);
+  }, []);
 
   // Debounced auto-run when inputs change
   useEffect(() => {

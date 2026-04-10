@@ -32,8 +32,16 @@ export function applySwitch(
   switchedLoans.splice(sellLoanIndex, 1);
   switchedLoans.push(buyLoan);
 
-  // Par impact: notional par change (not cash proceeds)
-  const parDelta = buyLoan.parBalance - sellLoan.parBalance;
+  // Cash-adjusted par impact: selling at discount means fewer cash proceeds,
+  // buying at premium means the cash buys less par than the notional suggests.
+  // cashProceeds = sellPar * (sellPrice/100); parBought = cashProceeds / (buyPrice/100)
+  const cashProceeds = sellLoan.parBalance * (sellPrice / 100);
+  const parBought = cashProceeds / (buyPrice / 100);
+  const parDelta = parBought - sellLoan.parBalance;
+
+  // Adjust the buy loan's par balance to reflect what the cash actually buys
+  const adjustedBuyLoan: ResolvedLoan = { ...buyLoan, parBalance: parBought };
+  switchedLoans[switchedLoans.length - 1] = adjustedBuyLoan;
 
   const switchedResolved: ResolvedDealData = {
     ...resolved,
@@ -50,7 +58,7 @@ export function applySwitch(
     baseInputs,
     switchedInputs,
     parDelta,
-    spreadDelta: buyLoan.spreadBps - sellLoan.spreadBps,
-    ratingChange: { from: sellLoan.ratingBucket, to: buyLoan.ratingBucket },
+    spreadDelta: adjustedBuyLoan.spreadBps - sellLoan.spreadBps,
+    ratingChange: { from: sellLoan.ratingBucket, to: adjustedBuyLoan.ratingBucket },
   };
 }

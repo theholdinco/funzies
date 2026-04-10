@@ -298,9 +298,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       // Fallback: apply aggregate CDR/CPR to currentPar.
       // Without loan-level data, weight toward non-zero buckets (AAA/AA at 0% would
       // dilute the average if included equally with B/CCC).
-      const nonZeroRates = Object.values(defaultRatesByRating).filter(v => v > 0);
-      const avgAnnualCdr = nonZeroRates.length > 0
-        ? nonZeroRates.reduce((s, v) => s + v, 0) / nonZeroRates.length
+      const allRates = Object.values(defaultRatesByRating);
+      const avgAnnualCdr = allRates.length > 0
+        ? allRates.reduce((s, v) => s + v, 0) / allRates.length
         : 0;
       const qHazard = 1 - Math.pow(1 - Math.min(avgAnnualCdr, 99.99) / 100, 0.25);
       defaults = currentPar * qHazard;

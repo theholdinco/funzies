@@ -33,11 +33,11 @@ function normalizeComplianceTestRows(rows: Record<string, unknown>[]): Record<st
     console.log(`[extraction] Normalized ${fixes.length} compliance test fields:`,
       fixes.map(f => f.message));
   }
-  for (let i = 0; i < rows.length; i++) {
-    rows[i].test_type = normalized[i].testType;
-    rows[i].is_passing = normalized[i].isPassing;
-  }
-  return rows;
+  return rows.map((r, i) => ({
+    ...r,
+    test_type: normalized[i].testType,
+    is_passing: normalized[i].isPassing,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -59,10 +59,23 @@ const BNY_COMPLIANCE_TEMPLATE: Array<{ sectionType: string; pageStart: number; p
 
 /**
  * Ensure critical compliance sections exist in the document map.
- * If the mapper missed a section, add it with estimated BNY template page ranges.
- * This prevents entire sections from being silently dropped.
+ * If the mapper missed a section AND the document appears to be from BNY Mellon,
+ * add it with estimated BNY template page ranges. For non-BNY reports, skip the
+ * fallback entirely — better to have a missing section than wrongly-ranged one.
  */
-function ensureComplianceSections(documentMap: DocumentMap): void {
+function ensureComplianceSections(documentMap: DocumentMap, firstPageText?: string): void {
+  // Only apply BNY template if the document looks like a BNY Mellon report.
+  // Check section notes (from mapper) or explicit first-page text.
+  const allNotes = documentMap.sections.map(s => s.notes ?? "").join(" ").toLowerCase();
+  const pageText = (firstPageText ?? "").toLowerCase();
+  const isBny = pageText.includes("bny mellon") || pageText.includes("bank of new york")
+    || allNotes.includes("bny") || allNotes.includes("bank of new york");
+
+  if (!isBny) {
+    console.log("[extraction] non-BNY report detected — skipping BNY template fallback for missing sections");
+    return;
+  }
+
   const existing = new Set(documentMap.sections.map((s) => s.sectionType));
   const totalPages = Math.max(...documentMap.sections.map((s) => s.pageEnd), 0);
 
@@ -731,15 +744,18 @@ async function runSingleExtractionPass(
   // Phase 1: Map document structure
   console.log(`${label} mapping document...`);
   const documentMap = await mapDocument(apiKey, documents);
-  if (documentMap.documentType === "compliance_report") {
-    ensureComplianceSections(documentMap);
-  }
-  console.log(`${label} found ${documentMap.sections.length} sections`);
 
   // Phase 2: Extract text with pdfplumber (deterministic)
   let sectionTexts: SectionText[];
   try {
     const pdfText = await extractPdfText(pdfDoc.base64);
+
+    // Apply BNY template fallback only if the report is from BNY Mellon
+    if (documentMap.documentType === "compliance_report") {
+      const firstPageText = pdfText.pages.find(p => p.page === 1)?.text ?? "";
+      ensureComplianceSections(documentMap, firstPageText);
+    }
+    console.log(`${label} found ${documentMap.sections.length} sections`);
     sectionTexts = documentMap.sections.map((section) => ({
       sectionType: section.sectionType,
       pageStart: section.pageStart,
@@ -752,6 +768,11 @@ async function runSingleExtractionPass(
     }));
   } catch (err) {
     console.warn(`${label} pdfplumber failed, falling back to Claude vision: ${(err as Error).message}`);
+    // Apply BNY fallback using mapper notes only (no page text available)
+    if (documentMap.documentType === "compliance_report") {
+      ensureComplianceSections(documentMap);
+    }
+    console.log(`${label} found ${documentMap.sections.length} sections`);
     sectionTexts = await extractAllSectionTexts(apiKey, pdfDoc, documentMap);
   }
   const nonEmpty = sectionTexts.filter((t) => t.markdown.trim().length >= 50);

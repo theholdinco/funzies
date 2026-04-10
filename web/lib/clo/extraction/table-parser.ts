@@ -113,6 +113,12 @@ export function parseDate(cell: string | null | undefined): string | null {
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
 
+  // MM/DD/YYYY or M/D/YYYY (US format, common in BNY Mellon reports)
+  const slashMdy = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMdy) {
+    return `${slashMdy[3]}-${slashMdy[1].padStart(2, "0")}-${slashMdy[2].padStart(2, "0")}`;
+  }
+
   return null;
 }
 
@@ -532,9 +538,9 @@ export function parseConcentrationFromTests(tests: ParsedComplianceTest[]): Tabl
         : lower.includes("rating") ? "RATING"
         : "OTHER",
       bucketName: test.testName,
-      actualValue: test.actualValue,
+      actualValue: test.numerator ?? test.actualValue,
       actualPct: test.actualValue,
-      limitValue: test.triggerLevel,
+      limitValue: test.denominator ?? test.triggerLevel,
       limitPct: test.triggerLevel,
       isPassing: test.isPassing,
     });
