@@ -94,18 +94,13 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions }
 
   return (
     <div>
-      {/* Sell loan */}
-      <div style={{ marginBottom: "1.25rem" }}>
-        <div style={labelStyle}>Sell Loan (from portfolio)</div>
-        <select value={sellLoanIndex ?? ""} onChange={(e) => setSellLoanIndex(e.target.value ? parseInt(e.target.value) : null)} style={{ ...inputStyle, maxWidth: "32rem" }}>
-          <option value="">Select a loan to sell...</option>
-          {sellOptions.map((opt) => (
-            <option key={opt.idx} value={opt.idx}>
-              {opt.name} — {opt.loan.ratingBucket} / {opt.loan.spreadBps} bps — {formatAmount(opt.loan.parBalance)} par
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Sell loan — searchable portfolio selector */}
+      <LoanSelector
+        label="Sell Loan"
+        holdings={sellOptions}
+        selectedIndex={sellLoanIndex}
+        onSelect={setSellLoanIndex}
+      />
 
       {/* Buy loan */}
       <div style={{ marginBottom: "1.25rem" }}>
@@ -251,6 +246,79 @@ function OcEquityDetail({ baseResult, switchedResult }: { baseResult: Projection
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+function LoanSelector({
+  label,
+  holdings,
+  selectedIndex,
+  onSelect,
+}: {
+  label: string;
+  holdings: { idx: number; name: string; loan: ResolvedLoan }[];
+  selectedIndex: number | null;
+  onSelect: (idx: number | null) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const query = search.toLowerCase();
+  const filtered = query
+    ? holdings.filter((h) => h.name.toLowerCase().includes(query) || h.loan.ratingBucket.toLowerCase().includes(query))
+    : holdings;
+
+  const selected = selectedIndex !== null ? holdings.find((h) => h.idx === selectedIndex) : null;
+
+  return (
+    <div style={{ marginBottom: "1.25rem" }}>
+      <div style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "0.75rem", background: "var(--color-surface)" }}>
+        <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>{label}</div>
+        {selected && !open ? (
+          <button
+            onClick={() => { setOpen(true); setSearch(""); }}
+            style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", cursor: "pointer", fontSize: "0.85rem" }}
+          >
+            <div style={{ fontWeight: 600 }}>{selected.name}</div>
+            <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginTop: "0.15rem" }}>
+              {selected.loan.ratingBucket} · {selected.loan.spreadBps} bps · {formatAmount(selected.loan.parBalance)}
+            </div>
+          </button>
+        ) : (
+          <>
+            <input
+              type="text"
+              placeholder="Search by name or rating..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onFocus={() => setOpen(true)}
+              style={{ width: "100%", padding: "0.4rem 0.5rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: "0.8rem", marginBottom: "0.4rem", background: "var(--color-surface)", color: "var(--color-text)" }}
+            />
+            {open && (
+              <div style={{ maxHeight: "240px", overflowY: "auto" }}>
+                {filtered.length === 0 && (
+                  <div style={{ padding: "0.5rem", color: "var(--color-text-muted)", fontSize: "0.8rem" }}>No matching loans</div>
+                )}
+                {filtered.map((h) => (
+                  <button
+                    key={h.idx}
+                    onClick={() => { onSelect(h.idx); setOpen(false); setSearch(""); }}
+                    style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem", border: "none", borderBottom: "1px solid var(--color-border-light)", background: h.idx === selectedIndex ? "var(--color-surface-alt, rgba(128,128,128,0.08))" : "transparent", cursor: "pointer", fontSize: "0.85rem", color: "var(--color-text)", borderRadius: 0 }}
+                    onMouseEnter={(e) => { if (h.idx !== selectedIndex) e.currentTarget.style.background = "var(--color-surface-alt, rgba(128,128,128,0.05))"; }}
+                    onMouseLeave={(e) => { if (h.idx !== selectedIndex) e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <div style={{ fontWeight: 600 }}>{h.name}</div>
+                    <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginTop: "0.15rem" }}>
+                      {h.loan.ratingBucket} · {h.loan.spreadBps} bps · {formatAmount(h.loan.parBalance)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
