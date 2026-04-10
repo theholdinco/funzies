@@ -135,13 +135,14 @@ export function normalizeComplianceTestType(
 export function normalizeWacSpread(value: number | null): { bps: number; fix: Fix | null } {
   if (value == null) return { bps: 0, fix: null };
   if (value < 20) {
+    const bps = Math.round(value * 100);
     return {
-      bps: Math.round(value * 100),
+      bps,
       fix: {
         field: "poolSummary.wacSpread",
-        message: `Converted wacSpread from percentage (${value}) to bps (${Math.round(value * 100)})`,
+        message: `Interpreted wacSpread ${value} as percentage → ${bps} bps${value >= 10 ? ' (ambiguous — could be bps)' : ''}`,
         before: value,
-        after: Math.round(value * 100),
+        after: bps,
       },
     };
   }

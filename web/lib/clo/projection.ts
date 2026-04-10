@@ -520,7 +520,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     const seniorNonAmortRank = debtTranches.find((t) => !t.isAmortising)?.seniorityRank;
 
     let diverted = false;
-    for (const t of debtTranches) {
+    for (let di = 0; di < debtTranches.length; di++) {
+      const t = debtTranches[di];
       const rate = trancheCouponRate(t, baseRatePct);
       const due = bopTrancheBalances[t.className] * rate / 4;
 
@@ -582,7 +583,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         }
       }
 
-      if (failingOcRanks.has(t.seniorityRank) || failingIcRanks.has(t.seniorityRank)) {
+      // Only check diversion at rank boundaries — all tranches at the same rank must be paid first
+      const nextTranche = debtTranches[di + 1];
+      const atRankBoundary = !nextTranche || nextTranche.seniorityRank > t.seniorityRank;
+      if (atRankBoundary && (failingOcRanks.has(t.seniorityRank) || failingIcRanks.has(t.seniorityRank))) {
         // Divert remaining interest to pay down senior tranches
         let diversion = availableInterest;
         availableInterest = 0;

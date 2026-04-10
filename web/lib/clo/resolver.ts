@@ -110,16 +110,18 @@ function resolveTranches(
   const entries = constraints.capitalStructure ?? [];
   const byClass = new Map<string, typeof entries[number]>();
   for (const e of entries) {
-    const existing = byClass.get(e.class);
+    const key = normClass(e.class);
+    const existing = byClass.get(key);
     if (!existing || (parseAmount(e.principalAmount) > 0 && (!existing.principalAmount || parseAmount(existing.principalAmount) === 0))) {
-      byClass.set(e.class, e);
+      byClass.set(key, e);
     }
   }
 
   return Array.from(byClass.values()).map((e, idx) => {
     const isSub = e.isSubordinated ?? e.class.toLowerCase().includes("sub");
-    const isFloating = e.rateType?.toLowerCase().includes("float") ??
-      (e.spread?.toLowerCase().includes("euribor") || e.spread?.toLowerCase().includes("sofr") || false);
+    const isFloating = e.rateType
+      ? e.rateType.toLowerCase().includes("float")
+      : (e.spread?.toLowerCase().includes("euribor") || e.spread?.toLowerCase().includes("sofr") || false);
     const isClassX = /^(class\s+)?x$/i.test(e.class.trim());
     const spreadBps = parseSpreadToBps(e.spreadBps, e.spread) ?? 0;
 
@@ -194,21 +196,23 @@ function resolveTriggers(
     warnings.push({ field: "ocTriggers", message: "No OC triggers found in compliance tests or PPM", severity: "warn" });
   }
 
-  const oc: ResolvedTrigger[] = dedupTriggers(ocRaw).map(t => ({
-    className: t.className,
-    triggerLevel: t.triggerLevel,
-    rank: resolveRank(t.className),
-    testType: "OC" as const,
-    source: ocSource,
-  }));
+  const oc: ResolvedTrigger[] = dedupTriggers(ocRaw).map(t => {
+    let triggerLevel = t.triggerLevel;
+    if (triggerLevel > 0 && triggerLevel < 10) {
+      triggerLevel = triggerLevel * 100;
+      warnings.push({ field: `ocTrigger.${t.className}`, message: `OC trigger ${t.triggerLevel} looks like a ratio, converting to ${triggerLevel}%`, severity: "warn" });
+    }
+    return { className: t.className, triggerLevel, rank: resolveRank(t.className), testType: "OC" as const, source: ocSource };
+  });
 
-  const ic: ResolvedTrigger[] = dedupTriggers(icRaw).map(t => ({
-    className: t.className,
-    triggerLevel: t.triggerLevel,
-    rank: resolveRank(t.className),
-    testType: "IC" as const,
-    source: icSource,
-  }));
+  const ic: ResolvedTrigger[] = dedupTriggers(icRaw).map(t => {
+    let triggerLevel = t.triggerLevel;
+    if (triggerLevel > 0 && triggerLevel < 10) {
+      triggerLevel = triggerLevel * 100;
+      warnings.push({ field: `icTrigger.${t.className}`, message: `IC trigger ${t.triggerLevel} looks like a ratio, converting to ${triggerLevel}%`, severity: "warn" });
+    }
+    return { className: t.className, triggerLevel, rank: resolveRank(t.className), testType: "IC" as const, source: icSource };
+  });
 
   return { oc, ic };
 }
@@ -226,12 +230,28 @@ function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarn
     if (isNaN(rate)) continue;
 
     if (name.includes("senior") && (name.includes("mgmt") || name.includes("management"))) {
-      seniorFeePct = rate;
+      if (rate > 5) {
+        warnings.push({ field: "fees.seniorFeePct", message: `Senior fee rate ${rate} looks like bps, converting to ${rate / 100}%`, severity: "warn" });
+        seniorFeePct = rate / 100;
+      } else {
+        seniorFeePct = rate;
+      }
     } else if (name.includes("sub") && (name.includes("mgmt") || name.includes("management"))) {
-      subFeePct = rate;
+      if (rate > 5) {
+        warnings.push({ field: "fees.subFeePct", message: `Sub fee rate ${rate} looks like bps, converting to ${rate / 100}%`, severity: "warn" });
+        subFeePct = rate / 100;
+      } else {
+        subFeePct = rate;
+      }
     } else if (name.includes("trustee") || name.includes("admin")) {
+      if (rate > 50) {
+        warnings.push({ field: "fees.trusteeFeeBps", message: `Trustee fee ${rate} bps seems unusually high`, severity: "warn" });
+      }
       trusteeFeeBps = rate;
     } else if (name.includes("incentive") || name.includes("performance")) {
+      if (rate > 50) {
+        warnings.push({ field: "fees.incentiveFeePct", message: `Incentive fee ${rate}% seems unusually high`, severity: "warn" });
+      }
       incentiveFeePct = rate;
       // Use the LLM-extracted hurdleRate field
       const hurdleRaw = parseFloat(fee.hurdleRate ?? "");

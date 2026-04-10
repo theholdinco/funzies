@@ -340,8 +340,29 @@ export default function ContextEditor({
       body: JSON.stringify({
         reportPeriodId: complianceData.reportPeriodId,
         poolSummary: complianceData.poolSummary,
-        complianceTests: complianceData.complianceTests?.map((t) => ({ id: t.id, updates: t })),
-        concentrations: complianceData.concentrations?.map((c) => ({ id: c.id, updates: c })),
+        complianceTests: complianceData.complianceTests?.map((t) => ({
+          id: t.id,
+          updates: {
+            testName: t.testName,
+            testType: t.testType,
+            testClass: t.testClass,
+            triggerLevel: t.triggerLevel,
+            actualValue: t.actualValue,
+            isPassing: t.isPassing,
+            cushionPct: t.cushionPct,
+            cushionAmount: t.cushionAmount,
+          },
+        })),
+        concentrations: complianceData.concentrations?.map((c) => ({
+          id: c.id,
+          updates: {
+            concentrationType: c.concentrationType,
+            bucketName: c.bucketName,
+            actualPct: c.actualPct,
+            limitPct: c.limitPct,
+            isPassing: c.isPassing,
+          },
+        })),
       }),
     });
     setSavingCompliance(false);

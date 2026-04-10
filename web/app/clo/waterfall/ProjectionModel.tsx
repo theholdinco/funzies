@@ -53,9 +53,10 @@ function formatAmount(val: number): string {
 }
 
 function formatDate(isoDate: string): string {
+  if (!isoDate || !isoDate.includes("-")) return "—";
   const [y, m] = isoDate.split("-");
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${months[parseInt(m, 10) - 1]} ${y.slice(2)}`;
+  return `${months[parseInt(m, 10) - 1] ?? "?"} ${y.slice(2)}`;
 }
 
 const TRANCHE_COLORS = [
