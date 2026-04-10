@@ -5,7 +5,7 @@ import { mapToRatingBucket } from "./rating-mapping";
 import { CLO_DEFAULTS } from "./defaults";
 
 function normClass(s: string): string {
-  const base = s.replace(/^class\s+/i, "").replace(/\s+notes?$/i, "").trim().toLowerCase();
+  const base = s.replace(/^class\s+/i, "").replace(/[-\s]+notes?$/i, "").trim().toLowerCase();
   // Normalize subordinated variants: "subordinated", "sub", "subordinated notes" all → "sub"
   if (base === "subordinated" || base.startsWith("subordinated")) return "sub";
   return base;
@@ -13,7 +13,10 @@ function normClass(s: string): string {
 
 function parseAmount(s: string | undefined | null): number {
   if (!s) return 0;
-  return parseFloat(s.replace(/[^0-9.]/g, "")) || 0;
+  // Strip everything except digits, dots, and a leading minus sign.
+  // Hyphens in ranges (e.g. "1,000-2,000") must NOT be preserved.
+  const cleaned = s.replace(/[^0-9.]/g, "");
+  return parseFloat(cleaned) || 0;
 }
 
 function isOcTest(t: { testType?: string | null; testName?: string | null }): boolean {
@@ -28,12 +31,22 @@ function isIcTest(t: { testType?: string | null; testName?: string | null }): bo
   return name.includes("interest coverage") || (name.includes("ic") && name.includes("ratio"));
 }
 
-function dedupTriggers(triggers: { className: string; triggerLevel: number }[]): { className: string; triggerLevel: number }[] {
+function dedupTriggers(triggers: { className: string; triggerLevel: number }[], warnings: ResolutionWarning[]): { className: string; triggerLevel: number }[] {
   const byClass = new Map<string, { className: string; triggerLevel: number }>();
   for (const t of triggers) {
     const existing = byClass.get(t.className);
-    if (!existing || t.triggerLevel > existing.triggerLevel) {
+    if (!existing) {
       byClass.set(t.className, t);
+    } else if (t.triggerLevel !== existing.triggerLevel) {
+      // Keep the higher (more restrictive) trigger but warn about the discrepancy
+      warnings.push({
+        field: `trigger.${t.className}`,
+        message: `Duplicate trigger for ${t.className}: ${existing.triggerLevel}% vs ${t.triggerLevel}% — keeping ${Math.max(existing.triggerLevel, t.triggerLevel)}%`,
+        severity: "warn",
+      });
+      if (t.triggerLevel > existing.triggerLevel) {
+        byClass.set(t.className, t);
+      }
     }
   }
   return Array.from(byClass.values());
@@ -66,7 +79,7 @@ function resolveTranches(
 
   // If DB tranches exist, use them as the primary source
   if (dbTranches.length > 0) {
-    return dbTranches
+    return [...dbTranches]
       .sort((a, b) => (a.seniorityRank ?? 99) - (b.seniorityRank ?? 99))
       .map(t => {
         const snap = snapshotByTrancheId.get(t.id);
@@ -197,20 +210,26 @@ function resolveTriggers(
     warnings.push({ field: "ocTriggers", message: "No OC triggers found in compliance tests or PPM", severity: "warn" });
   }
 
-  const oc: ResolvedTrigger[] = dedupTriggers(ocRaw).map(t => {
+  const oc: ResolvedTrigger[] = dedupTriggers(ocRaw, warnings).map(t => {
     let triggerLevel = t.triggerLevel;
     if (triggerLevel > 0 && triggerLevel < 10) {
       triggerLevel = triggerLevel * 100;
       warnings.push({ field: `ocTrigger.${t.className}`, message: `OC trigger ${t.triggerLevel} looks like a ratio, converting to ${triggerLevel}%`, severity: "warn" });
     }
+    if (triggerLevel > 200) {
+      warnings.push({ field: `ocTrigger.${t.className}`, message: `OC trigger ${triggerLevel}% for ${t.className} seems unusually high`, severity: "warn" });
+    }
     return { className: t.className, triggerLevel, rank: resolveRank(t.className), testType: "OC" as const, source: ocSource };
   });
 
-  const ic: ResolvedTrigger[] = dedupTriggers(icRaw).map(t => {
+  const ic: ResolvedTrigger[] = dedupTriggers(icRaw, warnings).map(t => {
     let triggerLevel = t.triggerLevel;
     if (triggerLevel > 0 && triggerLevel < 10) {
       triggerLevel = triggerLevel * 100;
       warnings.push({ field: `icTrigger.${t.className}`, message: `IC trigger ${t.triggerLevel} looks like a ratio, converting to ${triggerLevel}%`, severity: "warn" });
+    }
+    if (triggerLevel > 500) {
+      warnings.push({ field: `icTrigger.${t.className}`, message: `IC trigger ${triggerLevel}% for ${t.className} seems unusually high`, severity: "warn" });
     }
     return { className: t.className, triggerLevel, rank: resolveRank(t.className), testType: "IC" as const, source: icSource };
   });
@@ -270,7 +289,10 @@ function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarn
       if (!isNaN(hurdleRaw) && hurdleRaw > 0) {
         incentiveFeeHurdleIrr = hurdleRaw > 1 ? hurdleRaw / 100 : hurdleRaw;
       } else if (incentiveFeePct > 0) {
+        // Standard European CLO equity hurdle is ~12% IRR. Using 0% would mean
+        // the incentive fee fires on any positive return, which is too aggressive.
         incentiveFeeHurdleIrr = 0.12;
+        warnings.push({ field: "fees.incentiveFeeHurdleIrr", message: `Incentive fee present (${incentiveFeePct}%) but no hurdle rate found — assuming 12% IRR hurdle`, severity: "warn" });
       }
     }
   }

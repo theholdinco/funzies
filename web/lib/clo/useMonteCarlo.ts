@@ -61,9 +61,8 @@ export function useMonteCarlo(inputs: ProjectionInputs | null) {
 
   // Debounced auto-run when inputs change
   useEffect(() => {
-    if (!inputs) return;
-
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!inputs) return;
 
     debounceRef.current = setTimeout(() => {
       cancelAndRestart();

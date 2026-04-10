@@ -106,19 +106,21 @@ export function normalizeComplianceTestType(
   tests: Array<{ testType: string | null; testName: string; isPassing: boolean | null; actualValue: number | null; triggerLevel: number | null }>
 ): { tests: typeof tests; fixes: Fix[] } {
   const fixes: Fix[] = [];
-  for (const test of tests) {
-    const normalized = normalizeTestType(test.testType, test.testName);
-    if (normalized !== test.testType) {
+  const normalized = tests.map(test => {
+    let testType = test.testType;
+    const norm = normalizeTestType(test.testType, test.testName);
+    if (norm !== test.testType) {
       fixes.push({
         field: `complianceTest.${test.testName}.testType`,
-        message: `Normalized testType from "${test.testType}" to "${normalized}"`,
+        message: `Normalized testType from "${test.testType}" to "${norm}"`,
         before: test.testType,
-        after: normalized,
+        after: norm,
       });
-      test.testType = normalized;
+      testType = norm;
     }
 
-    if (test.isPassing == null && test.actualValue != null && test.triggerLevel != null) {
+    let isPassing = test.isPassing;
+    if (isPassing == null && test.actualValue != null && test.triggerLevel != null) {
       const passing = test.actualValue >= test.triggerLevel;
       fixes.push({
         field: `complianceTest.${test.testName}.isPassing`,
@@ -126,21 +128,26 @@ export function normalizeComplianceTestType(
         before: null,
         after: passing,
       });
-      test.isPassing = passing;
+      isPassing = passing;
     }
-  }
-  return { tests, fixes };
+
+    return { ...test, testType, isPassing };
+  });
+  return { tests: normalized, fixes };
 }
 
 export function normalizeWacSpread(value: number | null): { bps: number; fix: Fix | null } {
   if (value == null) return { bps: 0, fix: null };
-  if (value < 20) {
+  // Values >= 10 and < 20 are ambiguous: could be 15 bps or 15% (1500 bps).
+  // Treat < 10 as percentage (reasonable CLO WAC spread range: 1-9% → 100-900 bps).
+  // Treat >= 10 as bps (already in basis points).
+  if (value < 10) {
     const bps = Math.round(value * 100);
     return {
       bps,
       fix: {
         field: "poolSummary.wacSpread",
-        message: `Interpreted wacSpread ${value} as percentage → ${bps} bps${value >= 10 ? ' (ambiguous — could be bps)' : ''}`,
+        message: `Interpreted wacSpread ${value} as percentage → ${bps} bps`,
         before: value,
         after: bps,
       },

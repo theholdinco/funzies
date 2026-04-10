@@ -92,7 +92,7 @@ export function validateInputs(inputs: ProjectionInputs): { field: string; messa
     errors.push({ field: "maturityDate", message: "Deal maturity date is required for projection timeline" });
   }
   const missingSpread = inputs.tranches?.some(
-    (t) => !t.isIncomeNote && (t.spreadBps === null || t.spreadBps === undefined || t.spreadBps === 0)
+    (t) => !t.isIncomeNote && (t.spreadBps === null || t.spreadBps === undefined)
   );
   if (missingSpread) {
     errors.push({ field: "trancheSpreads", message: "Tranche spread/coupon data needed for interest calculations" });
@@ -181,7 +181,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     let best = "NR";
     let bestPar = 0;
     for (const [rating, par] of Object.entries(parByRating)) {
-      if (par > bestPar) { best = rating; bestPar = par; }
+      // Tie-break alphabetically for deterministic results regardless of loan order
+      if (par > bestPar || (par === bestPar && rating < best)) { best = rating; bestPar = par; }
     }
     return best;
   })();
@@ -238,7 +239,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     const beginningPar = hasLoans
       ? loanStates.reduce((s, l) => s + l.survivingPar, 0)
       : currentPar;
-    const beginningLiabilities = debtTranches.reduce((s, t) => s + trancheBalances[t.className], 0);
+    const beginningLiabilities = debtTranches.reduce((s, t) => s + trancheBalances[t.className] + deferredBalances[t.className], 0);
 
     // Save per-loan beginning par for interest calc
     const loanBeginningPar = hasLoans ? loanStates.map((l) => l.survivingPar) : [];
@@ -294,8 +295,13 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       defaults = totalDefaults;
       prepayments = totalPrepayments;
     } else {
-      // Fallback: apply aggregate CDR/CPR to currentPar
-      const avgAnnualCdr = Object.values(defaultRatesByRating).reduce((s, v) => s + v, 0) / Math.max(1, Object.values(defaultRatesByRating).length);
+      // Fallback: apply aggregate CDR/CPR to currentPar.
+      // Without loan-level data, weight toward non-zero buckets (AAA/AA at 0% would
+      // dilute the average if included equally with B/CCC).
+      const nonZeroRates = Object.values(defaultRatesByRating).filter(v => v > 0);
+      const avgAnnualCdr = nonZeroRates.length > 0
+        ? nonZeroRates.reduce((s, v) => s + v, 0) / nonZeroRates.length
+        : 0;
       const qHazard = 1 - Math.pow(1 - Math.min(avgAnnualCdr, 99.99) / 100, 0.25);
       defaults = currentPar * qHazard;
       currentPar -= defaults;
@@ -665,9 +671,12 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // PPM Step U: Incentive fee from principal proceeds (same IRR-gated logic)
     let incentiveFeeFromPrincipal = 0;
     if (incentiveFeePct > 0 && availablePrincipal > 0) {
-      // Check IRR including both interest and principal equity for this period
+      // Check IRR including both interest and principal equity for this period.
+      // Use pre-fee interest (add back any incentive fee already taken from interest)
+      // so the principal gate sees the same terminal value as the interest gate.
+      const preFeeInterestForEquity = equityFromInterest + incentiveFeeFromInterest;
       const preFeeIrr = incentiveFeeHurdleIrr > 0
-        ? calculateIrr([...equityCashFlows, equityFromInterest + availablePrincipal], 4)
+        ? calculateIrr([...equityCashFlows, preFeeInterestForEquity + availablePrincipal], 4)
         : null;
       const aboveHurdle = incentiveFeeHurdleIrr <= 0 || (preFeeIrr !== null && preFeeIrr > incentiveFeeHurdleIrr);
       if (aboveHurdle) {

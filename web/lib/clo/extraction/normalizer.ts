@@ -1,7 +1,11 @@
 import type { Pass1Output, Pass2Output, Pass3Output, Pass4Output, Pass5Output } from "./schemas";
 
 function toSnakeCase(str: string): string {
-  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+  // Handle consecutive uppercase (acronyms): "ISINCode" → "isin_code", "WAL" → "wal"
+  return str
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase();
 }
 
 function toDbRow(obj: Record<string, unknown>, extraFields?: Record<string, unknown>): Record<string, unknown> {
@@ -105,13 +109,14 @@ function deduplicateComplianceTests(
   });
 }
 
-/** Dedup key for a holding: prefer ISIN > LXID > obligor+facility */
-function holdingDedupKey(h: { obligorName?: string | null; facilityName?: string | null; isin?: string | null; lxid?: string | null }): string {
+/** Dedup key for a holding: prefer ISIN > LXID > obligor+facility+maturity */
+function holdingDedupKey(h: { obligorName?: string | null; facilityName?: string | null; isin?: string | null; lxid?: string | null; maturityDate?: string | null }): string {
   if (h.isin) return `isin:${h.isin.trim().toUpperCase()}`;
   if (h.lxid) return `lxid:${h.lxid.trim().toUpperCase()}`;
   const obligor = (h.obligorName ?? "").toLowerCase().trim();
   const facility = (h.facilityName ?? "").toLowerCase().trim();
-  return `name:${obligor}|${facility}`;
+  const maturity = (h.maturityDate ?? "").trim();
+  return `name:${obligor}|${facility}|${maturity}`;
 }
 
 /** Score a holding by data completeness (higher = more complete) */
@@ -352,9 +357,10 @@ export function normalizeSectionResults(
         if (row.par_balance == null && row.principal_balance != null) {
           row.par_balance = row.principal_balance;
         }
-        // Fallback: market_value → par_balance as last resort
+        // Fallback: market_value → par_balance as last resort (flagged — MV ≠ par for distressed loans)
         if (row.par_balance == null && row.market_value != null) {
           row.par_balance = row.market_value;
+          row._par_from_market_value = true;
         }
         return row;
       });

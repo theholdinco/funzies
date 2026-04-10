@@ -50,20 +50,22 @@ describe("normalizeWacSpread", () => {
     });
   });
 
-  it("keeps value >= 20 as bps with no fix", () => {
+  it("keeps value >= 10 as bps with no fix", () => {
     expect(normalizeWacSpread(376)).toEqual({ bps: 376, fix: null });
     expect(normalizeWacSpread(20)).toEqual({ bps: 20, fix: null });
+    expect(normalizeWacSpread(15)).toEqual({ bps: 15, fix: null });
   });
 
-  it("includes ambiguity warning in fix message for values 10–19", () => {
+  it("treats values 10–19 as bps (not percentages)", () => {
     const result = normalizeWacSpread(15);
-    expect(result.fix?.message).toContain("ambiguous");
-    expect(result.bps).toBe(1500);
+    expect(result.bps).toBe(15);
+    expect(result.fix).toBeNull();
   });
 
-  it("does not include ambiguity warning for values < 10", () => {
+  it("converts values < 10 from percentage to bps", () => {
     const result = normalizeWacSpread(3.76);
-    expect(result.fix?.message).not.toContain("ambiguous");
+    expect(result.bps).toBe(376);
+    expect(result.fix).not.toBeNull();
   });
 
   it("returns 0 bps with no fix for null", () => {

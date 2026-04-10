@@ -32,10 +32,8 @@ export function applySwitch(
   switchedLoans.splice(sellLoanIndex, 1);
   switchedLoans.push(buyLoan);
 
-  // Par impact: proceeds from sale minus cost of purchase
-  const sellProceeds = sellLoan.parBalance * (sellPrice / 100);
-  const buyCost = buyLoan.parBalance * (buyPrice / 100);
-  const parDelta = sellProceeds - buyCost;
+  // Par impact: notional par change (not cash proceeds)
+  const parDelta = buyLoan.parBalance - sellLoan.parBalance;
 
   const switchedResolved: ResolvedDealData = {
     ...resolved,

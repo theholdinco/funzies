@@ -35,6 +35,18 @@ function buildHistogramData(irrs: Float64Array): { bucket: string; mid: number; 
   return buckets;
 }
 
+function findNearestBucket(data: { bucket: string; mid: number }[], value: number | null | undefined): string | undefined {
+  if (value == null || data.length === 0) return undefined;
+  // Clamp to histogram range — prevents reference lines from vanishing in extreme scenarios
+  let best = data[0];
+  let bestDist = Math.abs(data[0].mid - value);
+  for (const d of data) {
+    const dist = Math.abs(d.mid - value);
+    if (dist < bestDist) { best = d; bestDist = dist; }
+  }
+  return best.bucket;
+}
+
 function formatPct(v: number | null | undefined): string {
   if (v == null) return "\u2014";
   return `${(v * 100).toFixed(1)}%`;
@@ -213,19 +225,19 @@ export default function MonteCarloChart({ result, running, progress }: Props) {
                 isAnimationActive={false}
               />
               <ReferenceLine
-                x={histogramData.find(d => d.mid >= (result.percentiles.p5 ?? 0) && d.mid < (result.percentiles.p5 ?? 0) + 0.02)?.bucket}
+                x={findNearestBucket(histogramData, result.percentiles.p5)}
                 stroke="#c00"
                 strokeDasharray="3 3"
                 label={{ value: "P5", position: "top", fontSize: 9, fill: "#c00" }}
               />
               <ReferenceLine
-                x={histogramData.find(d => d.mid >= (result.percentiles.p50 ?? 0) && d.mid < (result.percentiles.p50 ?? 0) + 0.02)?.bucket}
+                x={findNearestBucket(histogramData, result.percentiles.p50)}
                 stroke="var(--color-accent)"
                 strokeDasharray="3 3"
                 label={{ value: "P50", position: "top", fontSize: 9 }}
               />
               <ReferenceLine
-                x={histogramData.find(d => d.mid >= (result.percentiles.p95 ?? 0) && d.mid < (result.percentiles.p95 ?? 0) + 0.02)?.bucket}
+                x={findNearestBucket(histogramData, result.percentiles.p95)}
                 stroke="#0a0"
                 strokeDasharray="3 3"
                 label={{ value: "P95", position: "top", fontSize: 9, fill: "#0a0" }}

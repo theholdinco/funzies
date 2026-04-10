@@ -525,12 +525,6 @@ function rowToOverflow(row: Record<string, unknown>): CloExtractionOverflow {
 // ─── Deal Management ────────────────────────────────────────────────
 
 export async function getOrCreateDeal(profileId: string): Promise<{ id: string }> {
-  const existing = await query<{ id: string }>(
-    "SELECT id FROM clo_deals WHERE profile_id = $1",
-    [profileId]
-  );
-  if (existing[0]) return { id: existing[0].id };
-
   const profile = await query<{
     extracted_constraints: Record<string, unknown>;
   }>(
@@ -542,12 +536,15 @@ export async function getOrCreateDeal(profileId: string): Promise<{ id: string }
   const kd = (ec.keyDates ?? {}) as Record<string, unknown>;
   const cm = (ec.cmDetails ?? {}) as Record<string, unknown>;
 
+  // Use INSERT ON CONFLICT to avoid TOCTOU race when concurrent requests
+  // both try to create a deal for the same profile.
   const rows = await query<{ id: string }>(
     `INSERT INTO clo_deals (
       profile_id, deal_name, issuer_legal_entity, jurisdiction, deal_currency,
       closing_date, effective_date, reinvestment_period_end, non_call_period_end,
       stated_maturity_date, collateral_manager, governing_law, ppm_constraints
     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+    ON CONFLICT (profile_id) DO NOTHING
     RETURNING id`,
     [
       profileId,
@@ -565,7 +562,15 @@ export async function getOrCreateDeal(profileId: string): Promise<{ id: string }
       JSON.stringify(ec),
     ]
   );
-  return { id: rows[0].id };
+
+  // If ON CONFLICT fired (another request already inserted), RETURNING is empty — fetch it
+  if (rows[0]) return { id: rows[0].id };
+  const existing = await query<{ id: string }>(
+    "SELECT id FROM clo_deals WHERE profile_id = $1",
+    [profileId]
+  );
+  if (!existing[0]) throw new Error(`Deal not found for profile ${profileId} after upsert`);
+  return { id: existing[0].id };
 }
 
 export async function getDealForProfile(profileId: string): Promise<CloDeal | null> {
