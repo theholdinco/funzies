@@ -173,12 +173,22 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
       )}
       <div style={{ marginBottom: "1.25rem" }}>
         <div style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "0.75rem", background: "var(--color-surface)" }}>
-          <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
-            {buyList.length > 0 ? "Buy Loan Details" : "Buy Loan"}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-muted)" }}>
+              {buyList.length > 0 ? "Buy Loan Details" : "Buy Loan"}
+            </div>
+            {prefill && buySpreadBps > 0 && (
+              <span style={{ fontSize: "0.6rem", fontWeight: 600, padding: "0.1rem 0.35rem", borderRadius: "3px", background: "var(--color-accent)18", color: "var(--color-accent)" }}>FROM ANALYSIS</span>
+            )}
           </div>
-          {buyList.length > 0 && (
+          {buyList.length > 0 && !prefill && (
             <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginBottom: "0.5rem", opacity: 0.8 }}>
               Pre-filled from buy list selection above. Adjust any field to override.
+            </div>
+          )}
+          {prefill && (
+            <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginBottom: "0.5rem", opacity: 0.8 }}>
+              Pre-filled from switch analysis. Adjust any field to override.
             </div>
           )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem" }}>
