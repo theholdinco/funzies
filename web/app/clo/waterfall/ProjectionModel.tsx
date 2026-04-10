@@ -804,6 +804,7 @@ function SliderInput({
   max,
   step,
   suffix,
+  hint,
 }: {
   label: string;
   value: number;
@@ -812,10 +813,11 @@ function SliderInput({
   max: number;
   step: number;
   suffix: string;
+  hint?: string;
 }) {
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.4rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.25rem" }}>
         <label style={{ fontSize: "0.72rem", color: "var(--color-text-muted)", fontWeight: 500 }}>{label}</label>
         <span
           style={{
@@ -829,6 +831,7 @@ function SliderInput({
           {value}{suffix}
         </span>
       </div>
+      {hint && <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginBottom: "0.3rem", lineHeight: 1.4, opacity: 0.8 }}>{hint}</div>}
       <input
         type="range"
         className="wf-slider"
@@ -1392,13 +1395,13 @@ function FeeAssumptions({
               : "No fees were extracted from the PPM. Set them manually or the model will assume zero fees (overstating equity returns)."
             }
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.25rem" }}>
-            <SliderInput label="Senior Mgmt Fee" value={seniorFeePct} onChange={onSeniorFeeChange} min={0} max={1} step={0.05} suffix="% p.a." />
-            <SliderInput label="Sub Mgmt Fee" value={subFeePct} onChange={onSubFeeChange} min={0} max={0.5} step={0.05} suffix="% p.a." />
-            <SliderInput label="Trustee/Admin Fee" value={trusteeFeeBps} onChange={onTrusteeFeeChange} min={0} max={10} step={1} suffix=" bps" />
-            <SliderInput label="Hedge Cost" value={hedgeCostBps} onChange={onHedgeCostChange} min={0} max={50} step={1} suffix=" bps" />
-            <SliderInput label="Incentive Fee" value={incentiveFeePct} onChange={onIncentiveFeeChange} min={0} max={30} step={1} suffix="% of residual" />
-            <SliderInput label="Incentive Hurdle IRR" value={incentiveFeeHurdleIrr} onChange={onHurdleChange} min={0} max={20} step={0.5} suffix="%" />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
+            <SliderInput label="Senior Mgmt Fee" value={seniorFeePct} onChange={onSeniorFeeChange} min={0} max={1} step={0.05} suffix="% p.a. on par" hint="Paid quarterly from interest before tranche payments" />
+            <SliderInput label="Sub Mgmt Fee" value={subFeePct} onChange={onSubFeeChange} min={0} max={0.5} step={0.05} suffix="% p.a. on par" hint="Paid quarterly from interest after all tranche payments" />
+            <SliderInput label="Trustee / Admin" value={trusteeFeeBps} onChange={onTrusteeFeeChange} min={0} max={10} step={1} suffix=" bps p.a. on par" hint="Paid first from interest, before management fee" />
+            <SliderInput label="Hedge Cost" value={hedgeCostBps} onChange={onHedgeCostChange} min={0} max={50} step={1} suffix=" bps p.a. on par" hint="Approximation of FX hedge costs, paid from interest before tranche payments" />
+            <SliderInput label="Incentive Fee" value={incentiveFeePct} onChange={onIncentiveFeeChange} min={0} max={30} step={1} suffix="% of residual" hint="Applied each quarter to remaining interest and principal after all other payments" />
+            <SliderInput label="Incentive Hurdle" value={incentiveFeeHurdleIrr} onChange={onHurdleChange} min={0} max={20} step={0.5} suffix="% IRR" hint="Incentive fee only kicks in when cumulative equity return exceeds this annualized rate" />
           </div>
         </div>
       )}
