@@ -17,6 +17,13 @@ export interface UserAssumptions {
   postRpReinvestmentPct: number;
   hedgeCostBps: number;
   callDate: string | null;
+  // Fee overrides — user can adjust these via sliders.
+  // Pre-filled from resolved PPM data, but user has final say.
+  seniorFeePct: number;
+  subFeePct: number;
+  trusteeFeeBps: number;
+  incentiveFeePct: number;
+  incentiveFeeHurdleIrr: number; // as percentage (e.g. 12 for 12%), converted to decimal internally
 }
 
 export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
@@ -43,6 +50,11 @@ export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
   postRpReinvestmentPct: 0,
   hedgeCostBps: 0,
   callDate: null,
+  seniorFeePct: CLO_DEFAULTS.seniorFeePct,
+  subFeePct: CLO_DEFAULTS.subFeePct,
+  trusteeFeeBps: CLO_DEFAULTS.trusteeFeeBps,
+  incentiveFeePct: CLO_DEFAULTS.incentiveFeePct,
+  incentiveFeeHurdleIrr: CLO_DEFAULTS.incentiveFeeHurdleIrr,
 };
 
 export function buildFromResolved(
@@ -53,12 +65,12 @@ export function buildFromResolved(
     initialPar: resolved.poolSummary.totalPar,
     wacSpreadBps: resolved.poolSummary.wacSpreadBps,
     baseRatePct: userAssumptions.baseRatePct,
-    seniorFeePct: resolved.fees.seniorFeePct,
-    subFeePct: resolved.fees.subFeePct,
-    trusteeFeeBps: resolved.fees.trusteeFeeBps,
+    seniorFeePct: userAssumptions.seniorFeePct,
+    subFeePct: userAssumptions.subFeePct,
+    trusteeFeeBps: userAssumptions.trusteeFeeBps,
     hedgeCostBps: userAssumptions.hedgeCostBps,
-    incentiveFeePct: resolved.fees.incentiveFeePct,
-    incentiveFeeHurdleIrr: resolved.fees.incentiveFeeHurdleIrr,
+    incentiveFeePct: userAssumptions.incentiveFeePct,
+    incentiveFeeHurdleIrr: userAssumptions.incentiveFeeHurdleIrr / 100, // convert from % to decimal
     postRpReinvestmentPct: userAssumptions.postRpReinvestmentPct,
     callDate: userAssumptions.callDate,
     reinvestmentOcTrigger: resolved.reinvestmentOcTrigger,

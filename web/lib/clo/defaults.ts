@@ -1,31 +1,31 @@
 // Single source of truth for CLO model defaults.
-// Used by resolver (when extraction fails), UI (slider initial values), and tests.
 //
-// These represent typical European CLO values. When extraction fails to find
-// a fee or parameter, these are used AND a warning is emitted so the user
-// knows a default is being applied.
+// PHILOSOPHY: All fee/expense defaults are ZERO so they don't silently
+// throw off the model. When extraction finds real values, those pre-fill
+// the UI. The user can always see and override everything.
+//
+// Non-fee assumptions (CPR, recovery, etc.) have reasonable non-zero
+// defaults since they're always visible on sliders.
 
 export const CLO_DEFAULTS = {
-  // Management fees (percentage per annum on collateral principal)
-  seniorFeePct: 0.15,   // 15 bps — typical range: 0.10-0.20%
-  subFeePct: 0.25,      // 25 bps — typical range: 0.20-0.35%
-
-  // Trustee/admin fee (basis points per annum)
-  trusteeFeeBps: 2,     // typical range: 1-5 bps
-
-  // Incentive fee (disabled by default — only applied when explicitly found in PPM)
+  // Fees — all zero by default. Resolved from PPM extraction when available.
+  seniorFeePct: 0,
+  subFeePct: 0,
+  trusteeFeeBps: 0,
   incentiveFeePct: 0,
   incentiveFeeHurdleIrr: 0,
+  hedgeCostBps: 0,
 
   // Base rate assumption
   baseRatePct: 3.5,     // ~current 3M EURIBOR
 
-  // Default assumptions for projection
+  // Default assumptions for projection (visible on sliders)
   cprPct: 15,
   recoveryPct: 60,
   recoveryLagMonths: 12,
   reinvestmentSpreadBps: 350,
   reinvestmentTenorYears: 5,
+  postRpReinvestmentPct: 0,
 
   // OC test parameters
   cccBucketLimitPct: 7.5,

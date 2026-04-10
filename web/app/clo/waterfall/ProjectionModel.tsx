@@ -153,12 +153,29 @@ export default function ProjectionModel({
   const [reinvestmentTenorYears, setReinvestmentTenorYears] = useState<number>(CLO_DEFAULTS.reinvestmentTenorYears);
   const [reinvestmentRating, setReinvestmentRating] = useState<string>("auto");
   const [baseRatePct, setBaseRatePct] = useState<number>(CLO_DEFAULTS.baseRatePct);
-  const [seniorFeePct, setSeniorFeePct] = useState<number>(CLO_DEFAULTS.seniorFeePct);
-  const [subFeePct, setSubFeePct] = useState<number>(CLO_DEFAULTS.subFeePct);
   const [cccBucketLimitPct, setCccBucketLimitPct] = useState<number>(CLO_DEFAULTS.cccBucketLimitPct);
   const [cccMarketValuePct, setCccMarketValuePct] = useState<number>(CLO_DEFAULTS.cccMarketValuePct);
+  // Fee assumptions — start at 0 (no hidden impact), pre-filled from resolved PPM data
+  const [seniorFeePct, setSeniorFeePct] = useState<number>(CLO_DEFAULTS.seniorFeePct);
+  const [subFeePct, setSubFeePct] = useState<number>(CLO_DEFAULTS.subFeePct);
+  const [trusteeFeeBps, setTrusteeFeeBps] = useState<number>(CLO_DEFAULTS.trusteeFeeBps);
+  const [hedgeCostBps, setHedgeCostBps] = useState<number>(CLO_DEFAULTS.hedgeCostBps);
+  const [incentiveFeePct, setIncentiveFeePct] = useState<number>(CLO_DEFAULTS.incentiveFeePct);
+  const [incentiveFeeHurdleIrr, setIncentiveFeeHurdleIrr] = useState<number>(CLO_DEFAULTS.incentiveFeeHurdleIrr);
+  const [postRpReinvestmentPct, setPostRpReinvestmentPct] = useState<number>(CLO_DEFAULTS.postRpReinvestmentPct);
   const [showTransparency, setShowTransparency] = useState(false);
   const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null);
+
+  // Pre-fill fee sliders when resolved data arrives (extraction found real values)
+  React.useEffect(() => {
+    if (!resolved) return;
+    const f = resolved.fees;
+    if (f.seniorFeePct > 0) setSeniorFeePct(f.seniorFeePct);
+    if (f.subFeePct > 0) setSubFeePct(f.subFeePct);
+    if (f.trusteeFeeBps > 0) setTrusteeFeeBps(f.trusteeFeeBps);
+    if (f.incentiveFeePct > 0) setIncentiveFeePct(f.incentiveFeePct);
+    if (f.incentiveFeeHurdleIrr > 0) setIncentiveFeeHurdleIrr(f.incentiveFeeHurdleIrr * 100); // stored as decimal, display as %
+  }, [resolved]);
 
   const loanInputs: LoanInput[] = resolved?.loans ?? [];
 
@@ -191,13 +208,13 @@ export default function ProjectionModel({
           initialPar: 0,
           wacSpreadBps: 0,
           baseRatePct,
-          seniorFeePct: 0,
-          subFeePct: 0,
-          trusteeFeeBps: 2,
-          hedgeCostBps: 0,
-          incentiveFeePct: 0,
-          incentiveFeeHurdleIrr: 0,
-          postRpReinvestmentPct: 0,
+          seniorFeePct,
+          subFeePct,
+          trusteeFeeBps,
+          hedgeCostBps,
+          incentiveFeePct,
+          incentiveFeeHurdleIrr: incentiveFeeHurdleIrr / 100,
+          postRpReinvestmentPct,
           callDate: null,
           reinvestmentOcTrigger: null,
           tranches: [],
@@ -231,15 +248,21 @@ export default function ProjectionModel({
         cccBucketLimitPct,
         cccMarketValuePct,
         deferredInterestCompounds: constraints.interestMechanics?.deferredInterestCompounds ?? true,
-        postRpReinvestmentPct: 0,
-        hedgeCostBps: 0,
+        postRpReinvestmentPct,
+        hedgeCostBps,
         callDate: null,
+        seniorFeePct,
+        subFeePct,
+        trusteeFeeBps,
+        incentiveFeePct,
+        incentiveFeeHurdleIrr,
       });
     },
     [
       resolved, baseRatePct, defaultRates, cprPct, recoveryPct, recoveryLagMonths,
       reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating, cccBucketLimitPct, cccMarketValuePct,
       constraints.interestMechanics?.deferredInterestCompounds,
+      seniorFeePct, subFeePct, trusteeFeeBps, hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr, postRpReinvestmentPct,
     ]
   );
 
@@ -385,12 +408,22 @@ export default function ProjectionModel({
               ...RATING_BUCKETS.map((b) => ({ value: b, label: b })),
             ]}
           />
-          <SliderInput label="Base Rate (SOFR)" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" />
-          <SliderInput label="Senior Fee Rate" value={seniorFeePct} onChange={setSeniorFeePct} min={0} max={1} step={0.05} suffix="%" />
-          <SliderInput label="Sub Mgmt Fee" value={subFeePct} onChange={setSubFeePct} min={0} max={0.5} step={0.05} suffix="%" />
+          <SliderInput label="Base Rate (EURIBOR)" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" />
+          <SliderInput label="Post-RP Reinvestment" value={postRpReinvestmentPct} onChange={setPostRpReinvestmentPct} min={0} max={100} step={5} suffix="%" />
           <SliderInput label="CCC Bucket Limit" value={cccBucketLimitPct} onChange={setCccBucketLimitPct} min={0} max={15} step={0.5} suffix="%" />
           <SliderInput label="CCC Mkt Value" value={cccMarketValuePct} onChange={setCccMarketValuePct} min={0} max={100} step={5} suffix="%" />
         </div>
+
+        {/* Fees & Expenses — collapsible, pre-filled from PPM extraction */}
+        <FeeAssumptions
+          seniorFeePct={seniorFeePct} onSeniorFeeChange={setSeniorFeePct}
+          subFeePct={subFeePct} onSubFeeChange={setSubFeePct}
+          trusteeFeeBps={trusteeFeeBps} onTrusteeFeeChange={setTrusteeFeeBps}
+          hedgeCostBps={hedgeCostBps} onHedgeCostChange={setHedgeCostBps}
+          incentiveFeePct={incentiveFeePct} onIncentiveFeeChange={setIncentiveFeePct}
+          incentiveFeeHurdleIrr={incentiveFeeHurdleIrr} onHurdleChange={setIncentiveFeeHurdleIrr}
+          hasResolvedFees={!!resolved && (resolved.fees.seniorFeePct > 0 || resolved.fees.subFeePct > 0)}
+        />
         <div style={{ marginTop: "1rem" }}>
           <DefaultRatePanel
             defaultRates={defaultRates}
@@ -1315,6 +1348,60 @@ function PeriodTrace({ period, inputs }: { period: PeriodResult; inputs: Project
       ))}
       <div style={dividerStyle} />
       <div style={{ ...lineStyle, fontWeight: 700 }}><span style={{ color: eqColor }}>Total Equity Distribution</span><span style={{ color: eqColor }}>{formatAmount(period.equityDistribution)}</span></div>
+    </div>
+  );
+}
+
+function FeeAssumptions({
+  seniorFeePct, onSeniorFeeChange,
+  subFeePct, onSubFeeChange,
+  trusteeFeeBps, onTrusteeFeeChange,
+  hedgeCostBps, onHedgeCostChange,
+  incentiveFeePct, onIncentiveFeeChange,
+  incentiveFeeHurdleIrr, onHurdleChange,
+  hasResolvedFees,
+}: {
+  seniorFeePct: number; onSeniorFeeChange: (v: number) => void;
+  subFeePct: number; onSubFeeChange: (v: number) => void;
+  trusteeFeeBps: number; onTrusteeFeeChange: (v: number) => void;
+  hedgeCostBps: number; onHedgeCostChange: (v: number) => void;
+  incentiveFeePct: number; onIncentiveFeeChange: (v: number) => void;
+  incentiveFeeHurdleIrr: number; onHurdleChange: (v: number) => void;
+  hasResolvedFees: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ marginTop: "0.75rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.4rem", padding: "0.5rem 0.8rem", background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem", color: "var(--color-text-muted)", textAlign: "left", fontFamily: "var(--font-body)" }}
+      >
+        <span>
+          <span style={{ fontSize: "0.65rem", marginRight: "0.3rem" }}>{open ? "▾" : "▸"}</span>
+          Fees & Expenses
+        </span>
+        {hasResolvedFees && <span style={{ fontSize: "0.6rem", fontWeight: 600, padding: "0.1rem 0.35rem", borderRadius: "3px", background: "var(--color-high)18", color: "var(--color-high)" }}>FROM PPM</span>}
+        {!hasResolvedFees && (seniorFeePct === 0 && subFeePct === 0) && <span style={{ fontSize: "0.6rem", fontWeight: 600, padding: "0.1rem 0.35rem", borderRadius: "3px", background: "var(--color-warning, #d97706)18", color: "var(--color-warning, #d97706)" }}>NOT SET</span>}
+      </button>
+      {open && (
+        <div style={{ padding: "0 0.8rem 0.8rem" }}>
+          <div style={{ fontSize: "0.68rem", color: "var(--color-text-muted)", marginBottom: "0.75rem", lineHeight: 1.5 }}>
+            {hasResolvedFees
+              ? "Pre-filled from PPM extraction. Adjust if the extracted values look wrong."
+              : "No fees were extracted from the PPM. Set them manually or the model will assume zero fees (overstating equity returns)."
+            }
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.25rem" }}>
+            <SliderInput label="Senior Mgmt Fee" value={seniorFeePct} onChange={onSeniorFeeChange} min={0} max={1} step={0.05} suffix="% p.a." />
+            <SliderInput label="Sub Mgmt Fee" value={subFeePct} onChange={onSubFeeChange} min={0} max={0.5} step={0.05} suffix="% p.a." />
+            <SliderInput label="Trustee/Admin Fee" value={trusteeFeeBps} onChange={onTrusteeFeeChange} min={0} max={10} step={1} suffix=" bps" />
+            <SliderInput label="Hedge Cost" value={hedgeCostBps} onChange={onHedgeCostChange} min={0} max={50} step={1} suffix=" bps" />
+            <SliderInput label="Incentive Fee" value={incentiveFeePct} onChange={onIncentiveFeeChange} min={0} max={30} step={1} suffix="% of residual" />
+            <SliderInput label="Incentive Hurdle IRR" value={incentiveFeeHurdleIrr} onChange={onHurdleChange} min={0} max={20} step={0.5} suffix="%" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
