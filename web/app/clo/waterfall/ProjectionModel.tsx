@@ -143,7 +143,7 @@ export default function ProjectionModel({
           incentiveFeePct,
           incentiveFeeHurdleIrr: incentiveFeeHurdleIrr / 100,
           postRpReinvestmentPct,
-          callDate: null,
+          callDate,
           reinvestmentOcTrigger: null,
           tranches: [],
           ocTriggers: [],
