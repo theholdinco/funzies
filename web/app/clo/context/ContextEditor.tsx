@@ -673,12 +673,47 @@ export default function ContextEditor({
 
   function importContext(file: File) {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target?.result as string);
-        if (data.constraints) { setConstraints(data.constraints); setConstraintsDirty(true); }
-        if (data.fundProfile) { setFundProfile(data.fundProfile); setProfileDirty(true); }
-        if (data.complianceData) { setComplianceData(data.complianceData); setComplianceDirty(true); }
+        // Handle both flat format { constraints, fundProfile, complianceData }
+        // and nested format { resolved, warnings, raw: { constraints, fundProfile, complianceData } }
+        const source = data.raw ?? data;
+        if (source.constraints) {
+          setConstraints(source.constraints);
+          setConstraintsDirty(false);
+          await fetch("/api/clo/profile/constraints", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ extractedConstraints: source.constraints }),
+          });
+        }
+        if (source.fundProfile) {
+          setFundProfile(source.fundProfile);
+          setProfileDirty(false);
+          await fetch("/api/clo/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fund_strategy: source.fundProfile.fundStrategy,
+              target_sectors: source.fundProfile.targetSectors,
+              risk_appetite: source.fundProfile.riskAppetite,
+              portfolio_size: source.fundProfile.portfolioSize,
+              reinvestment_period: source.fundProfile.reinvestmentPeriod,
+              concentration_limits: source.fundProfile.concentrationLimits,
+              covenant_preferences: source.fundProfile.covenantPreferences,
+              rating_thresholds: source.fundProfile.ratingThresholds,
+              spread_targets: source.fundProfile.spreadTargets,
+              regulatory_constraints: source.fundProfile.regulatoryConstraints,
+              portfolio_description: source.fundProfile.portfolioDescription,
+              beliefs_and_biases: source.fundProfile.beliefsAndBiases,
+            }),
+          });
+        }
+        if (source.complianceData) {
+          setComplianceData(source.complianceData);
+          setComplianceDirty(false);
+        }
       } catch { /* ignore parse errors */ }
     };
     reader.readAsText(file);

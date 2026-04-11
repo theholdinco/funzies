@@ -18,6 +18,7 @@ export const CLO_DEFAULTS = {
 
   // Base rate assumption
   baseRatePct: 3.5,     // ~current 3M EURIBOR
+  baseRateFloorPct: 0,  // EURIBOR floor (0% is near-universal in post-2016 EUR CLOs)
 
   // Default assumptions for projection (visible on sliders)
   cprPct: 15,
@@ -26,6 +27,12 @@ export const CLO_DEFAULTS = {
   reinvestmentSpreadBps: 350,
   reinvestmentTenorYears: 5,
   postRpReinvestmentPct: 0,
+
+  // Class X amortisation — if extraction misses the per-period amount, spread balance evenly over this many quarters
+  defaultClassXAmortPeriods: 5,
+
+  // Maturity fallback — if no maturity date can be resolved, assume currentDate + this many years
+  defaultMaxTenorYears: 13,
 
   // OC test parameters
   cccBucketLimitPct: 7.5,

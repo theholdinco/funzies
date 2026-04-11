@@ -1,6 +1,7 @@
 export interface ResolvedReinvestmentOcTrigger {
   triggerLevel: number;
   rank: number;
+  diversionPct: number; // % of remaining interest diverted when test fails (e.g. 50 for 50%)
 }
 
 export interface ResolvedDealData {
@@ -12,6 +13,8 @@ export interface ResolvedDealData {
   dates: ResolvedDates;
   fees: ResolvedFees;
   loans: ResolvedLoan[];
+  deferredInterestCompounds: boolean; // whether PIK'd interest itself earns interest in subsequent periods
+  baseRateFloorPct: number | null; // extracted reference rate floor (null = not extracted, use default)
 }
 
 export type ResolvedSource = "db_tranche" | "ppm" | "snapshot" | "manual";

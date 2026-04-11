@@ -16,10 +16,13 @@ export const EMPTY_RESOLVED: ResolvedDealData = {
   dates: { maturity: "", reinvestmentPeriodEnd: null, nonCallPeriodEnd: null, firstPaymentDate: null, currentDate: new Date().toISOString().slice(0, 10) },
   fees: { seniorFeePct: 0, subFeePct: 0, trusteeFeeBps: 0, incentiveFeePct: 0, incentiveFeeHurdleIrr: 0 },
   loans: [],
+  deferredInterestCompounds: true,
+  baseRateFloorPct: null,
 };
 
 export interface UserAssumptions {
   baseRatePct: number;
+  baseRateFloorPct: number;
   defaultRates: Record<string, number>;
   cprPct: number;
   recoveryPct: number;
@@ -33,6 +36,7 @@ export interface UserAssumptions {
   postRpReinvestmentPct: number;
   hedgeCostBps: number;
   callDate: string | null;
+  callPricePct: number; // liquidation price as % of par on call date (100 = par)
   // Fee overrides — user can adjust these via sliders.
   // Pre-filled from resolved PPM data, but user has final say.
   seniorFeePct: number;
@@ -44,6 +48,7 @@ export interface UserAssumptions {
 
 export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
   baseRatePct: CLO_DEFAULTS.baseRatePct,
+  baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
   defaultRates: { ...DEFAULT_RATES_BY_RATING },
   cprPct: CLO_DEFAULTS.cprPct,
   recoveryPct: CLO_DEFAULTS.recoveryPct,
@@ -57,6 +62,7 @@ export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
   postRpReinvestmentPct: 0,
   hedgeCostBps: 0,
   callDate: null,
+  callPricePct: 100,
   seniorFeePct: CLO_DEFAULTS.seniorFeePct,
   subFeePct: CLO_DEFAULTS.subFeePct,
   trusteeFeeBps: CLO_DEFAULTS.trusteeFeeBps,
@@ -72,6 +78,7 @@ export function buildFromResolved(
     initialPar: resolved.poolSummary.totalPar,
     wacSpreadBps: resolved.poolSummary.wacSpreadBps,
     baseRatePct: userAssumptions.baseRatePct,
+    baseRateFloorPct: userAssumptions.baseRateFloorPct,
     seniorFeePct: userAssumptions.seniorFeePct,
     subFeePct: userAssumptions.subFeePct,
     trusteeFeeBps: userAssumptions.trusteeFeeBps,
@@ -80,6 +87,7 @@ export function buildFromResolved(
     incentiveFeeHurdleIrr: userAssumptions.incentiveFeeHurdleIrr / 100, // convert from % to decimal
     postRpReinvestmentPct: userAssumptions.postRpReinvestmentPct,
     callDate: userAssumptions.callDate,
+    callPricePct: userAssumptions.callPricePct,
     reinvestmentOcTrigger: resolved.reinvestmentOcTrigger,
     tranches: resolved.tranches.map(t => ({
       className: t.className,
@@ -116,6 +124,6 @@ export function buildFromResolved(
     reinvestmentRating: userAssumptions.reinvestmentRating,
     cccBucketLimitPct: userAssumptions.cccBucketLimitPct,
     cccMarketValuePct: userAssumptions.cccMarketValuePct,
-    deferredInterestCompounds: userAssumptions.deferredInterestCompounds,
+    deferredInterestCompounds: userAssumptions.deferredInterestCompounds ?? resolved.deferredInterestCompounds,
   };
 }

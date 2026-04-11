@@ -117,6 +117,7 @@ export interface VotingAndControl {
 export interface InterestMechanics {
   dayCount?: string;
   referenceRate?: string;
+  referenceRateFloorPct?: number | null; // floor on reference rate (e.g. 0 for "floored at zero", null if no floor)
   interpolation?: string;
   deferralClasses?: string[];
   deferredInterestCompounds?: boolean;

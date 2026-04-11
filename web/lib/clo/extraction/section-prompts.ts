@@ -335,7 +335,7 @@ PPM COVERAGE TEST FORMAT:
 - Also look for tables with columns like: Class | OC Trigger | IC Trigger
 - NOTE: PPM trigger levels may differ from compliance report values if the deal was refinanced. Extract the PPM values as stated.
 
-Extract reinvestment OC test: trigger level (as percentage, e.g. "102.95"), appliesDuring (e.g., "Reinvestment Period only"), diversionAmount.
+Extract reinvestment OC test: trigger level (as percentage, e.g. "102.95"), appliesDuring (e.g., "Reinvestment Period only"), diversionAmount (the exact percentage of remaining interest proceeds diverted, e.g. "50%" or "Up to 50%"). The diversion percentage is critical — look for phrases like "up to 50 per cent" or "100 per cent" of remaining available interest proceeds.
 
 ${COMMON_RULES}`,
     user: `Extract the coverage test definitions from the following markdown text.`,
@@ -427,7 +427,7 @@ CRITICAL — Rate format rules:
 - Always strip units from rate — just the number. "0.15% per annum" → rate: "0.15", rateUnit: "pct_pa"
 
 Additional CLO fees to look for:
-- Incentive Management Fee / Performance Fee — also extract hurdleRate (the IRR threshold above which the fee applies, as a percentage e.g. "12" for 12%)
+- Incentive Management Fee / Performance Fee — CRITICAL: also extract hurdleRate (the IRR threshold above which the fee applies, as a percentage e.g. "12" for 12%). Look for phrases like "internal rate of return", "exceeds X per cent", "IRR hurdle". The hurdle rate is essential — if you find an incentive fee percentage but no hurdle rate, set hurdleRate to null (do NOT omit the field).
 - Administrative Expenses / Administrative Expense Cap
 - Arrangement Fee
 - Placement Fee
@@ -522,6 +522,27 @@ Extract events of default (typically 8-12 events): event, description.
 
 ${COMMON_RULES}`,
     user: `Extract all redemption provisions and events of default from the following markdown text.`,
+  };
+}
+
+export function ppmInterestMechanicsPrompt(): Prompt {
+  return {
+    system: `You are extracting interest mechanics from a CLO private placement memorandum's markdown text.
+
+Extract:
+- dayCount: day count convention (e.g. "ACT/360", "30/360")
+- referenceRate: the floating rate benchmark (e.g. "3-month EURIBOR", "3-month Term SOFR")
+- referenceRateFloorPct: the floor on the reference rate, as a number (e.g. 0 for "floored at zero"). Use null if no floor is mentioned.
+- deferredInterestCompounds: whether deferred (PIK'd) interest on deferrable tranches compounds — i.e. whether unpaid interest is added to the principal balance and itself accrues interest. Look for language like "Deferred Interest shall bear interest" (true) or "Deferred Interest shall not bear interest" (false). This is CRITICAL for projection accuracy.
+- deferralClasses: list of tranche class names that can defer interest (e.g. ["Class C", "Class D", "Class E", "Class F"])
+- subNoteInterest: how subordinated note interest is determined (e.g. "residual", "fixed rate", etc.)
+
+IMPORTANT:
+- For deferredInterestCompounds, look in the definitions of "Deferred Interest" and in the interest waterfall steps for deferrable tranches. PPMs typically state whether deferred interest "shall accrue interest at the applicable rate" or similar.
+- For referenceRateFloorPct, look for "floored at zero", "deemed to be zero", "shall not be less than zero", "subject to a zero floor" — all mean 0. Some deals have no floor at all (use null).
+
+${COMMON_RULES}`,
+    user: `Extract interest mechanics from the following markdown text.`,
   };
 }
 

@@ -29,6 +29,7 @@ function makeInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs
     initialPar: 100_000_000,
     wacSpreadBps: 375,
     baseRatePct: CLO_DEFAULTS.baseRatePct,
+    baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
     seniorFeePct: CLO_DEFAULTS.seniorFeePct,
     subFeePct: CLO_DEFAULTS.subFeePct,
     tranches: [
@@ -64,6 +65,7 @@ function makeInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs
     incentiveFeeHurdleIrr: 0,
     postRpReinvestmentPct: 0,
     callDate: null,
+    callPricePct: 100,
     reinvestmentOcTrigger: null,
     ...overrides,
   };

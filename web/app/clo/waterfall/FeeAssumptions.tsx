@@ -12,6 +12,7 @@ export function FeeAssumptions({
   incentiveFeeHurdleIrr, onHurdleChange,
   hasResolvedFees,
   callDate, onCallDateChange,
+  callPricePct, onCallPriceChange,
 }: {
   seniorFeePct: number; onSeniorFeeChange: (v: number) => void;
   subFeePct: number; onSubFeeChange: (v: number) => void;
@@ -21,6 +22,7 @@ export function FeeAssumptions({
   incentiveFeeHurdleIrr: number; onHurdleChange: (v: number) => void;
   hasResolvedFees: boolean;
   callDate: string | null; onCallDateChange: (v: string | null) => void;
+  callPricePct: number; onCallPriceChange: (v: number) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -32,7 +34,7 @@ export function FeeAssumptions({
       >
         <span>
           <span style={{ fontSize: "0.65rem", marginRight: "0.3rem" }}>{open ? "▾" : "▸"}</span>
-          Fees & Expenses
+          Dates, Fees & Expenses
         </span>
         {hasResolvedFees && <span style={{ fontSize: "0.6rem", fontWeight: 600, padding: "0.1rem 0.35rem", borderRadius: "3px", background: "var(--color-high)18", color: "var(--color-high)" }}>FROM PPM</span>}
         {!hasResolvedFees && (seniorFeePct === 0 && subFeePct === 0) && <span style={{ fontSize: "0.6rem", fontWeight: 600, padding: "0.1rem 0.35rem", borderRadius: "3px", background: "var(--color-warning, #d97706)18", color: "var(--color-warning, #d97706)" }}>NOT SET</span>}
@@ -79,6 +81,9 @@ export function FeeAssumptions({
                 )}
               </div>
             </div>
+            {callDate && (
+              <SliderInput label="Liquidation Price" value={callPricePct} onChange={onCallPriceChange} min={80} max={105} step={0.5} suffix="% of par" hint="Average price at which the loan portfolio is sold on the call date" />
+            )}
           </div>
         </div>
       )}

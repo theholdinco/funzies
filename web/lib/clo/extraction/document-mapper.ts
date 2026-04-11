@@ -31,6 +31,7 @@ export const PPM_SECTION_TYPES = [
   "fees_and_expenses",
   "key_dates",
   "key_parties",
+  "interest_mechanics",
 ] as const;
 
 const sectionSchema = z.object({
@@ -90,6 +91,7 @@ PPM STRUCTURE GUIDE (CLO offering circulars):
 - Waterfall rules appear in the Conditions of the Notes section.
 - Key parties are usually on the Transaction Overview page in dots-leader format.
 - Key dates appear in the Transaction Overview / term sheet section.
+- Interest mechanics (day count, reference rate, deferred interest compounding) are typically in the Conditions of the Notes section or Definitions. Look for "Interest Period", "Deferred Interest", "Day Count".
 
 Rules:
 - Page numbers are 1-indexed (first page of the PDF is page 1).

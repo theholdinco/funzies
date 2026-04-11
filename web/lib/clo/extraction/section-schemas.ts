@@ -461,6 +461,17 @@ export const ppmRedemptionSchema = z.object({
 
 export type PpmRedemption = z.infer<typeof ppmRedemptionSchema>;
 
+export const ppmInterestMechanicsSchema = z.object({
+  dayCount: z.string().optional(),
+  referenceRate: z.string().optional(),
+  referenceRateFloorPct: z.number().nullable().optional(),
+  deferredInterestCompounds: z.boolean().nullable().optional(),
+  deferralClasses: z.array(z.string()).optional(),
+  subNoteInterest: z.string().optional(),
+}).passthrough();
+
+export type PpmInterestMechanics = z.infer<typeof ppmInterestMechanicsSchema>;
+
 export const ppmHedgingSchema = z.object({
   currencyHedgeRequired: z.boolean().optional(),
   hedgeTypes: z.string().optional(),

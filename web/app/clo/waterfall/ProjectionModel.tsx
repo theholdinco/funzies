@@ -15,10 +15,8 @@ import type {
 import {
   runProjection,
   validateInputs,
-  computeSensitivity,
   type ProjectionInputs,
   type ProjectionResult,
-  type SensitivityRow,
   type LoanInput,
 } from "@/lib/clo/projection";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
@@ -31,7 +29,6 @@ import MonteCarloChart from "./MonteCarloChart";
 import { formatPct, formatAmount, formatDate, TRANCHE_COLORS } from "./helpers";
 import { SliderInput, SelectInput } from "./SliderInput";
 import { SummaryCard } from "./SummaryCard";
-import { SensitivityTable } from "./SensitivityTable";
 import { ModelInputsPanel } from "./ModelInputsPanel";
 import { PeriodTrace } from "./PeriodTrace";
 import { FeeAssumptions } from "./FeeAssumptions";
@@ -100,6 +97,7 @@ export default function ProjectionModel({
   const [reinvestmentTenorYears, setReinvestmentTenorYears] = useState<number>(CLO_DEFAULTS.reinvestmentTenorYears);
   const [reinvestmentRating, setReinvestmentRating] = useState<string>("auto");
   const [baseRatePct, setBaseRatePct] = useState<number>(CLO_DEFAULTS.baseRatePct);
+  const [baseRateFloorPct, setBaseRateFloorPct] = useState<number>(resolved?.baseRateFloorPct ?? CLO_DEFAULTS.baseRateFloorPct);
   const [cccBucketLimitPct, setCccBucketLimitPct] = useState<number>(CLO_DEFAULTS.cccBucketLimitPct);
   const [cccMarketValuePct, setCccMarketValuePct] = useState<number>(CLO_DEFAULTS.cccMarketValuePct);
   // Fee assumptions — pre-filled from resolved PPM data if available, otherwise defaults (zero).
@@ -114,6 +112,7 @@ export default function ProjectionModel({
   );
   const [postRpReinvestmentPct, setPostRpReinvestmentPct] = useState<number>(CLO_DEFAULTS.postRpReinvestmentPct);
   const [callDate, setCallDate] = useState<string | null>(null);
+  const [callPricePct, setCallPricePct] = useState<number>(100);
   const [showTransparency, setShowTransparency] = useState(false);
   const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"projection" | "switch">(urlTab === "switch" ? "switch" : "projection");
@@ -161,6 +160,7 @@ export default function ProjectionModel({
       const resolvedData = resolved ?? EMPTY_RESOLVED;
       return buildFromResolved(resolvedData, {
         baseRatePct,
+        baseRateFloorPct,
         defaultRates: defaultRates,
         cprPct,
         recoveryPct,
@@ -170,10 +170,11 @@ export default function ProjectionModel({
         reinvestmentRating: reinvestmentRating === "auto" ? null : reinvestmentRating,
         cccBucketLimitPct,
         cccMarketValuePct,
-        deferredInterestCompounds: constraints.interestMechanics?.deferredInterestCompounds ?? true,
+        deferredInterestCompounds: resolved?.deferredInterestCompounds ?? true,
         postRpReinvestmentPct,
         hedgeCostBps,
         callDate,
+        callPricePct,
         seniorFeePct,
         subFeePct,
         trusteeFeeBps,
@@ -182,16 +183,17 @@ export default function ProjectionModel({
       });
     },
     [
-      resolved, baseRatePct, defaultRates, cprPct, recoveryPct, recoveryLagMonths,
+      resolved, baseRatePct, baseRateFloorPct, defaultRates, cprPct, recoveryPct, recoveryLagMonths,
       reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating, cccBucketLimitPct, cccMarketValuePct,
-      constraints.interestMechanics?.deferredInterestCompounds,
+      resolved?.deferredInterestCompounds,
       seniorFeePct, subFeePct, trusteeFeeBps, hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr, postRpReinvestmentPct,
-      callDate,
+      callDate, callPricePct,
     ]
   );
 
   const userAssumptions: UserAssumptions = useMemo(() => ({
     baseRatePct,
+    baseRateFloorPct,
     defaultRates: defaultRates,
     cprPct,
     recoveryPct,
@@ -201,20 +203,21 @@ export default function ProjectionModel({
     reinvestmentRating: reinvestmentRating === "auto" ? null : reinvestmentRating,
     cccBucketLimitPct,
     cccMarketValuePct,
-    deferredInterestCompounds: constraints.interestMechanics?.deferredInterestCompounds ?? true,
+    deferredInterestCompounds: resolved?.deferredInterestCompounds ?? true,
     postRpReinvestmentPct,
     hedgeCostBps,
     callDate,
+    callPricePct,
     seniorFeePct,
     subFeePct,
     trusteeFeeBps,
     incentiveFeePct,
     incentiveFeeHurdleIrr,
   }), [
-    baseRatePct, defaultRates, cprPct, recoveryPct, recoveryLagMonths,
+    baseRatePct, baseRateFloorPct, defaultRates, cprPct, recoveryPct, recoveryLagMonths,
     reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating, cccBucketLimitPct, cccMarketValuePct,
-    constraints.interestMechanics?.deferredInterestCompounds,
-    postRpReinvestmentPct, hedgeCostBps, callDate, seniorFeePct, subFeePct, trusteeFeeBps, incentiveFeePct, incentiveFeeHurdleIrr,
+    resolved?.deferredInterestCompounds,
+    postRpReinvestmentPct, hedgeCostBps, callDate, callPricePct, seniorFeePct, subFeePct, trusteeFeeBps, incentiveFeePct, incentiveFeeHurdleIrr,
   ]);
 
   const validationErrors = useMemo(() => validateInputs(inputs), [inputs]);
@@ -226,13 +229,6 @@ export default function ProjectionModel({
   const deferredInputs = React.useDeferredValue(inputs);
   const deferredResult = React.useDeferredValue(result);
 
-  const sensitivity: SensitivityRow[] = useMemo(
-    () => {
-      if (!deferredResult || deferredResult.equityIrr === null) return [];
-      return computeSensitivity(deferredInputs, deferredResult.equityIrr);
-    },
-    [deferredInputs, deferredResult]
-  );
 
   const mc = useMonteCarlo(validationErrors.length === 0 ? inputs : null);
 
@@ -409,6 +405,7 @@ export default function ProjectionModel({
           incentiveFeeHurdleIrr={incentiveFeeHurdleIrr} onHurdleChange={setIncentiveFeeHurdleIrr}
           hasResolvedFees={!!resolved && (resolved.fees.seniorFeePct > 0 || resolved.fees.subFeePct > 0)}
           callDate={callDate} onCallDateChange={setCallDate}
+          callPricePct={callPricePct} onCallPriceChange={setCallPricePct}
         />
         <div style={{ marginTop: "1rem" }}>
           <DefaultRatePanel
@@ -561,7 +558,6 @@ export default function ProjectionModel({
 
             {showTransparency && (
               <div style={{ padding: "0 0.8rem 0.8rem" }}>
-                <SensitivityTable rows={sensitivity} baseIrr={result.equityIrr} />
                 {resolved && <ModelInputsPanel resolved={resolved} inputs={inputs} />}
 
               </div>
@@ -843,6 +839,7 @@ export default function ProjectionModel({
               incentiveFeeHurdleIrr={incentiveFeeHurdleIrr} onHurdleChange={setIncentiveFeeHurdleIrr}
               hasResolvedFees={!!resolved && (resolved.fees.seniorFeePct > 0 || resolved.fees.subFeePct > 0)}
               callDate={callDate} onCallDateChange={setCallDate}
+              callPricePct={callPricePct} onCallPriceChange={setCallPricePct}
             />
             <div style={{ marginTop: "1rem" }}>
               <DefaultRatePanel

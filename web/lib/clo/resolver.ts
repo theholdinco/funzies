@@ -89,6 +89,9 @@ function resolveTranches(
   const snapshotByTrancheId = new Map(snapshots.map(s => [s.trancheId, s]));
   const classXAmort = constraints.dealSizing?.classXAmortisation;
   const classXAmortPerPeriod = classXAmort ? parseAmount(classXAmort) : null;
+  if (!classXAmortPerPeriod) {
+    warnings.push({ field: "classXAmortisation", message: "Class X amortisation per period not extracted — model will estimate by dividing balance evenly over 5 quarters. Set manually if different.", severity: "warn" });
+  }
 
   // Compute Class X amort start date: "second Payment Date following Issue Date"
   // = one quarter after firstPaymentDate
@@ -350,7 +353,7 @@ function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarn
         // Standard European CLO equity hurdle is ~12% IRR. Using 0% would mean
         // the incentive fee fires on any positive return, which is too aggressive.
         incentiveFeeHurdleIrr = 0.12;
-        warnings.push({ field: "fees.incentiveFeeHurdleIrr", message: `Incentive fee present (${incentiveFeePct}%) but no hurdle rate found — assuming 12% IRR hurdle. Set manually if different.`, severity: "error" });
+        warnings.push({ field: "fees.incentiveFeeHurdleIrr", message: `Incentive fee present (${incentiveFeePct}%) but no hurdle rate found — assuming 12% IRR hurdle. This directly affects equity IRR calculation. Set manually if different.`, severity: "error", resolvedFrom: "not extracted → defaulted to 12%" });
       }
     }
   }
@@ -429,17 +432,22 @@ export function resolveWaterfallInputs(
   );
 
   // --- Dates ---
+  const currentDate = new Date().toISOString().slice(0, 10);
   const maturity = dealDates?.maturity ?? constraints.keyDates?.maturityDate ?? null;
-  if (!maturity) {
-    warnings.push({ field: "dates.maturity", message: "No maturity date found — using fallback 2037-01-01. Projection timeline will be inaccurate. Set maturity manually.", severity: "error" });
+  // Dynamic fallback: currentDate + defaultMaxTenorYears (instead of hardcoded date)
+  let resolvedMaturity = maturity;
+  if (!resolvedMaturity) {
+    const fallbackYear = new Date().getFullYear() + CLO_DEFAULTS.defaultMaxTenorYears;
+    resolvedMaturity = `${fallbackYear}-01-15`;
+    warnings.push({ field: "dates.maturity", message: `No maturity date found — using fallback ${resolvedMaturity} (current date + ${CLO_DEFAULTS.defaultMaxTenorYears} years). Set maturity manually.`, severity: "error" });
   }
 
   const dates: ResolvedDates = {
-    maturity: maturity ?? "2037-01-01",
+    maturity: resolvedMaturity,
     reinvestmentPeriodEnd: dealDates?.reinvestmentPeriodEnd ?? constraints.keyDates?.reinvestmentPeriodEnd ?? null,
     nonCallPeriodEnd: constraints.keyDates?.nonCallPeriodEnd ?? null,
     firstPaymentDate: constraints.keyDates?.firstPaymentDate ?? null,
-    currentDate: new Date().toISOString().slice(0, 10),
+    currentDate,
   };
 
   // --- Fees ---
@@ -449,6 +457,20 @@ export function resolveWaterfallInputs(
   // Resolved from PPM's reinvestmentOcTest field, with fallback to the most junior OC test
   let reinvestmentOcTrigger: ResolvedReinvestmentOcTrigger | null = null;
   const reinvOcRaw = constraints.reinvestmentOcTest;
+
+  // Parse diversion percentage from the extracted diversionAmount string (e.g. "Up to 50%...", "100%")
+  let diversionPct = 50; // common default
+  if (reinvOcRaw?.diversionAmount) {
+    const pctMatch = reinvOcRaw.diversionAmount.match(/(\d+(?:\.\d+)?)\s*%/);
+    if (pctMatch) {
+      diversionPct = parseFloat(pctMatch[1]);
+    } else {
+      warnings.push({ field: "reinvestmentOcTrigger.diversionPct", message: `Could not parse diversion percentage from "${reinvOcRaw.diversionAmount}" — defaulting to 50%`, severity: "warn" });
+    }
+  } else if (reinvOcRaw?.trigger) {
+    warnings.push({ field: "reinvestmentOcTrigger.diversionPct", message: `Reinvestment OC trigger found but no diversion amount specified — defaulting to 50%`, severity: "warn" });
+  }
+
   if (reinvOcRaw?.trigger) {
     let triggerLevel = parseFloat(reinvOcRaw.trigger);
     if (!isNaN(triggerLevel) && triggerLevel > 0) {
@@ -465,17 +487,17 @@ export function resolveWaterfallInputs(
       }
       // Use the most junior OC test rank (typically Class F)
       const sortedOc = [...ocTriggers].sort((a, b) => b.rank - a.rank);
-      reinvestmentOcTrigger = { triggerLevel, rank: sortedOc[0]?.rank ?? 99 };
+      reinvestmentOcTrigger = { triggerLevel, rank: sortedOc[0]?.rank ?? 99, diversionPct };
     }
   }
   if (!reinvestmentOcTrigger && ocTriggers.length > 0) {
     // Fallback: derive from the most junior OC trigger
     const sortedOc = [...ocTriggers].sort((a, b) => b.rank - a.rank);
-    reinvestmentOcTrigger = { triggerLevel: sortedOc[0].triggerLevel, rank: sortedOc[0].rank };
+    reinvestmentOcTrigger = { triggerLevel: sortedOc[0].triggerLevel, rank: sortedOc[0].rank, diversionPct };
   }
 
   // --- Loans ---
-  const fallbackMaturity = maturity ?? "2037-01-01";
+  const fallbackMaturity = resolvedMaturity;
   const loans: ResolvedLoan[] = holdings
     .filter(h => h.parBalance != null && h.parBalance > 0 && !h.isDefaulted)
     .map(h => ({
@@ -486,8 +508,21 @@ export function resolveWaterfallInputs(
       obligorName: h.obligorName ?? undefined,
     }));
 
+  // --- Base Rate Floor ---
+  // Extracted from interest mechanics section. null = not extracted (use default from CLO_DEFAULTS).
+  const baseRateFloorPct = constraints.interestMechanics?.referenceRateFloorPct ?? null;
+
+  // --- Deferred Interest Compounding ---
+  // Extracted from interest mechanics section. Defaults to true (standard CLO convention).
+  let deferredInterestCompounds = true;
+  if (constraints.interestMechanics?.deferredInterestCompounds !== undefined) {
+    deferredInterestCompounds = constraints.interestMechanics.deferredInterestCompounds;
+  } else if (tranches.some(t => t.isDeferrable)) {
+    warnings.push({ field: "deferredInterestCompounds", message: "Deal has deferrable tranches but no PIK compounding info extracted — assuming deferred interest compounds (standard convention). Set manually if different.", severity: "warn" });
+  }
+
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, reinvestmentOcTrigger, dates, fees, loans },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, reinvestmentOcTrigger, dates, fees, loans, deferredInterestCompounds, baseRateFloorPct },
     warnings,
   };
 }

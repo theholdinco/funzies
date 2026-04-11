@@ -48,6 +48,7 @@ function getSectionConfig(
       fees_and_expenses: { schema: schemas.ppmFeesSchema, prompt: prompts.ppmFeesPrompt },
       key_dates: { schema: schemas.ppmKeyDatesSchema, prompt: prompts.ppmKeyDatesPrompt },
       key_parties: { schema: schemas.ppmKeyPartiesSchema, prompt: prompts.ppmKeyPartiesPrompt },
+      interest_mechanics: { schema: schemas.ppmInterestMechanicsSchema, prompt: prompts.ppmInterestMechanicsPrompt },
     };
     return map[sectionType] ?? null;
   }

@@ -552,5 +552,8 @@ export function normalizePpmSectionResults(
   const hedging = sections.hedging;
   if (hedging) result.hedging = hedging;
 
+  const interestMechanics = sections.interest_mechanics;
+  if (interestMechanics) result.interestMechanics = interestMechanics;
+
   return result;
 }
