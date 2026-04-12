@@ -17,7 +17,7 @@ export const CLO_DEFAULTS = {
   hedgeCostBps: 0,
 
   // Base rate assumption
-  baseRatePct: 3.5,     // ~current 3M EURIBOR
+  baseRatePct: 2.1,     // ~current 3M EURIBOR (Apr 2026)
   baseRateFloorPct: 0,  // EURIBOR floor (0% is near-universal in post-2016 EUR CLOs)
 
   // Default assumptions for projection (visible on sliders)

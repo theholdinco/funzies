@@ -572,6 +572,7 @@ describe("Absolute-value verification (hand-computed)", () => {
   it("Q1 interest collected = par × allInRate / 4", () => {
     // 100M par, 3.5% base + 4.0% spread = 7.5%, quarterly = 1,875,000
     const result = runProjection(makeInputs({
+      baseRatePct: 3.5,
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-03-09", 20), ratingBucket: "B", spreadBps: 400 }],
       defaultRatesByRating: uniformRates(0),
       cprPct: 0,
@@ -591,6 +592,7 @@ describe("Absolute-value verification (hand-computed)", () => {
     // A: 70M × (3.5 + 1.4)% / 4 = 857,500
     // B: 20M × (3.5 + 3.0)% / 4 = 325,000
     const result = runProjection(makeInputs({
+      baseRatePct: 3.5,
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-03-09", 20), ratingBucket: "B", spreadBps: 400 }],
       tranches: [
         { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
@@ -618,6 +620,7 @@ describe("Absolute-value verification (hand-computed)", () => {
   it("Q1 equity distribution = interest - A coupon - B coupon (no fees, no triggers)", () => {
     // 1,875,000 - 857,500 - 325,000 = 692,500
     const result = runProjection(makeInputs({
+      baseRatePct: 3.5,
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-03-09", 20), ratingBucket: "B", spreadBps: 400 }],
       tranches: [
         { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
@@ -710,6 +713,7 @@ describe("Absolute-value verification (hand-computed)", () => {
     // Interest = 1,875,000. Senior fee = 100M × 0.5% / 4 = 125,000. After fees = 1,750,000.
     // A due = 857,500. IC_A = 1,750,000 / 857,500 × 100 = 204.08
     const result = runProjection(makeInputs({
+      baseRatePct: 3.5,
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-03-09", 20), ratingBucket: "B", spreadBps: 400 }],
       tranches: [
         { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
@@ -803,6 +807,7 @@ describe("Absolute-value verification (hand-computed)", () => {
     // Available after fees = 1,875,000 - 250,000 - 125,000 - 125,000 = 1,375,000
     // A due = 857,500, B due = 325,000. Equity = 1,375,000 - 857,500 - 325,000 = 192,500
     const result = runProjection(makeInputs({
+      baseRatePct: 3.5,
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-03-09", 20), ratingBucket: "B", spreadBps: 400 }],
       tranches: [
         { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },

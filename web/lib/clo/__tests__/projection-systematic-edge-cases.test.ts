@@ -83,8 +83,8 @@ describe("A. Aggregate mode (no loans)", () => {
       wacSpreadBps: 400,
     }));
 
-    // Interest = 100M * (3.5 + 4.0)/100 / 4 = 1.875M
-    expect(aggResult.periods[0].interestCollected).toBeCloseTo(1_875_000, -2);
+    // Interest = 100M * (2.1 + 4.0)/100 / 4 = 1.525M
+    expect(aggResult.periods[0].interestCollected).toBeCloseTo(1_525_000, -2);
   });
 
   it("A4: aggregate mode reinvestment during RP increases currentPar", () => {
@@ -1008,8 +1008,8 @@ describe("J. Loan rating & spread edge cases", () => {
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 20), ratingBucket: "B", spreadBps: 400 }],
     }));
 
-    // Zero spread: interest = 100M * 3.5% / 4 = 875K
-    expect(zeroSpread.periods[0].interestCollected).toBeCloseTo(875_000, -2);
+    // Zero spread: interest = 100M * 2.1% / 4 = 525K
+    expect(zeroSpread.periods[0].interestCollected).toBeCloseTo(525_000, -2);
     expect(withSpread.periods[0].interestCollected).toBeGreaterThan(
       zeroSpread.periods[0].interestCollected
     );

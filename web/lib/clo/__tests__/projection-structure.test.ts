@@ -202,6 +202,7 @@ describe("Split tranches: B-1 floating + B-2 fixed at same rank", () => {
     // B-2: 4M * 5.50% / 4 = 55,000
     // B-1: 6M * 5.75% / 4 = 86,250
     const result = runProjection(makeFullDealInputs({
+      baseRatePct: 3.5,
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
     }));
