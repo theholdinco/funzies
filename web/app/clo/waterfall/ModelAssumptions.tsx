@@ -43,7 +43,7 @@ const ASSUMPTIONS_REGISTER: { domain: string; items: Assumption[] }[] = [
   {
     domain: "Fees & Expenses",
     items: [
-      { label: "Incentive fee IRR gate", detail: "The incentive fee computes the true equity IRR each quarter (Newton-Raphson). If the IRR exceeds the hurdle, the CM takes the fee on the full period distribution (catch-up style). This matches standard European CLO indentures. Minor difference: real deals may have more complex catch-up/clawback provisions.", impact: "low" },
+      { label: "Incentive fee IRR gate", detail: "Each quarter the model computes cumulative equity IRR (Newton-Raphson). Three cases: (1) IRR \u2264 hurdle \u2192 no fee. (2) IRR > hurdle even after taking the full fee \u2192 full fee charged. (3) Full fee would push IRR below hurdle \u2192 fee is capped at the level that keeps IRR at the hurdle (bisection). Case 2 is the normal path for performing deals. Case 3 only matters near the hurdle boundary. Real deals may have more complex catch-up/clawback provisions.", impact: "low" },
       { label: "No expense reserve modeling", detail: "The PPM allows discretionary top-up of the expense reserve account, which traps cash before it reaches noteholders. This is not modeled.", impact: "low" },
       { label: "No Senior Expenses Cap", detail: "Real deals cap total non-management expenses (typically €350K-500K/year). The model applies fees without this cap.", impact: "low" },
       { label: "No collateral manager advances", detail: "The PPM allows the manager to make advances (at EURIBOR + 4%) to buy enhancement obligations. These create a senior claim on waterfall cash. Not modeled.", impact: "low" },

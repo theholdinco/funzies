@@ -170,7 +170,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
 
   const loanStates: LoanState[] = loans.map((l) => ({
     survivingPar: l.parBalance,
-    maturityQuarter: Math.max(1, Math.min(quartersBetween(currentDate, l.maturityDate), totalQuarters)),
+    // Don't clamp to totalQuarters — loans with maturity beyond the call/maturity date
+    // should NOT be treated as maturing at par. Instead, they remain as surviving par
+    // that gets liquidated at callPricePct on the final period.
+    maturityQuarter: Math.max(1, quartersBetween(currentDate, l.maturityDate)),
     ratingBucket: l.ratingBucket,
     spreadBps: l.spreadBps,
   }));
@@ -351,7 +354,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       reinvestment = principalProceeds * (postRpReinvestmentPct / 100);
     }
     if (reinvestment > 0 && hasLoans) {
-      const matQ = Math.min(q + reinvestmentTenorQuarters, totalQuarters);
+      const matQ = q + reinvestmentTenorQuarters;
       // Split reinvestment into individual loans sized to the portfolio average.
       // Improves Monte Carlo accuracy: each loan defaults independently instead
       // of one giant loan going all-or-nothing.
@@ -685,7 +688,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
                 survivingPar: diversion,
                 ratingBucket: reinvestmentRating,
                 spreadBps: reinvestmentSpreadBps,
-                maturityQuarter: Math.min(q + reinvestmentTenorQuarters, totalQuarters),
+                maturityQuarter: q + reinvestmentTenorQuarters,
               });
             }
           } else {
@@ -724,7 +727,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           survivingPar: diversion,
           ratingBucket: reinvestmentRating,
           spreadBps: reinvestmentSpreadBps,
-          maturityQuarter: Math.min(q + reinvestmentTenorQuarters, totalQuarters),
+          maturityQuarter: q + reinvestmentTenorQuarters,
         });
       }
     }
@@ -738,8 +741,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     availableInterest -= Math.min(subFeeAmount, availableInterest);
 
     // PPM Step BB: Incentive management fee — % of residual when equity IRR > hurdle.
-    // Uses bisection to solve the circularity: the fee depends on the IRR, but the
-    // IRR depends on the fee. resolveIncentiveFee finds the consistent fee amount.
+    // Incentive fee is circular: the fee reduces equity distributions, which reduces
+    // the IRR, which determines whether the fee should be charged. resolveIncentiveFee
+    // handles this by checking three regimes — see function docstring.
     let incentiveFeeFromInterest = 0;
     if (incentiveFeePct > 0 && incentiveFeeHurdleIrr > 0 && availableInterest > 0) {
       incentiveFeeFromInterest = resolveIncentiveFee(
@@ -850,7 +854,7 @@ function resolveIncentiveFee(
   const preFeeIrr = calculateIrr(cf, periodsPerYear);
   if (preFeeIrr === null || preFeeIrr <= hurdleIrr) return 0;
 
-  // Regime 2: full catch-up fee
+  // Regime 2: full flat fee
   const fullFee = availableAmount * (feePct / 100);
   cf[lastIdx] = availableAmount - fullFee;
   const postFullFeeIrr = calculateIrr(cf, periodsPerYear);
