@@ -18,7 +18,9 @@ export interface ResolvedDealData {
   preExistingDefaultRecovery: number; // market-price recovery for priced defaulted holdings
   unpricedDefaultedPar: number; // par of defaulted holdings without market price (engine applies recoveryPct)
   preExistingDefaultOcValue: number; // recovery value for OC numerator (agency rate — typically higher than market)
-  impliedOcAdjustment: number; // derived residual between trustee's Adjusted CPA and identified components (likely unfunded revolvers, but may include other adjustments)
+  discountObligationHaircut: number; // net OC deduction for loans purchased below threshold (from par value adjustments)
+  longDatedObligationHaircut: number; // net OC deduction for loans maturing after CLO (from par value adjustments)
+  impliedOcAdjustment: number; // derived residual between trustee's Adjusted CPA and identified components
   quartersSinceReport: number; // quarters between compliance report date and projection start (adjusts pre-existing default recovery timing)
   ddtlUnfundedPar: number; // total DDTL commitment par (for dynamic OC deduction in projection)
   deferredInterestCompounds: boolean; // whether PIK'd interest itself earns interest in subsequent periods

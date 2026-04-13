@@ -9,6 +9,7 @@ import type {
   CloConcentration,
   CloWaterfallStep,
   CloAccountBalance,
+  CloParValueAdjustment,
   CloTrade,
   CloTradingSummary,
   CloEvent,
@@ -277,6 +278,7 @@ function rowToHolding(row: Record<string, unknown>): CloHolding {
     ratingFactor: num(row.rating_factor),
     recoveryRateMoodys: num(row.recovery_rate_moodys),
     recoveryRateSp: num(row.recovery_rate_sp),
+    recoveryRateFitch: num(row.recovery_rate_fitch),
     remainingLifeYears: num(row.remaining_life_years),
     warfContribution: num(row.warf_contribution),
     diversityScoreGroup: (row.diversity_score_group as string) ?? null,
@@ -673,6 +675,24 @@ export async function getAccountBalances(reportPeriodId: string): Promise<CloAcc
     [reportPeriodId]
   );
   return rows.map(rowToAccountBalance);
+}
+
+export async function getParValueAdjustments(reportPeriodId: string): Promise<CloParValueAdjustment[]> {
+  const rows = await query<Record<string, unknown>>(
+    "SELECT * FROM clo_par_value_adjustments WHERE report_period_id = $1",
+    [reportPeriodId]
+  );
+  return rows.map((row) => ({
+    id: row.id as string,
+    reportPeriodId: row.report_period_id as string,
+    testName: (row.test_name as string) ?? null,
+    adjustmentType: (row.adjustment_type as CloParValueAdjustment["adjustmentType"]) ?? null,
+    description: (row.description as string) ?? null,
+    grossAmount: row.gross_amount != null ? Number(row.gross_amount) : null,
+    adjustmentAmount: row.adjustment_amount != null ? Number(row.adjustment_amount) : null,
+    netAmount: row.net_amount != null ? Number(row.net_amount) : null,
+    calculationMethod: (row.calculation_method as string) ?? null,
+  }));
 }
 
 export async function getEvents(dealId: string): Promise<CloEvent[]> {

@@ -65,6 +65,8 @@ export interface ProjectionInputs {
   preExistingDefaultRecovery?: number; // market-price recovery for priced defaulted holdings
   unpricedDefaultedPar?: number; // par of defaulted holdings without market price (model applies recoveryPct)
   preExistingDefaultOcValue?: number; // recovery value for OC numerator (agency rate — typically higher than market)
+  discountObligationHaircut?: number; // net OC deduction for discount obligations (from trustee report)
+  longDatedObligationHaircut?: number; // net OC deduction for long-dated obligations (from trustee report)
   impliedOcAdjustment?: number; // derived residual between trustee's Adjusted CPA and identified components
   quartersSinceReport?: number; // quarters between compliance report and projection start (adjusts default recovery timing)
   ddtlDrawPercent?: number; // % of DDTL par actually funded on draw (default 100)
@@ -154,7 +156,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     loans, defaultRatesByRating, cprPct, recoveryPct, recoveryLagMonths,
     reinvestmentSpreadBps, reinvestmentTenorQuarters, reinvestmentRating: reinvestmentRatingOverride,
     cccBucketLimitPct, cccMarketValuePct, deferredInterestCompounds,
-    initialPrincipalCash = 0, preExistingDefaultedPar = 0, preExistingDefaultRecovery = 0, unpricedDefaultedPar = 0, preExistingDefaultOcValue = 0, impliedOcAdjustment = 0, quartersSinceReport = 0,
+    initialPrincipalCash = 0, preExistingDefaultedPar = 0, preExistingDefaultRecovery = 0, unpricedDefaultedPar = 0, preExistingDefaultOcValue = 0,
+    discountObligationHaircut = 0, longDatedObligationHaircut = 0, impliedOcAdjustment = 0, quartersSinceReport = 0,
     ddtlDrawPercent = 100,
   } = inputs;
 
@@ -546,20 +549,24 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     const pendingRecoveryValue = isMaturity ? 0 : recoveryPipeline
       .filter((r) => r.quarter > q)
       .reduce((s, r) => s + r.amount, 0);
-    // OC numerator: if pre-existing defaults have an agency recovery value (for OC purposes)
-    // that exceeds the cash recovery, add the difference while the recovery is still pending.
-    // The boost disappears when the pre-existing recovery arrives (adjusted for report staleness),
-    // NOT when any arbitrary recovery is pending (which would keep the boost alive indefinitely).
+    // OC numerator adjustment for pre-existing defaults: the trustee credits defaulted assets
+    // at the lesser-of-agency recovery rate, which can be ABOVE or BELOW market price.
+    // When agency > market: positive adjustment (trustee gives more OC credit than cash value).
+    // When agency < market: negative adjustment (trustee caps OC credit below cash value).
+    // Disappears when recovery arrives (adjusted for report staleness).
     const preExistingCashRecovery = preExistingDefaultRecovery + unpricedDefaultedPar * (recoveryPct / 100);
     const adjustedArrivalQ = Math.max(1, 1 + recoveryLagQ - quartersSinceReport);
     const preExistingRecoveryStillPending = preExistingDefaultedPar > 0 && !isMaturity && q < adjustedArrivalQ;
-    const ocDefaultBoost = (preExistingDefaultOcValue > 0 && preExistingRecoveryStillPending)
-      ? Math.max(0, preExistingDefaultOcValue - preExistingCashRecovery)
+    // When agency data exists: adjust OC from cash value to agency value (can be negative).
+    // When no agency data (preExistingDefaultOcValue = 0): no adjustment, use cash as-is.
+    const ocDefaultAdjustment = (preExistingDefaultOcValue > 0 && preExistingRecoveryStillPending)
+      ? preExistingDefaultOcValue - preExistingCashRecovery
       : 0;
     const currentDdtlUnfundedPar = hasLoans
       ? loanStates.filter(l => l.isDelayedDraw).reduce((s, l) => s + l.survivingPar, 0)
       : 0;
-    let ocNumerator = endingPar + remainingPrelim + pendingRecoveryValue + ocDefaultBoost - impliedOcAdjustment - currentDdtlUnfundedPar;
+    let ocNumerator = endingPar + remainingPrelim + pendingRecoveryValue + ocDefaultAdjustment
+      - discountObligationHaircut - longDatedObligationHaircut - impliedOcAdjustment - currentDdtlUnfundedPar;
     if (hasLoans && cccBucketLimitPct > 0) {
       const cccPar = loanStates
         .filter((l) => !l.isDelayedDraw && l.ratingBucket === "CCC" && l.survivingPar > 0)

@@ -119,7 +119,7 @@ BNY MELLON TABLE STRUCTURE:
 - Dates in DD-MMM-YYYY format: "16-Feb-2028".
 - Deduplicate rows using composite key (obligorName, securityId) — multi-page tables may repeat headers.
 
-For each holding extract: obligorName, facilityName, isin, lxid, assetType, currency, country, industryCode, industryDescription, moodysIndustry, spIndustry, ratings (moodysRating, spRating, fitchRating, compositeRating, ratingFactor), parBalance, principalBalance, marketValue, purchasePrice, currentPrice, accruedInterest, referenceRate, indexRate, spreadBps, allInRate, floorRate, recoveryRateMoodys, recoveryRateSp, remainingLifeYears, warfContribution, diversityScoreGroup, acquisitionDate, maturityDate, settlementStatus, boolean flags (isCovLite, isRevolving, isDelayedDraw, isDefaulted, isPik, isFixedRate, isDiscountObligation, isLongDated).
+For each holding extract: obligorName, facilityName, isin, lxid, assetType, currency, country, industryCode, industryDescription, moodysIndustry, spIndustry, ratings (moodysRating, spRating, fitchRating, compositeRating, ratingFactor), parBalance, principalBalance, marketValue, purchasePrice, currentPrice, accruedInterest, referenceRate, indexRate, spreadBps, allInRate, floorRate, recoveryRateMoodys, recoveryRateSp, recoveryRateFitch, remainingLifeYears, warfContribution, diversityScoreGroup, acquisitionDate, maturityDate, settlementStatus, boolean flags (isCovLite, isRevolving, isDelayedDraw, isDefaulted, isPik, isFixedRate, isDiscountObligation, isLongDated).
 
 - Spreads in basis points as numbers (375 not "L+375")
 - Prices as numbers (99.5)

@@ -9,6 +9,7 @@ import {
   getTranches,
   getTrancheSnapshots,
   getAccountBalances,
+  getParValueAdjustments,
   getHoldings,
   getPanelForUser,
   rowToProfile,
@@ -38,13 +39,14 @@ export default async function WaterfallPage() {
   // Fetch report-level data if a deal record exists
   const reportPeriod = deal ? await getLatestReportPeriod(deal.id) : null;
 
-  const [waterfallSteps, tranches, trancheSnapshots, periodData, accountBalances, holdings] =
+  const [waterfallSteps, tranches, trancheSnapshots, periodData, accountBalances, parValueAdjustments, holdings] =
     await Promise.all([
       reportPeriod ? getWaterfallSteps(reportPeriod.id) : Promise.resolve([]),
       deal ? getTranches(deal.id) : Promise.resolve([]),
       reportPeriod ? getTrancheSnapshots(reportPeriod.id) : Promise.resolve([]),
       reportPeriod ? getReportPeriodData(reportPeriod.id) : Promise.resolve(null),
       reportPeriod ? getAccountBalances(reportPeriod.id) : Promise.resolve([]),
+      reportPeriod ? getParValueAdjustments(reportPeriod.id) : Promise.resolve([]),
       reportPeriod ? getHoldings(reportPeriod.id) : Promise.resolve([]),
     ]);
 
@@ -67,6 +69,7 @@ export default async function WaterfallPage() {
     holdings,
     { maturity: maturityDate, reinvestmentPeriodEnd, reportDate: reportPeriod?.reportDate ?? null },
     accountBalances,
+    parValueAdjustments,
   );
 
   // Build deal context for AI features

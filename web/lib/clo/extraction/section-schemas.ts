@@ -138,6 +138,7 @@ export const assetScheduleSchema = z.object({
     ratingFactor: z.number().nullable().optional(),
     recoveryRateMoodys: z.number().nullable().optional(),
     recoveryRateSp: z.number().nullable().optional(),
+    recoveryRateFitch: z.number().nullable().optional(),
     remainingLifeYears: z.number().nullable().optional(),
     warfContribution: z.number().nullable().optional(),
     diversityScoreGroup: z.string().nullable().optional(),

@@ -262,6 +262,7 @@ export default function ContextEditor({
       holdings ?? [],
       dealDates,
       [], // account balances not available in context editor
+      [], // par value adjustments not available in context editor
     );
     setResolved(r);
     setResolutionWarnings(w);

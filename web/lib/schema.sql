@@ -582,6 +582,7 @@ CREATE TABLE IF NOT EXISTS clo_holdings (
   rating_factor NUMERIC,
   recovery_rate_moodys NUMERIC,
   recovery_rate_sp NUMERIC,
+  recovery_rate_fitch NUMERIC,
   remaining_life_years NUMERIC,
   warf_contribution NUMERIC,
   diversity_score_group TEXT

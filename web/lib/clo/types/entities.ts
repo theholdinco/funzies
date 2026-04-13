@@ -159,6 +159,7 @@ export interface CloHolding {
   ratingFactor: number | null;
   recoveryRateMoodys: number | null;
   recoveryRateSp: number | null;
+  recoveryRateFitch: number | null;
   remainingLifeYears: number | null;
   warfContribution: number | null;
   diversityScoreGroup: string | null;

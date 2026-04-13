@@ -1,4 +1,4 @@
-import type { ExtractedConstraints, CloPoolSummary, CloComplianceTest, CloTranche, CloTrancheSnapshot, CloHolding, CloAccountBalance } from "./types";
+import type { ExtractedConstraints, CloPoolSummary, CloComplianceTest, CloTranche, CloTrancheSnapshot, CloHolding, CloAccountBalance, CloParValueAdjustment } from "./types";
 import type { ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolutionWarning } from "./resolver-types";
 import { parseSpreadToBps, normalizeWacSpread } from "./ingestion-gate";
 import { mapToRatingBucket } from "./rating-mapping";
@@ -420,6 +420,7 @@ export function resolveWaterfallInputs(
   holdings: CloHolding[],
   dealDates?: { maturity?: string | null; reinvestmentPeriodEnd?: string | null; reportDate?: string | null },
   accountBalances?: CloAccountBalance[],
+  parValueAdjustments?: CloParValueAdjustment[],
 ): { resolved: ResolvedDealData; warnings: ResolutionWarning[] } {
   const warnings: ResolutionWarning[] = [];
 
@@ -633,19 +634,21 @@ export function resolveWaterfallInputs(
       unpricedDefaultedPar += h.parBalance!;
     }
   }
-  // Agency recovery value for OC numerator — uses rating agency recovery rates when available.
-  // The trustee counts defaulted assets at the agency rate in the OC test (typically higher than market).
+  // Agency recovery value for OC numerator — the indenture uses the LESSER of available
+  // agency recovery rates (e.g. "Lesser of Fitch Collateral Value and S&P Collateral Value").
   const preExistingDefaultOcValue = defaultedHoldings.reduce((s, h) => {
-    const agencyRate = h.recoveryRateMoodys ?? h.recoveryRateSp ?? null;
-    if (agencyRate != null && agencyRate > 0) {
-      // Agency rates in percentage format (e.g. 71.5 = 71.5%)
-      return s + h.parBalance! * (agencyRate >= 1 ? agencyRate / 100 : agencyRate);
+    const rates = [h.recoveryRateMoodys, h.recoveryRateSp, h.recoveryRateFitch]
+      .filter((r): r is number => r != null && r > 0);
+    if (rates.length > 0) {
+      const minRate = Math.min(...rates);
+      // Agency rates in percentage format (e.g. 28.5 = 28.5%)
+      return s + h.parBalance! * (minRate >= 1 ? minRate / 100 : minRate);
     }
-    // No agency rate — fall back to same as cash recovery (market price)
+    // No agency rates — fall back to market price
     if (h.currentPrice != null && h.currentPrice > 0) {
       return s + h.parBalance! * (h.currentPrice >= 1 ? h.currentPrice / 100 : h.currentPrice);
     }
-    // No agency rate and no market price — return 0 so engine uses model recoveryPct
+    // No data — return 0 so engine uses model recoveryPct
     return s;
   }, 0);
 
@@ -657,19 +660,29 @@ export function resolveWaterfallInputs(
       (a.accountType === "PRINCIPAL" || (a.accountName ?? "").toLowerCase().includes("principal")))
     .reduce((s, a) => s + a.balanceAmount!, 0);
 
+  // --- Discount & Long-Dated Obligation Haircuts ---
+  // The trustee's Adjusted CPA deducts par of discount/long-dated obligations and adds back
+  // their recovery values. The NET haircut is the OC numerator reduction. Extract from the
+  // par value adjustments section (already in DB from compliance report extraction).
+  const pvAdj = parValueAdjustments ?? [];
+  const discountObligationHaircut = pvAdj
+    .filter(a => a.adjustmentType === "DISCOUNT_OBLIGATION_HAIRCUT" && a.netAmount != null)
+    .reduce((s, a) => s + Math.abs(a.netAmount!), 0);
+  const longDatedObligationHaircut = pvAdj
+    .filter(a => a.adjustmentType === "LONG_DATED_HAIRCUT" && a.netAmount != null)
+    .reduce((s, a) => s + Math.abs(a.netAmount!), 0);
+
   // --- Implied OC Adjustment ---
-  // Residual between the trustee's Adjusted CPA and the components we can identify
-  // (principal balance + cash - defaulted haircut). This residual likely reflects unfunded
-  // revolver commitments but may also absorb other trustee adjustments we haven't modeled
-  // (trading gains/losses, discount haircuts, participation excess, rounding).
-  // Sanity-checked: if implausibly large (>5% of par — the typical PPM cap on
-  // Revolving/DD Obligations) or negative, discard and warn.
+  // Residual between the trustee's Adjusted CPA and the components we can now identify
+  // (principal balance + cash - defaulted haircut - discount haircut - long-dated haircut).
+  // Captures any remaining trustee adjustments we haven't explicitly modeled.
+  // Sanity-checked: if implausibly large (>5% of par) or negative, discard and warn.
   const totalPar = pool?.totalPar ?? 0;
   const totalPrincipalBalance = pool?.totalPrincipalBalance ?? 0;
   let impliedOcAdjustment = 0;
   if (totalPar > 0 && totalPrincipalBalance > 0) {
     const defaultedHaircut = preExistingDefaultedPar - preExistingDefaultOcValue;
-    const implied = totalPrincipalBalance + principalAccountCash - defaultedHaircut - totalPar;
+    const implied = totalPrincipalBalance + principalAccountCash - defaultedHaircut - discountObligationHaircut - longDatedObligationHaircut - totalPar;
     if (implied < 0) {
       warnings.push({ field: "impliedOcAdjustment", message: `Adjusted CPA reconciliation has negative residual (${Math.round(implied).toLocaleString()}). Unmodeled trustee adjustments may be inflating the Adjusted CPA. OC adjustment set to 0.`, severity: "info" });
     } else if (implied > totalPar * 0.05) {
@@ -700,7 +713,7 @@ export function resolveWaterfallInputs(
   }
 
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, reinvestmentOcTrigger, dates, fees, loans, principalAccountCash, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, baseRateFloorPct },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, reinvestmentOcTrigger, dates, fees, loans, principalAccountCash, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, baseRateFloorPct },
     warnings,
   };
 }
