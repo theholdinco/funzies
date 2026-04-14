@@ -575,6 +575,14 @@ export function resolveWaterfallInputs(
     const sortedOc = [...ocTriggers].sort((a, b) => b.rank - a.rank);
     reinvestmentOcTrigger = { triggerLevel: sortedOc[0].triggerLevel, rank: sortedOc[0].rank, diversionPct };
   }
+  // Prefer compliance trigger level for the reinvestment OC test when available.
+  // The reinvestment OC test is typically at the same level as the most junior OC trigger (Class F).
+  if (reinvestmentOcTrigger && ocTriggers.length > 0) {
+    const juniorCompliance = [...ocTriggers].filter(t => t.source === "compliance").sort((a, b) => b.rank - a.rank);
+    if (juniorCompliance.length > 0 && juniorCompliance[0].rank === reinvestmentOcTrigger.rank) {
+      reinvestmentOcTrigger = { ...reinvestmentOcTrigger, triggerLevel: juniorCompliance[0].triggerLevel };
+    }
+  }
 
   // --- Loans ---
   const fallbackMaturity = resolvedMaturity;

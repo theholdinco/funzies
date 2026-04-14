@@ -10,6 +10,7 @@ const MAX_MAPPING_PAGES = 50;
 export const COMPLIANCE_SECTION_TYPES = [
   "compliance_summary",
   "par_value_tests",
+  "default_detail",
   "interest_coverage_tests",
   "asset_schedule",
   "concentration_tables",
@@ -74,6 +75,7 @@ COMPLIANCE REPORT STRUCTURE GUIDE (BNY Mellon template — most common format):
 - Pages 7-8: Interest Coverage Tests detailed breakdown (interest_coverage_tests)
 - Pages 8-10: Account Balances (account_balances)
 - Pages after account balances: Tranche Payment Summary / Note Payment Summary / Waterfall Distribution — beginning balances, interest paid, principal paid, ending balances per tranche (waterfall)
+- Pages 10-12: Default and Deferring Detail — lists each defaulted/deferring obligation by name with recovery rates and market prices (default_detail). Look for headings like "Default and Deferring Detail", "Defaulted Obligations", "Deferring Obligations". May be absent if no defaults exist.
 - Pages 10-28: Asset Information I/II/III — the full holdings schedule (asset_schedule)
 - Pages 28-30: Purchases, Sales, Paydowns (trading_activity)
 - Pages 30-35: Supplementary — CCC obligations, hedge transactions, interest smoothing (supplementary)

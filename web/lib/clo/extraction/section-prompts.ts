@@ -50,9 +50,14 @@ ${COMMON_RULES}`,
 
 export function parValueTestsPrompt(): Prompt {
   return {
-    system: `You are extracting par value / overcollateralization tests from a CLO trustee report's markdown text.
+    system: `You are extracting coverage tests from a CLO trustee report's markdown text. Extract BOTH overcollateralization (OC/Par Value) tests AND interest coverage (IC) tests from the same pages — they are often in the same table or adjacent tables.
 
 For EACH test extract: testName, testClass, numerator, denominator, actualValue, triggerLevel, cushionPct, isPassing, consequenceIfFail.
+
+IMPORTANT: Set testType correctly:
+- OC tests (Par Value Ratio, Overcollateralization): testType = "OC_PAR"
+- IC tests (Interest Coverage Ratio): testType = "IC"
+- Reinvestment OC tests: testType = "OC_PAR"
 
 CRITICAL: Every test has BOTH actualValue AND triggerLevel. Look for "Trigger", "Limit", "Threshold", "Required", "Min", "Max" columns. If "Actual: 129.03, Required: 120.0", then actualValue=129.03 and triggerLevel=120.0.
 
@@ -72,7 +77,7 @@ Normalize class names: "Class A/B", "Classes A and B" -> use "A/B".
 DEDUPLICATION: Same test may appear in multiple places. Extract each unique test ONLY ONCE with the most complete data (has actualValue, triggerLevel, and isPassing).
 
 ${COMMON_RULES}`,
-    user: `Extract all par value / overcollateralization tests from the following markdown text.`,
+    user: `Extract all coverage tests (both OC/par value AND interest coverage) from the following markdown text.`,
   };
 }
 
