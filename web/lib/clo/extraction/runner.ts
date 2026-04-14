@@ -50,6 +50,7 @@ const BNY_COMPLIANCE_TEMPLATE: Array<{ sectionType: string; pageStart: number; p
   { sectionType: "par_value_tests", pageStart: 3, pageEnd: 7 },
   { sectionType: "interest_coverage_tests", pageStart: 7, pageEnd: 8 },
   { sectionType: "account_balances", pageStart: 8, pageEnd: 10 },
+  { sectionType: "default_detail", pageStart: 10, pageEnd: 12 },
   { sectionType: "asset_schedule", pageStart: 10, pageEnd: 28 },
   { sectionType: "trading_activity", pageStart: 28, pageEnd: 30 },
   { sectionType: "supplementary", pageStart: 30, pageEnd: 72 },
@@ -1048,11 +1049,10 @@ export async function runSectionExtraction(
       }
       // Set spread_bps from compliance report — always overwrite (compliance is more current)
       if (spreadFromReport != null && typeof spreadFromReport === "number") {
-        // Guard: if AI returned percentage (e.g., 1.45) instead of bps (145), convert.
-        // Threshold at 5: spreads below 5 are almost certainly percentages (e.g. 1.45% = 145bps).
-        // Values 5-20 could be either bps or %, but CLO tranche spreads at 5-20 bps are
-        // extremely rare, so treating them as percentages is safer.
-        const spreadBps = spreadFromReport > 0 && spreadFromReport < 5
+        // Guard: if AI returned percentage (e.g., 6.84) instead of bps (684), convert.
+        // No European CLO tranche has a spread below 20 bps, so any value < 20 is almost
+        // certainly a percentage. Matches the PPM ingestion threshold at line 1132.
+        const spreadBps = spreadFromReport > 0 && spreadFromReport < 20
           ? Math.round(spreadFromReport * 100)
           : spreadFromReport;
         enrichClauses.push(`spread_bps = $${ei++}`);

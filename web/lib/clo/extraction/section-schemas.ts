@@ -72,6 +72,22 @@ export const parValueTestsSchema = z.object({
 
 export type ParValueTests = z.infer<typeof parValueTestsSchema>;
 
+export const defaultDetailSchema = z.object({
+  defaults: z.array(z.object({
+    obligorName: z.string(),
+    securityId: z.string().nullable().optional(), // ISIN or CUSIP
+    parAmount: z.number().nullable().optional(),
+    marketPrice: z.number().nullable().optional(), // as percentage (e.g. 31.29)
+    recoveryRateFitch: z.number().nullable().optional(), // Fitch recovery rate as percentage
+    recoveryRateSp: z.number().nullable().optional(), // S&P recovery rate as percentage
+    recoveryRateMoodys: z.number().nullable().optional(),
+    isDefaulted: z.boolean().nullable().optional(),
+    isDeferring: z.boolean().nullable().optional(),
+  })).default([]),
+});
+
+export type DefaultDetail = z.infer<typeof defaultDetailSchema>;
+
 export const interestCoverageTestsSchema = z.object({
   tests: z.array(z.object({
     testName: z.string(),

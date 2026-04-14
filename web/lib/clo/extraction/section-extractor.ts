@@ -25,6 +25,7 @@ function getSectionConfig(
     const map: Record<string, SectionConfig> = {
       compliance_summary: { schema: schemas.complianceSummarySchema, prompt: prompts.complianceSummaryPrompt },
       par_value_tests: { schema: schemas.parValueTestsSchema, prompt: prompts.parValueTestsPrompt },
+      default_detail: { schema: schemas.defaultDetailSchema, prompt: prompts.defaultDetailPrompt },
       interest_coverage_tests: { schema: schemas.interestCoverageTestsSchema, prompt: prompts.interestCoverageTestsPrompt },
       asset_schedule: { schema: schemas.assetScheduleSchema, prompt: prompts.assetSchedulePrompt },
       concentration_tables: { schema: schemas.concentrationSchema, prompt: prompts.concentrationPrompt },

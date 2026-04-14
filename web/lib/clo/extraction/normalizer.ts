@@ -382,26 +382,67 @@ export function normalizeSectionResults(
     }
   }
 
-  // 4b. Cross-reference: mark holdings as defaulted if they appear in par value adjustments
-  // as DEFAULTED_HAIRCUT entries. The LLM may miss the isDefaulted flag on the asset schedule
-  // but the par value adjustments explicitly list defaulted obligations.
-  if (parValueAdjustments.length > 0 && holdings.length > 0) {
-    const defaultedDescriptions = parValueAdjustments
-      .filter((a) => {
-        const adjType = ((a.adjustment_type ?? a.adjustmentType) as string ?? "").toUpperCase();
-        return adjType.includes("DEFAULT");
-      })
-      .map((a) => ((a.description ?? a.obligor_name ?? "") as string).toLowerCase())
-      .filter((d) => d.length > 5); // minimum 6 chars to avoid false positives on short names
+  // 4b. Cross-reference: mark holdings as defaulted using the Default and Deferring Detail
+  // section (dedicated per-obligor default data) and par value adjustments (fallback).
+  // The LLM may miss the isDefaulted flag on the asset schedule but these sections
+  // explicitly list defaulted obligations by name.
+  const defaultDetail = sections.default_detail as { defaults?: Array<Record<string, unknown>> } | undefined;
+  const defaultedObligors = new Set<string>();
 
-    if (defaultedDescriptions.length > 0) {
+  // Primary source: Default and Deferring Detail section (per-obligor, most reliable)
+  if (defaultDetail?.defaults) {
+    for (const d of defaultDetail.defaults) {
+      const name = ((d.obligorName ?? d.obligor_name ?? "") as string).toLowerCase().trim();
+      if (name.length >= 4 && (d.isDefaulted ?? d.is_defaulted ?? d.isDeferring ?? d.is_deferring)) {
+        defaultedObligors.add(name);
+      }
+    }
+  }
+
+  // Fallback: par value adjustment descriptions (summary-level, less reliable)
+  if (defaultedObligors.size === 0 && parValueAdjustments.length > 0) {
+    for (const a of parValueAdjustments) {
+      const adjType = ((a.adjustment_type ?? a.adjustmentType) as string ?? "").toUpperCase();
+      if (adjType.includes("DEFAULT")) {
+        const desc = ((a.description ?? a.obligor_name ?? "") as string).toLowerCase();
+        if (desc.length > 5) defaultedObligors.add(desc);
+      }
+    }
+  }
+
+  // Apply to holdings
+  if (defaultedObligors.size > 0 && holdings.length > 0) {
+    for (const h of holdings) {
+      if (h.is_defaulted) continue;
+      const obligor = ((h.obligor_name ?? "") as string).toLowerCase().trim();
+      if (obligor.length >= 4 && defaultedObligors.has(obligor)) {
+        h.is_defaulted = true;
+      }
+      // Fuzzy: check if any defaulted name is a substring of the holding's obligor (or vice versa)
+      if (!h.is_defaulted && obligor.length >= 6) {
+        for (const defName of defaultedObligors) {
+          if (defName.length >= 6 && (obligor.includes(defName) || defName.includes(obligor))) {
+            h.is_defaulted = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Also enrich holdings with recovery rates from default detail (per-obligor agency rates)
+  if (defaultDetail?.defaults && holdings.length > 0) {
+    for (const d of defaultDetail.defaults) {
+      const defName = ((d.obligorName ?? d.obligor_name ?? "") as string).toLowerCase().trim();
+      if (!defName) continue;
       for (const h of holdings) {
-        if (h.is_defaulted) continue;
-        const obligor = ((h.obligor_name ?? "") as string).toLowerCase();
-        // Only match if the obligor name is long enough and appears IN the description
-        // (not the reverse — a short description matching inside a long obligor name is too loose)
-        if (obligor.length >= 6 && defaultedDescriptions.some((d) => d.includes(obligor))) {
-          h.is_defaulted = true;
+        const obligor = ((h.obligor_name ?? "") as string).toLowerCase().trim();
+        if (obligor && (obligor === defName || obligor.includes(defName) || defName.includes(obligor))) {
+          // Set recovery rates from default detail if not already present
+          if (d.recoveryRateFitch ?? d.recovery_rate_fitch) h.recovery_rate_fitch = h.recovery_rate_fitch ?? (d.recoveryRateFitch ?? d.recovery_rate_fitch);
+          if (d.recoveryRateSp ?? d.recovery_rate_sp) h.recovery_rate_sp = h.recovery_rate_sp ?? (d.recoveryRateSp ?? d.recovery_rate_sp);
+          if (d.recoveryRateMoodys ?? d.recovery_rate_moodys) h.recovery_rate_moodys = h.recovery_rate_moodys ?? (d.recoveryRateMoodys ?? d.recovery_rate_moodys);
+          if (d.marketPrice ?? d.market_price) h.current_price = h.current_price ?? (d.marketPrice ?? d.market_price);
         }
       }
     }

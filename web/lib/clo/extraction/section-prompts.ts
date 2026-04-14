@@ -76,6 +76,28 @@ ${COMMON_RULES}`,
   };
 }
 
+export function defaultDetailPrompt(): Prompt {
+  return {
+    system: `You are extracting the Default and Deferring Detail section from a CLO trustee report.
+
+This section lists individual defaulted and/or deferring obligations with per-obligor details.
+
+For each defaulted or deferring obligation extract:
+- obligorName: the borrower/issuer name
+- securityId: ISIN, CUSIP, or LX identifier if available
+- parAmount: the par/face amount of the defaulted position
+- marketPrice: current market price as a percentage of par (e.g. 31.29 for 31.29%)
+- recoveryRateFitch: Fitch recovery rate as percentage (e.g. 60.0)
+- recoveryRateSp: S&P recovery rate as percentage (e.g. 28.5)
+- recoveryRateMoodys: Moody's recovery rate as percentage if available
+- isDefaulted: true if the obligation is defaulted, false if only deferring
+- isDeferring: true if the obligation is deferring interest
+
+${COMMON_RULES}`,
+    user: `Extract all defaulted and deferring obligation details from the following markdown text.`,
+  };
+}
+
 export function interestCoverageTestsPrompt(): Prompt {
   return {
     system: `You are extracting interest coverage (IC) tests from a CLO trustee report's markdown text.

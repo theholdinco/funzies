@@ -143,6 +143,12 @@ function resolveTranches(
         }
 
         let spreadBps = t.spreadBps ?? ppmSpreadByClass.get(key) ?? 0;
+        // Defense-in-depth: if spread looks like a percentage (< 20) after DB read, convert.
+        // This should not fire if ingestion is correct — if it does, log a warning.
+        if (spreadBps > 0 && spreadBps < 20 && !isSub) {
+          warnings.push({ field: `${t.className}.spreadBps`, message: `Spread ${spreadBps} looks like percentage (not bps) — converting to ${Math.round(spreadBps * 100)} bps. Check ingestion.`, severity: "warn" });
+          spreadBps = Math.round(spreadBps * 100);
+        }
         if (spreadBps === 0 && !isSub) {
           warnings.push({
             field: `${t.className}.spreadBps`,
@@ -713,13 +719,17 @@ export function resolveWaterfallInputs(
 
   // --- Base Rate Floor ---
   // Extracted from interest mechanics section. null = not extracted (use default from CLO_DEFAULTS).
-  const baseRateFloorPct = constraints.interestMechanics?.referenceRateFloorPct ?? null;
+  // Guard against string "null" from loose extraction typing.
+  const rawFloor = constraints.interestMechanics?.referenceRateFloorPct;
+  const baseRateFloorPct = (typeof rawFloor === "number") ? rawFloor : null;
 
   // --- Deferred Interest Compounding ---
   // Extracted from interest mechanics section. Defaults to true (standard CLO convention).
+  // Guard against string "null" from loose extraction typing.
   let deferredInterestCompounds = true;
-  if (constraints.interestMechanics?.deferredInterestCompounds !== undefined) {
-    deferredInterestCompounds = constraints.interestMechanics.deferredInterestCompounds;
+  const rawCompounds = constraints.interestMechanics?.deferredInterestCompounds;
+  if (typeof rawCompounds === "boolean") {
+    deferredInterestCompounds = rawCompounds;
   } else if (tranches.some(t => t.isDeferrable)) {
     warnings.push({ field: "deferredInterestCompounds", message: "Deal has deferrable tranches but no PIK compounding info extracted — assuming deferred interest compounds (standard convention). Set manually if different.", severity: "warn" });
   }
