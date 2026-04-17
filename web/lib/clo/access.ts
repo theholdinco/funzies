@@ -109,6 +109,7 @@ export async function getProfileWithDocuments(userId: string) {
     documents: Array<{ name: string; type: string; size: number; base64: string }>;
     extracted_constraints: Record<string, unknown>;
     extracted_portfolio: unknown;
+    equity_inception_data: unknown;
     created_at: string;
     updated_at: string;
   }>(

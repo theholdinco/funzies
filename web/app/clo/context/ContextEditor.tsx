@@ -307,12 +307,14 @@ export default function ContextEditor({
   useEffect(() => {
     if (!inceptionData.purchaseDate) return;
     const dates = generateQuarterlyDates(inceptionData.purchaseDate);
-    const existingByDate = new Map(inceptionData.payments.map(p => [p.date, p.distribution]));
-    const newPayments = dates.map(date => ({
-      date,
-      distribution: existingByDate.get(date) ?? null,
-    }));
-    setInceptionData(prev => ({ ...prev, payments: newPayments }));
+    setInceptionData(prev => {
+      const existingByDate = new Map(prev.payments.map(p => [p.date, p.distribution]));
+      const newPayments = dates.map(date => ({
+        date,
+        distribution: existingByDate.get(date) ?? null,
+      }));
+      return { ...prev, payments: newPayments };
+    });
     setInceptionDirty(true);
   }, [inceptionData.purchaseDate]);
 
