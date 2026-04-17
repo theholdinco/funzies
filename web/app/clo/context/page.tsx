@@ -129,6 +129,7 @@ export default async function ContextPage() {
         accountBalances={accountBalances}
         parValueAdjustments={parValueAdjustments}
         dealDates={{ maturity: maturityDate, reinvestmentPeriodEnd, reportDate: reportPeriod?.reportDate ?? null }}
+        equityInceptionData={profile.equityInceptionData}
       />
     </div>
   );

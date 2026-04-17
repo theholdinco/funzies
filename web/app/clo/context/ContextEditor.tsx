@@ -31,6 +31,7 @@ import type {
   CloHolding,
   CloAccountBalance,
   CloParValueAdjustment,
+  EquityInceptionData,
 } from "@/lib/clo/types";
 import { resolveWaterfallInputs } from "@/lib/clo/resolver";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
@@ -68,6 +69,7 @@ interface ContextEditorProps {
   accountBalances?: CloAccountBalance[];
   parValueAdjustments?: CloParValueAdjustment[];
   dealDates?: { maturity?: string | null; reinvestmentPeriodEnd?: string | null; reportDate?: string | null };
+  equityInceptionData?: EquityInceptionData | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -241,6 +243,19 @@ function humanize(key: string): string {
 // Main component
 // ---------------------------------------------------------------------------
 
+function generateQuarterlyDates(fromDate: string): string[] {
+  const dates: string[] = [];
+  const start = new Date(fromDate);
+  const now = new Date();
+  const cursor = new Date(start);
+  cursor.setMonth(cursor.getMonth() + 3);
+  while (cursor <= now) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setMonth(cursor.getMonth() + 3);
+  }
+  return dates;
+}
+
 export default function ContextEditor({
   constraints: initialConstraints,
   fundProfile: initialProfile,
@@ -251,6 +266,7 @@ export default function ContextEditor({
   accountBalances,
   parValueAdjustments,
   dealDates,
+  equityInceptionData: initialInceptionData,
 }: ContextEditorProps) {
   const [constraints, setConstraints] = useState<ExtractedConstraints>(initialConstraints);
   const [fundProfile, setFundProfile] = useState(initialProfile);
@@ -274,6 +290,18 @@ export default function ContextEditor({
     setResolutionWarnings(w);
   }, [constraints, complianceData, tranches, trancheSnapshots, holdings, accountBalances, parValueAdjustments, dealDates]);
 
+  useEffect(() => {
+    if (!inceptionData.purchaseDate) return;
+    const dates = generateQuarterlyDates(inceptionData.purchaseDate);
+    const existingByDate = new Map(inceptionData.payments.map(p => [p.date, p.distribution]));
+    const newPayments = dates.map(date => ({
+      date,
+      distribution: existingByDate.get(date) ?? null,
+    }));
+    setInceptionData(prev => ({ ...prev, payments: newPayments }));
+    setInceptionDirty(true);
+  }, [inceptionData.purchaseDate]);
+
   const [constraintsDirty, setConstraintsDirty] = useState(false);
   const [profileDirty, setProfileDirty] = useState(false);
   const [complianceDirty, setComplianceDirty] = useState(false);
@@ -281,6 +309,12 @@ export default function ContextEditor({
   const [savingConstraints, setSavingConstraints] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingCompliance, setSavingCompliance] = useState(false);
+
+  const [inceptionData, setInceptionData] = useState<EquityInceptionData>(
+    initialInceptionData ?? { purchaseDate: null, purchasePriceCents: null, payments: [] }
+  );
+  const [inceptionDirty, setInceptionDirty] = useState(false);
+  const [savingInception, setSavingInception] = useState(false);
 
   // --- Update helpers ---
 
@@ -337,6 +371,17 @@ export default function ContextEditor({
     });
     setSavingProfile(false);
     if (res.ok) setProfileDirty(false);
+  }
+
+  async function saveInception() {
+    setSavingInception(true);
+    const res = await fetch("/api/clo/profile/inception", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ equityInceptionData: inceptionData }),
+    });
+    setSavingInception(false);
+    if (res.ok) setInceptionDirty(false);
   }
 
   async function saveCompliance() {
@@ -1217,6 +1262,97 @@ export default function ContextEditor({
           <InlineText value={fundProfile.regulatoryConstraints || ""} onChange={(v) => updateProfile("regulatoryConstraints", v)} multiline />
         </div>
       </CollapsibleSection>
+
+      {/* Section: Equity Inception */}
+      <CollapsibleSection title="Equity Inception">
+        <div style={kvRowStyle}>
+          <span style={kvLabelStyle}>Purchase Date</span>
+          <input
+            type="date"
+            value={inceptionData.purchaseDate ?? ""}
+            onChange={(e) => {
+              setInceptionData(prev => ({ ...prev, purchaseDate: e.target.value || null }));
+              setInceptionDirty(true);
+            }}
+            style={{ fontSize: "0.82rem", fontFamily: "var(--font-mono)", padding: "0.2rem 0.4rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text)" }}
+          />
+        </div>
+        <div style={kvRowStyle}>
+          <span style={kvLabelStyle}>Purchase Price (cents)</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+            <input
+              type="number"
+              step="0.5"
+              min="1"
+              max="150"
+              value={inceptionData.purchasePriceCents ?? ""}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setInceptionData(prev => ({ ...prev, purchasePriceCents: isNaN(v) ? null : v }));
+                setInceptionDirty(true);
+              }}
+              style={{ width: "70px", fontSize: "0.82rem", fontFamily: "var(--font-mono)", padding: "0.2rem 0.4rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text)", textAlign: "right" }}
+            />
+            <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>cents on dollar</span>
+          </div>
+        </div>
+
+        {inceptionData.payments.length > 0 && (
+          <>
+            <div style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", fontWeight: 600, margin: "0.8rem 0 0.4rem" }}>
+              Past Payments ({inceptionData.payments.filter(p => p.distribution != null).length}/{inceptionData.payments.length} entered)
+            </div>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Payment Date</th>
+                  <th style={thStyle}>Distribution</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inceptionData.payments.map((payment, i) => (
+                  <tr key={payment.date}>
+                    <td style={tdStyle}>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>{payment.date}</span>
+                    </td>
+                    <td style={tdStyle}>
+                      <input
+                        type="number"
+                        step="1000"
+                        min="0"
+                        value={payment.distribution ?? ""}
+                        placeholder="--"
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          const updated = [...inceptionData.payments];
+                          updated[i] = { ...updated[i], distribution: isNaN(v) ? null : v };
+                          setInceptionData(prev => ({ ...prev, payments: updated }));
+                          setInceptionDirty(true);
+                        }}
+                        style={{ width: "120px", fontSize: "0.82rem", fontFamily: "var(--font-mono)", padding: "0.2rem 0.4rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text)", textAlign: "right" }}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {!inceptionData.purchaseDate && (
+          <div style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", fontStyle: "italic", marginTop: "0.5rem" }}>
+            Set a purchase date to generate quarterly payment rows.
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {inceptionDirty && (
+        <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={saveInception} disabled={savingInception} style={saveBtnStyle}>
+            {savingInception ? "Saving..." : "Save Inception Data"}
+          </button>
+        </div>
+      )}
 
       {profileDirty && (
         <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end" }}>
