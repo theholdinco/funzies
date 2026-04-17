@@ -290,18 +290,6 @@ export default function ContextEditor({
     setResolutionWarnings(w);
   }, [constraints, complianceData, tranches, trancheSnapshots, holdings, accountBalances, parValueAdjustments, dealDates]);
 
-  useEffect(() => {
-    if (!inceptionData.purchaseDate) return;
-    const dates = generateQuarterlyDates(inceptionData.purchaseDate);
-    const existingByDate = new Map(inceptionData.payments.map(p => [p.date, p.distribution]));
-    const newPayments = dates.map(date => ({
-      date,
-      distribution: existingByDate.get(date) ?? null,
-    }));
-    setInceptionData(prev => ({ ...prev, payments: newPayments }));
-    setInceptionDirty(true);
-  }, [inceptionData.purchaseDate]);
-
   const [constraintsDirty, setConstraintsDirty] = useState(false);
   const [profileDirty, setProfileDirty] = useState(false);
   const [complianceDirty, setComplianceDirty] = useState(false);
@@ -315,6 +303,18 @@ export default function ContextEditor({
   );
   const [inceptionDirty, setInceptionDirty] = useState(false);
   const [savingInception, setSavingInception] = useState(false);
+
+  useEffect(() => {
+    if (!inceptionData.purchaseDate) return;
+    const dates = generateQuarterlyDates(inceptionData.purchaseDate);
+    const existingByDate = new Map(inceptionData.payments.map(p => [p.date, p.distribution]));
+    const newPayments = dates.map(date => ({
+      date,
+      distribution: existingByDate.get(date) ?? null,
+    }));
+    setInceptionData(prev => ({ ...prev, payments: newPayments }));
+    setInceptionDirty(true);
+  }, [inceptionData.purchaseDate]);
 
   // --- Update helpers ---
 
