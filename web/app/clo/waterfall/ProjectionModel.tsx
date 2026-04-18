@@ -209,7 +209,9 @@ export default function ProjectionModel({
     const purchasePrice = equityMetrics.subPar * data.purchasePriceCents / 100;
     if (purchasePrice <= 0) return null;
 
-    const cashFlows = [-purchasePrice, ...payments.map(p => p.distribution!)];
+    // Terminal value: current book value (assets - liabilities) as if position were liquidated today
+    const terminalValue = equityMetrics.bookValue;
+    const cashFlows = [-purchasePrice, ...payments.map(p => p.distribution!), terminalValue];
     return calculateIrr(cashFlows, 4);
   }, [equityInceptionData, equityMetrics]);
 

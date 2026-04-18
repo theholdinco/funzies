@@ -500,15 +500,28 @@ export function resolveWaterfallInputs(
   );
 
   // --- Dates ---
-  // Snap currentDate to the most recent payment date so projection periods
-  // align with the deal's actual payment schedule (e.g. 15th of Jan/Apr/Jul/Oct).
+  // Snap currentDate to the compliance report's payment date so projection periods
+  // start from the last known state and align with the deal's payment schedule.
+  // Falls back to snapping today to the nearest payment date if no report is available.
   const today = new Date().toISOString().slice(0, 10);
   const firstPayment = constraints.keyDates?.firstPaymentDate ?? null;
+  const reportPaymentDate = dealDates?.reportDate ?? null;
   let currentDate = today;
-  if (firstPayment) {
+  if (reportPaymentDate && firstPayment) {
+    // Snap the report date to the nearest payment date on the deal's schedule
+    const fp = new Date(firstPayment);
+    const reportD = new Date(reportPaymentDate);
+    const cursor = new Date(fp);
+    let snapped = cursor.toISOString().slice(0, 10);
+    while (cursor <= reportD) {
+      snapped = cursor.toISOString().slice(0, 10);
+      cursor.setUTCMonth(cursor.getUTCMonth() + 3);
+    }
+    currentDate = snapped;
+  } else if (firstPayment) {
+    // No report — snap today to the nearest payment date
     const fp = new Date(firstPayment);
     const now = new Date(today);
-    // Walk forward from firstPaymentDate in 3-month steps to find the most recent payment date
     const cursor = new Date(fp);
     while (cursor <= now) {
       currentDate = cursor.toISOString().slice(0, 10);
