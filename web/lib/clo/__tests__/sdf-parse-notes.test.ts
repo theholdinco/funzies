@@ -142,6 +142,13 @@ describe("parseNotes", () => {
     expect(result.rows[0].currency).toBe("EUR");
   });
 
+  it('normalizes "Class B 1" with space to "Class B-1"', () => {
+    const rowB1Space =
+      "Ares European CLO XV  DAC,Class B 1 Senior Secured Floating Rate Notes due 2032,,,,,,,,AA  ,Aa2 ,AA  ,Aa2 ,33750000.0000,1.7,,,33750000.0000,EUR,,,15.01.2036,,EURIBOR (3 months),3.716,06.01.2026,03.04.2026,3 Months,Actual,360,,,,,,";
+    const result = parseNotes(makeCsv(rowB1Space));
+    expect(result.rows[0].class_name).toBe("Class B-1");
+  });
+
   it('trims NR ratings ("NR  " → "NR")', () => {
     const result = parseNotes(makeCsv(ROW_SUBORDINATED));
     const row = result.rows[0];

@@ -56,14 +56,18 @@ function normalizeClassName(trancheName: string): string {
 
   // Strip "Class " prefix, grab the letter+number portion
   const withoutClass = trancheName.replace(/^Class\s+/i, "");
+
+  // Handle "B 1", "B 2" — letter space digit (before the general regex which stops at the space)
+  const spaceMatch = withoutClass.match(/^([A-Z])\s+(\d)/i);
+  if (spaceMatch) return `Class ${spaceMatch[1]}-${spaceMatch[2]}`;
+
   const match = withoutClass.match(/^([A-Z][A-Z0-9-]*)/i);
   if (!match) return trancheName;
 
   let portion = match[1];
 
-  // Normalize "B 1" → "B-1", "B1" → "B-1"
+  // Normalize "B1" → "B-1"
   portion = portion.replace(/^([A-Z])(\d)$/i, "$1-$2");
-  portion = portion.replace(/^([A-Z])\s+(\d)$/i, "$1-$2");
 
   return `Class ${portion}`;
 }
