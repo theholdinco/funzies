@@ -49,6 +49,10 @@ function parseSaleCode(saleCode: string | null): {
   return { is_credit_risk_sale: false, is_credit_improved: false, is_discretionary: false };
 }
 
+// Spec says "Cash In without security name → skip (STIF adjustment)".
+// In practice, STIF rows have empty Issuer_Name but populated Security_Name
+// ("Cash Account - Interest Payment Rec"). Checking issuerName is equivalent
+// for current SDF data and more reliable.
 function isStifAdjustment(cashFlowType: string | null, issuerName: string | null): boolean {
   return cashFlowType?.trim() === "Cash In" && (!issuerName || issuerName.trim() === "");
 }
