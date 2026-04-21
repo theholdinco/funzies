@@ -1,8 +1,17 @@
 import type { ExtractedConstraints, CloPoolSummary, CloComplianceTest, CloTranche, CloTrancheSnapshot, CloHolding, CloAccountBalance, CloParValueAdjustment } from "./types";
-import type { ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolutionWarning } from "./resolver-types";
+import type { ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolvedComplianceTest, ResolvedMetadata, ResolutionWarning } from "./resolver-types";
 import { parseSpreadToBps, normalizeWacSpread } from "./ingestion-gate";
 import { mapToRatingBucket } from "./rating-mapping";
 import { CLO_DEFAULTS } from "./defaults";
+
+/** Remove keys with null/undefined values to avoid JSON bloat. */
+function stripNulls<T extends Record<string, unknown>>(obj: T): T {
+  const result = {} as Record<string, unknown>;
+  for (const [k, v] of Object.entries(obj)) {
+    if (v != null) result[k] = v;
+  }
+  return result as T;
+}
 
 function addQuartersForResolver(dateIso: string, quarters: number): string {
   const d = new Date(dateIso);
@@ -656,7 +665,14 @@ export function resolveWaterfallInputs(
       }
     }
 
-    return {
+    const creditWatch = [
+      h.moodysIssuerWatch,
+      h.moodysSecurityWatch,
+      h.spIssuerWatch,
+      h.spSecurityWatch,
+    ].some(w => w && w.toLowerCase().includes('negative')) || undefined;
+
+    return stripNulls({
       parBalance: h.parBalance!,
       maturityDate: h.maturityDate ?? fallbackMaturity,
       ratingBucket,
@@ -666,7 +682,25 @@ export function resolveWaterfallInputs(
       fixedCouponPct,
       isDelayedDraw: isDdtl || undefined,
       ddtlSpreadBps,
-    };
+      // Full ratings
+      moodysRating: h.moodysRating ?? undefined,
+      spRating: h.spRating ?? undefined,
+      fitchRating: h.fitchRating ?? undefined,
+      // Derived ratings
+      moodysRatingFinal: h.moodysRatingFinal ?? undefined,
+      spRatingFinal: h.spRatingFinal ?? undefined,
+      fitchRatingFinal: h.fitchRatingFinal ?? undefined,
+      // Market data
+      currentPrice: h.currentPrice ?? undefined,
+      marketValue: h.marketValue ?? undefined,
+      // Structural
+      lienType: h.lienType ?? undefined,
+      isDefaulted: h.isDefaulted ?? undefined,
+      defaultDate: h.defaultDate ?? undefined,
+      floorRate: h.floorRate ?? undefined,
+      pikAmount: h.pikAmount ?? undefined,
+      creditWatch: creditWatch || undefined,
+    });
   });
 
   // --- Pre-existing Defaults ---
@@ -772,8 +806,61 @@ export function resolveWaterfallInputs(
     warnings.push({ field: "deferredInterestCompounds", message: "Deal has deferrable tranches but no PIK compounding info extracted — assuming deferred interest compounds (standard convention). Set manually if different.", severity: "warn" });
   }
 
+  // --- Quality & Concentration Tests ---
+  const allComplianceTests = complianceData?.complianceTests ?? [];
+  const qualityTestTypes = new Set(['WARF', 'WAL', 'WAS', 'DIVERSITY', 'RECOVERY']);
+  const concentrationTestTypes = new Set(['CONCENTRATION', 'ELIGIBILITY']);
+
+  const qualityTests: ResolvedComplianceTest[] = allComplianceTests
+    .filter(t => t.testType && qualityTestTypes.has(t.testType))
+    .map(t => ({
+      testName: t.testName,
+      testClass: t.testClass,
+      actualValue: t.actualValue,
+      triggerLevel: t.triggerLevel,
+      cushion: t.cushionPct,
+      isPassing: t.isPassing,
+    }));
+
+  const concentrationTests: ResolvedComplianceTest[] = allComplianceTests
+    .filter(t => t.testType && concentrationTestTypes.has(t.testType))
+    .map(t => ({
+      testName: t.testName,
+      testClass: t.testClass,
+      actualValue: t.actualValue,
+      triggerLevel: t.triggerLevel,
+      cushion: t.cushionPct,
+      isPassing: t.isPassing,
+    }));
+
+  // --- Data Source Metadata ---
+  const dataSources = new Set<string>();
+  for (const h of holdings) { if (h.dataSource) dataSources.add(h.dataSource); }
+  for (const t of allComplianceTests) { if (t.dataSource) dataSources.add(t.dataSource); }
+
+  const sdfFilesIngested: string[] = [];
+  const pdfExtracted: string[] = [];
+  for (const ds of dataSources) {
+    if (ds.startsWith('sdf')) sdfFilesIngested.push(ds);
+    else if (ds.startsWith('pdf')) pdfExtracted.push(ds);
+  }
+
+  let dataSource: ResolvedMetadata["dataSource"] = null;
+  if (dataSources.size > 0) {
+    const allSdf = [...dataSources].every(s => s.startsWith('sdf'));
+    const allPdf = [...dataSources].every(s => s.startsWith('pdf'));
+    dataSource = allSdf ? "sdf" : allPdf ? "pdf" : "mixed";
+  }
+
+  const metadata: ResolvedMetadata = {
+    reportDate: dealDates?.reportDate ?? null,
+    dataSource,
+    sdfFilesIngested,
+    pdfExtracted,
+  };
+
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, reinvestmentOcTrigger, dates, fees, loans, principalAccountCash, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, baseRateFloorPct },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, dates, fees, loans, metadata, principalAccountCash, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, baseRateFloorPct },
     warnings,
   };
 }

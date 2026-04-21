@@ -4,15 +4,34 @@ export interface ResolvedReinvestmentOcTrigger {
   diversionPct: number; // % of remaining interest diverted when test fails (e.g. 50 for 50%)
 }
 
+export interface ResolvedComplianceTest {
+  testName: string;
+  testClass: string | null;
+  actualValue: number | null;
+  triggerLevel: number | null;
+  cushion: number | null;
+  isPassing: boolean | null;
+}
+
+export interface ResolvedMetadata {
+  reportDate: string | null;
+  dataSource: "sdf" | "pdf" | "mixed" | null;
+  sdfFilesIngested: string[];
+  pdfExtracted: string[];
+}
+
 export interface ResolvedDealData {
   tranches: ResolvedTranche[];
   poolSummary: ResolvedPool;
   ocTriggers: ResolvedTrigger[];
   icTriggers: ResolvedTrigger[];
+  qualityTests: ResolvedComplianceTest[];
+  concentrationTests: ResolvedComplianceTest[];
   reinvestmentOcTrigger: ResolvedReinvestmentOcTrigger | null;
   dates: ResolvedDates;
   fees: ResolvedFees;
   loans: ResolvedLoan[];
+  metadata: ResolvedMetadata;
   principalAccountCash: number; // uninvested cash in principal accounts (counts toward OC numerator)
   preExistingDefaultedPar: number; // par of defaulted loans excluded from loan list
   preExistingDefaultRecovery: number; // market-price recovery for priced defaulted holdings
@@ -89,6 +108,25 @@ export interface ResolvedLoan {
   isDelayedDraw?: boolean;     // true = unfunded commitment, no interest until drawn
   ddtlSpreadBps?: number;      // spread from parent facility, applied at draw
   drawQuarter?: number;        // quarter in which the DDTL converts to funded
+  // Full ratings (not just ratingBucket)
+  moodysRating?: string;
+  spRating?: string;
+  fitchRating?: string;
+  // Derived ratings (what WARF actually uses)
+  moodysRatingFinal?: string;
+  spRatingFinal?: string;
+  fitchRatingFinal?: string;
+  // Market data
+  currentPrice?: number;
+  marketValue?: number;
+  // Structural
+  lienType?: string;
+  isDefaulted?: boolean;
+  defaultDate?: string;
+  floorRate?: number;
+  pikAmount?: number;
+  // Consolidated credit watch — true if ANY agency has negative watch
+  creditWatch?: boolean;
 }
 
 export type WarningSeverity = "info" | "warn" | "error";
