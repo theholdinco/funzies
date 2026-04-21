@@ -156,7 +156,7 @@ export async function ingestSdfFiles(
       const client = await getClient();
       try {
         await client.query("BEGIN");
-        const collateralCount = await processCollateral(reportPeriodId, entry.parsed as SdfParseResult<SdfCollateralRow>, client);
+        const collateralCount = await processCollateral(reportPeriodId, entry.parsed as SdfParseResult<SdfCollateralRow>, client, true);
         results.push({
           fileType: "collateral_file",
           rowCount: collateralCount,
@@ -187,7 +187,8 @@ export async function ingestSdfFiles(
       const rowCount = await processFile(
         dealId,
         reportPeriodId,
-        entry
+        entry,
+        uploadedTypes
       );
       results.push({
         fileType,
@@ -280,13 +281,14 @@ async function createReportPeriod(
 async function processFile(
   dealId: string,
   reportPeriodId: string,
-  entry: ParsedFile
+  entry: ParsedFile,
+  uploadedTypes?: Set<SdfFileType>
 ): Promise<number> {
   switch (entry.fileType) {
     case "notes":
       return processNotes(dealId, reportPeriodId, entry.parsed);
     case "collateral_file":
-      return processCollateral(reportPeriodId, entry.parsed);
+      return processCollateral(reportPeriodId, entry.parsed, undefined, uploadedTypes?.has("asset_level") ?? false);
     case "asset_level":
       return processAssetLevel(reportPeriodId, entry.parsed);
     case "test_results":
@@ -341,19 +343,22 @@ async function processTestResults(
 async function processCollateral(
   reportPeriodId: string,
   parsed: SdfParseResult<SdfCollateralRow>,
-  externalClient?: import("pg").PoolClient
+  externalClient?: import("pg").PoolClient,
+  assetLevelInBatch = false
 ): Promise<number> {
   if (parsed.rows.length === 0) return 0;
 
-  // Check for enrichment data loss
-  const enriched = await query<{ count: string }>(
-    `SELECT COUNT(*) as count FROM clo_holdings WHERE report_period_id = $1 AND moodys_rating_final IS NOT NULL`,
-    [reportPeriodId]
-  );
-  if (parseInt(enriched[0]?.count ?? "0", 10) > 0) {
-    console.warn(
-      "SDF ingest: Collateral File re-uploaded without Asset Level — enrichment columns will be reset."
+  // Check for enrichment data loss — only warn when Asset Level is NOT in the batch
+  if (!assetLevelInBatch) {
+    const enriched = await query<{ count: string }>(
+      `SELECT COUNT(*) as count FROM clo_holdings WHERE report_period_id = $1 AND moodys_rating_final IS NOT NULL`,
+      [reportPeriodId]
     );
+    if (parseInt(enriched[0]?.count ?? "0", 10) > 0) {
+      console.warn(
+        "SDF ingest: Collateral File re-uploaded without Asset Level — enrichment columns will be reset."
+      );
+    }
   }
 
   if (externalClient) {
