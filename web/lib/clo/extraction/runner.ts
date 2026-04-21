@@ -19,6 +19,20 @@ import type { DocumentMap, SectionEntry } from "./document-mapper";
 import { validateAndNormalizeConstraints, normalizeComplianceTestType } from "../ingestion-gate";
 import { remapColumnAliases, splitTextIntoPageChunks, mergeChunkResults, detectRepairNeeds, getLastItems } from "./transforms";
 
+const SDF_GUARDED_TABLES = new Set([
+  "clo_holdings", "clo_compliance_tests", "clo_tranche_snapshots",
+  "clo_account_balances", "clo_trades",
+]);
+
+async function hasSdfData(table: string, reportPeriodId: string): Promise<boolean> {
+  if (!SDF_GUARDED_TABLES.has(table)) return false;
+  const result = await query(
+    `SELECT 1 FROM ${table} WHERE report_period_id = $1 AND data_source = 'sdf' LIMIT 1`,
+    [reportPeriodId],
+  );
+  return result.length > 0;
+}
+
 /** Adapter: run normalizeComplianceTestType on snake_case DB rows */
 function normalizeComplianceTestRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
   const camelTests = rows.map(r => ({
@@ -376,8 +390,16 @@ export async function runExtraction(
   const p1Normalized = normalizePass1(pass1Data, reportPeriodId);
   await replaceIfPresent("clo_pool_summary", [p1Normalized.poolSummary]);
   const normalizedTests = normalizeComplianceTestRows(p1Normalized.complianceTests);
-  await replaceIfPresent("clo_compliance_tests", normalizedTests);
-  await replaceIfPresent("clo_account_balances", p1Normalized.accountBalances);
+  if (await hasSdfData("clo_compliance_tests", reportPeriodId)) {
+    console.log("Skipping clo_compliance_tests — SDF data already present.");
+  } else {
+    await replaceIfPresent("clo_compliance_tests", normalizedTests.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+  }
+  if (await hasSdfData("clo_account_balances", reportPeriodId)) {
+    console.log("Skipping clo_account_balances — SDF data already present.");
+  } else {
+    await replaceIfPresent("clo_account_balances", p1Normalized.accountBalances.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+  }
   await replaceIfPresent("clo_par_value_adjustments", p1Normalized.parValueAdjustments);
 
   // Propagate CM name from compliance report if deal doesn't have one
@@ -450,7 +472,11 @@ export async function runExtraction(
   const p2 = passResults.find((p) => p.pass === 2);
   if (p2?.data) {
     const normalized = normalizePass2(p2.data as unknown as import("./schemas").Pass2Output, reportPeriodId);
-    await replaceIfPresent("clo_holdings", normalized.holdings);
+    if (await hasSdfData("clo_holdings", reportPeriodId)) {
+      console.log("Skipping clo_holdings — SDF data already present.");
+    } else {
+      await replaceIfPresent("clo_holdings", normalized.holdings.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+    }
   }
 
   // Insert Pass 3 data (concentrations)
@@ -467,13 +493,20 @@ export async function runExtraction(
 
     await replaceIfPresent("clo_waterfall_steps", normalized.waterfallSteps);
     await replaceIfPresent("clo_proceeds", normalized.proceeds);
-    await replaceIfPresent("clo_trades", normalized.trades);
+    if (await hasSdfData("clo_trades", reportPeriodId)) {
+      console.log("Skipping clo_trades — SDF data already present.");
+    } else {
+      await replaceIfPresent("clo_trades", normalized.trades.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+    }
     if (normalized.tradingSummary) {
       await query("DELETE FROM clo_trading_summary WHERE report_period_id = $1", [reportPeriodId]);
       await batchInsert("clo_trading_summary", [normalized.tradingSummary]);
     }
 
     if (normalized.trancheSnapshots.length > 0) {
+      if (await hasSdfData("clo_tranche_snapshots", reportPeriodId)) {
+        console.log("Skipping clo_tranche_snapshots — SDF data already present.");
+      } else {
       await query("DELETE FROM clo_tranche_snapshots WHERE report_period_id = $1", [reportPeriodId]);
       const allTranches = await query<{ id: string; class_name: string }>(
         "SELECT id, class_name FROM clo_tranches WHERE deal_id = $1",
@@ -548,6 +581,7 @@ export async function runExtraction(
           [`${maxYear}-07-15`, dealId],
         );
       }
+      } // end else (no SDF data for clo_tranche_snapshots)
     }
   }
 
@@ -626,7 +660,11 @@ export async function runExtraction(
               try {
                 const validated = pass2Schema.parse(existing);
                 const normalized = normalizePass2(validated, reportPeriodId);
-                await replaceIfPresent("clo_holdings", normalized.holdings);
+                if (await hasSdfData("clo_holdings", reportPeriodId)) {
+                  console.log("Skipping clo_holdings — SDF data already present.");
+                } else {
+                  await replaceIfPresent("clo_holdings", normalized.holdings.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+                }
               } catch { /* keep original */ }
             } else if (repair.pass === 3) {
               try {
@@ -640,7 +678,11 @@ export async function runExtraction(
                 const normalized = normalizePass4(validated, reportPeriodId);
                 await replaceIfPresent("clo_waterfall_steps", normalized.waterfallSteps);
                 await replaceIfPresent("clo_proceeds", normalized.proceeds);
-                await replaceIfPresent("clo_trades", normalized.trades);
+                if (await hasSdfData("clo_trades", reportPeriodId)) {
+                  console.log("Skipping clo_trades — SDF data already present.");
+                } else {
+                  await replaceIfPresent("clo_trades", normalized.trades.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+                }
               } catch { /* keep original */ }
             }
           }
@@ -668,7 +710,11 @@ export async function runExtraction(
               rawOutputs.pass2_repair = repairResult.data;
 
               const normalized = normalizePass2(validated, reportPeriodId);
-              await replaceIfPresent("clo_holdings", normalized.holdings);
+              if (await hasSdfData("clo_holdings", reportPeriodId)) {
+                console.log("Skipping clo_holdings — SDF data already present.");
+              } else {
+                await replaceIfPresent("clo_holdings", normalized.holdings.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+              }
             } else {
               console.log(`[extraction] Repair did not improve Pass 2 (${validated.holdings.length} ≤ ${holdings.length}), keeping original`);
             }
@@ -953,20 +999,32 @@ export async function runSectionExtraction(
 
   // Insert compliance tests
   const normalizedTests = normalizeComplianceTestRows(normalized.complianceTests);
-  await replaceIfPresent("clo_compliance_tests", normalizedTests);
-  if (normalized.complianceTests.length > 0) console.log(`[extraction] → clo_compliance_tests: ${normalized.complianceTests.length} rows`);
+  if (await hasSdfData("clo_compliance_tests", reportPeriodId)) {
+    console.log("Skipping clo_compliance_tests — SDF data already present.");
+  } else {
+    await replaceIfPresent("clo_compliance_tests", normalizedTests.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+    if (normalized.complianceTests.length > 0) console.log(`[extraction] → clo_compliance_tests: ${normalized.complianceTests.length} rows`);
+  }
 
   // Insert account balances
-  await replaceIfPresent("clo_account_balances", normalized.accountBalances);
-  if (normalized.accountBalances.length > 0) console.log(`[extraction] → clo_account_balances: ${normalized.accountBalances.length} rows`);
+  if (await hasSdfData("clo_account_balances", reportPeriodId)) {
+    console.log("Skipping clo_account_balances — SDF data already present.");
+  } else {
+    await replaceIfPresent("clo_account_balances", normalized.accountBalances.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+    if (normalized.accountBalances.length > 0) console.log(`[extraction] → clo_account_balances: ${normalized.accountBalances.length} rows`);
+  }
 
   // Insert par value adjustments
   await replaceIfPresent("clo_par_value_adjustments", normalized.parValueAdjustments);
   if (normalized.parValueAdjustments.length > 0) console.log(`[extraction] → clo_par_value_adjustments: ${normalized.parValueAdjustments.length} rows`);
 
   // Insert holdings
-  await replaceIfPresent("clo_holdings", normalized.holdings);
-  if (normalized.holdings.length > 0) console.log(`[extraction] → clo_holdings: ${normalized.holdings.length} rows`);
+  if (await hasSdfData("clo_holdings", reportPeriodId)) {
+    console.log("Skipping clo_holdings — SDF data already present.");
+  } else {
+    await replaceIfPresent("clo_holdings", normalized.holdings.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+    if (normalized.holdings.length > 0) console.log(`[extraction] → clo_holdings: ${normalized.holdings.length} rows`);
+  }
 
   // Insert concentrations
   await replaceIfPresent("clo_concentrations", normalized.concentrations);
@@ -981,8 +1039,12 @@ export async function runSectionExtraction(
   if (normalized.proceeds.length > 0) console.log(`[extraction] → clo_proceeds: ${normalized.proceeds.length} rows`);
 
   // Insert trades
-  await replaceIfPresent("clo_trades", normalized.trades);
-  if (normalized.trades.length > 0) console.log(`[extraction] → clo_trades: ${normalized.trades.length} rows`);
+  if (await hasSdfData("clo_trades", reportPeriodId)) {
+    console.log("Skipping clo_trades — SDF data already present.");
+  } else {
+    await replaceIfPresent("clo_trades", normalized.trades.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+    if (normalized.trades.length > 0) console.log(`[extraction] → clo_trades: ${normalized.trades.length} rows`);
+  }
 
   // Insert trading summary
   if (normalized.tradingSummary) {
@@ -1000,6 +1062,9 @@ export async function runSectionExtraction(
 
   // Tranche snapshots: lookup/create tranches, insert snapshots, enrich tranche records
   if (normalized.trancheSnapshots.length > 0) {
+    if (await hasSdfData("clo_tranche_snapshots", reportPeriodId)) {
+      console.log("Skipping clo_tranche_snapshots — SDF data already present.");
+    } else {
     console.log(`[extraction] ═══ TRANCHE SNAPSHOTS ═══`);
     for (const ts of normalized.trancheSnapshots) {
       const dataKeys = Object.entries(ts.data).filter(([, v]) => v != null && v !== undefined).map(([k, v]) => `${k}=${v}`);
@@ -1083,6 +1148,7 @@ export async function runSectionExtraction(
         [`${maxYear}-07-15`, dealId],
       );
     }
+    } // end else (no SDF data for clo_tranche_snapshots)
   }
 
   // Enrich tranches with PPM data (spread, is_floating, is_income_note, seniority_rank)
@@ -1338,16 +1404,28 @@ export async function runSectionExtraction(
 
         switch (repair.sectionType) {
           case "asset_schedule":
-            await replaceIfPresent("clo_holdings", reNormalized.holdings);
+            if (await hasSdfData("clo_holdings", reportPeriodId)) {
+              console.log("Skipping clo_holdings — SDF data already present.");
+            } else {
+              await replaceIfPresent("clo_holdings", reNormalized.holdings.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+            }
             break;
           case "par_value_tests":
             normalizeComplianceTestRows(reNormalized.complianceTests);
-            await replaceIfPresent("clo_compliance_tests", reNormalized.complianceTests);
+            if (await hasSdfData("clo_compliance_tests", reportPeriodId)) {
+              console.log("Skipping clo_compliance_tests — SDF data already present.");
+            } else {
+              await replaceIfPresent("clo_compliance_tests", reNormalized.complianceTests.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+            }
             await replaceIfPresent("clo_par_value_adjustments", reNormalized.parValueAdjustments);
             break;
           case "interest_coverage_tests":
             normalizeComplianceTestRows(reNormalized.complianceTests);
-            await replaceIfPresent("clo_compliance_tests", reNormalized.complianceTests);
+            if (await hasSdfData("clo_compliance_tests", reportPeriodId)) {
+              console.log("Skipping clo_compliance_tests — SDF data already present.");
+            } else {
+              await replaceIfPresent("clo_compliance_tests", reNormalized.complianceTests.map(h => ({ ...h, data_source: 'pdf_extraction' })));
+            }
             break;
           case "concentration_tables":
             await replaceIfPresent("clo_concentrations", reNormalized.concentrations);
