@@ -290,7 +290,7 @@ async function processFile(
     case "collateral_file":
       return processCollateral(reportPeriodId, entry.parsed, undefined, uploadedTypes?.has("asset_level") ?? false);
     case "asset_level":
-      return processAssetLevel(reportPeriodId, entry.parsed);
+      return processAssetLevel(reportPeriodId, entry.parsed, undefined, uploadedTypes);
     case "test_results":
       return processTestResults(reportPeriodId, entry.parsed);
     case "accounts":
@@ -460,9 +460,21 @@ const ENRICHMENT_COLUMNS = [
 async function processAssetLevel(
   reportPeriodId: string,
   parsed: SdfParseResult<SdfAssetLevelRow>,
-  externalClient?: import("pg").PoolClient
+  externalClient?: import("pg").PoolClient,
+  uploadedTypes?: Set<SdfFileType>
 ): Promise<number> {
   if (parsed.rows.length === 0) return 0;
+
+  if (!uploadedTypes?.has("collateral_file")) {
+    const existing = await query(
+      `SELECT 1 FROM clo_holdings WHERE report_period_id = $1 AND data_source = 'sdf' LIMIT 1`,
+      [reportPeriodId]
+    );
+    if (existing.length === 0) {
+      console.warn("Skipping Asset Level — no SDF holdings exist. Upload Collateral File first.");
+      return 0;
+    }
+  }
 
   const client = externalClient ?? await getClient();
   try {
