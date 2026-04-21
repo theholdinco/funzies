@@ -618,6 +618,7 @@ async function processNotes(
         await client.query(
           `UPDATE clo_tranche_snapshots SET
              current_balance = $1,
+             ending_balance = COALESCE($1, ending_balance),
              coupon_rate = $2,
              rating_moodys_issuance = $3,
              rating_sp_issuance = $4,
@@ -651,14 +652,14 @@ async function processNotes(
         await client.query(
           `INSERT INTO clo_tranche_snapshots (
              id, tranche_id, report_period_id,
-             current_balance, coupon_rate,
+             current_balance, ending_balance, coupon_rate,
              rating_moodys_issuance, rating_sp_issuance, rating_fitch_issuance,
              interest_accrued, ic_interest, base_rate,
              accrual_start_date, accrual_end_date,
              unscheduled_principal_paydown, data_source
            ) VALUES (
              gen_random_uuid(), $1, $2,
-             $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+             $3, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
            )`,
           [
             trancheId,
