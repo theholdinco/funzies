@@ -3,13 +3,15 @@ import { parseTestResults, type SdfTestResultRow } from "./parse-test-results";
 import { parseCollateralFile, type SdfCollateralRow } from "./parse-collateral";
 import { parseAssetLevel, type SdfAssetLevelRow } from "./parse-asset-level";
 import { parseNotes, type SdfNoteRow } from "./parse-notes";
+import { parseAccounts, type SdfAccountRow } from "./parse-accounts";
 import type { SdfFileType, SdfIngestionResult, SdfParseResult } from "./types";
 
 type ParsedFile =
   | { fileType: "test_results"; parsed: SdfParseResult<SdfTestResultRow> }
   | { fileType: "collateral_file"; parsed: SdfParseResult<SdfCollateralRow> }
   | { fileType: "asset_level"; parsed: SdfParseResult<SdfAssetLevelRow> }
-  | { fileType: "notes"; parsed: SdfParseResult<SdfNoteRow> };
+  | { fileType: "notes"; parsed: SdfParseResult<SdfNoteRow> }
+  | { fileType: "accounts"; parsed: SdfParseResult<SdfAccountRow> };
 
 const PROCESSING_ORDER: SdfFileType[] = [
   "notes",
@@ -22,7 +24,6 @@ const PROCESSING_ORDER: SdfFileType[] = [
 ];
 
 const PHASE2_STUBS = new Set<SdfFileType>([
-  "accounts",
   "transactions",
   "accruals",
 ]);
@@ -55,6 +56,11 @@ export async function ingestSdfFiles(
       parsed.set("notes", {
         fileType: "notes",
         parsed: parseNotes(file.csvText),
+      });
+    } else if (file.fileType === "accounts") {
+      parsed.set("accounts", {
+        fileType: "accounts",
+        parsed: parseAccounts(file.csvText),
       });
     }
   }
@@ -213,6 +219,8 @@ async function processFile(
       return processAssetLevel(reportPeriodId, entry.parsed);
     case "test_results":
       return processTestResults(reportPeriodId, entry.parsed);
+    case "accounts":
+      return processAccounts(reportPeriodId, entry.parsed);
   }
 }
 
@@ -580,6 +588,40 @@ async function processNotes(
         );
       }
     }
+
+    await client.query("COMMIT");
+    return parsed.rows.length;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Accounts — DELETE + INSERT
+// ---------------------------------------------------------------------------
+
+async function processAccounts(
+  reportPeriodId: string,
+  parsed: SdfParseResult<SdfAccountRow>
+): Promise<number> {
+  if (parsed.rows.length === 0) return 0;
+
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `DELETE FROM clo_account_balances WHERE report_period_id = $1`,
+      [reportPeriodId]
+    );
+
+    const rows = parsed.rows.map((r) => ({
+      report_period_id: reportPeriodId,
+      ...r,
+    }));
+    await sdfBatchInsert("clo_account_balances", rows, client);
 
     await client.query("COMMIT");
     return parsed.rows.length;
