@@ -8,6 +8,7 @@ import type { ExtractedConstraints, ExtractedPortfolio, ComplianceTest, Portfoli
 import UpdateComplianceReport from "./UpdateComplianceReport";
 import DataQualityBadge from "./DataQualityBadge";
 import DocumentUploadBanner from "./DocumentUploadBanner";
+import SdfUploadSection from "./SdfUploadSection";
 import BriefingCard from "@/components/BriefingCard";
 import BuyListUpload from "./BuyListUpload";
 import { getBuyListForProfile } from "@/lib/clo/buy-list";
@@ -786,7 +787,8 @@ export default async function CLODashboard() {
 
       <BriefingCard product="clo" />
 
-      <DocumentUploadBanner hasDocuments={hasDocuments} dealId={deal?.id ?? null} />
+      <DocumentUploadBanner hasDocuments={hasDocuments} />
+      {deal?.id && <SdfUploadSection dealId={deal.id} />}
 
       <BuyListUpload initialItems={buyListItems} />
 
