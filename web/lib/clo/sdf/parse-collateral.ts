@@ -77,10 +77,11 @@ function computeUnfundedCommitment(
   return commitment - fundedBalance;
 }
 
-function parseCouponType(value: string | undefined): boolean | null {
-  const trimmed = trimOrNull(value);
-  if (trimmed === "Fixed") return true;
-  if (trimmed === "Floating") return false;
+function parseCouponType(value: string | null | undefined): boolean | null {
+  if (!value) return null;
+  const v = value.trim().toLowerCase();
+  if (v === "fixed") return true;
+  if (v === "floating") return false;
   return null;
 }
 
