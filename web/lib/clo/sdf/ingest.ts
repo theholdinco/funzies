@@ -1,17 +1,20 @@
 import { query, getClient } from "../../db";
 import { parseTestResults, type SdfTestResultRow } from "./parse-test-results";
 import { parseCollateralFile, type SdfCollateralRow } from "./parse-collateral";
+import { parseAssetLevel, type SdfAssetLevelRow } from "./parse-asset-level";
 import { parseNotes, type SdfNoteRow } from "./parse-notes";
 import type { SdfFileType, SdfIngestionResult, SdfParseResult } from "./types";
 
 type ParsedFile =
   | { fileType: "test_results"; parsed: SdfParseResult<SdfTestResultRow> }
   | { fileType: "collateral_file"; parsed: SdfParseResult<SdfCollateralRow> }
+  | { fileType: "asset_level"; parsed: SdfParseResult<SdfAssetLevelRow> }
   | { fileType: "notes"; parsed: SdfParseResult<SdfNoteRow> };
 
 const PROCESSING_ORDER: SdfFileType[] = [
   "notes",
   "collateral_file",
+  "asset_level",
   "test_results",
   "accounts",
   "transactions",
@@ -19,7 +22,6 @@ const PROCESSING_ORDER: SdfFileType[] = [
 ];
 
 const PHASE2_STUBS = new Set<SdfFileType>([
-  "asset_level",
   "accounts",
   "transactions",
   "accruals",
@@ -43,6 +45,11 @@ export async function ingestSdfFiles(
       parsed.set("collateral_file", {
         fileType: "collateral_file",
         parsed: parseCollateralFile(file.csvText),
+      });
+    } else if (file.fileType === "asset_level") {
+      parsed.set("asset_level", {
+        fileType: "asset_level",
+        parsed: parseAssetLevel(file.csvText),
       });
     } else if (file.fileType === "notes") {
       parsed.set("notes", {
@@ -202,6 +209,8 @@ async function processFile(
       return processNotes(dealId, reportPeriodId, entry.parsed);
     case "collateral_file":
       return processCollateral(reportPeriodId, entry.parsed);
+    case "asset_level":
+      return processAssetLevel(reportPeriodId, entry.parsed);
     case "test_results":
       return processTestResults(reportPeriodId, entry.parsed);
   }
@@ -278,6 +287,141 @@ async function processCollateral(
 
     await client.query("COMMIT");
     return parsed.rows.length;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Asset Level — enrich existing clo_holdings rows
+// ---------------------------------------------------------------------------
+
+// Columns from Asset Level that enrich holdings (excludes matching keys)
+const ENRICHMENT_COLUMNS = [
+  "moodys_issuer_rating",
+  "moodys_issuer_sr_unsec_rating",
+  "moodys_rating_final",
+  "sp_issuer_rating",
+  "sp_rating_final",
+  "fitch_issuer_rating",
+  "fitch_rating_final",
+  "moodys_security_rating",
+  "sp_security_rating",
+  "fitch_security_rating",
+  "moodys_dp_rating",
+  "moodys_rating_unadjusted",
+  "moodys_issuer_watch",
+  "moodys_security_watch",
+  "sp_issuer_watch",
+  "sp_security_watch",
+  "security_level_moodys",
+  "security_level_sp",
+  "security_level",
+  "lien_type",
+  "sp_priority_category",
+  "sp_industry_code",
+  "moodys_industry_code",
+  "fitch_industry_code",
+  "kbra_industry",
+  "kbra_rating",
+  "kbra_recovery_rate",
+  "pik_amount",
+  "credit_spread_adj",
+  "is_current_pay",
+  "is_defaulted",
+  "is_sovereign",
+  "is_enhanced_bond",
+  "is_interest_only",
+  "is_principal_only",
+  "accretion_factor",
+  "aggregate_amortized_cost",
+  "capitalization_pct",
+  "average_life",
+  "guarantor",
+  "current_price",
+  "facility_id",
+  "figi",
+  "native_currency",
+  "next_payment_date",
+  "call_date",
+  "put_date",
+  "deal_defaulted_begin",
+  "servicer",
+  "servicer_moodys_rating",
+  "servicer_sp_rating",
+] as const;
+
+async function processAssetLevel(
+  reportPeriodId: string,
+  parsed: SdfParseResult<SdfAssetLevelRow>
+): Promise<number> {
+  if (parsed.rows.length === 0) return 0;
+
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+
+    // Build the COALESCE-based UPDATE SET clause
+    const setClauses = ENRICHMENT_COLUMNS.map(
+      (col, i) => `${col} = COALESCE($${i + 2}, ${col})`
+    );
+    const setSQL = setClauses.join(", ");
+
+    // We need paramIndex after enrichment columns for the WHERE clause
+    const lxidParamIdx = ENRICHMENT_COLUMNS.length + 2;
+    const obligorParamIdx = ENRICHMENT_COLUMNS.length + 3;
+
+    const updateByLxidSQL = `UPDATE clo_holdings SET ${setSQL} WHERE report_period_id = $1 AND lxid = $${lxidParamIdx}`;
+    const updateByObligorSQL = `UPDATE clo_holdings SET ${setSQL} WHERE report_period_id = $1 AND obligor_name = $${obligorParamIdx}`;
+
+    let enrichedCount = 0;
+
+    for (const row of parsed.rows) {
+      const enrichmentValues = ENRICHMENT_COLUMNS.map((col) => {
+        const val = row[col as keyof SdfAssetLevelRow];
+        return val === null || val === undefined ? null : val;
+      });
+
+      const baseParams = [reportPeriodId, ...enrichmentValues];
+
+      // Try matching by lxid first
+      let matched = 0;
+      if (row.lxid) {
+        const result = await client.query(updateByLxidSQL, [
+          ...baseParams,
+          row.lxid,
+        ]);
+        matched = result.rowCount ?? 0;
+      }
+
+      // Fall back to obligor_name matching
+      if (matched === 0 && row.issuer_name) {
+        const result = await client.query(updateByObligorSQL, [
+          ...baseParams,
+          row.issuer_name,
+        ]);
+        matched = result.rowCount ?? 0;
+        if (matched > 1) {
+          console.warn(
+            `SDF Asset Level: broadcast enrichment to ${matched} holdings for obligor "${row.issuer_name}"`
+          );
+        }
+      }
+
+      if (matched === 0) {
+        console.warn(
+          `SDF Asset Level: no matching holding for lxid=${row.lxid}, issuer="${row.issuer_name}"`
+        );
+      }
+
+      enrichedCount += matched;
+    }
+
+    await client.query("COMMIT");
+    return enrichedCount;
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
