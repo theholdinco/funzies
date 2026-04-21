@@ -834,9 +834,11 @@ export function resolveWaterfallInputs(
     }));
 
   // --- Data Source Metadata ---
+  // Note: account_balances and trades are not loaded in the resolver and thus not checked here.
   const dataSources = new Set<string>();
   for (const h of holdings) { if (h.dataSource) dataSources.add(h.dataSource); }
   for (const t of allComplianceTests) { if (t.dataSource) dataSources.add(t.dataSource); }
+  trancheSnapshots.forEach(s => s.dataSource && dataSources.add(s.dataSource));
 
   const sdfFilesIngested: string[] = [];
   const pdfExtracted: string[] = [];
