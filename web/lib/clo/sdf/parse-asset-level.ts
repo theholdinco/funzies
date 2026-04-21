@@ -211,7 +211,7 @@ export function parseAssetLevel(
     ),
     call_date: parseDate(raw.Call_Date, "DD-Mon-YYYY"),
     put_date: parseDate(raw.Put_Date, "DD-Mon-YYYY"),
-    deal_defaulted_begin: trimOrNull(raw.Deal_Defaulted_Begin),
+    deal_defaulted_begin: parseDate(raw.Deal_Defaulted_Begin, "DD-Mon-YYYY"),
 
     // Servicer
     servicer: trimOrNull(raw.Servicer),
