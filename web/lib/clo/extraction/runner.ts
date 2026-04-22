@@ -6,7 +6,7 @@ import { pass1Prompt, pass2Prompt, pass3Prompt, pass4Prompt, pass5Prompt, pass2R
 import { normalizePass1, normalizePass2, normalizePass3, normalizePass4, normalizePass5 } from "./normalizer";
 import { validateExtraction, validateCapStructure, validateSectionExtraction, buildRepairQueries } from "./validator";
 import { zodToToolSchema } from "./schema-utils";
-import { mapDocument } from "./document-mapper";
+import { mapDocument, scanHeadings, CANONICAL_HEADINGS, type SectionType } from "./document-mapper";
 import { extractAllSectionTexts, extractSectionText, type SectionText } from "./text-extractor";
 import { extractAllSections, extractSection, enhanceWithTableData } from "./section-extractor";
 import { normalizeSectionResults } from "./normalizer";
@@ -15,7 +15,7 @@ import { extractPdfTables } from "./table-extractor";
 import { parseComplianceSummaryTables } from "./table-parser";
 import { reconcileDates } from "./date-reconciler";
 import { mergeAllPasses, EXTRACTION_PASSES } from "./multi-pass-merger";
-import type { DocumentMap, SectionEntry } from "./document-mapper";
+import type { DocumentMap } from "./document-mapper";
 import { validateAndNormalizeConstraints, normalizeComplianceTestType } from "../ingestion-gate";
 import { remapColumnAliases, splitTextIntoPageChunks, mergeChunkResults, detectRepairNeeds, getLastItems } from "./transforms";
 
@@ -54,63 +54,42 @@ function normalizeComplianceTestRows(rows: Record<string, unknown>[]): Record<st
   }));
 }
 
-// ---------------------------------------------------------------------------
-// BNY Mellon compliance report template — known section layout.
-// Page ranges are approximate (±2-3 pages depending on portfolio size).
-// Used as fallback to fill gaps when the mapper misses sections.
-// ---------------------------------------------------------------------------
-const BNY_COMPLIANCE_TEMPLATE: Array<{ sectionType: string; pageStart: number; pageEnd: number }> = [
-  { sectionType: "compliance_summary", pageStart: 1, pageEnd: 3 },
-  { sectionType: "par_value_tests", pageStart: 3, pageEnd: 7 },
-  { sectionType: "interest_coverage_tests", pageStart: 7, pageEnd: 8 },
-  { sectionType: "account_balances", pageStart: 8, pageEnd: 10 },
-  { sectionType: "default_detail", pageStart: 10, pageEnd: 12 },
-  { sectionType: "asset_schedule", pageStart: 10, pageEnd: 28 },
-  { sectionType: "trading_activity", pageStart: 28, pageEnd: 30 },
-  { sectionType: "supplementary", pageStart: 30, pageEnd: 72 },
-  // concentration_tables and waterfall are less consistently positioned,
-  // so we don't add them as fallback — they'll be extracted from the test data if present.
-];
-
 /**
- * Ensure critical compliance sections exist in the document map.
- * If the mapper missed a section AND the document appears to be from BNY Mellon,
- * add it with estimated BNY template page ranges. For non-BNY reports, skip the
- * fallback entirely — better to have a missing section than wrongly-ranged one.
+ * Fill gaps in the mapper's document map using heading-based detection.
+ * For each section type in CANONICAL_HEADINGS that the mapper did not
+ * locate, search `pages` for the canonical heading and add a section entry.
+ * If pages is empty (fallback path with no pdfplumber text), heading scan
+ * is skipped with a log line.
  */
-function ensureComplianceSections(documentMap: DocumentMap, firstPageText?: string): void {
-  // Only apply BNY template if the document looks like a BNY Mellon report.
-  // Check section notes (from mapper) or explicit first-page text.
-  const allNotes = documentMap.sections.map(s => s.notes ?? "").join(" ").toLowerCase();
-  const pageText = (firstPageText ?? "").toLowerCase();
-  const isBny = pageText.includes("bny mellon") || pageText.includes("bank of new york")
-    || allNotes.includes("bny") || allNotes.includes("bank of new york");
-
-  if (!isBny) {
-    console.log("[extraction] non-BNY report detected — skipping BNY template fallback for missing sections");
+function ensureComplianceSections(
+  documentMap: DocumentMap,
+  pages: Array<{ page: number; text: string }>,
+): void {
+  if (pages.length === 0) {
+    console.log("[extraction] heading-scan skipped — no page text available (pdfplumber fallback)");
     return;
   }
 
-  const existing = new Set(documentMap.sections.map((s) => s.sectionType));
-  const totalPages = Math.max(...documentMap.sections.map((s) => s.pageEnd), 0);
+  const existing = new Set(documentMap.sections.map(s => s.sectionType));
+  const scanned = scanHeadings(pages);
+  for (const section of scanned) {
+    if (existing.has(section.sectionType)) continue;
+    documentMap.sections.push({
+      sectionType: section.sectionType,
+      pageStart: section.pageStart,
+      pageEnd: section.pageEnd,
+      confidence: section.confidence,
+      notes: "filled by heading scan",
+    });
+  }
 
-  for (const template of BNY_COMPLIANCE_TEMPLATE) {
-    if (existing.has(template.sectionType)) continue;
-
-    // Adjust page ranges if document is shorter/longer than the 72-page template
-    const adjustedEnd = Math.min(template.pageEnd, totalPages);
-    if (adjustedEnd < template.pageStart) continue;
-
-    const entry: SectionEntry = {
-      sectionType: template.sectionType,
-      pageStart: template.pageStart,
-      pageEnd: adjustedEnd,
-      confidence: "low" as const,
-      notes: "Added from BNY template fallback — mapper did not detect this section",
-    };
-
-    documentMap.sections.push(entry);
-    console.log(`[extraction] added missing section from BNY template: ${template.sectionType} (pp${template.pageStart}-${adjustedEnd})`);
+  const located = new Set(documentMap.sections.map(s => s.sectionType));
+  for (const sectionType of Object.keys(CANONICAL_HEADINGS) as SectionType[]) {
+    if (!located.has(sectionType)) {
+      console.warn(
+        `[extraction] canonical heading not found for section "${sectionType}" — section absent from map`
+      );
+    }
   }
 }
 
@@ -799,10 +778,9 @@ async function runSingleExtractionPass(
   try {
     const pdfText = await extractPdfText(pdfDoc.base64);
 
-    // Apply BNY template fallback only if the report is from BNY Mellon
+    // Fill gaps in the mapper's output via heading-based detection
     if (documentMap.documentType === "compliance_report") {
-      const firstPageText = pdfText.pages.find(p => p.page === 1)?.text ?? "";
-      ensureComplianceSections(documentMap, firstPageText);
+      ensureComplianceSections(documentMap, pdfText.pages);
     }
     console.log(`${label} found ${documentMap.sections.length} sections`);
     sectionTexts = documentMap.sections.map((section) => ({
@@ -817,9 +795,9 @@ async function runSingleExtractionPass(
     }));
   } catch (err) {
     console.warn(`${label} pdfplumber failed, falling back to Claude vision: ${(err as Error).message}`);
-    // Apply BNY fallback using mapper notes only (no page text available)
+    // No page text available — heading scan will be skipped
     if (documentMap.documentType === "compliance_report") {
-      ensureComplianceSections(documentMap);
+      ensureComplianceSections(documentMap, []);
     }
     console.log(`${label} found ${documentMap.sections.length} sections`);
     sectionTexts = await extractAllSectionTexts(apiKey, pdfDoc, documentMap);
