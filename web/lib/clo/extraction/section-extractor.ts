@@ -34,6 +34,7 @@ function getSectionConfig(
       interest_accrual: { schema: schemas.interestAccrualSchema, prompt: prompts.interestAccrualPrompt },
       account_balances: { schema: schemas.accountBalancesSchema, prompt: prompts.accountBalancesPrompt },
       supplementary: { schema: schemas.supplementarySchema, prompt: prompts.supplementaryPrompt },
+      notes_information: { schema: schemas.notesInformationSchema, prompt: prompts.notesInformationPrompt },
     };
     return map[sectionType] ?? null;
   }

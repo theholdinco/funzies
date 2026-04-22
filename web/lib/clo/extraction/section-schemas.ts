@@ -499,3 +499,22 @@ export const ppmHedgingSchema = z.object({
 }).passthrough();
 
 export type PpmHedging = z.infer<typeof ppmHedgingSchema>;
+
+// ─── §20 Notes Payment History (inception-to-date) ────────────────────
+
+export const notesInformationSchema = z.object({
+  perTranche: z.record(z.string(), z.array(z.object({
+    period:                 z.number().nullable(),
+    paymentDate:            z.string(),              // YYYY-MM-DD
+    parCommitment:          z.number().nullable(),
+    factor:                 z.number().nullable(),
+    interestPaid:           z.number().nullable(),
+    principalPaid:          z.number().nullable(),
+    cashflow:               z.number().nullable(),
+    endingBalance:          z.number().nullable(),
+    interestShortfall:      z.number().nullable(),
+    accumInterestShortfall: z.number().nullable(),
+  }))),
+});
+
+export type NotesInformation = z.infer<typeof notesInformationSchema>;
