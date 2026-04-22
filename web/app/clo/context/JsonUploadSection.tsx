@@ -28,9 +28,22 @@ export default function JsonUploadSection() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ [kind]: parsed }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      setResult(data as Record<string, unknown>);
+      const respText = await res.text();
+      let data: Record<string, unknown> | null = null;
+      if (respText.trim()) {
+        try {
+          data = JSON.parse(respText) as Record<string, unknown>;
+        } catch {
+          throw new Error(`Server returned non-JSON (${res.status}): ${respText.slice(0, 400)}`);
+        }
+      }
+      if (!res.ok) {
+        const msg = (data?.error as string | undefined)
+          ?? (data?.message as string | undefined)
+          ?? `HTTP ${res.status}${respText.trim() ? ` · ${respText.slice(0, 200)}` : " (empty body — check server logs)"}`;
+        throw new Error(msg);
+      }
+      setResult(data ?? { status: "ok" });
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

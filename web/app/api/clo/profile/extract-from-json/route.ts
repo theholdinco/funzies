@@ -27,17 +27,24 @@ export async function POST(req: NextRequest) {
 
   const result: Record<string, unknown> = {};
 
-  if (body.ppm) {
-    const r = await ingestPpmJson(profileId, body.ppm);
-    if (!r.ok) return NextResponse.json({ error: "PPM validation failed", details: r.errors }, { status: 422 });
-    result.ppm = r;
-  }
+  try {
+    if (body.ppm) {
+      const r = await ingestPpmJson(profileId, body.ppm);
+      if (!r.ok) return NextResponse.json({ error: "PPM validation failed", details: r.errors }, { status: 422 });
+      result.ppm = r;
+    }
 
-  if (body.compliance) {
-    const r = await ingestComplianceJson(profileId, body.compliance);
-    if (!r.ok) return NextResponse.json({ error: "Compliance validation failed", details: r.errors }, { status: 422 });
-    result.compliance = r;
-  }
+    if (body.compliance) {
+      const r = await ingestComplianceJson(profileId, body.compliance);
+      if (!r.ok) return NextResponse.json({ error: "Compliance validation failed", details: r.errors }, { status: 422 });
+      result.compliance = r;
+    }
 
-  return NextResponse.json({ status: "ok", ...result });
+    return NextResponse.json({ status: "ok", ...result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[extract-from-json] ingest failed:", message, stack);
+    return NextResponse.json({ error: "Ingest failed", message, stack }, { status: 500 });
+  }
 }
