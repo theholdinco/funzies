@@ -88,6 +88,25 @@ export const defaultDetailSchema = z.object({
 
 export type DefaultDetail = z.infer<typeof defaultDetailSchema>;
 
+// ─── §6 Collateral Quality Tests (condensed compliance report) ────────
+// WARF, WAL, WAS, diversity score, recovery-rate floor tests. Each row has
+// an agency (Moody's, Fitch, or null for agency-agnostic metrics), a
+// numeric actualValue, a triggerLevel, and whether it passes.
+
+export const collateralQualityTestsSchema = z.object({
+  tests: z.array(z.object({
+    testName: z.string(),                       // "WARF", "WAL", "Diversity", "Min WAS", "Min Recovery"
+    agency: z.string().nullable().optional(),   // "Moody's" / "Fitch" / null
+    actualValue: z.number().nullable().optional(),
+    triggerLevel: z.number().nullable().optional(),
+    triggerType: z.enum(["MIN", "MAX"]).nullable().optional(),
+    isPassing: z.boolean().nullable().optional(),
+    cushion: z.number().nullable().optional(),
+  })).default([]),
+});
+
+export type CollateralQualityTests = z.infer<typeof collateralQualityTestsSchema>;
+
 export const interestCoverageTestsSchema = z.object({
   tests: z.array(z.object({
     testName: z.string(),
@@ -355,6 +374,7 @@ export const ppmCapitalStructureSchema = z.object({
     spread: z.string().optional(),
     rating: z.object({
       fitch: z.string().optional(),
+      moodys: z.string().optional(),
       sp: z.string().optional(),
     }).passthrough().optional(),
     deferrable: z.boolean().optional(),

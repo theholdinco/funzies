@@ -19,6 +19,41 @@ function toDbRow(obj: Record<string, unknown>, extraFields?: Record<string, unkn
   return row;
 }
 
+// Moody's ratings — exact, case-insensitive
+const MOODYS_RATING_RE = /^(Aaa|Aa[1-3]|A[1-3]|Baa[1-3]|Ba[1-3]|B[1-3]|Caa[1-3]|Ca|C|WR|NR)$/i;
+// S&P / Fitch ratings — exact, case-insensitive
+const SP_FITCH_RATING_RE = /^(AAA|AA\+|AA|AA-|A\+|A|A-|BBB\+|BBB|BBB-|BB\+|BB|BB-|B\+|B|B-|CCC\+|CCC|CCC-|CC\+|CC|CC-|C|D|WR|NR)$/i;
+
+/**
+ * Check holding rating strings against expected patterns. Logs a loud warning
+ * when the value doesn't match — catches the Caa→Aa / CCC→CC corruption class
+ * where a leading character is stripped during extraction. Does NOT mutate the
+ * row; the goal is to make silent corruption loud so it surfaces during runs.
+ */
+function validateHoldingRatings(row: Record<string, unknown>): void {
+  const obligor = (row.obligor_name ?? "unknown") as string;
+  const checks: Array<{ field: string; value: unknown; re: RegExp }> = [
+    { field: "moodys_rating", value: row.moodys_rating, re: MOODYS_RATING_RE },
+    { field: "moodys_rating_final", value: row.moodys_rating_final, re: MOODYS_RATING_RE },
+    { field: "moodys_rating_unadjusted", value: row.moodys_rating_unadjusted, re: MOODYS_RATING_RE },
+    { field: "sp_rating", value: row.sp_rating, re: SP_FITCH_RATING_RE },
+    { field: "sp_rating_final", value: row.sp_rating_final, re: SP_FITCH_RATING_RE },
+    { field: "fitch_rating", value: row.fitch_rating, re: SP_FITCH_RATING_RE },
+    { field: "fitch_rating_final", value: row.fitch_rating_final, re: SP_FITCH_RATING_RE },
+  ];
+  for (const { field, value, re } of checks) {
+    if (value == null || value === "") continue;
+    const str = String(value).trim();
+    if (!re.test(str)) {
+      console.warn(
+        `[normalizer] rating validation failed: obligor="${obligor}" field="${field}" value="${str}" — ` +
+        `suspect corruption (e.g. Caa2→aa2, CCC→CC, leading character stripped). ` +
+        `Check asset_schedule extraction for this position.`
+      );
+    }
+  }
+}
+
 export interface PaymentHistoryRow {
   className: string;
   period: number | null;
@@ -368,6 +403,47 @@ export function normalizeSectionResults(
     }));
   }
 
+  // §6 Collateral Quality Tests (WARF, WAL, WAS, diversity, recovery) — classify
+  // by testName so they land under the right testType for the resolver. Also
+  // backfill poolSummary fields from these values when compliance_summary didn't
+  // populate them (so resolver's poolSummary.warf / walYears / diversityScore
+  // / waMoodysRecovery / waRecoveryRate / wacSpread etc. aren't null).
+  const cqt = sections.collateral_quality_tests;
+  if (cqt) {
+    const tests = cqt.tests as Array<Record<string, unknown>> | undefined;
+    if (tests) {
+      allTests.push(...tests.map(t => {
+        const name = ((t.testName ?? "") as string).toLowerCase();
+        let testType: string = "CONCENTRATION";
+        if (name.includes("warf")) testType = "WARF";
+        else if (name.includes("wal") || name.includes("weighted average life")) testType = "WAL";
+        else if (name.includes("was") || name.includes("weighted average spread") || (name.includes("floating") && name.includes("spread"))) testType = "WAS";
+        else if (name.includes("diversity")) testType = "DIVERSITY";
+        else if (name.includes("recovery")) testType = "RECOVERY";
+        return { ...t, testType };
+      }));
+
+      // Backfill poolSummary from CQ test actual values
+      if (!poolSummary) poolSummary = { ...base };
+      const ps = poolSummary as Record<string, unknown>;
+      for (const t of tests) {
+        const name = ((t.testName ?? "") as string).toLowerCase();
+        const agency = ((t.agency ?? "") as string).toLowerCase();
+        const val = t.actualValue as number | null | undefined;
+        if (val == null) continue;
+        if (name.includes("warf") && ps.warf == null) ps.warf = val;
+        if ((name.includes("wal") || name.includes("weighted average life")) && ps.wal_years == null) ps.wal_years = val;
+        if ((name.includes("was") || (name.includes("floating") && name.includes("spread"))) && ps.wac_spread == null) ps.wac_spread = val;
+        if (name.includes("diversity") && ps.diversity_score == null) ps.diversity_score = val;
+        if (name.includes("recovery")) {
+          if (agency.includes("moody") && ps.wa_moodys_recovery == null) ps.wa_moodys_recovery = val;
+          else if (agency.includes("s&p") || agency.includes("sp")) { if (ps.wa_sp_recovery == null) ps.wa_sp_recovery = val; }
+          else if (ps.wa_recovery_rate == null) ps.wa_recovery_rate = val;
+        }
+      }
+    }
+  }
+
   if (allTests.length > 0) {
     const deduped = deduplicateComplianceTests(allTests as any);
     complianceTests = deduped.map((t) => toDbRow(t as Record<string, unknown>, base));
@@ -400,6 +476,9 @@ export function normalizeSectionResults(
           row.par_balance = row.market_value;
           console.warn(`[normalizer] Using market_value as par_balance for holding "${row.obligor_name ?? "unknown"}" — may understate par for distressed loans`);
         }
+        // Rating plausibility validation — catches the Caa→Aa / CCC→CC corruption class
+        // (leading character stripped by LLM or pdfplumber). Does NOT mutate, just warns.
+        validateHoldingRatings(row);
         return row;
       });
     }
@@ -620,6 +699,41 @@ export function normalizeSectionResults(
           accumInterestShortfall: (r.accumInterestShortfall as number | null) ?? null,
         });
       }
+    }
+  }
+
+  // Backfill poolSummary counts/aggregates from holdings when compliance_summary
+  // didn't populate them. Derives: numberOfAssets (= holdings.length),
+  // numberOfObligors (unique obligor names), numberOfIndustries (unique Moody's
+  // industry names), totalMarketValue (sum of per-position market values).
+  if (holdings.length > 0) {
+    if (!poolSummary) poolSummary = { ...base };
+    const ps = poolSummary as Record<string, unknown>;
+    if (ps.number_of_assets == null) ps.number_of_assets = holdings.length;
+    if (ps.number_of_obligors == null) {
+      const uniq = new Set(holdings.map(h => String(h.obligor_name ?? "").toLowerCase().trim()).filter(s => s.length > 0));
+      ps.number_of_obligors = uniq.size;
+    }
+    if (ps.number_of_industries == null) {
+      const uniq = new Set(
+        holdings
+          .map(h => String(h.moodys_industry ?? h.sp_industry ?? h.industry_description ?? "").toLowerCase().trim())
+          .filter(s => s.length > 0)
+      );
+      if (uniq.size > 0) ps.number_of_industries = uniq.size;
+    }
+    if (ps.number_of_countries == null) {
+      const uniq = new Set(
+        holdings.map(h => String(h.country ?? "").toLowerCase().trim()).filter(s => s.length > 0)
+      );
+      if (uniq.size > 0) ps.number_of_countries = uniq.size;
+    }
+    if (ps.total_market_value == null) {
+      const sum = holdings.reduce((s, h) => {
+        const mv = h.market_value;
+        return s + (typeof mv === "number" ? mv : (typeof mv === "string" ? parseFloat(mv) || 0 : 0));
+      }, 0);
+      if (sum > 0) ps.total_market_value = sum;
     }
   }
 

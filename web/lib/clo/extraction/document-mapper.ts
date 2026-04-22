@@ -20,6 +20,7 @@ export const COMPLIANCE_SECTION_TYPES = [
   "account_balances",
   "supplementary",
   "notes_information",
+  "collateral_quality_tests",
 ] as const;
 
 // Section types for PPMs (Private Placement Memorandums)
@@ -40,21 +41,23 @@ export type SectionType =
   | "compliance_summary" | "par_value_tests" | "interest_coverage_tests"
   | "default_detail" | "asset_schedule" | "concentration_tables"
   | "waterfall" | "trading_activity" | "interest_accrual"
-  | "account_balances" | "supplementary" | "notes_information";
+  | "account_balances" | "supplementary" | "notes_information"
+  | "collateral_quality_tests";
 
 export const CANONICAL_HEADINGS: Record<SectionType, string> = {
-  compliance_summary:      "Deal Identity",
-  par_value_tests:         "Par Value (Over-collateralisation) Tests",
-  interest_coverage_tests: "Interest Coverage Tests",
-  default_detail:          "Default / Deferring / Current Pay / Discount / Exchanged Securities / Haircut",
-  asset_schedule:          "Schedule of Investments — Trustee View",
-  concentration_tables:    "Portfolio Profile Tests",
-  waterfall:               "Interest Waterfall execution",
-  trading_activity:        "Trading Activity (current period)",
-  interest_accrual:        "Interest Smoothing Account",
-  account_balances:        "Account Balances (full inventory)",
-  supplementary:           "Rating Migration",
-  notes_information:       "Notes Payment History (inception-to-date)",
+  compliance_summary:        "Deal Identity",
+  par_value_tests:           "Par Value (Over-collateralisation) Tests",
+  interest_coverage_tests:   "Interest Coverage Tests",
+  default_detail:            "Default / Deferring / Current Pay / Discount / Exchanged Securities / Haircut",
+  asset_schedule:            "Schedule of Investments — Trustee View",
+  concentration_tables:      "Portfolio Profile Tests",
+  waterfall:                 "Interest Waterfall execution",
+  trading_activity:          "Trading Activity (current period)",
+  interest_accrual:          "Interest Smoothing Account",
+  account_balances:          "Account Balances (full inventory)",
+  supplementary:             "Rating Migration",
+  notes_information:         "Notes Payment History (inception-to-date)",
+  collateral_quality_tests:  "Collateral Quality Tests",
 };
 
 export interface ScannedSection {

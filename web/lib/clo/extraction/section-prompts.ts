@@ -103,6 +103,39 @@ ${COMMON_RULES}`,
   };
 }
 
+export function collateralQualityTestsPrompt(): Prompt {
+  return {
+    system: `You are extracting the §6 Collateral Quality Tests section from a CLO trustee report.
+
+This section lists portfolio-quality constraints with actual value, trigger level, agency, and pass/fail status.
+
+For EACH test extract:
+- testName: e.g. "WARF", "WAL", "Diversity", "Min Weighted Average Spread", "Min WA Recovery"
+- agency: "Moody's" / "Fitch" / null for agency-agnostic metrics (WAL, WAS, diversity)
+- actualValue: the computed numeric result (strip % signs; WARF is a plain number like 3035 or 25.69, not a percentage)
+- triggerLevel: the covenant threshold
+- triggerType: "MIN" (e.g. min diversity, min recovery, min WAS) or "MAX" (e.g. max WARF, max WAL)
+- isPassing: true/false (MIN tests pass when actual >= trigger; MAX tests pass when actual <= trigger)
+- cushion: actualValue − triggerLevel (negative for failing tests)
+
+COMMON TESTS (extract ALL that appear; do NOT skip any):
+- Moody's Max WARF, Fitch Max WARF
+- Moody's Min WA Recovery, Fitch Min WA Recovery, S&P Min WA Recovery
+- Min WA Floating Spread (MIN, agency-null)
+- Max Weighted Average Life (MAX, agency-null)
+- Moody's Min Diversity Score (MIN, Moody's)
+
+NUMBER PARSING:
+- WARF values can be in the thousands (Moody's, e.g. 3035) or low double-digits (Fitch, e.g. 25.69). Preserve exactly.
+- Percentages like "61.70%" → 61.70 (numeric, no % sign).
+- Spread like "3.68%" → 3.68.
+- WAL in years like "4.15" → 4.15.
+
+${COMMON_RULES}`,
+    user: `Extract all §6 Collateral Quality Tests from the following markdown text.`,
+  };
+}
+
 export function interestCoverageTestsPrompt(): Prompt {
   return {
     system: `You are extracting interest coverage (IC) tests from a CLO trustee report's markdown text.
@@ -147,6 +180,12 @@ BNY MELLON TABLE STRUCTURE:
 - Deduplicate rows using composite key (obligorName, securityId) — multi-page tables may repeat headers.
 
 For each holding extract: obligorName, facilityName, isin, lxid, assetType, currency, country, industryCode, industryDescription, moodysIndustry, spIndustry, ratings (moodysRating, spRating, fitchRating, compositeRating, ratingFactor), parBalance, principalBalance, marketValue, purchasePrice, currentPrice, accruedInterest, referenceRate, indexRate, spreadBps, allInRate, floorRate, recoveryRateMoodys, recoveryRateSp, recoveryRateFitch, remainingLifeYears, warfContribution, diversityScoreGroup, acquisitionDate, maturityDate, settlementStatus, boolean flags (isCovLite, isRevolving, isDelayedDraw, isDefaulted, isPik, isFixedRate, isDiscountObligation, isLongDated).
+
+RATING STRINGS — CRITICAL:
+- Preserve the EXACT rating as written in the source table, character-for-character. Do NOT truncate, lowercase, or re-case.
+- Moody's ratings are ONE of: Aaa, Aa1, Aa2, Aa3, A1, A2, A3, Baa1, Baa2, Baa3, Ba1, Ba2, Ba3, B1, B2, B3, **Caa1, Caa2, Caa3**, Ca, C, WR, NR. The leading "C" in "Caa" is LOAD-BEARING — Caa1 is deeply distressed (rating factor 4770), while Aa1 is near-risk-free (rating factor 20). Never output "aa1" when the source shows "Caa1".
+- S&P/Fitch ratings are ONE of: AAA, AA+, AA, AA-, A+, A, A-, BBB+, BBB, BBB-, BB+, BB, BB-, B+, B, B-, **CCC+, CCC, CCC-**, CC, C, D, WR, NR. The triple-C in "CCC" is LOAD-BEARING — CCC+ is distressed, CC+ is even worse, and they are not interchangeable. Never output "CC" when the source shows "CCC".
+- If the source table is ambiguous or shows a split rating (e.g. "Caa1/CCC+"), extract each agency field separately: moodysRating = "Caa1", fitchRating = "CCC+".
 
 - Spreads in basis points as numbers (375 not "L+375")
 - Prices as numbers (99.5)
@@ -311,7 +350,7 @@ export function ppmCapitalStructurePrompt(): Prompt {
     system: `You are extracting the capital structure from a CLO private placement memorandum's markdown text.
 
 CRITICAL: Extract ALL tranches from Class A through subordinated/equity notes.
-For each tranche: class, designation, principalAmount, rateType, referenceRate, spreadBps, spread, rating (fitch, sp), deferrable, maturityDate, isSubordinated.
+For each tranche: class, designation, principalAmount, rateType, referenceRate, spreadBps, spread, rating (fitch, moodys, sp — populate ALL agencies present; European CLOs are commonly Moody's/Fitch-rated without S&P), deferrable, maturityDate, isSubordinated.
 
 spreadBps MUST be a NUMBER in basis points. Convert from percentage: "EURIBOR + 1.50%" = spreadBps: 150. Convert from string: "E + 150bps" = spreadBps: 150.
 principalAmount should include the full string with currency, e.g., "EUR 248,000,000".

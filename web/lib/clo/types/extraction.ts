@@ -40,7 +40,7 @@ export interface CapitalStructureEntry {
   referenceRate?: string;
   spreadBps?: number;
   spread: string;
-  rating: { fitch?: string; sp?: string };
+  rating: { fitch?: string; moodys?: string; sp?: string };
   ratingAddressesTimelyInterest?: boolean;
   deferrable?: boolean;
   issuePrice: string;

@@ -23,10 +23,19 @@ function addQuartersForResolver(dateIso: string, quarters: number): string {
 }
 
 function normClass(s: string): string {
-  const base = s.replace(/^class\s+/i, "").replace(/[-\s]+notes?$/i, "").trim().toLowerCase();
-  // Normalize subordinated variants: "subordinated", "sub", "subordinated notes" all → "sub"
-  if (base === "subordinated" || base.startsWith("subordinated")) return "sub";
-  return base;
+  const lower = String(s ?? "").toLowerCase().trim();
+  if (!lower) return "";
+  // Subordinated / equity / income-note variants all collapse to "sub"
+  if (lower.includes("subordinated") || lower.startsWith("sub ") || lower === "sub"
+      || lower.includes("equity") || lower.includes("income note") || lower.includes("income-note")) {
+    return "sub";
+  }
+  // Strip "class " prefix and trailing "-notes"/"notes" suffix
+  const stripped = lower.replace(/^class(es)?\s+/i, "").replace(/[-\s]+notes?$/i, "").trim();
+  // Take only the first class-letter token (e.g. "a", "b-1", "b2") —
+  // collapses "A" and "A Senior Secured FRN due 2032" to the same key.
+  const match = stripped.match(/^([a-z](?:[-\s]?[0-9]+)?)\b/);
+  return match ? match[1].replace(/\s+/g, "-") : stripped;
 }
 
 /** Normalize a numeric string handling both US (1,500,000.00) and European (1.500.000,00) formats. */
@@ -486,6 +495,14 @@ export function resolveWaterfallInputs(
   const { bps: wacSpreadBps, fix: wacFix } = normalizeWacSpread(pool?.wacSpread ?? null);
   if (wacFix) warnings.push({ field: wacFix.field, message: wacFix.message, severity: "info", resolvedFrom: `${wacFix.before} → ${wacFix.after}` });
 
+  // Derive fallbacks from holdings when compliance_summary / CQ tests didn't populate.
+  // Numeric zero is treated as "unset" for counts + WARF so the fallbacks kick in.
+  const uniqueObligors = new Set(holdings.map(h => (h.obligorName ?? "").toLowerCase().trim()).filter(s => s.length > 0));
+  const numberOfObligorsDerived = uniqueObligors.size;
+  const numberOfObligors = (pool?.numberOfObligors != null && pool.numberOfObligors > 0)
+    ? pool.numberOfObligors
+    : numberOfObligorsDerived;
+
   const poolSummary: ResolvedPool = {
     totalPar: pool?.totalPar ?? 0,
     totalPrincipalBalance: pool?.totalPrincipalBalance ?? 0,
@@ -493,7 +510,7 @@ export function resolveWaterfallInputs(
     warf: pool?.warf ?? 0,
     walYears: pool?.walYears ?? 0,
     diversityScore: pool?.diversityScore ?? 0,
-    numberOfObligors: pool?.numberOfObligors ?? 0,
+    numberOfObligors,
   };
 
   if (poolSummary.totalPar === 0) {

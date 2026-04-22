@@ -33,8 +33,8 @@ const DEDUP_KEYS: Record<string, (item: Record<string, unknown>) => string> = {
   ratingActions: (r) => `${norm(r.agency)}|${norm(r.tranche)}|${norm(r.actionType)}`,
   events: (e) => `${norm(e.eventType)}|${norm(e.eventDate)}`,
   spCdoMonitor: (s) => norm(s.tranche),
-  capitalStructure: (c) => norm(c.class ?? c.designation),
-  coverageTestEntries: (c) => norm(c.class),
+  capitalStructure: (c) => normClassLetter(c.class ?? c.designation),
+  coverageTestEntries: (c) => normClassLetter(c.class),
   eligibilityCriteria: (e) => typeof e === "string" ? norm(e) : JSON.stringify(e),
   collateralQualityTests: (c) => `${norm(c.name)}|${norm(c.agency)}`,
   keyParties: (k) => norm(k.role),
@@ -45,6 +45,23 @@ const DEDUP_KEYS: Record<string, (item: Record<string, unknown>) => string> = {
 function norm(v: unknown): string {
   if (v == null) return "";
   return String(v).toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+/**
+ * Collapse tranche names like "Class A", "Class A Senior Secured FRN due 2032",
+ * and "A" to the same canonical class-letter key. Subordinated / equity / income-note
+ * variants all collapse to "sub".
+ */
+function normClassLetter(v: unknown): string {
+  const lower = String(v ?? "").toLowerCase().trim();
+  if (!lower) return "";
+  if (lower.includes("subordinated") || lower.startsWith("sub ") || lower === "sub"
+      || lower.includes("equity") || lower.includes("income note") || lower.includes("income-note")) {
+    return "sub";
+  }
+  const stripped = lower.replace(/^class(es)?\s+/i, "").replace(/[-\s]+notes?$/i, "").trim();
+  const match = stripped.match(/^([a-z](?:[-\s]?[0-9]+)?)\b/);
+  return match ? match[1].replace(/\s+/g, "-") : stripped;
 }
 
 function countNonNull(obj: Record<string, unknown>): number {

@@ -459,8 +459,8 @@ export default function ContextEditor({
 
   function updateCapStructRow(index: number, field: string, value: string | number) {
     const rows = [...((constraints.capitalStructure || []) as CapitalStructureEntry[])];
-    if (field === "ratingFitch" || field === "ratingSp") {
-      const ratingKey = field === "ratingFitch" ? "fitch" : "sp";
+    if (field === "ratingFitch" || field === "ratingMoodys" || field === "ratingSp") {
+      const ratingKey = field === "ratingFitch" ? "fitch" : field === "ratingMoodys" ? "moodys" : "sp";
       rows[index] = { ...rows[index], rating: { ...rows[index].rating, [ratingKey]: value as string } };
     } else {
       rows[index] = { ...rows[index], [field]: value } as CapitalStructureEntry;
@@ -1016,6 +1016,7 @@ export default function ContextEditor({
                 <th style={thStyle}>Rate Type</th>
                 <th style={thStyle}>Spread</th>
                 <th style={thStyle}>Rating (Fitch)</th>
+                <th style={thStyle}>Rating (Moody&apos;s)</th>
                 <th style={thStyle}>Rating (S&amp;P)</th>
                 <th style={{ ...thStyle, width: "2rem" }} />
               </tr>
@@ -1056,6 +1057,7 @@ export default function ContextEditor({
                     })()}
                   </td>
                   <td style={tdStyle}><InlineText value={row.rating?.fitch || ""} onChange={(v) => updateCapStructRow(i, "ratingFitch", v)} /></td>
+                  <td style={tdStyle}><InlineText value={row.rating?.moodys || ""} onChange={(v) => updateCapStructRow(i, "ratingMoodys", v)} /></td>
                   <td style={tdStyle}><InlineText value={row.rating?.sp || ""} onChange={(v) => updateCapStructRow(i, "ratingSp", v)} /></td>
                   <td style={tdStyle}><button type="button" onClick={() => removeCapStructRow(i)} style={removeBtnStyle} title="Remove">&times;</button></td>
                 </tr>
