@@ -99,9 +99,19 @@ async function upsertReportPeriod(
   dealId: string,
   period: IntexPeriodRow,
 ): Promise<{ periodIdAction: "inserted" | "updated"; periodId: string }> {
-  // Idempotent by (deal_id, report_date) — UNIQUE constraint exists on clo_report_periods.
+  // The Intex sheet reports a payment date per row (e.g., 2026-04-15).
+  // Existing SDF/compliance periods use the determination date as report_date
+  // (e.g., 2026-04-01) with payment_date = 2026-04-15. Match on EITHER so we
+  // reuse the richer existing period rather than creating a duplicate that
+  // shadows the SDF data (prior bug: creating a new "2026-04-15" period
+  // beat the SDF "2026-04-01" period on `getLatestReportPeriod`, hiding all
+  // holdings/compliance tests in the UI).
   const existing = await client.query<{ id: string }>(
-    `SELECT id FROM clo_report_periods WHERE deal_id = $1 AND report_date = $2`,
+    `SELECT id FROM clo_report_periods
+       WHERE deal_id = $1
+         AND (report_date = $2 OR payment_date = $2)
+       ORDER BY report_date DESC
+       LIMIT 1`,
     [dealId, period.date]
   );
   if (existing.rows.length > 0) {
@@ -110,7 +120,7 @@ async function upsertReportPeriod(
          payment_date = COALESCE(payment_date, $2),
          report_type = COALESCE(report_type, 'quarterly'),
          report_source = COALESCE(report_source, 'intex_past_cashflows'),
-         extraction_status = 'complete'
+         extraction_status = COALESCE(NULLIF(extraction_status, ''), 'complete')
        WHERE id = $1`,
       [existing.rows[0].id, period.date]
     );

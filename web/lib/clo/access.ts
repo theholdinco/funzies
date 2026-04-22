@@ -948,8 +948,12 @@ export async function getTrancheSnapshots(reportPeriodId: string): Promise<CloTr
 }
 
 export async function getHistoricalSubNoteDistributions(dealId: string): Promise<{ date: string; distribution: number }[]> {
+  // DISTINCT ON (payment_date) dedupes across overlapping report_periods —
+  // e.g., a determination-date SDF period and a payment-date Intex period
+  // that both cover the same payment. Preference order: higher interest_paid
+  // (same value in practice), then richer data_source.
   const rows = await query<{ payment_date: string; interest_paid: string }>(
-    `SELECT rp.payment_date, ts.interest_paid
+    `SELECT DISTINCT ON (rp.payment_date) rp.payment_date, ts.interest_paid
      FROM clo_tranche_snapshots ts
      JOIN clo_report_periods rp ON rp.id = ts.report_period_id
      JOIN clo_tranches t ON t.id = ts.tranche_id
@@ -957,7 +961,7 @@ export async function getHistoricalSubNoteDistributions(dealId: string): Promise
        AND t.is_income_note = true
        AND ts.interest_paid IS NOT NULL
        AND rp.payment_date IS NOT NULL
-     ORDER BY rp.payment_date ASC`,
+     ORDER BY rp.payment_date ASC, ts.interest_paid DESC NULLS LAST, ts.data_source ASC NULLS LAST`,
     [dealId]
   );
   return rows.map(r => ({ date: r.payment_date, distribution: Number(r.interest_paid) }));
