@@ -18,6 +18,20 @@ function toDbRow(obj: Record<string, unknown>, extraFields?: Record<string, unkn
   return row;
 }
 
+export interface PaymentHistoryRow {
+  className: string;
+  period: number | null;
+  paymentDate: string;
+  parCommitment: number | null;
+  factor: number | null;
+  interestPaid: number | null;
+  principalPaid: number | null;
+  cashflow: number | null;
+  endingBalance: number | null;
+  interestShortfall: number | null;
+  accumInterestShortfall: number | null;
+}
+
 type TrancheSnapshot = { className: string; data: Record<string, unknown> };
 
 /** Merge tranche snapshots from compliance_summary and waterfall by className.
@@ -275,6 +289,7 @@ export function normalizeSectionResults(
   parValueAdjustments: Record<string, unknown>[];
   events: Record<string, unknown>[];
   supplementaryData: Record<string, unknown> | null;
+  paymentHistory: PaymentHistoryRow[];
 } {
   const base = { report_period_id: reportPeriodId };
 
@@ -573,6 +588,35 @@ export function normalizeSectionResults(
     }
   }
 
+  // 10. notes_information → paymentHistory (per-tranche flattened, deduped)
+  const paymentHistory: PaymentHistoryRow[] = [];
+  const notesInfo = sections.notes_information as { perTranche?: Record<string, Array<Record<string, unknown>>> } | undefined;
+  if (notesInfo?.perTranche) {
+    const seen = new Set<string>();
+    for (const [className, rows] of Object.entries(notesInfo.perTranche)) {
+      for (const r of rows) {
+        const paymentDate = r.paymentDate as string | undefined;
+        if (!paymentDate) continue;
+        const key = `${className}|${paymentDate}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        paymentHistory.push({
+          className,
+          period:                 (r.period as number | null) ?? null,
+          paymentDate,
+          parCommitment:          (r.parCommitment as number | null) ?? null,
+          factor:                 (r.factor as number | null) ?? null,
+          interestPaid:           (r.interestPaid as number | null) ?? null,
+          principalPaid:          (r.principalPaid as number | null) ?? null,
+          cashflow:               (r.cashflow as number | null) ?? null,
+          endingBalance:          (r.endingBalance as number | null) ?? null,
+          interestShortfall:      (r.interestShortfall as number | null) ?? null,
+          accumInterestShortfall: (r.accumInterestShortfall as number | null) ?? null,
+        });
+      }
+    }
+  }
+
   return {
     poolSummary,
     complianceTests,
@@ -587,6 +631,7 @@ export function normalizeSectionResults(
     parValueAdjustments,
     events,
     supplementaryData,
+    paymentHistory,
   };
 }
 
