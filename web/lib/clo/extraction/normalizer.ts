@@ -455,6 +455,51 @@ export function normalizeSectionResults(
     }
   }
 
+  // --- Phantom-holding synthesis from unmatched default_detail rows ---
+  // If default_detail names an obligor but no holding was flagged (e.g., name
+  // disagreement between asset_schedule and default_detail), synthesize a
+  // phantom holding so the resolver's `holdings.filter(h => h.isDefaulted)`
+  // math captures it. Tagged with data_origin so consumers can filter.
+  const matchedObligors = new Set<string>();
+  for (const h of holdings) {
+    if (h.is_defaulted) {
+      const obligor = ((h.obligor_name ?? "") as string).toLowerCase().trim();
+      if (obligor.length >= 4) matchedObligors.add(obligor);
+    }
+  }
+
+  if (defaultDetail?.defaults) {
+    let synthesized = 0;
+    for (const d of defaultDetail.defaults) {
+      const name = ((d.obligorName ?? d.obligor_name ?? "") as string).toLowerCase().trim();
+      const isDefaulted = d.isDefaulted ?? d.is_defaulted ?? d.isDeferring ?? d.is_deferring;
+      if (!isDefaulted || name.length < 4) continue;
+      if (matchedObligors.has(name)) continue;
+
+      const parAmount = (d.parAmount ?? d.par_amount) as number | null | undefined;
+      if (parAmount == null || parAmount <= 0) continue;
+
+      holdings.push(toDbRow({
+        obligorName:        d.obligorName ?? d.obligor_name,
+        parBalance:         parAmount,
+        isDefaulted:        true,
+        currentPrice:       d.marketPrice ?? d.market_price,
+        recoveryRateMoodys: d.recoveryRateMoodys ?? d.recovery_rate_moodys,
+        recoveryRateSp:     d.recoveryRateSp ?? d.recovery_rate_sp,
+        recoveryRateFitch:  d.recoveryRateFitch ?? d.recovery_rate_fitch,
+        dataOrigin:         "synthesized_from_default_detail",
+      }, base));
+      synthesized++;
+    }
+    if (synthesized > 0) {
+      console.warn(
+        `[normalizer] default_detail synthesis: created ${synthesized} phantom holdings ` +
+        `from unmatched defaulted obligations. Canary: asset_schedule + default_detail ` +
+        `obligor names disagree — condensing-layer lint may need attention.`
+      );
+    }
+  }
+
   // 5. concentration_tables → concentrations
   let concentrations: Record<string, unknown>[] = [];
   const ct = sections.concentration_tables;
