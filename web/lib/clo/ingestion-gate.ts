@@ -33,14 +33,30 @@ function normalizeTestType(testType: string | null, testName: string | null): st
   return testType;
 }
 
-function fixStringNulls(obj: Record<string, unknown>): Record<string, unknown> {
-  const result = { ...obj };
-  for (const [key, value] of Object.entries(result)) {
-    if (value === "null" || value === "NULL" || value === "undefined") {
-      result[key] = null;
+const firstOccurrenceLogged = new Map<string, boolean>();
+
+export function deepFixStringNulls(value: unknown, path: string = ""): unknown {
+  if (Array.isArray(value)) {
+    return value.map((v, i) => deepFixStringNulls(v, `${path}[${i}]`));
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = deepFixStringNulls(v, path ? `${path}.${k}` : k);
+    }
+    return out;
+  }
+  if (typeof value === "string") {
+    const lower = value.toLowerCase();
+    if (lower === "null" || lower === "undefined") {
+      if (!firstOccurrenceLogged.get(path)) {
+        console.warn(`[ingestion-gate] string "${value}" coerced to null at ${path}`);
+        firstOccurrenceLogged.set(path, true);
+      }
+      return null;
     }
   }
-  return result;
+  return value;
 }
 
 export function validateAndNormalizeConstraints(
@@ -50,10 +66,8 @@ export function validateAndNormalizeConstraints(
   const fixes: Fix[] = [];
   const data = structuredClone(raw);
 
-  if (data.keyDates) {
-    const fixed = fixStringNulls(data.keyDates as unknown as Record<string, unknown>);
-    data.keyDates = fixed as typeof data.keyDates;
-  }
+  const coerced = deepFixStringNulls(data) as ExtractedConstraints;
+  Object.assign(data, coerced);
 
   const capStruct = data.capitalStructure ?? [];
   if (capStruct.length === 0) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSpreadToBps, normalizeWacSpread, normalizeComplianceTestType } from "../ingestion-gate";
+import { parseSpreadToBps, normalizeWacSpread, normalizeComplianceTestType, deepFixStringNulls } from "../ingestion-gate";
 
 describe("parseSpreadToBps", () => {
   it("returns spreadBps directly when provided and > 0", () => {
@@ -121,5 +121,52 @@ describe("normalizeComplianceTestType", () => {
     const { fixes } = normalizeComplianceTestType(input);
     expect(fixes.some(f => f.field.includes("testType"))).toBe(true);
     expect(fixes.some(f => f.field.includes("isPassing"))).toBe(true);
+  });
+});
+
+describe("deepFixStringNulls", () => {
+  it("coerces 'null' at depth 1", () => {
+    expect(deepFixStringNulls({ a: "null", b: 42 })).toEqual({ a: null, b: 42 });
+  });
+
+  it("coerces 'null' at depth 3", () => {
+    expect(deepFixStringNulls({ outer: { middle: { inner: "null" } } }))
+      .toEqual({ outer: { middle: { inner: null } } });
+  });
+
+  it("coerces 'NULL' and 'Null' case-insensitively", () => {
+    expect(deepFixStringNulls({ a: "NULL", b: "Null", c: "nULL" }))
+      .toEqual({ a: null, b: null, c: null });
+  });
+
+  it("coerces 'undefined' string to null", () => {
+    expect(deepFixStringNulls({ a: "undefined" })).toEqual({ a: null });
+  });
+
+  it("walks arrays", () => {
+    expect(deepFixStringNulls([{ a: "null" }, { a: "value" }]))
+      .toEqual([{ a: null }, { a: "value" }]);
+  });
+
+  it("leaves legitimate values untouched", () => {
+    const input = { a: "hello", b: 0, c: false, d: null, e: "nullable-field-name" };
+    expect(deepFixStringNulls(input)).toEqual(input);
+  });
+
+  it("does not coerce substring 'null' (exact match only)", () => {
+    expect(deepFixStringNulls({ a: "not null", b: "nullable" }))
+      .toEqual({ a: "not null", b: "nullable" });
+  });
+
+  it("processes 236-row holdings schedule in under 50ms (perf guard)", () => {
+    const holdings = Array.from({ length: 236 }, (_, i) => ({
+      obligorName: `Obligor ${i}`, isin: `XS${String(i).padStart(10, "0")}`,
+      spreadBps: i % 5 === 0 ? "null" : 350, rating: "B",
+      moodysRating: i % 7 === 0 ? "NULL" : "B2",
+      nested: { deeper: { value: i % 11 === 0 ? "undefined" : 100 } },
+    }));
+    const start = performance.now();
+    deepFixStringNulls({ holdings });
+    expect(performance.now() - start).toBeLessThan(50);
   });
 });
