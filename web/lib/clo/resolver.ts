@@ -2,7 +2,16 @@ import type { ExtractedConstraints, CloPoolSummary, CloComplianceTest, CloTranch
 import type { ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolvedComplianceTest, ResolvedMetadata, ResolutionWarning } from "./resolver-types";
 import { parseSpreadToBps, normalizeWacSpread } from "./ingestion-gate";
 import { mapToRatingBucket, moodysWarfFactor } from "./rating-mapping";
+import { isRatingSentinel } from "./sdf/csv-utils";
 import { CLO_DEFAULTS } from "./defaults";
+
+/** Defensive sentinel stripper for rating strings already in the DB. The SDF
+ *  parser now filters these at ingest (see trimRating), but pre-fix rows can
+ *  still carry "***", "NR", "--", etc. Treat any sentinel as missing. */
+function cleanRating(r: string | null | undefined): string | null {
+  if (r == null) return null;
+  return isRatingSentinel(r) ? null : r;
+}
 
 /** Remove keys with null/undefined values to avoid JSON bloat. */
 function stripNulls<T extends Record<string, unknown>>(obj: T): T {
@@ -559,6 +568,46 @@ export function resolveWaterfallInputs(
     ? pool.numberOfObligors
     : numberOfObligorsDerived;
 
+  // Derive composition percentages from concentrations[] when the poolSummary
+  // columns (pctFixedRate, pctCovLite, etc.) are null. concentrations.actualValue
+  // is a decimal fraction (0.0742 = 7.42%); we emit percentage values.
+  const concentrationsList = (complianceData?.concentrations ?? []) as Array<Record<string, unknown>>;
+  const concByName = new Map<string, number>();
+  for (const c of concentrationsList) {
+    const name = normalizeConcName(String(c.bucketName ?? c.concentrationType ?? ""));
+    if (!name) continue;
+    const actualPct = typeof c.actualPct === "number" ? c.actualPct : null;
+    const raw = actualPct ?? (typeof c.actualValue === "number" ? c.actualValue : null);
+    if (raw == null) continue;
+    // Concentrations.actualValue is always a decimal fraction (1.0 = 100%,
+    // 0.0742 = 7.42%). Multiply by 100 for fractions ≤ 1.5 (tolerance for
+    // rounding); values above that are assumed to already be percentages.
+    const pct = raw >= 0 && raw <= 1.5 ? raw * 100 : raw;
+    if (!concByName.has(name)) concByName.set(name, pct);
+  }
+  const pickConc = (...names: string[]): number | null => {
+    for (const n of names) {
+      const v = concByName.get(n);
+      if (v != null) return v;
+    }
+    return null;
+  };
+  // Prefer poolSummary.pct* when populated, else derive from concentrations.
+  const num = (x: unknown): number | null => (typeof x === "number" && !isNaN(x) ? x : null);
+  const derivedPctFixedRate     = num(pool?.pctFixedRate) ?? pickConc("fixed rate cdos", "fixed rate collateral debt obligations");
+  const derivedPctCovLite       = num(pool?.pctCovLite) ?? pickConc("cov lite loans", "covenant lite loans");
+  // pctPik isn't on CloPoolSummary — concentrations-only.
+  const derivedPctPik           = pickConc("pik securities", "pik obligations");
+  const moodysCaa = pickConc("moody s caa obligations");
+  const fitchCcc = pickConc("fitch ccc obligations");
+  // CCC bucket: OC cares about the worse read — take the higher of the two agencies.
+  const derivedPctCccAndBelow   = num(pool?.pctCccAndBelow)
+    ?? (moodysCaa != null || fitchCcc != null ? Math.max(moodysCaa ?? 0, fitchCcc ?? 0) : null);
+  const derivedPctBonds         = num(pool?.pctBonds) ?? pickConc("sr secured bonds hy bonds mezz");
+  const derivedPctSeniorSecured = num(pool?.pctSeniorSecured) ?? pickConc("senior secured obligations");
+  const derivedPctSecondLien    = num(pool?.pctSecondLien) ?? pickConc("unsecured hy mezz 2nd lien");
+  const derivedPctCurrentPay    = num(pool?.pctCurrentPay) ?? pickConc("current pay obligations");
+
   const poolSummary: ResolvedPool = {
     totalPar: pool?.totalPar ?? 0,
     totalPrincipalBalance: pool?.totalPrincipalBalance ?? 0,
@@ -567,6 +616,17 @@ export function resolveWaterfallInputs(
     walYears: pool?.walYears ?? 0,
     diversityScore: pool?.diversityScore ?? 0,
     numberOfObligors,
+    numberOfAssets: num(pool?.numberOfAssets),
+    totalMarketValue: num(pool?.totalMarketValue),
+    waRecoveryRate: num(pool?.waRecoveryRate),
+    pctFixedRate: derivedPctFixedRate,
+    pctCovLite: derivedPctCovLite,
+    pctPik: derivedPctPik,
+    pctCccAndBelow: derivedPctCccAndBelow,
+    pctBonds: derivedPctBonds,
+    pctSeniorSecured: derivedPctSeniorSecured,
+    pctSecondLien: derivedPctSecondLien,
+    pctCurrentPay: derivedPctCurrentPay,
   };
 
   if (poolSummary.totalPar === 0) {
@@ -724,7 +784,16 @@ export function resolveWaterfallInputs(
   const loans: ResolvedLoan[] = activeHoldings.map(h => {
     const isFixed = h.isFixedRate === true;
     const isDdtl = h.isDelayedDraw === true;
-    const ratingBucket = mapToRatingBucket(h.moodysRating ?? null, h.spRating ?? null, h.fitchRating ?? null, h.compositeRating ?? null);
+    // Clean rating sentinels defensively — pre-fix rows in the DB still carry
+    // "***" / "NR" / "--" etc. from the SDF; trimRating handles new ingests.
+    const moodys = cleanRating(h.moodysRating);
+    const sp = cleanRating(h.spRating);
+    const fitch = cleanRating(h.fitchRating);
+    const moodysFinal = cleanRating(h.moodysRatingFinal);
+    const spFinal = cleanRating(h.spRatingFinal);
+    const fitchFinal = cleanRating(h.fitchRatingFinal);
+    const moodysDp = cleanRating(h.moodysDpRating);
+    const ratingBucket = mapToRatingBucket(moodys, sp, fitch, cleanRating(h.compositeRating));
 
     let fixedCouponPct: number | undefined;
     if (isFixed) {
@@ -771,9 +840,9 @@ export function resolveWaterfallInputs(
     // Moody's uses its DP (Default Probability) rating for WARF when available,
     // falling back to the final/published rating, then the raw Moody's rating.
     const warfFactor =
-      moodysWarfFactor(h.moodysDpRating)
-      ?? moodysWarfFactor(h.moodysRatingFinal)
-      ?? moodysWarfFactor(h.moodysRating)
+      moodysWarfFactor(moodysDp)
+      ?? moodysWarfFactor(moodysFinal)
+      ?? moodysWarfFactor(moodys)
       ?? undefined;
 
     return stripNulls({
@@ -786,14 +855,14 @@ export function resolveWaterfallInputs(
       fixedCouponPct,
       isDelayedDraw: isDdtl || undefined,
       ddtlSpreadBps,
-      // Full ratings
-      moodysRating: h.moodysRating ?? undefined,
-      spRating: h.spRating ?? undefined,
-      fitchRating: h.fitchRating ?? undefined,
-      // Derived ratings
-      moodysRatingFinal: h.moodysRatingFinal ?? undefined,
-      spRatingFinal: h.spRatingFinal ?? undefined,
-      fitchRatingFinal: h.fitchRatingFinal ?? undefined,
+      // Full ratings (sentinel-cleaned)
+      moodysRating: moodys ?? undefined,
+      spRating: sp ?? undefined,
+      fitchRating: fitch ?? undefined,
+      // Derived ratings (sentinel-cleaned)
+      moodysRatingFinal: moodysFinal ?? undefined,
+      spRatingFinal: spFinal ?? undefined,
+      fitchRatingFinal: fitchFinal ?? undefined,
       // Market data
       currentPrice: h.currentPrice ?? undefined,
       marketValue: h.marketValue ?? undefined,
@@ -1065,6 +1134,74 @@ export function resolveWaterfallInputs(
     sdfFilesIngested,
     pdfExtracted,
   };
+
+  // --- Diagnostic warnings ---
+  // (a) Duplicate holdings clusters. The SDF Collateral File occasionally emits
+  // multiple rows for the same (obligor, facility, par). Pool totals already
+  // include them, so we can't dedup at ingest without breaking reconciliation —
+  // but consumers rendering per-facility views should group by facility.
+  {
+    const clusterCounts = new Map<string, number>();
+    for (const h of holdings) {
+      if (!h.obligorName || !h.facilityCode || !h.parBalance) continue;
+      const k = `${h.obligorName}|${h.facilityCode}|${h.parBalance}`;
+      clusterCounts.set(k, (clusterCounts.get(k) ?? 0) + 1);
+    }
+    let dupClusters = 0;
+    let dupRows = 0;
+    for (const n of clusterCounts.values()) {
+      if (n > 1) { dupClusters++; dupRows += n; }
+    }
+    if (dupClusters > 0) {
+      warnings.push({
+        field: "holdings.duplicateClusters",
+        message: `${dupClusters} holdings cluster(s) (${dupRows} rows) share identical (obligor, facilityCode, parBalance). Pool totals include these duplicates. Consumers rendering per-facility views should group by (obligorName, facilityCode).`,
+        severity: "info",
+      });
+    }
+  }
+
+  // (b) Compliance tests with an actual value but no trigger AND isPassing is
+  // not explicitly true. Without a trigger, downstream consumers that filter
+  // on trigger != null will silently drop them — hiding the WAS-excl-floor
+  // and Frequency Switch tests that the PPM expects but the SDF leaves
+  // uncompleted. "Not true" catches both explicit-fail and "Not Calculated".
+  {
+    const uncomputed = allComplianceTests.filter(t =>
+      t.triggerLevel == null
+      && t.actualValue != null
+      && t.isPassing !== true
+    );
+    if (uncomputed.length > 0) {
+      const names = uncomputed.map(t => t.testName).filter(Boolean).slice(0, 5).join("; ");
+      warnings.push({
+        field: "complianceTests.uncomputedTests",
+        message: `${uncomputed.length} test(s) have an actual value but no trigger and are not marked passing — consumers filtering on triggerLevel != null will hide them. Examples: ${names}`,
+        severity: "warn",
+      });
+    }
+  }
+
+  // (c) Join-vocabulary drift guard. The concentration-trigger join relies on
+  // "(a)"..."(dd)" lettered prefixes in compliance test names. If the SDF ever
+  // changes that convention (or we ingest a different trustee's variant),
+  // fall loud here rather than silently producing zero matches.
+  {
+    const concCount = allComplianceTests.filter(t => t.testType === "CONCENTRATION").length;
+    const matchedLetters = concTestsByLetter.size;
+    if (concCount >= 10 && matchedLetters < 20) {
+      const samples = allComplianceTests
+        .filter(t => t.testType === "CONCENTRATION")
+        .slice(0, 3)
+        .map(t => t.testName)
+        .join("; ");
+      warnings.push({
+        field: "concentrationJoin.vocabulary",
+        message: `Concentration letter-prefix join matched only ${matchedLetters} of ${concCount} CONCENTRATION tests. The "(a)", "(b)", "(p)(i)" naming convention may have changed. Sample names: ${samples}`,
+        severity: "error",
+      });
+    }
+  }
 
   return {
     resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, dates, fees, loans, metadata, principalAccountCash, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, baseRateFloorPct },

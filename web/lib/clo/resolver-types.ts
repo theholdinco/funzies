@@ -71,6 +71,20 @@ export interface ResolvedPool {
   walYears: number;
   diversityScore: number;
   numberOfObligors: number;
+  // Pass-through from raw.complianceData.poolSummary when available
+  numberOfAssets: number | null; // unique facility count (≥ numberOfObligors)
+  totalMarketValue: number | null; // pool MtM (€)
+  waRecoveryRate: number | null; // WARR — portfolio weighted-average recovery
+  // Composition percentages derived from concentrations[] when the poolSummary
+  // columns are null. Values are percentages (7.42 = 7.42%), not fractions.
+  pctFixedRate: number | null;
+  pctCovLite: number | null;
+  pctPik: number | null;
+  pctCccAndBelow: number | null;
+  pctBonds: number | null;
+  pctSeniorSecured: number | null;
+  pctSecondLien: number | null;
+  pctCurrentPay: number | null;
 }
 
 export interface ResolvedTrigger {

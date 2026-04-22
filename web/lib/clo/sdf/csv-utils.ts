@@ -122,10 +122,21 @@ export function parsePercentage(value: string | undefined | null): number | null
   return isNaN(num) ? null : num;
 }
 
+/** Agency "no rating" sentinels that appear verbatim in SDF CSVs. */
+const RATING_SENTINELS = new Set(["***", "nr", "n/r", "n/a", "na", "--", "-", "n/m", "nm", "wr"]);
+
+export function isRatingSentinel(value: string | null | undefined): boolean {
+  if (value == null) return false;
+  const t = value.trim().toLowerCase();
+  return t === "" || RATING_SENTINELS.has(t);
+}
+
 export function trimRating(value: string | undefined | null): string | null {
   if (value == null) return null;
   const trimmed = value.trim();
-  return trimmed === "" ? null : trimmed;
+  if (trimmed === "") return null;
+  if (RATING_SENTINELS.has(trimmed.toLowerCase())) return null;
+  return trimmed;
 }
 
 export function spreadToBps(value: number | undefined | null): number | null {

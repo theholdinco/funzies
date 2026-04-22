@@ -9,7 +9,12 @@ import { DEFAULT_RATES_BY_RATING } from "./rating-mapping";
 // code path in the UI component.
 export const EMPTY_RESOLVED: ResolvedDealData = {
   tranches: [],
-  poolSummary: { totalPar: 0, totalPrincipalBalance: 0, wacSpreadBps: 0, warf: 0, walYears: 0, diversityScore: 0, numberOfObligors: 0 },
+  poolSummary: {
+    totalPar: 0, totalPrincipalBalance: 0, wacSpreadBps: 0, warf: 0, walYears: 0, diversityScore: 0, numberOfObligors: 0,
+    numberOfAssets: null, totalMarketValue: null, waRecoveryRate: null,
+    pctFixedRate: null, pctCovLite: null, pctPik: null, pctCccAndBelow: null,
+    pctBonds: null, pctSeniorSecured: null, pctSecondLien: null, pctCurrentPay: null,
+  },
   ocTriggers: [],
   icTriggers: [],
   qualityTests: [],
