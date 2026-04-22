@@ -492,12 +492,14 @@ async function processAssetLevel(
     );
     const setSQL = setClauses.join(", ");
 
-    // We need paramIndex after enrichment columns for the WHERE clause
-    const lxidParamIdx = ENRICHMENT_COLUMNS.length + 2;
-    const obligorParamIdx = ENRICHMENT_COLUMNS.length + 3;
+    // WHERE-clause match key lands at the same position in both queries:
+    // $1 is reportPeriodId, $2..$(N+1) are enrichmentValues, and the match key is $(N+2).
+    // Each query is executed independently with its own param array [reportPeriodId, ...enrichmentValues, matchKey],
+    // so both lxid and obligor fall at the same index.
+    const matchKeyParamIdx = ENRICHMENT_COLUMNS.length + 2;
 
-    const updateByLxidSQL = `UPDATE clo_holdings SET ${setSQL} WHERE report_period_id = $1 AND lxid = $${lxidParamIdx}`;
-    const updateByObligorSQL = `UPDATE clo_holdings SET ${setSQL} WHERE report_period_id = $1 AND obligor_name = $${obligorParamIdx}`;
+    const updateByLxidSQL = `UPDATE clo_holdings SET ${setSQL} WHERE report_period_id = $1 AND lxid = $${matchKeyParamIdx}`;
+    const updateByObligorSQL = `UPDATE clo_holdings SET ${setSQL} WHERE report_period_id = $1 AND obligor_name = $${matchKeyParamIdx}`;
 
     let enrichedCount = 0;
 
