@@ -587,3 +587,29 @@ ${COMMON_RULES}`,
     user: `Extract hedging requirements from the following markdown text.`,
   };
 }
+
+export function notesInformationPrompt(): { system: string; user: string } {
+  return {
+    system: `You are extracting the §20 Notes Payment History (inception-to-date) section from a canonical condensed CLO compliance report. This section shows every payment to every tranche from closing through the report date.
+
+STRUCTURE — CRITICAL:
+- Per-tranche layout: each tranche (Class A, B, C, ..., Sub) has its own table ordered by period.
+- Each row has: period, payment date, par/commitment, factor, interest paid, principal paid, cashflow, ending balance, interest shortfall, accumulated interest shortfall.
+
+OUTPUT SHAPE — CRITICAL:
+- Return perTranche as an object keyed by class name: { "A": [...], "B": [...], "Sub": [...] }.
+- Each array is ordered by payment date ascending.
+- Every row must have a paymentDate in YYYY-MM-DD. Convert DD-MMM-YYYY format (e.g. "15-Oct-2025") to YYYY-MM-DD.
+
+PRESERVATION RULES — CRITICAL:
+- Extract EVERY row for EVERY tranche. Zero-amount rows (ramp-up stub, deferred-interest suppression) MUST be preserved — do not filter them out.
+- The first row per tranche is the investor's day-zero purchase. It typically has period=0 and a negative principalPaid (investor outflow). Preserve it verbatim.
+- Do NOT infer or emit transactionType. Return numeric columns only.
+
+NUMBER FORMATTING:
+- Amounts use comma thousands, dot decimals: "3,462,041.94" → 3462041.94.
+- Factors are decimal (1.0 means 100%).
+- Negative signs on cashflow/principalPaid indicate outflows from the investor's perspective — preserve the sign.`,
+    user: "Extract the complete §20 Notes Payment History for all tranches.",
+  };
+}
