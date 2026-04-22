@@ -36,6 +36,7 @@ function getSectionConfig(
       supplementary: { schema: schemas.supplementarySchema, prompt: prompts.supplementaryPrompt },
       notes_information: { schema: schemas.notesInformationSchema, prompt: prompts.notesInformationPrompt },
       collateral_quality_tests: { schema: schemas.collateralQualityTestsSchema, prompt: prompts.collateralQualityTestsPrompt },
+      interest_accrual_detail: { schema: schemas.interestAccrualDetailSchema, prompt: prompts.interestAccrualDetailPrompt },
     };
     return map[sectionType] ?? null;
   }

@@ -107,6 +107,35 @@ export const collateralQualityTestsSchema = z.object({
 
 export type CollateralQualityTests = z.infer<typeof collateralQualityTestsSchema>;
 
+// ─── §22 Interest Accrual Detail (per-position rate mechanics) ────────
+// 18 fixed bonds + 262 floating loan facilities. The authoritative source
+// for per-position spread/index/all-in rates. Joined back into holdings[]
+// via LXID/ISIN to populate spreadBps and friends (which the asset-schedule
+// extraction usually leaves null because §9.2 is a balance/price table,
+// not a rate table).
+
+export const interestAccrualDetailSchema = z.object({
+  rows: z.array(z.object({
+    description:           z.string().nullable().optional(),
+    securityId:            z.string().nullable().optional(),
+    lxid:                  z.string().nullable().optional(),     // "LX19652T2" canonical T-form
+    isin:                  z.string().nullable().optional(),
+    rateType:              z.enum(["Fixed", "Floating"]).nullable().optional(),
+    paymentPeriod:         z.string().nullable().optional(),     // "Monthly", "Quarterly", "Semi-Annual"
+    principalBalance:      z.number().nullable().optional(),     // EUR
+    baseIndex:             z.string().nullable().optional(),     // "EURIBOR 3M" / null for fixed
+    indexRatePct:          z.number().nullable().optional(),     // e.g. 2.50
+    indexFloorPct:         z.number().nullable().optional(),     // e.g. 0.00
+    spreadPct:             z.number().nullable().optional(),     // e.g. 3.25 (=325 bps)
+    creditSpreadAdjPct:    z.number().nullable().optional(),
+    effectiveSpreadPct:    z.number().nullable().optional(),
+    allInRatePct:          z.number().nullable().optional(),     // total coupon
+    spreadBps:             z.number().nullable().optional(),     // explicit bps if §22 has it
+  })).default([]),
+});
+
+export type InterestAccrualDetail = z.infer<typeof interestAccrualDetailSchema>;
+
 export const interestCoverageTestsSchema = z.object({
   tests: z.array(z.object({
     testName: z.string(),

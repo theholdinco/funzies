@@ -509,6 +509,64 @@ export function normalizeSectionResults(
         return row;
       });
 
+      // §22 Interest Accrual Detail join — per-position rate mechanics from
+      // the authoritative rate table. The §9.2 holdings prompt typically
+      // returns null spreadBps because §9.2 is a balance/price table, not a
+      // rate table. §22 has the full per-position spread/index/all-in rate
+      // detail. Join by LXID (preferred for loans) or ISIN (preferred for
+      // bonds), with defensive normalization so trivial whitespace/case drift
+      // can't break the join.
+      const accrualDetail = (sections.interest_accrual_detail as { rows?: Array<Record<string, unknown>> } | undefined)?.rows;
+      if (accrualDetail && accrualDetail.length > 0 && holdings.length > 0) {
+        const normLxid = (v: unknown): string => String(v ?? "").trim().toUpperCase().replace(/\s+/g, "");
+        const normIsin = (v: unknown): string => String(v ?? "").trim().toUpperCase().replace(/\s+/g, "");
+        const byLxid = new Map<string, Record<string, unknown>>();
+        const byIsin = new Map<string, Record<string, unknown>>();
+        for (const r of accrualDetail) {
+          const lxid = normLxid(r.lxid ?? r.securityId);
+          if (lxid && lxid.startsWith("LX")) byLxid.set(lxid, r);
+          const isin = normIsin(r.isin ?? r.securityId);
+          if (isin && isin.startsWith("XS")) byIsin.set(isin, r);
+        }
+
+        let joined = 0;
+        for (const h of holdings) {
+          const hLxid = normLxid(h.lxid);
+          const hIsin = normIsin(h.isin);
+          const match = (hLxid && byLxid.get(hLxid)) || (hIsin && byIsin.get(hIsin)) || null;
+          if (!match) continue;
+
+          // Fill rate fields without overwriting any non-null value already
+          // present from the asset_schedule extraction.
+          const setIfMissing = (col: string, val: unknown) => {
+            if (val != null && val !== "" && (h[col] == null || h[col] === "")) h[col] = val;
+          };
+          // spread_bps: prefer explicit; otherwise derive from spread_pct × 100
+          const explicitBps = typeof match.spreadBps === "number" ? match.spreadBps : null;
+          const fromPct = typeof match.spreadPct === "number" ? Math.round((match.spreadPct as number) * 100) : null;
+          setIfMissing("spread_bps", explicitBps ?? fromPct);
+          setIfMissing("all_in_rate", match.allInRatePct);
+          setIfMissing("index_rate", match.indexRatePct);
+          setIfMissing("reference_rate", match.baseIndex);
+          setIfMissing("floor_rate", match.indexFloorPct);
+          // is_fixed_rate: derive from rateType if asset_schedule didn't tag
+          if (h.is_fixed_rate == null && match.rateType != null) {
+            h.is_fixed_rate = String(match.rateType).toLowerCase() === "fixed";
+          }
+          joined++;
+        }
+        if (joined > 0) {
+          console.log(`[normalizer] §22 interest accrual join: populated rate fields on ${joined}/${holdings.length} holdings`);
+        }
+        const unjoined = holdings.length - joined;
+        if (unjoined > 5 && holdings.length > 0) {
+          console.warn(
+            `[normalizer] §22 interest accrual join: ${unjoined}/${holdings.length} holdings did NOT match any §22 row by LXID/ISIN. ` +
+            `Check ID format consistency between §9.2 and §22.`
+          );
+        }
+      }
+
       // Look-alike duplicate detection — flag pairs of holdings with identical
       // (obligorName, maturityDate, parBalance) but different ISINs. These are
       // either legitimate two-tranche positions OR ISIN-hallucination artifacts
@@ -790,6 +848,33 @@ export function normalizeSectionResults(
         return s + (typeof mv === "number" ? mv : (typeof mv === "string" ? parseFloat(mv) || 0 : 0));
       }, 0);
       if (sum > 0) ps.total_market_value = sum;
+    }
+    // Derive portfolio WAS from §22-joined floating positions when CQ tests
+    // didn't supply it. Formula: sum(principal × spread_bps) / sum(principal)
+    // over floating loans only (fixed-rate positions contribute their coupon
+    // to WAC, not WAS).
+    if (ps.wac_spread == null) {
+      let wsumBps = 0;
+      let psum = 0;
+      for (const h of holdings) {
+        if (h.is_fixed_rate === true) continue;
+        const par = typeof h.par_balance === "number" ? h.par_balance
+                  : typeof h.par_balance === "string" ? parseFloat(h.par_balance) || 0
+                  : 0;
+        const sb = typeof h.spread_bps === "number" ? h.spread_bps
+                 : typeof h.spread_bps === "string" ? parseFloat(h.spread_bps) || 0
+                 : 0;
+        if (par > 0 && sb > 0) {
+          wsumBps += par * sb;
+          psum += par;
+        }
+      }
+      if (psum > 0) {
+        // Store as percentage to match compliance_summary convention.
+        // wacSpread is later normalized to bps by the resolver.
+        const wasPct = (wsumBps / psum) / 100;
+        ps.wac_spread = Number(wasPct.toFixed(4));
+      }
     }
   }
 

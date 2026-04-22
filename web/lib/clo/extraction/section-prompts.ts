@@ -136,6 +136,43 @@ ${COMMON_RULES}`,
   };
 }
 
+export function interestAccrualDetailPrompt(): Prompt {
+  return {
+    system: `You are extracting the §22 Interest Accrual Detail section from a CLO trustee report.
+
+This is the per-position rate-mechanics table — the authoritative source for each loan/bond's spread, base rate, and all-in coupon. Typically 18 fixed-rate bonds + 262 floating-rate loan facilities (~280 rows total). The §9.2 holdings table only has balances and prices; THIS table has the rate detail that joins back into holdings.
+
+For EACH row extract:
+- description: obligor name + facility (e.g. "Castle US Holding Corp - Second-Out Euro TLB-1")
+- securityId: the loan/bond identifier as shown
+- lxid: LoanX identifier in canonical T-form (e.g. "LX19652T2"). Preserve verbatim from the source — do NOT strip the "T" or insert one.
+- isin: ISIN if present (bonds usually have ISIN, loans usually don't)
+- rateType: "Fixed" or "Floating" exactly
+- paymentPeriod: "Monthly", "Bi-Monthly", "Quarterly", "Semi-Annual" exactly
+- principalBalance: EUR amount (number, no commas)
+- baseIndex: "EURIBOR 3M", "EURIBOR 1M", "SOFR 3M", etc. for floating rows; null for fixed
+- indexRatePct: current index fixing as percentage (e.g. 2.50 for 2.50%)
+- indexFloorPct: index floor (typically 0.00) — preserve null if blank
+- spreadPct: facility spread as percentage (e.g. 3.25 for 3.25% / 325 bps)
+- creditSpreadAdjPct: any CSA, percentage; null if not present
+- effectiveSpreadPct: spread after CSA
+- allInRatePct: total coupon = max(indexRate, indexFloor) + effectiveSpread (for floating); just the coupon (for fixed)
+- spreadBps: explicit bps if §22 includes that column; otherwise leave null and let the pipeline derive from spreadPct × 100
+
+COMPLETENESS — CRITICAL:
+- Extract EVERY row. ~280 positions across §22.1 (Fixed) + §22.2 (Floating). Do NOT stop partway.
+- Preserve LXID character-for-character. The pipeline joins on LXID equality and silent canonicalization breaks the join.
+
+NUMBER PARSING:
+- Percentages have % signs in source: "3.25%" → 3.25 (numeric).
+- Amounts have comma thousands: "3,462,041.94" → 3462041.94.
+- Empty cells → null, not 0.
+
+${COMMON_RULES}`,
+    user: `Extract every row from the §22 Interest Accrual Detail table (both §22.1 Fixed and §22.2 Floating).`,
+  };
+}
+
 export function interestCoverageTestsPrompt(): Prompt {
   return {
     system: `You are extracting interest coverage (IC) tests from a CLO trustee report's markdown text.

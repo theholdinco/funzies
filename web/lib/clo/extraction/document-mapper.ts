@@ -21,6 +21,7 @@ export const COMPLIANCE_SECTION_TYPES = [
   "supplementary",
   "notes_information",
   "collateral_quality_tests",
+  "interest_accrual_detail",
 ] as const;
 
 // Section types for PPMs (Private Placement Memorandums)
@@ -42,7 +43,7 @@ export type SectionType =
   | "default_detail" | "asset_schedule" | "concentration_tables"
   | "waterfall" | "trading_activity" | "interest_accrual"
   | "account_balances" | "supplementary" | "notes_information"
-  | "collateral_quality_tests";
+  | "collateral_quality_tests" | "interest_accrual_detail";
 
 export const CANONICAL_HEADINGS: Record<SectionType, string> = {
   compliance_summary:        "Deal Identity",
@@ -58,6 +59,7 @@ export const CANONICAL_HEADINGS: Record<SectionType, string> = {
   supplementary:             "Rating Migration",
   notes_information:         "Notes Payment History (inception-to-date)",
   collateral_quality_tests:  "Collateral Quality Tests",
+  interest_accrual_detail:   "Interest Accrual Detail",
 };
 
 export interface ScannedSection {
