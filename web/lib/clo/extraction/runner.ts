@@ -955,6 +955,7 @@ export async function runSectionExtraction(
   console.log(`[extraction] accountBalances: ${normalized.accountBalances.length}`);
   console.log(`[extraction] parValueAdjustments: ${normalized.parValueAdjustments.length}`);
   console.log(`[extraction] events: ${normalized.events.length}`);
+  console.log(`[extraction] paymentHistory: ${normalized.paymentHistory.length}`);
   console.log(`[extraction] ═══════════════════════════════`);
 
   // Insert pool summary (remap aliases + filter to known columns)
@@ -1132,6 +1133,78 @@ export async function runSectionExtraction(
       );
     }
     } // end else (no SDF data for clo_tranche_snapshots)
+  }
+
+  // Payment history — upsert per row (not replaceIfPresent, because the table
+  // is keyed on profile_id and spans reports; deleting by report_period_id
+  // would wipe other reports' history).
+  if (normalized.paymentHistory.length > 0) {
+    console.log(`[extraction] payment_history: upserting ${normalized.paymentHistory.length} rows`);
+    for (const row of normalized.paymentHistory) {
+      // Restatement diff-log (pre-upsert)
+      const existing = await query<{ extracted_value: unknown }>(
+        `SELECT extracted_value FROM clo_payment_history
+         WHERE profile_id = $1 AND class_name = $2 AND payment_date = $3`,
+        [profileId, row.className, row.paymentDate]
+      );
+      if (existing.length > 0) {
+        const prior = existing[0].extracted_value as Record<string, unknown>;
+        const diffs: string[] = [];
+        for (const key of ["interestPaid", "principalPaid", "cashflow", "endingBalance"] as const) {
+          const rowVal = (row as unknown as Record<string, unknown>)[key];
+          if (prior[key] !== rowVal) diffs.push(`${key}: ${prior[key]} → ${rowVal}`);
+        }
+        if (diffs.length > 0) {
+          console.warn(
+            `[extraction] payment-history restatement: profile=${profileId} ` +
+            `class=${row.className} date=${row.paymentDate} changes=[${diffs.join(", ")}]`
+          );
+        }
+      }
+
+      // Upsert
+      await query(
+        `INSERT INTO clo_payment_history (
+           profile_id, class_name, payment_date, period, par_commitment, factor,
+           interest_paid, principal_paid, cashflow, ending_balance,
+           interest_shortfall, accum_interest_shortfall,
+           extracted_value, source_period_id, last_seen_period_id
+         )
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14)
+         ON CONFLICT (profile_id, class_name, payment_date) DO UPDATE SET
+           period = EXCLUDED.period,
+           par_commitment = EXCLUDED.par_commitment,
+           factor = EXCLUDED.factor,
+           interest_paid = EXCLUDED.interest_paid,
+           principal_paid = EXCLUDED.principal_paid,
+           cashflow = EXCLUDED.cashflow,
+           ending_balance = EXCLUDED.ending_balance,
+           interest_shortfall = EXCLUDED.interest_shortfall,
+           accum_interest_shortfall = EXCLUDED.accum_interest_shortfall,
+           extracted_value = EXCLUDED.extracted_value,
+           source_period_id = EXCLUDED.source_period_id,
+           last_seen_period_id = EXCLUDED.last_seen_period_id,
+           updated_at = NOW()`,
+        [
+          profileId, row.className, row.paymentDate, row.period, row.parCommitment, row.factor,
+          row.interestPaid, row.principalPaid, row.cashflow, row.endingBalance,
+          row.interestShortfall, row.accumInterestShortfall,
+          JSON.stringify(row),
+          reportPeriodId,
+        ]
+      );
+
+      // Override auto-resolve (post-upsert): if override now matches extracted, clear it
+      await query(
+        `UPDATE clo_payment_history
+         SET override_value = NULL, override_reason = NULL, overridden_by = NULL, overridden_at = NULL
+         WHERE profile_id = $1 AND class_name = $2 AND payment_date = $3
+           AND override_value IS NOT NULL
+           AND override_value = extracted_value`,
+        [profileId, row.className, row.paymentDate]
+      );
+    }
+    console.log(`[extraction] → clo_payment_history: upsert complete`);
   }
 
   // Enrich tranches with PPM data (spread, is_floating, is_income_note, seniority_rank)
