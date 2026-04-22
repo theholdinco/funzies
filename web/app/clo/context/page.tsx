@@ -24,6 +24,7 @@ import {
 import type { ExtractedConstraints, CloDocument } from "@/lib/clo/types";
 import ContextEditor from "./ContextEditor";
 import ResetProfile from "./ResetProfile";
+import JsonUploadSection from "./JsonUploadSection";
 
 export default async function ContextPage() {
   const session = await auth();
@@ -136,6 +137,8 @@ export default async function ContextPage() {
           </div>
         </section>
       )}
+
+      <JsonUploadSection />
 
       <ContextEditor
         constraints={constraints}
