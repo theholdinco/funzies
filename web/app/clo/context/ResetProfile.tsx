@@ -15,6 +15,8 @@ export default function ResetProfile() {
       router.push("/clo");
       router.refresh();
     } else {
+      const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      alert(`Reset failed: ${body.error ?? `HTTP ${res.status}`}`);
       setResetting(false);
       setConfirming(false);
     }
