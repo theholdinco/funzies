@@ -121,6 +121,13 @@ export async function persistComplianceSections(
     [dealId],
   );
 
+  // Fetch actual snapshot columns once and filter ts.data against them. The
+  // normalizer emits keys like `principal_amount`, `rating`, `spread` that
+  // don't exist as columns on clo_tranche_snapshots — they come from the
+  // compliance_summary tranche shape and are consumed by the poolSummary
+  // backfill path, not by the snapshot insert.
+  const snapshotColumns = await getTableColumns("clo_tranche_snapshots");
+
   let snapshotCount = 0;
   for (const ts of normalized.trancheSnapshots) {
     const wantedNorm = normalizeClassName(ts.className);
@@ -140,8 +147,16 @@ export async function persistComplianceSections(
       [trancheId, reportPeriodId],
     );
 
-    const dataKeys = Object.keys(ts.data);
-    const dataVals = Object.values(ts.data);
+    const filteredEntries = Object.entries(ts.data).filter(([k]) => snapshotColumns.has(k));
+    const dataKeys = filteredEntries.map(([k]) => k);
+    const dataVals = filteredEntries.map(([, v]) => v);
+
+    if (dataKeys.length === 0) {
+      // No recognised columns — nothing to write. Skip the row rather than
+      // inserting an empty snapshot.
+      console.warn(`[json-ingest] tranche_snapshots: no recognised columns for "${ts.className}", skipping`);
+      continue;
+    }
 
     if (existing.length > 0) {
       const setClauses = dataKeys.map((k, i) => `${k} = $${i + 1}`).concat([`data_source = $${dataKeys.length + 1}`]);
