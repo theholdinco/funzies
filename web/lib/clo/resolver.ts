@@ -320,9 +320,26 @@ function resolveTriggers(
     .filter(t => isIcTest(t) && t.triggerLevel != null && t.testClass)
     .map(t => ({ className: t.testClass!, triggerLevel: t.triggerLevel!, source: "compliance" as const }));
 
-  // From PPM constraints (fallback)
+  // From PPM constraints (fallback). Real CLO PV triggers are >=103.24% for the
+  // most junior class (Class F is typically 103-106%). The 102.5% value the
+  // PPM extractor sometimes returns labeled as "Class A" is actually the
+  // Event of Default test (§10(a)(iv)) misassigned to a class column. Filter
+  // out implausibly-low (<103%) class triggers so they don't poison the
+  // ocTriggers list AND the reinvestmentOcTrigger fallback.
   const ocFromPpm: TriggerEntry[] = (constraints.coverageTestEntries ?? [])
     .filter(e => e.class && e.parValueRatio && parseFloat(e.parValueRatio))
+    .filter(e => {
+      const v = parseFloat(e.parValueRatio!);
+      if (v < 103 && v > 1) {
+        warnings.push({
+          field: `coverageTest.${e.class}`,
+          message: `PPM coverage test for ${e.class} has parValueRatio ${v}% — implausibly low for a class PV trigger (minimum is ~103% for Class F). Likely the EoD threshold (102.5%) misassigned to a class column. Ignoring.`,
+          severity: "warn",
+        });
+        return false;
+      }
+      return true;
+    })
     .map(e => ({ className: e.class!, triggerLevel: parseFloat(e.parValueRatio!), source: "ppm" as const }));
   const icFromPpm: TriggerEntry[] = (constraints.coverageTestEntries ?? [])
     .filter(e => e.class && e.interestCoverageRatio && parseFloat(e.interestCoverageRatio))
@@ -553,24 +570,20 @@ export function resolveWaterfallInputs(
   );
 
   // --- Dates ---
-  // Snap currentDate to the compliance report's payment date so projection periods
-  // start from the last known state and align with the deal's payment schedule.
-  // Falls back to snapping today to the nearest payment date if no report is available.
+  // currentDate is the projection start. When the compliance report provides
+  // a determination date (dealDates.reportDate), use it directly — it's the
+  // authoritative "as of" date for every number in the report. Snapping to
+  // the previous quarterly payment date (which the prior implementation did)
+  // silently backdated currentDate by up to 3 months (e.g. a 2026-04-01
+  // determination date was snapping to 2026-01-15, misaligning every
+  // downstream projection period). Only fall back to the payment-schedule
+  // snap when we don't have a report date.
   const today = new Date().toISOString().slice(0, 10);
   const firstPayment = constraints.keyDates?.firstPaymentDate ?? null;
   const reportPaymentDate = dealDates?.reportDate ?? null;
   let currentDate = today;
-  if (reportPaymentDate && firstPayment) {
-    // Snap the report date to the nearest payment date on the deal's schedule
-    const fp = new Date(firstPayment);
-    const reportD = new Date(reportPaymentDate);
-    const cursor = new Date(fp);
-    let snapped = cursor.toISOString().slice(0, 10);
-    while (cursor <= reportD) {
-      snapped = cursor.toISOString().slice(0, 10);
-      cursor.setUTCMonth(cursor.getUTCMonth() + 3);
-    }
-    currentDate = snapped;
+  if (reportPaymentDate) {
+    currentDate = reportPaymentDate;
   } else if (firstPayment) {
     // No report — snap today to the nearest payment date
     const fp = new Date(firstPayment);
@@ -651,9 +664,13 @@ export function resolveWaterfallInputs(
     }
   }
   if (!reinvestmentOcTrigger && ocTriggers.length > 0) {
-    // Fallback: derive from the most junior OC trigger
-    const sortedOc = [...ocTriggers].sort((a, b) => b.rank - a.rank);
-    reinvestmentOcTrigger = { triggerLevel: sortedOc[0].triggerLevel, rank: sortedOc[0].rank, diversionPct };
+    // Fallback: derive from the most junior OC trigger. Skip implausibly low
+    // values (<103%) which are usually the EoD threshold (102.5%) misextracted
+    // as a class trigger and would produce a wildly wrong reinvestment OC.
+    const sortedOc = [...ocTriggers].filter(t => t.triggerLevel >= 103).sort((a, b) => b.rank - a.rank);
+    if (sortedOc.length > 0) {
+      reinvestmentOcTrigger = { triggerLevel: sortedOc[0].triggerLevel, rank: sortedOc[0].rank, diversionPct };
+    }
   }
   // Prefer compliance trigger level for the reinvestment OC test when available.
   // The reinvestment OC test is typically at the same level as the most junior OC trigger (Class F).

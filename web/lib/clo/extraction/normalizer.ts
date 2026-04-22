@@ -508,6 +508,35 @@ export function normalizeSectionResults(
         validateHoldingRatings(row);
         return row;
       });
+
+      // Look-alike duplicate detection — flag pairs of holdings with identical
+      // (obligorName, maturityDate, parBalance) but different ISINs. These are
+      // either legitimate two-tranche positions OR ISIN-hallucination artifacts
+      // where the extractor read the same security twice with a digit-swap on
+      // the ID. Cross-check against the source positions list before trusting.
+      const lookAlikeKey = (h: Record<string, unknown>): string =>
+        `${String(h.obligor_name ?? "").toLowerCase().trim()}|${h.maturity_date ?? ""}|${h.par_balance ?? ""}`;
+      const lookAlikeGroups = new Map<string, Array<{ isin: string; lxid: string }>>();
+      for (const h of holdings) {
+        const key = lookAlikeKey(h);
+        if (!key.startsWith("|") && key.split("|")[0].length >= 4 && (h.par_balance != null)) {
+          const ids = { isin: String(h.isin ?? ""), lxid: String(h.lxid ?? "") };
+          const arr = lookAlikeGroups.get(key) ?? [];
+          arr.push(ids);
+          lookAlikeGroups.set(key, arr);
+        }
+      }
+      for (const [key, ids] of lookAlikeGroups.entries()) {
+        if (ids.length >= 2) {
+          const isins = new Set(ids.map(i => i.isin).filter(s => s.length > 0));
+          if (isins.size >= 2) {
+            console.warn(
+              `[normalizer] look-alike holdings: ${ids.length} positions match key "${key}" (obligor|maturity|par) but have ${isins.size} distinct ISINs ${Array.from(isins).join(" / ")}. ` +
+              `Likely either two tranches of the same security OR an ISIN-hallucination duplicate. Cross-check against the source positions list.`
+            );
+          }
+        }
+      }
     }
   }
 
