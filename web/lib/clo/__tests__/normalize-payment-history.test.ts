@@ -5,7 +5,7 @@ const reportPeriodId = "00000000-0000-0000-0000-000000000001";
 const dealId = "00000000-0000-0000-0000-000000000002";
 
 describe("normalizeSectionResults — paymentHistory", () => {
-  it("flattens perTranche into rows with className", () => {
+  it("flattens perTranche into rows with normalized className", () => {
     const sections = {
       notes_information: {
         perTranche: {
@@ -17,7 +17,23 @@ describe("normalizeSectionResults — paymentHistory", () => {
     const { paymentHistory } = normalizeSectionResults(sections as never, reportPeriodId, dealId);
     expect(paymentHistory).toHaveLength(2);
     expect(paymentHistory.find(r => r.className === "A")).toBeDefined();
-    expect(paymentHistory.find(r => r.className === "Sub")).toBeDefined();
+    // "Sub" is aliased to "SUBORDINATED" by normalizeClassName
+    expect(paymentHistory.find(r => r.className === "SUBORDINATED")).toBeDefined();
+  });
+
+  it("normalizes className so 'A' and 'Class A' dedupe to the same key", () => {
+    const sections = {
+      notes_information: {
+        perTranche: {
+          "A":       [{ period: 1, paymentDate: "2024-07-15", parCommitment: 100, factor: 1, interestPaid: 10, principalPaid: 0, cashflow: 10, endingBalance: 100, interestShortfall: 0, accumInterestShortfall: 0 }],
+          "Class A": [{ period: 1, paymentDate: "2024-07-15", parCommitment: 100, factor: 1, interestPaid: 10, principalPaid: 0, cashflow: 10, endingBalance: 100, interestShortfall: 0, accumInterestShortfall: 0 }],
+        },
+      },
+    };
+    const { paymentHistory } = normalizeSectionResults(sections as never, reportPeriodId, dealId);
+    // Both map to the same normalized className; second is deduped by (className, paymentDate)
+    expect(paymentHistory).toHaveLength(1);
+    expect(paymentHistory[0].className).toBe("A");
   });
 
   it("deduplicates by (className, paymentDate)", () => {

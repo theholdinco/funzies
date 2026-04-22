@@ -22,7 +22,7 @@ describe("normalizeSectionResults — default_detail phantom synthesis", () => {
     expect(phantoms.map(p => p.obligor_name).sort()).toEqual(["Phantom One", "Phantom Two"]);
     expect(phantoms.find(p => p.obligor_name === "Phantom One")?.par_balance).toBe(2_000_000);
     expect(phantoms.find(p => p.obligor_name === "Phantom One")?.recovery_rate_moodys).toBe(40);
-    expect(phantoms.find(p => p.obligor_name === "Phantom One")?.data_origin).toBe("synthesized_from_default_detail");
+    expect(phantoms.find(p => p.obligor_name === "Phantom One")?.data_source).toBe("pdf_extraction_synthesized");
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("default_detail synthesis: created 2 phantom holdings"));
     warn.mockRestore();
   });

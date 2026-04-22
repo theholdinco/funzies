@@ -1,4 +1,5 @@
 import type { Pass1Output, Pass2Output, Pass3Output, Pass4Output, Pass5Output } from "./schemas";
+import { normalizeClassName } from "../api";
 
 function toSnakeCase(str: string): string {
   // Handle consecutive uppercase (acronyms): "ISINCode" → "isin_code", "WAL" → "wal"
@@ -481,7 +482,8 @@ export function normalizeSectionResults(
   // If default_detail names an obligor but no holding was flagged (e.g., name
   // disagreement between asset_schedule and default_detail), synthesize a
   // phantom holding so the resolver's `holdings.filter(h => h.isDefaulted)`
-  // math captures it. Tagged with data_origin so consumers can filter.
+  // math captures it. Tagged via data_source (migration 008) so consumers can
+  // distinguish synthesized rows from real extractions.
   if (defaultDetail?.defaults) {
     let synthesized = 0;
     for (const d of defaultDetail.defaults) {
@@ -501,7 +503,7 @@ export function normalizeSectionResults(
         recoveryRateMoodys: d.recoveryRateMoodys ?? d.recovery_rate_moodys,
         recoveryRateSp:     d.recoveryRateSp ?? d.recovery_rate_sp,
         recoveryRateFitch:  d.recoveryRateFitch ?? d.recovery_rate_fitch,
-        dataOrigin:         "synthesized_from_default_detail",
+        dataSource:         "pdf_extraction_synthesized",
       }, base));
       synthesized++;
     }
@@ -589,11 +591,15 @@ export function normalizeSectionResults(
   }
 
   // 10. notes_information → paymentHistory (per-tranche flattened, deduped)
+  // Normalize className so the upsert conflict key (profile_id, class_name,
+  // payment_date) stays stable across extractions — e.g. "A" vs "Class A"
+  // must dedupe instead of creating parallel series.
   const paymentHistory: PaymentHistoryRow[] = [];
   const notesInfo = sections.notes_information as { perTranche?: Record<string, Array<Record<string, unknown>>> } | undefined;
   if (notesInfo?.perTranche) {
     const seen = new Set<string>();
-    for (const [className, rows] of Object.entries(notesInfo.perTranche)) {
+    for (const [rawClassName, rows] of Object.entries(notesInfo.perTranche)) {
+      const className = normalizeClassName(rawClassName);
       for (const r of rows) {
         const paymentDate = r.paymentDate as string | undefined;
         if (!paymentDate) continue;
