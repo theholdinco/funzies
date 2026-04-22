@@ -418,18 +418,25 @@ export function normalizeSectionResults(
   }
 
   // Apply to holdings
+  const matchedDefaultNames = new Set<string>();
   if (defaultedObligors.size > 0 && holdings.length > 0) {
     for (const h of holdings) {
-      if (h.is_defaulted) continue;
       const obligor = ((h.obligor_name ?? "") as string).toLowerCase().trim();
-      if (obligor.length >= 4 && defaultedObligors.has(obligor)) {
-        h.is_defaulted = true;
+      if (obligor.length < 4) continue;
+
+      // Exact match: flag holding (if not already) AND record the match.
+      if (defaultedObligors.has(obligor)) {
+        if (!h.is_defaulted) h.is_defaulted = true;
+        matchedDefaultNames.add(obligor);
+        continue;
       }
-      // Fuzzy: check if any defaulted name is a substring of the holding's obligor (or vice versa)
-      if (!h.is_defaulted && obligor.length >= 6) {
+
+      // Fuzzy match: flag holding (if not already) AND record the matched defName.
+      if (obligor.length >= 6) {
         for (const defName of defaultedObligors) {
           if (defName.length >= 6 && (obligor.includes(defName) || defName.includes(obligor))) {
-            h.is_defaulted = true;
+            if (!h.is_defaulted) h.is_defaulted = true;
+            matchedDefaultNames.add(defName);
             break;
           }
         }
@@ -460,21 +467,13 @@ export function normalizeSectionResults(
   // disagreement between asset_schedule and default_detail), synthesize a
   // phantom holding so the resolver's `holdings.filter(h => h.isDefaulted)`
   // math captures it. Tagged with data_origin so consumers can filter.
-  const matchedObligors = new Set<string>();
-  for (const h of holdings) {
-    if (h.is_defaulted) {
-      const obligor = ((h.obligor_name ?? "") as string).toLowerCase().trim();
-      if (obligor.length >= 4) matchedObligors.add(obligor);
-    }
-  }
-
   if (defaultDetail?.defaults) {
     let synthesized = 0;
     for (const d of defaultDetail.defaults) {
       const name = ((d.obligorName ?? d.obligor_name ?? "") as string).toLowerCase().trim();
       const isDefaulted = d.isDefaulted ?? d.is_defaulted ?? d.isDeferring ?? d.is_deferring;
       if (!isDefaulted || name.length < 4) continue;
-      if (matchedObligors.has(name)) continue;
+      if (matchedDefaultNames.has(name)) continue;
 
       const parAmount = (d.parAmount ?? d.par_amount) as number | null | undefined;
       if (parAmount == null || parAmount <= 0) continue;

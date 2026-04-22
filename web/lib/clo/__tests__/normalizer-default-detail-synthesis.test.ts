@@ -60,4 +60,41 @@ describe("normalizeSectionResults — default_detail phantom synthesis", () => {
     expect(holdings[0].obligor_name).toBe("Valid Co");
     warn.mockRestore();
   });
+
+  it("does NOT synthesize when a holding fuzzy-matches the default_detail name", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const sections = {
+      asset_schedule: { holdings: [{ obligorName: "ACME Holdings LLC", parBalance: 10_000_000, isDefaulted: false }] },
+      default_detail: {
+        defaults: [{ obligorName: "ACME Holdings", parAmount: 2_000_000, isDefaulted: true }],
+      },
+    };
+    const { holdings } = normalizeSectionResults(sections as never, emptyReportId(), emptyDealId());
+    // Expect exactly one holding — the fuzzy-matched original, flagged defaulted — not a phantom duplicate
+    expect(holdings).toHaveLength(1);
+    expect(holdings[0].obligor_name).toBe("ACME Holdings LLC");
+    expect(holdings[0].is_defaulted).toBe(true);
+    const synthLogs = warn.mock.calls.filter(c => String(c[0]).includes("default_detail synthesis"));
+    expect(synthLogs).toHaveLength(0);
+    warn.mockRestore();
+  });
+
+  it("does NOT synthesize when a pre-flagged holding fuzzy-matches default_detail name", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const sections = {
+      asset_schedule: {
+        holdings: [{ obligorName: "ACME Holdings LLC", parBalance: 10_000_000, isDefaulted: true }],
+      },
+      default_detail: {
+        defaults: [{ obligorName: "ACME Holdings", parAmount: 2_000_000, isDefaulted: true }],
+      },
+    };
+    const { holdings } = normalizeSectionResults(sections as never, emptyReportId(), emptyDealId());
+    expect(holdings).toHaveLength(1);
+    expect(holdings[0].obligor_name).toBe("ACME Holdings LLC");
+    expect(holdings[0].is_defaulted).toBe(true);
+    const synthLogs = warn.mock.calls.filter(c => String(c[0]).includes("default_detail synthesis"));
+    expect(synthLogs).toHaveLength(0);
+    warn.mockRestore();
+  });
 });
