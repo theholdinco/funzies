@@ -24,7 +24,7 @@
  * See /Users/solal/.claude/plans/clo-modeling-correctness-plan.md §N1.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectionInputs } from "@/lib/clo/projection";
 import type { BacktestInputs } from "@/lib/clo/backtest-types";
 import { runBacktestHarness, type HarnessResult } from "@/lib/clo/backtest-harness";
@@ -318,38 +318,138 @@ export default function HarnessPanel({ inputs, backtest, engineMathInputs }: Pro
   );
 }
 
-/** E2 — Small KI badge(s) next to an engine bucket. Clicking opens the ledger
- *  section at its stable `<a id="ki-xx">` anchor (anchors live in
- *  web/docs/clo-model-known-issues.md). Hover still surfaces the blurb. */
-const KI_DOC_URL = "https://github.com/theholdinco/assembly/blob/main/web/docs/clo-model-known-issues.md";
-
+/** E2 — KI badge(s) next to an engine bucket. Click opens a small in-app
+ *  popover showing the ledger blurb; closes on outside-click or Escape.
+ *  Kept fully in-app so partners don't get ripped off to GitHub (offline-
+ *  safe, branch-safe). A full in-app ledger viewer is a future follow-up;
+ *  for now the blurb + file-path pointer is the partner-facing explanation. */
 function KiBadges({ bucket }: { bucket: EngineBucket }) {
   const meta = BUCKET_TO_KI[bucket];
   if (!meta || meta.ids.length === 0) return null;
   return (
     <span style={{ marginLeft: "0.5rem", display: "inline-flex", gap: "0.25rem" }}>
       {meta.ids.map((id) => (
-        <a
-          key={id}
-          href={`${KI_DOC_URL}#${id.toLowerCase()}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={meta.blurb}
+        <KiBadge key={id} id={id} blurb={meta.blurb} />
+      ))}
+    </span>
+  );
+}
+
+function KiBadge({ id, blurb }: { id: string; blurb: string }) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLSpanElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleMouseDown = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  return (
+    <span ref={wrapperRef} style={{ position: "relative", display: "inline-block" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        style={{
+          fontSize: "0.62rem",
+          fontFamily: "var(--font-mono)",
+          padding: "0.1rem 0.35rem",
+          borderRadius: "3px",
+          border: `1px solid ${open ? "var(--color-accent)" : "var(--color-border-light)"}`,
+          background: open ? "var(--color-accent-bg, rgba(59,130,246,0.08))" : "var(--color-surface)",
+          color: open ? "var(--color-accent)" : "var(--color-text-muted)",
+          letterSpacing: "0.02em",
+          cursor: "pointer",
+          fontWeight: open ? 600 : 500,
+        }}
+      >
+        {id}
+      </button>
+      {open && (
+        <div
+          role="dialog"
+          aria-label={`${id} ledger entry`}
           style={{
-            fontSize: "0.62rem",
-            fontFamily: "var(--font-mono)",
-            padding: "0.1rem 0.35rem",
-            borderRadius: "3px",
-            border: "1px solid var(--color-border-light)",
+            position: "absolute",
+            zIndex: 100,
+            top: "calc(100% + 0.35rem)",
+            left: 0,
+            minWidth: "320px",
+            maxWidth: "420px",
+            padding: "0.75rem 0.85rem",
             background: "var(--color-surface)",
-            color: "var(--color-text-muted)",
-            letterSpacing: "0.02em",
-            textDecoration: "none",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius-sm)",
+            fontSize: "0.75rem",
+            fontFamily: "var(--font-sans)",
+            color: "var(--color-text)",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+            whiteSpace: "normal",
+            lineHeight: 1.5,
+            textAlign: "left",
+            textTransform: "none",
+            letterSpacing: "normal",
+            fontWeight: 400,
           }}
         >
-          {id}
-        </a>
-      ))}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              marginBottom: "0.4rem",
+              gap: "0.5rem",
+            }}
+          >
+            <strong style={{ fontFamily: "var(--font-mono)", fontSize: "0.72rem", color: "var(--color-text)" }}>{id}</strong>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+              }}
+              aria-label="Close"
+              style={{
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                color: "var(--color-text-muted)",
+                fontSize: "1rem",
+                lineHeight: 1,
+                padding: "0 0.15rem",
+              }}
+            >
+              ×
+            </button>
+          </div>
+          <div style={{ color: "var(--color-text-muted)" }}>{blurb}</div>
+          <div
+            style={{
+              marginTop: "0.55rem",
+              paddingTop: "0.5rem",
+              borderTop: "1px solid var(--color-border-light)",
+              fontSize: "0.65rem",
+              color: "var(--color-text-muted)",
+              fontStyle: "italic",
+            }}
+          >
+            Full entry: <code style={{ fontFamily: "var(--font-mono)" }}>docs/clo-model-known-issues.md#{id.toLowerCase()}</code>
+          </div>
+        </div>
+      )}
     </span>
   );
 }
