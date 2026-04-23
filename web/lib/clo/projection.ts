@@ -2267,8 +2267,20 @@ export function computeSensitivity(
       base: formatSensPct(avgCdr(baseInputs.defaultRatesByRating)),
       down: formatSensPct(Math.max(0, avgCdr(baseInputs.defaultRatesByRating) - 1)),
       up: formatSensPct(avgCdr(baseInputs.defaultRatesByRating) + 1),
-      makeDown: () => ({ ...baseInputs, defaultRatesByRating: shiftAllRates(baseInputs.defaultRatesByRating, -1) }),
-      makeUp: () => ({ ...baseInputs, defaultRatesByRating: shiftAllRates(baseInputs.defaultRatesByRating, 1) }),
+      // D2b — the shifted bucket rates only take effect when the buckets are
+      // in the override set (otherwise the engine uses per-position WARF).
+      // Flag every bucket present in the rate map so the ±1 pct shift is
+      // actually applied to the hazard path.
+      makeDown: () => ({
+        ...baseInputs,
+        defaultRatesByRating: shiftAllRates(baseInputs.defaultRatesByRating, -1),
+        overriddenBuckets: Object.keys(baseInputs.defaultRatesByRating),
+      }),
+      makeUp: () => ({
+        ...baseInputs,
+        defaultRatesByRating: shiftAllRates(baseInputs.defaultRatesByRating, 1),
+        overriddenBuckets: Object.keys(baseInputs.defaultRatesByRating),
+      }),
     },
     {
       assumption: "CPR",
