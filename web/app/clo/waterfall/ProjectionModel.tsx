@@ -26,7 +26,7 @@ import {
   type LoanInput,
 } from "@/lib/clo/projection";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
-import { buildFromResolved, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED } from "@/lib/clo/build-projection-inputs";
+import { buildFromResolved, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED, defaultsFromResolved, diagnoseFeePrefill } from "@/lib/clo/build-projection-inputs";
 import { DEFAULT_RATES_BY_RATING, RATING_BUCKETS, type RatingBucket } from "@/lib/clo/rating-mapping";
 import SuggestAssumptions from "./SuggestAssumptions";
 import { CLO_DEFAULTS } from "@/lib/clo/defaults";
@@ -121,7 +121,10 @@ export default function ProjectionModel({
   const initFees = resolved?.fees;
   const [seniorFeePct, setSeniorFeePct] = useState<number>(initFees?.seniorFeePct ?? CLO_DEFAULTS.seniorFeePct);
   const [subFeePct, setSubFeePct] = useState<number>(initFees?.subFeePct ?? CLO_DEFAULTS.subFeePct);
+  const [taxesBps, setTaxesBps] = useState<number>(0);
   const [trusteeFeeBps, setTrusteeFeeBps] = useState<number>(initFees?.trusteeFeeBps ?? CLO_DEFAULTS.trusteeFeeBps);
+  const [adminFeeBps, setAdminFeeBps] = useState<number>(0);
+  const [seniorExpensesCapBps, setSeniorExpensesCapBps] = useState<number>(20);
   const [hedgeCostBps, setHedgeCostBps] = useState<number>(CLO_DEFAULTS.hedgeCostBps);
   const [incentiveFeePct, setIncentiveFeePct] = useState<number>(initFees?.incentiveFeePct ?? CLO_DEFAULTS.incentiveFeePct);
   const [incentiveFeeHurdleIrr, setIncentiveFeeHurdleIrr] = useState<number>(
@@ -143,20 +146,31 @@ export default function ProjectionModel({
   const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"projection" | "switch">(urlTab === "switch" ? "switch" : "projection");
 
-  // Pre-fill fee sliders when resolved data changes (only on first load, not on re-renders
-  // that would stomp user edits). Track whether fees have been initialized.
+  // Pre-fill sliders from `defaultsFromResolved` — single source of truth for
+  // the D3 pre-fill family (baseRate + fees). Only fires once per deal load so
+  // it doesn't stomp subsequent user edits. Also pre-fills trusteeFeeBps via
+  // the back-derive from Q1 waterfall when the PPM says "per agreement".
+  // `diagnoseFeePrefill` produces partner-visible warnings when the pre-fill
+  // data source is incomplete (e.g., step C missing → adminFeeBps silently 0).
+  const [prefillWarnings, setPrefillWarnings] = useState<ResolutionWarning[]>([]);
   const feesInitialized = useRef(false);
   React.useEffect(() => {
     if (!resolved || feesInitialized.current) return;
     feesInitialized.current = true;
-    const f = resolved.fees;
-    if (f.seniorFeePct != null) setSeniorFeePct(f.seniorFeePct);
-    if (f.subFeePct != null) setSubFeePct(f.subFeePct);
-    if (f.trusteeFeeBps != null) setTrusteeFeeBps(f.trusteeFeeBps);
-    if (f.incentiveFeePct != null) setIncentiveFeePct(f.incentiveFeePct);
-    if (f.incentiveFeeHurdleIrr != null) setIncentiveFeeHurdleIrr(f.incentiveFeeHurdleIrr * 100); // stored as decimal, display as %
+    const raw = { trancheSnapshots, waterfallSteps };
+    const d = defaultsFromResolved(resolved, raw);
+    setBaseRatePct(d.baseRatePct);
+    setSeniorFeePct(d.seniorFeePct);
+    setSubFeePct(d.subFeePct);
+    setTaxesBps(d.taxesBps);
+    setTrusteeFeeBps(d.trusteeFeeBps);
+    setAdminFeeBps(d.adminFeeBps);
+    setSeniorExpensesCapBps(d.seniorExpensesCapBps);
+    setIncentiveFeePct(d.incentiveFeePct);
+    setIncentiveFeeHurdleIrr(d.incentiveFeeHurdleIrr);
+    setPrefillWarnings(diagnoseFeePrefill(resolved, raw, d));
     if (resolved.dates.nonCallPeriodEnd) setCallDate(null);
-  }, [resolved]);
+  }, [resolved, trancheSnapshots, waterfallSteps]);
 
   // Pre-fill equity entry price from inception-data purchase cents on first load.
   // Don't overwrite if the user has already touched the slider (non-null state).
@@ -260,7 +274,10 @@ export default function ProjectionModel({
         callPriceMode,
         seniorFeePct,
         subFeePct,
+        taxesBps,
         trusteeFeeBps,
+        adminFeeBps,
+        seniorExpensesCapBps,
         incentiveFeePct,
         incentiveFeeHurdleIrr,
         ddtlDrawAssumption,
@@ -315,7 +332,10 @@ export default function ProjectionModel({
     callPriceMode,
     seniorFeePct,
     subFeePct,
+    taxesBps,
     trusteeFeeBps,
+    adminFeeBps,
+    seniorExpensesCapBps,
     incentiveFeePct,
     incentiveFeeHurdleIrr,
     ddtlDrawAssumption,
@@ -560,6 +580,33 @@ export default function ProjectionModel({
           ))}
           {unmappedIc.map((ic) => (
             <div key={ic.className}>&bull; IC trigger &quot;{ic.className}&quot; — no matching tranche, test disabled</div>
+          ))}
+        </div>
+      )}
+
+      {/* Data-quality warnings: resolver-level (pool, triggers, etc.) +
+          fee-prefill gate (admin source missing, etc.). Merged so the
+          partner sees a single panel rather than scattered alerts. */}
+      {((resolutionWarnings?.length ?? 0) > 0 || prefillWarnings.length > 0) && (
+        <div
+          style={{
+            padding: "0.75rem 1rem",
+            border: "1px solid var(--color-warning-border, #e5c07b)",
+            borderRadius: "var(--radius-sm)",
+            background: "var(--color-warning-bg, #fdf6e3)",
+            marginBottom: "1rem",
+            fontSize: "0.78rem",
+            color: "var(--color-warning, #946c00)",
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
+            Data Quality Warnings ({(resolutionWarnings?.length ?? 0) + prefillWarnings.length})
+          </div>
+          {(resolutionWarnings ?? []).filter((w) => w.severity !== "info").map((w, i) => (
+            <div key={`rw-${i}`}>&bull; <strong>{w.field}:</strong> {w.message}</div>
+          ))}
+          {prefillWarnings.map((w, i) => (
+            <div key={`pw-${i}`}>&bull; <strong>{w.field}:</strong> {w.message}</div>
           ))}
         </div>
       )}

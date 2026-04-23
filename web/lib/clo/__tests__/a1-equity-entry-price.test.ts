@@ -103,15 +103,17 @@ describe("A1 — equityEntryPriceCents → equityEntryPrice conversion", () => {
 
 describe("A1 — integration: equityEntryPriceCents flows through to engine IRR", () => {
   it("setting equityEntryPriceCents shifts equityIrr by the expected ~−13pp vs default (book)", () => {
-    // Empirical anchor. With DEFAULT_ASSUMPTIONS (no stress, no reinvestment
-    // spread), Euro XV's engine produces:
-    //   - 95c cost basis (€42.56M) → equityIrr ≈ −12.70%
-    //   - book-value default (€25.15M) → equityIrr ≈ +0.22%
-    //   - gap ≈ −12.92pp
-    // The gap anchors the direction (higher cost → lower IRR) AND the
-    // magnitude. A tolerance of ±1pp is tight enough to catch material engine
-    // changes (fee logic, residual cashflow model, IRR computation) without
-    // firing on incidental floating-point drift.
+    // Empirical anchor. With DEFAULT_ASSUMPTIONS, Euro XV's engine produces
+    // (post-B1 / Sprint 2 fixture patch on principalAccountCash):
+    //   - 95c cost basis (€42.56M) → equityIrr ≈ lower
+    //   - book-value default → equityIrr ≈ higher (because lower cost basis)
+    //   - gap ≈ −15.71pp
+    //
+    // History: pre-B1 this gap was −12.92pp. B1's resolver fix corrected
+    // `principalAccountCash` from 0 to −€1.82M (the overdrawn Principal EUR
+    // account), which flows into the book-value computation via the pool-
+    // level cash term → book value drops slightly → book-value-default IRR
+    // rises → gap widens. Cascade re-baseline per PR template.
     const inputs95 = buildFromResolved(fixture.resolved, {
       ...DEFAULT_ASSUMPTIONS,
       equityEntryPriceCents: 95,
@@ -129,6 +131,6 @@ describe("A1 — integration: equityEntryPriceCents flows through to engine IRR"
     // Magnitude: within ±1pp of the documented −12.92pp anchor. If this moves,
     // a material engine change happened — either A1's plumbing or downstream
     // IRR / cashflow logic.
-    expect(gapPp).toBeCloseTo(-12.92, 0);
+    expect(gapPp).toBeCloseTo(-15.71, 0);
   });
 });

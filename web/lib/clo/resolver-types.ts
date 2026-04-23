@@ -20,6 +20,17 @@ export interface ResolvedMetadata {
   pdfExtracted: string[];
 }
 
+/** B1: Event of Default Par Value Test (PPM Condition 10(a)(iv)).
+ *  Structurally distinct from class-level OC tests — its numerator is
+ *  compositional (APB non-defaulted + Σ(MV × PB) defaulted + principal
+ *  account cash) and its denominator is Class A PAO only.
+ *  Previously mis-emitted as a rank-99 OC trigger which drove the denominator
+ *  to include all tranches and made the test impossible to breach. */
+export interface ResolvedEodTest {
+  triggerLevel: number; // 102.5 for Euro XV
+  sourcePage: number | null;
+}
+
 export interface ResolvedDealData {
   tranches: ResolvedTranche[];
   poolSummary: ResolvedPool;
@@ -28,6 +39,7 @@ export interface ResolvedDealData {
   qualityTests: ResolvedComplianceTest[];
   concentrationTests: ResolvedComplianceTest[];
   reinvestmentOcTrigger: ResolvedReinvestmentOcTrigger | null;
+  eventOfDefaultTest: ResolvedEodTest | null;
   dates: ResolvedDates;
   fees: ResolvedFees;
   loans: ResolvedLoan[];

@@ -43,17 +43,26 @@ export const STEP_TOLERANCES_TARGET: Record<EngineBucket, number> = {
   // These are documented gaps in the known-issues ledger. The engine emits 0
   // deliberately; trustee actuals can be any amount. Surfacing the delta is
   // valuable for audit visibility but failing the test on them is noise.
-  taxes: Infinity,                   // step a.i      — KI-01 (Issuer taxes not modeled)
+  taxes: 100,                        // step a.i      — KI-09 closed; drift should be day-count residual only
   issuerProfit: Infinity,            // step a.ii     — KI-01 (€250/period immaterial)
   expenseReserve: Infinity,          // step d        — KI-02 (CM discretionary, usually 0)
   effectiveDateRating: Infinity,     // step v        — KI-03 (inactive post-ramp)
   defaultedHedgeTermination: Infinity, // step aa     — KI-06 (hedge-default-only)
   supplementalReserve: Infinity,     // step bb       — KI-05 (CM discretionary)
-  trusteeOverflow: Infinity,         // step y        — pre-C3 always 0 by design
-  adminOverflow: Infinity,           // step z        — pre-C3 always 0 by design
+  trusteeOverflow: Infinity,         // step y        — only fires when observed > cap
+  adminOverflow: Infinity,           // step z        — only fires when observed > cap
 
   // --- Steps the engine DOES model; tight TARGET tolerances (fail-loud) ---
-  trusteeFeesPaid: 10,               // steps b + c   — pre-fill gap; fails until Sprint 3 / C3
+  // These are POST-CLOSURE targets (what we'd expect once day-count and
+  // harness-period-mismatch close). Current residual drift is tracked by
+  // `failsWithMagnitude` markers in n1-correctness with explicit expected
+  // magnitudes — those are the regression gates; these are the target
+  // magnitudes the UI delta table renders red against until closure lands.
+  // Calibrating a tolerance to mask current-observed drift would be
+  // test-theater (the Sprint 0 anti-pattern: "tolerance copied from actual
+  // output is not a tolerance").
+  trusteeFeesPaid: 50,               // step b        — will go green post-B3 day-count fix
+  adminFeesPaid: 50,                 // step c        — red until B3 closes day-count (observed ~€709; tracked in n1 admin marker)
   seniorMgmtFeePaid: 100,            // step e        — day-count sensitive; fails until Sprint 1 / B3
   hedgePaymentPaid: 50,              // step f
   classA_interest: 1,                // step g        — tightest post-B3
@@ -267,18 +276,20 @@ function extractEngineBuckets(p: PeriodResult): Partial<Record<EngineBucket, num
   const deferredByClass = p.stepTrace.deferredAccrualByTranche;
 
   return {
-    // Steps the engine doesn't model — always 0 (KI-01/02/03/05/06, and y/z pre-C3).
-    taxes: 0,
+    // KI-09 taxes: now emitted by the engine when taxesBps is set.
+    taxes: p.stepTrace.taxes ?? 0,
+    // Steps the engine still doesn't model — KI-01/02/03/05/06.
     issuerProfit: 0,
     expenseReserve: 0,
     effectiveDateRating: 0,
     defaultedHedgeTermination: 0,
     supplementalReserve: 0,
-    trusteeOverflow: 0,
-    adminOverflow: 0,
 
-    // Fees (from stepTrace)
-    trusteeFeesPaid: p.stepTrace.trusteeFeesPaid,
+    // Fees (from stepTrace) — C3 split surfaces (B)/(C)/(Y)/(Z) as four buckets
+    trusteeFeesPaid: p.stepTrace.trusteeFeesPaid,     // PPM (B)
+    adminFeesPaid: p.stepTrace.adminFeesPaid,         // PPM (C)
+    trusteeOverflow: p.stepTrace.trusteeOverflowPaid, // PPM (Y)
+    adminOverflow: p.stepTrace.adminOverflowPaid,     // PPM (Z)
     seniorMgmtFeePaid: p.stepTrace.seniorMgmtFeePaid,
     hedgePaymentPaid: p.stepTrace.hedgePaymentPaid,
     subMgmtFeePaid: p.stepTrace.subMgmtFeePaid,

@@ -169,13 +169,6 @@
         "rank": 7,
         "testType": "OC",
         "source": "compliance"
-      },
-      {
-        "className": "EOD",
-        "triggerLevel": 102.5,
-        "rank": 99,
-        "testType": "OC",
-        "source": "compliance"
       }
     ],
     "icTriggers": [
@@ -8139,18 +8132,22 @@
         "ppm"
       ]
     },
-    "principalAccountCash": 0,
+    "principalAccountCash": -1817412.94,
     "preExistingDefaultedPar": 0,
     "preExistingDefaultRecovery": 0,
     "unpricedDefaultedPar": 0,
     "preExistingDefaultOcValue": 0,
     "discountObligationHaircut": 0,
     "longDatedObligationHaircut": 0,
-    "impliedOcAdjustment": 1817412.9399999976,
+    "impliedOcAdjustment": 0,
     "quartersSinceReport": 0,
     "ddtlUnfundedPar": 0,
     "deferredInterestCompounds": true,
-    "baseRateFloorPct": null
+    "baseRateFloorPct": null,
+    "eventOfDefaultTest": {
+      "triggerLevel": 102.5,
+      "sourcePage": 207
+    }
   },
   "warnings": [
     {

@@ -27,7 +27,7 @@
 import { useMemo, useState } from "react";
 import type { ProjectionInputs } from "@/lib/clo/projection";
 import type { BacktestInputs } from "@/lib/clo/backtest-types";
-import { runBacktestHarness } from "@/lib/clo/backtest-harness";
+import { runBacktestHarness, type HarnessResult } from "@/lib/clo/backtest-harness";
 
 interface Props {
   inputs: ProjectionInputs;
@@ -61,6 +61,43 @@ const headerCellStyle: React.CSSProperties = {
   borderBottom: "1px solid var(--color-border)",
   zIndex: 1,
 };
+
+function fmt2(n: number): string {
+  return n.toFixed(2);
+}
+
+function buildCsv(result: HarnessResult): string {
+  const header = ["engineBucket", "ppmSteps", "description", "actual", "projected", "delta", "absDelta", "tolerance", "withinTolerance"];
+  const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const rows = result.steps.map((s) => [
+    s.engineBucket,
+    s.ppmSteps.join("+"),
+    s.description,
+    fmt2(s.actual),
+    fmt2(s.projected),
+    fmt2(s.delta),
+    fmt2(s.absDelta),
+    isFinite(s.tolerance) ? fmt2(s.tolerance) : "Infinity",
+    s.withinTolerance ? "YES" : "NO",
+  ].map(escape).join(","));
+  return [header.join(","), ...rows].join("\n");
+}
+
+function downloadBlob(content: string, filename: string, mime: string): void {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function filenameBase(mode: Mode, periodDate: string | null): string {
+  return `n1-delta-${mode}-${periodDate ?? "unknown-date"}`;
+}
 
 export default function HarnessPanel({ inputs, backtest, engineMathInputs }: Props) {
   const [open, setOpen] = useState(false);
@@ -112,7 +149,7 @@ export default function HarnessPanel({ inputs, backtest, engineMathInputs }: Pro
       >
         <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <span style={{ fontSize: "0.65rem" }}>{open ? "▾" : "▸"}</span>
-          N1 Waterfall Replay — Engine vs Trustee (Q1 {result.periodDate ?? ""})
+          N1 Harness — Engine Q2 projection vs Trustee {result.periodDate ?? ""} actual
         </span>
         <span style={{ color: statusColor, fontSize: "0.82rem", fontFamily: "var(--font-mono)" }}>
           {result.summary.stepsWithinTolerance}/{result.summary.stepsCount} within tolerance
@@ -125,7 +162,7 @@ export default function HarnessPanel({ inputs, backtest, engineMathInputs }: Pro
       </button>
       {open && (
         <div style={{ background: "var(--color-surface)", padding: "0.5rem 0" }}>
-          <div style={{ display: "flex", gap: "0.25rem", padding: "0.5rem 1rem 0.25rem" }}>
+          <div style={{ display: "flex", gap: "0.25rem", padding: "0.5rem 1rem 0.25rem", alignItems: "center", flexWrap: "wrap" }}>
             <ModeButton active={mode === "production"} onClick={() => setMode("production")}>
               Production path
             </ModeButton>
@@ -141,21 +178,52 @@ export default function HarnessPanel({ inputs, backtest, engineMathInputs }: Pro
             >
               Engine math (legit-pinned){engineMathInputs ? "" : " — unavailable"}
             </ModeButton>
+            <span style={{ flex: 1 }} />
+            <ModeButton
+              active={false}
+              onClick={() => downloadBlob(buildCsv(result), `${filenameBase(mode, result.periodDate)}.csv`, "text/csv;charset=utf-8")}
+            >
+              Download CSV
+            </ModeButton>
+            <ModeButton
+              active={false}
+              onClick={() => {
+                const payload = {
+                  ...result,
+                  meta: {
+                    mode,
+                    exportedAt: new Date().toISOString(),
+                    summary: {
+                      stepsWithinTolerance: result.summary.stepsWithinTolerance,
+                      stepsOutOfTolerance: result.summary.stepsOutOfTolerance,
+                      stepsCount: result.summary.stepsCount,
+                      sumAbsDelta: result.summary.sumAbsDelta,
+                      maxAbsDelta: result.maxAbsDelta,
+                      maxAbsDeltaBucket: result.maxAbsDeltaBucket,
+                    },
+                  },
+                };
+                downloadBlob(JSON.stringify(payload, null, 2), `${filenameBase(mode, result.periodDate)}.json`, "application/json");
+              }}
+            >
+              Download JSON
+            </ModeButton>
           </div>
           <p style={{ padding: "0.5rem 1rem", fontSize: "0.78rem", color: "var(--color-text-muted)", lineHeight: 1.5 }}>
             {mode === "engine-math" ? (
               <>
-                Engine arithmetic against trustee with externally-authoritative pins (observed
-                EURIBOR + PPM fees). <em>trusteeFeeBps is intentionally NOT pinned</em> — deriving
-                it from trustee output would be circular. Remaining drift = engine correctness
-                gaps (KI-08 trustee fee pre-fill + B3 day-count). Tolerances set at post-Sprint-1
-                target levels.
+                Engine projects forward one quarter (Q2) from the fixture's current-period
+                snapshot and compares against trustee's most recent realized period (Q1).
+                This is <em>not</em> a Q1 replay — the engine has no rewind; the current
+                snapshot is its starting state. Pre-fills come from <code>defaultsFromResolved</code>
+                (observed EURIBOR, PPM fee rates, Q1-waterfall-derived trustee fee). Remaining
+                drift = period-mismatch effects on balance-sensitive fields (KI-12a/12b) and
+                engine-does-not-model deductions (KI-01/09).
               </>
             ) : (
               <>
-                Live replay using current slider state — what a user actually sees.
-                Exposes the full pre-fill-gap picture in addition to engine arithmetic drift.
-                Tweak any assumption slider above and the table re-computes.
+                Live view using current slider state. Same Q2-vs-Q1 framing as engine-math
+                mode — tweak any assumption slider above to see how it moves the delta table.
               </>
             )}
           </p>

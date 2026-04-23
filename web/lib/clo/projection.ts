@@ -2,6 +2,7 @@
 // Runs entirely client-side for instant recalculation.
 
 import { CLO_DEFAULTS } from "./defaults";
+import { POST_ACCEL_SEQUENCE } from "./waterfall-schema";
 
 export interface LoanInput {
   parBalance: number;
@@ -16,7 +17,31 @@ export interface LoanInput {
   /** Current market price as percentage of par (e.g. 98.5 = 98.5c on the euro).
    *  Used for A3 call-at-MtM liquidation. Null/undefined = fall back to par (100). */
   currentPrice?: number | null;
+  /** C2 — Moody's WARF factor for this position (Aaa=1, Ca/C=10000). Used for
+   *  forward-projection WARF. When absent the engine derives from ratingBucket
+   *  via `BUCKET_WARF_FALLBACK` (coarse-bucket midpoint — less accurate than
+   *  per-position sub-bucket rating but acceptable for reinvestment paths). */
+  warfFactor?: number | null;
 }
+
+/** C2 — Coarse RatingBucket → Moody's WARF factor. Uses the middle sub-bucket
+ *  (aa2/a2/baa2/ba2/b2/caa2) as a reasonable proxy when per-position WARF is
+ *  unavailable. NR is treated as Caa2 (6500) per Moody's CLO rating
+ *  methodology ("unrated positions treated as Caa2 unless the manager
+ *  supplies a shadow rating"). A B2 midpoint (2720) was considered but
+ *  rejected — it understates WARF drift under NR-concentration scenarios,
+ *  which matters for C1 reinvestment enforcement against the Moody's WARF
+ *  trigger. See KI-19. */
+const BUCKET_WARF_FALLBACK: Record<string, number> = {
+  AAA: 1,
+  AA: 20,
+  A: 120,
+  BBB: 360,
+  BB: 1350,
+  B: 2720,
+  CCC: 6500,
+  NR: 6500, // Moody's convention: treat as Caa2. See KI-19.
+};
 
 export type DefaultDrawFn = (survivingPar: number, hazardRate: number) => number;
 
@@ -27,7 +52,21 @@ export interface ProjectionInputs {
   baseRateFloorPct: number; // floor on reference rate (e.g. 0 for EURIBOR floored at 0%)
   seniorFeePct: number;
   subFeePct: number;
-  trusteeFeeBps: number; // Trustee + admin expenses (PPM Steps A-D), in bps p.a. on collateral par
+  /** KI-09 — PPM step (A)(i) Issuer taxes, in bps p.a. on collateral par.
+   *  Deducted before trustee fees. Default 0 when no Q1 actuals available.
+   *  Back-derived by `defaultsFromResolved` from Q1 waterfall step (A)(i). */
+  taxesBps?: number;
+  trusteeFeeBps: number; // PPM step (B) trustee, in bps p.a. on collateral par
+  /** C3 — PPM step (C) administrative expenses, in bps p.a. on collateral par.
+   *  Jointly capped with trusteeFeeBps under Senior Expenses Cap; overflow
+   *  routes to step (Z). Optional field (undefined on legacy test inputs). */
+  adminFeeBps?: number;
+  /** C3 — Senior Expenses Cap in bps p.a. on Collateral Principal Amount.
+   *  Jointly bounds (trusteeFeeBps + adminFeeBps) expense emission; overflow
+   *  above the cap routes to PPM steps (Y) trustee overflow and (Z) admin
+   *  overflow, paid from residual interest after tranche interest + sub
+   *  mgmt fee. Optional (defaults to effectively unbounded when undefined). */
+  seniorExpensesCapBps?: number;
   hedgeCostBps: number; // Scheduled hedge payments (PPM Step F), in bps p.a. on collateral par
   incentiveFeePct: number; // % of residual above IRR hurdle (PPM Steps BB/U), e.g. 20
   incentiveFeeHurdleIrr: number; // annualized IRR hurdle, e.g. 0.12 for 12%
@@ -41,6 +80,12 @@ export interface ProjectionInputs {
    *    Legacy behavior; useful for quick stress ("assume everything sells at 98c"). */
   callPriceMode: "multiplier" | "flat";
   reinvestmentOcTrigger: { triggerLevel: number; rank: number; diversionPct: number } | null; // Reinvestment OC test — diversionPct % of remaining interest diverted during RP
+  /** B1 — Event of Default Par Value Test (PPM 10(a)(iv)). Distinct from
+   *  class-level OC; uses compositional numerator + Class-A-only denominator.
+   *  Null/undefined = deal has no separately-tracked EoD test (legacy test
+   *  fixtures pre-B1; synthetic inputs that don't need EoD). Engine emits
+   *  `initialState.eodTest = null` when absent. */
+  eventOfDefaultTest?: { triggerLevel: number } | null;
   tranches: {
     className: string;
     currentBalance: number;
@@ -80,6 +125,12 @@ export interface ProjectionInputs {
   quartersSinceReport?: number; // quarters between compliance report and projection start (adjusts default recovery timing)
   ddtlDrawPercent?: number; // % of DDTL par actually funded on draw (default 100)
   equityEntryPrice?: number; // user-specified entry price for equity IRR (overrides balance-sheet implied value)
+  /** C1 — Moody's Maximum WARF trigger (e.g. 3148 on Euro XV). When set, the
+   *  engine scales down reinvestment if the purchase at `reinvestmentRating`
+   *  would cause post-buy WARF to breach the trigger (and WARF wasn't already
+   *  breaching). Excess principal flows to senior paydown instead. Null =
+   *  no enforcement. */
+  moodysWarfTriggerLevel?: number | null;
 }
 
 /** Per-step waterfall emission for N1 harness comparison against trustee
@@ -88,7 +139,11 @@ export interface ProjectionInputs {
  *  on the output so the harness can tie out trustee vs engine step-by-step.
  *
  *  Trustee-step mapping (see web/lib/clo/ppm-step-map.ts):
- *    - trusteeFeesPaid        → PPM steps (B) + (C) (bundled until C3 splits; see KI-08)
+ *    - taxes                  → PPM step (A)(i) (issuer taxes; KI-09 closed Sprint 3)
+ *    - trusteeFeesPaid        → PPM step (B) ONLY (trustee fee; split from admin in Sprint 3 / C3)
+ *    - adminFeesPaid          → PPM step (C) (admin expenses; split from trustee in Sprint 3 / C3)
+ *    - trusteeOverflowPaid    → PPM step (Y) (trustee-fee overflow past cap, residual-interest funded)
+ *    - adminOverflowPaid      → PPM step (Z) (admin-expense overflow past cap)
  *    - seniorMgmtFeePaid      → PPM step (E) (current + past-due bundled)
  *    - hedgePaymentPaid       → PPM step (F) (non-defaulted hedge only)
  *    - subMgmtFeePaid         → PPM step (X)
@@ -101,7 +156,15 @@ export interface ProjectionInputs {
  *    - deferredAccrualByTranche → PPM steps (K)/(N)/(Q)/(T) PIK additions this period
  */
 export interface PeriodStepTrace {
+  /** KI-09 — PPM step (A)(i) Issuer taxes. Engine emits zero pre-fix; post-fix
+   *  populated via `taxesBps` input. Euro XV Q1 2026 observed: €6,133/quarter. */
+  taxes: number;
+  /** PPM step (B) — trustee fee, capped portion actually paid. Split from
+   *  `adminFeesPaid` in Sprint 3 / C3 so the N1 harness can distinguish
+   *  trustee vs admin drift. Pre-C3 this field bundled steps (B)+(C)+(Y)+(Z). */
   trusteeFeesPaid: number;
+  /** PPM step (C) — admin expenses, capped portion actually paid. */
+  adminFeesPaid: number;
   seniorMgmtFeePaid: number;
   hedgePaymentPaid: number;
   subMgmtFeePaid: number;
@@ -109,9 +172,63 @@ export interface PeriodStepTrace {
   incentiveFeeFromPrincipal: number;
   ocCureDiversions: Array<{ rank: number; mode: "reinvest" | "paydown"; amount: number }>;
   reinvOcDiversion: number;
+  /** PPM step (Y) — trustee-fee overflow paid from residual interest after
+   *  tranche interest + sub mgmt fee. Zero when trustee + admin fees were
+   *  fully accommodated under the Senior Expenses Cap, and zero under
+   *  acceleration (cap disappears per PPM 10(b)). */
+  trusteeOverflowPaid: number;
+  /** PPM step (Z) — admin-expense overflow. Same mechanics as trustee. */
+  adminOverflowPaid: number;
   equityFromInterest: number;
   equityFromPrincipal: number;
   deferredAccrualByTranche: Record<string, number>;
+  /** C1 — Reinvestment amount blocked this period because the purchase would
+   *  have caused the Moody's WARF trigger to breach. Zero when no enforcement
+   *  is active (no trigger set) or the purchase fit within the trigger.
+   *  Blocked principal flows to senior paydown instead of reinvestment. */
+  reinvestmentBlockedCompliance: number;
+}
+
+/** C2 — Forward-projected portfolio quality + concentration metrics.
+ *  Computed from `loanStates` at period END (post-defaults, post-prepayments,
+ *  post-reinvestment) so the metrics reflect what the portfolio actually looks
+ *  like exiting the period. `periods[N].qualityMetrics` = state entering
+ *  period N+1, matching trustee determination-date methodology. These mirror
+ *  the T=0 metrics on `resolved.poolSummary` (warf / walYears / wacSpreadBps
+ *  / pctCccAndBelow) so partner comparisons are apples-to-apples.
+ *
+ *  Methodology gaps tracked in the KI ledger:
+ *    - KI-17: WAS engine vs trustee — ~30 bps systematic drift.
+ *    - KI-18: pctCccAndBelow coarse-bucket collapse — ±3pp vs trustee
+ *      max-across-agencies methodology.
+ *    - KI-19: NR positions proxied as Caa2 (WARF=6500) per Moody's convention.
+ *  C1 reinvestment enforcement is scoped to Moody's WARF because that trigger
+ *  has material cushion vs its methodology gap. The tighter-cushion WAS and
+ *  Caa concentration tests are NOT enforced until their gaps close (see KIs). */
+export interface PeriodQualityMetrics {
+  /** Weighted Average Rating Factor (Moody's, 1=Aaa, 10000=Ca/C). Uses
+   *  per-position warfFactor when resolver populated it (for rated loans);
+   *  reinvested synthetic loans fall back to `BUCKET_WARF_FALLBACK`. */
+  warf: number;
+  /** Weighted Average Life of the remaining pool in years. Computed as
+   *  par × (quartersToMaturity / 4), par-weighted. This is the bullet-maturity
+   *  approximation: coincides with the standard WAL formula (principal
+   *  payment × time-to-payment) for bullets but diverges for amortising loans.
+   *  Euro XV pool is mostly bullet; reinvestment tenor is bullet; revisit if
+   *  amortising reinvestment is ever modeled. */
+  walYears: number;
+  /** Weighted Average Coupon spread in bps. Engine averages per-loan
+   *  `spreadBps` as-set by the resolver; trustee methodology may adjust
+   *  fixed-rate coupons to floating-equivalent or exclude defaulted positions.
+   *  See KI-17 for the documented 30 bps systematic drift. */
+  wacSpreadBps: number;
+  /** % of remaining non-defaulted par rated CCC or below (engine coarse
+   *  bucket). Trustee reports per-agency (Moody's Caa + Fitch CCC) and takes
+   *  the max; engine collapses to a single `ratingBucket === "CCC"` rollup.
+   *  Methodology gap ±3pp tracked as KI-18 — NOT safe for tight-cushion
+   *  compliance enforcement (e.g., the 0.58pp-cushion Caa concentration test
+   *  at Euro XV). */
+  pctCccAndBelow: number;
 }
 
 export interface PeriodResult {
@@ -131,10 +248,32 @@ export interface PeriodResult {
   tranchePrincipal: { className: string; paid: number; endBalance: number }[];
   ocTests: { className: string; actual: number; trigger: number; passing: boolean }[];
   icTests: { className: string; actual: number; trigger: number; passing: boolean }[];
+  /** B1 — EoD test per period (null if deal has no separately-tracked EoD). */
+  eodTest: EventOfDefaultTestResult | null;
+  /** B2 — whether this period ran under the post-acceleration waterfall.
+   *  Flipped by an EoD breach in a prior period (or at T=0); irreversible. */
+  isAccelerated: boolean;
+  /** B1 Tier 2 — per-loan default events that fired in this period. Each
+   *  entry is `(loanIndex, defaultedPar, scheduledRecoveryQuarter)`. The
+   *  existing aggregate `defaults` field is the sum of these entries'
+   *  `defaultedPar`, and `scheduledRecoveryQuarter` MUST match the
+   *  recoveryPipeline schedule for the same period — the test suite asserts
+   *  this identity directly so the dual-accounting paths (per-loan
+   *  `defaultEvents` vs aggregate `recoveryPipeline`) cannot silently
+   *  diverge. Empty array on zero-default periods. */
+  loanDefaultEvents: Array<{
+    loanIndex: number;
+    defaultedPar: number;
+    scheduledRecoveryQuarter: number;
+  }>;
   equityDistribution: number;
   defaultsByRating: Record<string, number>;
   /** Per-step trace for N1 waterfall-replay harness. */
   stepTrace: PeriodStepTrace;
+  /** C2 — End-of-period portfolio quality/concentration metrics. Matches the
+   *  shape of `resolved.poolSummary.{warf,walYears,wacSpreadBps,pctCccAndBelow}`
+   *  so T=0 vs forward comparisons are apples-to-apples. */
+  qualityMetrics: PeriodQualityMetrics;
 }
 
 /** Beginning-of-period-1 snapshot — "as of the determination date" state
@@ -152,6 +291,9 @@ export interface ProjectionInitialState {
   ocTests: { className: string; actual: number; trigger: number; passing: boolean }[];
   /** Per-class IC test actuals at T=0. */
   icTests: { className: string; actual: number; trigger: number; passing: boolean }[];
+  /** B1 — Event of Default Par Value Test at T=0. Null if deal has no
+   *  separately-tracked EoD test (legacy fixture / test scenario). */
+  eodTest: EventOfDefaultTestResult | null;
 }
 
 export interface ProjectionResult {
@@ -220,6 +362,256 @@ export function computeReinvOcDiversion(
   const cureAmount = Math.max(0, (triggerLevelPct / 100) * reinvOcDebt - ocNumerator);
   const maxDiversion = availableInterest * (diversionPct / 100);
   return Math.min(maxDiversion, cureAmount);
+}
+
+/**
+ * B1 — Event of Default Par Value Test (PPM OC Condition 10(a)(iv)).
+ *
+ * Compositional numerator, distinct from the class-level OC_PAR test family:
+ *   component (1) — Aggregate Principal Balance of NON-defaulted Collateral Obligations (at par)
+ *   component (2) — For each Defaulted Obligation: Market Value × Principal Balance
+ *   component (3) — Principal Proceeds standing on the Principal Account (Measurement Date)
+ *
+ * Denominator is Class A Principal Amount Outstanding ONLY (NOT all tranches).
+ *
+ * Previously implemented as a rank-99 OC trigger running against the class-level
+ * loop, which made the denominator include all tranches (sub notes + everything)
+ * — driving the ratio ~5-10× higher than spec and making the test essentially
+ * impossible to breach. B1 fixes this structurally.
+ *
+ * Defaulted loan pricing: uses `currentPrice` (cents of par) when available.
+ * Reinvested / newly-originated loans that default before acquiring a market
+ * price fall back to `defaultedPriceFallbackPct` (default 100 = par) — this is
+ * conservative because using par for a defaulted position overstates the
+ * numerator. Prefer to always have a market price on defaulted positions.
+ */
+export interface EventOfDefaultTestResult {
+  numeratorComponents: {
+    nonDefaultedApb: number;
+    defaultedMvPb: number;
+    principalCash: number;
+  };
+  numeratorTotal: number;
+  denominator: number;
+  actualPct: number;
+  triggerLevel: number;
+  passing: boolean;
+}
+
+export function computeEventOfDefaultTest(
+  loanStates: Array<{
+    survivingPar: number;
+    isDefaulted?: boolean;
+    currentPrice?: number | null;
+    isDelayedDraw?: boolean;
+  }>,
+  principalCash: number,
+  classAPrincipalOutstanding: number,
+  triggerLevel: number,
+  defaultedPriceFallbackPct = 100,
+): EventOfDefaultTestResult {
+  let nonDefaultedApb = 0;
+  let defaultedMvPb = 0;
+  for (const l of loanStates) {
+    if (l.isDelayedDraw) continue; // unfunded DDTLs don't count
+    if (l.survivingPar <= 0) continue;
+    if (l.isDefaulted) {
+      const price = l.currentPrice != null ? l.currentPrice : defaultedPriceFallbackPct;
+      defaultedMvPb += l.survivingPar * (price / 100);
+    } else {
+      nonDefaultedApb += l.survivingPar;
+    }
+  }
+  const numeratorTotal = nonDefaultedApb + defaultedMvPb + principalCash;
+  const actualPct = classAPrincipalOutstanding > 0
+    ? (numeratorTotal / classAPrincipalOutstanding) * 100
+    : 999;
+  return {
+    numeratorComponents: { nonDefaultedApb, defaultedMvPb, principalCash },
+    numeratorTotal,
+    denominator: classAPrincipalOutstanding,
+    actualPct,
+    triggerLevel,
+    passing: actualPct >= triggerLevel,
+  };
+}
+
+/**
+ * B2 — Post-acceleration waterfall executor (Stage 1 implementation).
+ *
+ * Distributes a single pool of cash (interest + principal combined, per
+ * PPM Condition 10(a)) through `POST_ACCEL_SEQUENCE`:
+ *   1. Senior expenses (taxes, trustee, admin, senior mgmt, hedge) — uncapped
+ *   2. Rated tranches in seniority order: Class A P+I fully sequential →
+ *      Class B pari passu pro-rata (B-1 + B-2) → Class C/D/E/F each sequential
+ *   3. Sub-ordinated fees (sub mgmt, defaulted hedge, incentive if hurdle met)
+ *   4. Residual to Sub Noteholders
+ *
+ * For each tranche, interest due is paid before principal; principal then
+ * absorbs remaining capacity until the tranche is retired, at which point
+ * excess cash flows to the next tranche. Under acceleration, deferred
+ * interest no longer PIKs — unpaid interest is a shortfall against the
+ * residual (Sub Notes bucket).
+ *
+ * Inputs are already-computed period-level quantities; the executor doesn't
+ * recompute interest accruals or day-count. Caller supplies:
+ *   - totalCash: pooled interest + principal available for distribution
+ *   - tranches: input tranche definitions (for sequencing + pari passu groups)
+ *   - trancheBalances, deferredBalances: current-period balances (mutable;
+ *     executor writes post-paydown balances back)
+ *   - senior expense amounts pre-computed to match normal-mode fee semantics
+ *     (day-count, rate) so partner-visible fee numbers are consistent
+ *   - tranche interest due amounts per tranche
+ *   - Class B pari passu group is detected via `isB1B2Group` heuristic.
+ */
+export interface PostAccelExecutorInput {
+  totalCash: number;
+  tranches: ProjectionInputs["tranches"];
+  trancheBalances: Record<string, number>;
+  deferredBalances: Record<string, number>;
+  /** Senior expenses in order (A taxes through E hedge). Caller constructs
+   *  these so values tie to PPM day-count + rates for the period. */
+  seniorExpenses: {
+    taxes: number;
+    trusteeFees: number;
+    adminExpenses: number;
+    seniorMgmtFee: number;
+    hedgePayments: number;
+  };
+  /** Interest due per tranche this period (from trancheCouponRate × balance
+   *  × dayFrac). Residual interest not paid is a shortfall (not PIKed). */
+  interestDueByTranche: Record<string, number>;
+  /** Sub-ordinated fees — paid only if rated notes are fully retired and
+   *  cash remains. */
+  subMgmtFee: number;
+  /** Whether the incentive-fee IRR hurdle is currently met. Simplified flag;
+   *  caller can pass false to disable under distress. */
+  incentiveFeeActive: boolean;
+  incentiveFeePct: number;
+}
+
+export interface PostAccelExecutorResult {
+  /** Per-tranche distribution: how much interest vs principal was paid. */
+  trancheDistributions: Array<{
+    className: string;
+    interestDue: number;
+    interestPaid: number;
+    principalPaid: number;
+    endBalance: number;
+  }>;
+  seniorExpensesPaid: {
+    taxes: number;
+    trusteeFees: number;
+    adminExpenses: number;
+    seniorMgmtFee: number;
+    hedgePayments: number;
+  };
+  subMgmtFeePaid: number;
+  incentiveFeePaid: number;
+  residualToSub: number;
+  /** Unpaid-interest shortfall on any tranche (not PIKed under acceleration). */
+  interestShortfall: Record<string, number>;
+}
+
+export function runPostAccelerationWaterfall(input: PostAccelExecutorInput): PostAccelExecutorResult {
+  let remaining = input.totalCash;
+
+  // ── 1. Senior expenses (steps A–E). Uncapped under acceleration. ──
+  const pay = (amount: number): number => {
+    const paid = Math.min(amount, Math.max(0, remaining));
+    remaining -= paid;
+    return paid;
+  };
+  const seniorPaid = {
+    taxes: pay(input.seniorExpenses.taxes),
+    trusteeFees: pay(input.seniorExpenses.trusteeFees),
+    adminExpenses: pay(input.seniorExpenses.adminExpenses),
+    seniorMgmtFee: pay(input.seniorExpenses.seniorMgmtFee),
+    hedgePayments: pay(input.seniorExpenses.hedgePayments),
+  };
+
+  // ── 2. Rated tranches: P+I combined, sequential except Class B pari passu. ──
+  const trancheDistributions: PostAccelExecutorResult["trancheDistributions"] = [];
+  const interestShortfall: Record<string, number> = {};
+
+  // Sort rated tranches (exclude sub notes + amortising Class X) by seniority.
+  const ratedTranches = input.tranches
+    .filter((t) => !t.isIncomeNote && !t.isAmortising)
+    .sort((a, b) => a.seniorityRank - b.seniorityRank);
+
+  // Group by seniorityRank so pari passu classes (e.g., B-1 + B-2) absorb together.
+  const processedRanks = new Set<number>();
+  for (const t of ratedTranches) {
+    if (processedRanks.has(t.seniorityRank)) continue;
+    processedRanks.add(t.seniorityRank);
+    const group = ratedTranches.filter((g) => g.seniorityRank === t.seniorityRank);
+
+    // Sum interest due + principal outstanding for the group.
+    const totalInterestDue = group.reduce(
+      (s, g) => s + (input.interestDueByTranche[g.className] ?? 0),
+      0,
+    );
+    const totalPrincipal = group.reduce(
+      (s, g) => s + input.trancheBalances[g.className] + input.deferredBalances[g.className],
+      0,
+    );
+
+    // Pay group's interest (pro rata across members by interest due).
+    const interestPaid = Math.min(totalInterestDue, Math.max(0, remaining));
+    remaining -= interestPaid;
+
+    // Pay group's principal (pro rata by outstanding balance).
+    const principalPaid = Math.min(totalPrincipal, Math.max(0, remaining));
+    remaining -= principalPaid;
+
+    for (const g of group) {
+      const gInterestDue = input.interestDueByTranche[g.className] ?? 0;
+      const gPrincipal = input.trancheBalances[g.className] + input.deferredBalances[g.className];
+
+      // Pro-rate this group's interest and principal by the member's share.
+      const gInterestShare = totalInterestDue > 0 ? gInterestDue / totalInterestDue : 0;
+      const gPrincipalShare = totalPrincipal > 0 ? gPrincipal / totalPrincipal : 0;
+      const gInterestPaid = interestPaid * gInterestShare;
+      const gPrincipalPaid = principalPaid * gPrincipalShare;
+
+      // Shortfall: unpaid interest is NOT PIKed under acceleration.
+      const shortfall = gInterestDue - gInterestPaid;
+      if (shortfall > 0.01) interestShortfall[g.className] = shortfall;
+
+      // Post-paydown balance.
+      const endBalance = Math.max(0, gPrincipal - gPrincipalPaid);
+      trancheDistributions.push({
+        className: g.className,
+        interestDue: gInterestDue,
+        interestPaid: gInterestPaid,
+        principalPaid: gPrincipalPaid,
+        endBalance,
+      });
+    }
+
+    if (remaining <= 0) break;
+  }
+
+  // ── 3. Sub-ordinated steps (Q, T, V). Only if rated notes exhausted. ──
+  const subMgmtFeePaid = pay(input.subMgmtFee);
+  // Incentive fee: only if hurdle met AND cash remains. Flat percentage of
+  // remaining cash before residual (simplified — proper model would use IRR
+  // threshold waterfall). Under distress, hurdle rarely met.
+  const incentiveFeePaid = input.incentiveFeeActive
+    ? pay(Math.max(0, remaining) * (input.incentiveFeePct / 100))
+    : 0;
+
+  // ── 4. Residual to Sub Noteholders. ──
+  const residualToSub = Math.max(0, remaining);
+
+  return {
+    trancheDistributions,
+    seniorExpensesPaid: seniorPaid,
+    subMgmtFeePaid,
+    incentiveFeePaid,
+    residualToSub,
+    interestShortfall,
+  };
 }
 
 /**
@@ -323,8 +715,8 @@ function trancheCouponRate(t: ProjectionInputs["tranches"][number], baseRatePct:
 export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultDrawFn): ProjectionResult {
   const {
     initialPar, wacSpreadBps, baseRatePct, baseRateFloorPct, seniorFeePct, subFeePct,
-    trusteeFeeBps, hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr,
-    postRpReinvestmentPct, callDate, callPricePct, callPriceMode, reinvestmentOcTrigger,
+    taxesBps = 0, trusteeFeeBps, adminFeeBps = 0, seniorExpensesCapBps, hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr,
+    postRpReinvestmentPct, callDate, callPricePct, callPriceMode, reinvestmentOcTrigger, eventOfDefaultTest,
     tranches, ocTriggers, icTriggers,
     reinvestmentPeriodEnd, maturityDate, currentDate,
     loans, defaultRatesByRating, cprPct, recoveryPct, recoveryLagMonths,
@@ -333,6 +725,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     initialPrincipalCash = 0, preExistingDefaultedPar = 0, preExistingDefaultRecovery = 0, unpricedDefaultedPar = 0, preExistingDefaultOcValue = 0,
     discountObligationHaircut = 0, longDatedObligationHaircut = 0, impliedOcAdjustment = 0, quartersSinceReport = 0,
     ddtlDrawPercent = 100,
+    moodysWarfTriggerLevel = null,
   } = inputs;
 
   // D1: Class A and Class B are non-deferrable per PPM — if they don't receive
@@ -379,6 +772,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     maturityQuarter: number;
     ratingBucket: string;
     spreadBps: number;
+    /** C2 — Moody's WARF factor for this position. Set from LoanInput.warfFactor
+     *  when present (per-position rating), else fallback to coarse-bucket midpoint
+     *  via BUCKET_WARF_FALLBACK. Reinvested loans use the bucket fallback on
+     *  `reinvestmentRating`. */
+    warfFactor: number;
     isFixedRate?: boolean;
     fixedCouponPct?: number;
     isDelayedDraw?: boolean;
@@ -386,8 +784,18 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     drawQuarter?: number;
     /** Per-position market price as % of par. Set from LoanInput.currentPrice on
      *  initial construction. Reinvested positions default to 100 (just-originated
-     *  at par). Used for A3 call-at-MtM liquidation. */
+     *  at par). Used for A3 call-at-MtM liquidation AND B1 EoD MV × PB. */
     currentPrice?: number | null;
+    /** B1 Tier 2 — per-position defaulted par awaiting recovery. Populated by
+     *  the Monte Carlo default loop; drained when the corresponding recovery
+     *  event arrives (quarter q + recoveryLagQ). While > 0, the loan
+     *  contributes to the EoD Σ(MV × PB) component at currentPrice. */
+    defaultedParPending: number;
+    /** Scheduled per-position recovery events. Each entry drains
+     *  `defaultedParPending` by its `defaultedPar` when its `quarter` arrives.
+     *  Cash flow is captured separately via the aggregate `recoveryPipeline`
+     *  so existing downstream cash accounting is unchanged. */
+    defaultEvents: Array<{ quarter: number; defaultedPar: number }>;
   }
 
   const loanStates: LoanState[] = loans.map((l) => ({
@@ -398,12 +806,15 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     maturityQuarter: Math.max(1, quartersBetween(currentDate, l.maturityDate)),
     ratingBucket: l.ratingBucket,
     spreadBps: l.spreadBps,
+    warfFactor: l.warfFactor ?? BUCKET_WARF_FALLBACK[l.ratingBucket] ?? BUCKET_WARF_FALLBACK.NR,
     isFixedRate: l.isFixedRate,
     fixedCouponPct: l.fixedCouponPct,
     isDelayedDraw: l.isDelayedDraw,
     ddtlSpreadBps: l.ddtlSpreadBps,
     drawQuarter: l.drawQuarter,
     currentPrice: l.currentPrice,
+    defaultedParPending: 0,
+    defaultEvents: [],
   }));
 
   // Remove never_draw DDTLs (drawQuarter <= 0) — they never fund and shouldn't appear in the portfolio
@@ -435,6 +846,72 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     }
     return best;
   })();
+  // C2 — WARF factor for reinvested positions. Uses the coarse-bucket fallback
+  // (no per-position sub-bucket on reinvestment). NR→b2 proxy if bucket unknown.
+  const reinvestmentWarfFactor = BUCKET_WARF_FALLBACK[reinvestmentRating] ?? BUCKET_WARF_FALLBACK.NR;
+
+  // C1 — Max reinvestment amount that keeps post-buy Moody's WARF at or below
+  // `moodysWarfTriggerLevel`. Returns Infinity when no trigger is active, the
+  // reinvestment factor doesn't worsen WARF, or the buy fits entirely. Returns
+  // 0 when WARF is already breaching AND the reinvestment factor is worse —
+  // the engine's PPM-intent model is "manager can maintain-or-improve but not
+  // actively worsen a breaching test". Pure function of current `loanStates`.
+  const maxCompliantReinvestment = (currentQuarter: number, requested: number): number => {
+    if (moodysWarfTriggerLevel == null || moodysWarfTriggerLevel <= 0) return requested;
+    let warfSum = 0;
+    let par = 0;
+    for (const l of loanStates) {
+      if (l.isDelayedDraw && (l.drawQuarter ?? 0) > currentQuarter) continue;
+      if (l.survivingPar <= 0) continue;
+      warfSum += l.survivingPar * l.warfFactor;
+      par += l.survivingPar;
+    }
+    if (par <= 0) return requested;
+    const factor = reinvestmentWarfFactor;
+    const currentWarf = warfSum / par;
+    // Factor at-or-below current WARF: adding it improves or holds. No limit.
+    if (factor <= currentWarf) return requested;
+    const postWarf = (warfSum + requested * factor) / (par + requested);
+    if (postWarf <= moodysWarfTriggerLevel) return requested;
+    // Breach would occur. Compute boundary amount (targetWarf = trigger exactly).
+    // amount = (trigger × par − warfSum) / (factor − trigger).
+    const denom = factor - moodysWarfTriggerLevel;
+    if (denom <= 0) return requested; // factor ≤ trigger; postWarf math already ruled this out but guard anyway
+    const boundary = (moodysWarfTriggerLevel * par - warfSum) / denom;
+    if (boundary <= 0) return 0; // already breaching AND factor > trigger — block entirely
+    return Math.min(requested, boundary);
+  };
+
+  // C2 — Compute end-of-period portfolio quality + concentration metrics from
+  // `loanStates`. Ignores unfunded DDTLs and defaulted par pending recovery.
+  // Called at each period emit so partner can see forward drift.
+  const computeQualityMetrics = (currentQuarter: number): PeriodQualityMetrics => {
+    let totalPar = 0;
+    let warfSum = 0;
+    let walSum = 0;
+    let spreadSum = 0;
+    let cccAndBelowPar = 0;
+    for (const l of loanStates) {
+      if (l.isDelayedDraw && (l.drawQuarter ?? 0) > currentQuarter) continue; // not yet drawn
+      const par = l.survivingPar;
+      if (par <= 0) continue;
+      totalPar += par;
+      warfSum += par * l.warfFactor;
+      const qToMat = Math.max(0, l.maturityQuarter - currentQuarter);
+      walSum += par * (qToMat / 4);
+      spreadSum += par * l.spreadBps;
+      if (l.ratingBucket === "CCC") cccAndBelowPar += par;
+    }
+    if (totalPar === 0) {
+      return { warf: 0, walYears: 0, wacSpreadBps: 0, pctCccAndBelow: 0 };
+    }
+    return {
+      warf: warfSum / totalPar,
+      walYears: walSum / totalPar,
+      wacSpreadBps: spreadSum / totalPar,
+      pctCccAndBelow: (cccAndBelowPar / totalPar) * 100,
+    };
+  };
 
   // Track tranche balances (debt outstanding per tranche)
   const trancheBalances: Record<string, number> = {};
@@ -534,14 +1011,19 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // (A-D) − Senior Mgmt Fee (E) − Hedge Payments (F)] / [Interest Due on
     // senior tranches]. Replicate with initial pool par × effective rate for
     // the numerator base, minus the quarterly fees. Fees use the same formula
-    // as the in-loop per-period deduction so pre-fill parity flows through.
+    // as the in-loop per-period deduction so pre-fill parity flows through —
+    // including taxes (A.i) and admin (C), which were missing pre-Sprint-3
+    // and broke the KI-IC-AB/C/D cascade (closures of KI-08/KI-09 didn't
+    // move observed drift because this computation wasn't deducting them).
     const scheduledInterestOnCollateral = poolPar * (wacSpreadBps / 10000 + baseRatePct / 100) / 4;
+    const taxesAmountT0 = poolPar * (taxesBps / 10000) / 4;
     const trusteeFeeAmountT0 = poolPar * (trusteeFeeBps / 10000) / 4;
+    const adminFeeAmountT0 = poolPar * (adminFeeBps / 10000) / 4;
     const seniorFeeAmountT0 = poolPar * (seniorFeePct / 100) / 4;
     const hedgeCostAmountT0 = poolPar * (hedgeCostBps / 10000) / 4;
     const interestAfterFeesT0 = Math.max(
       0,
-      scheduledInterestOnCollateral - trusteeFeeAmountT0 - seniorFeeAmountT0 - hedgeCostAmountT0,
+      scheduledInterestOnCollateral - taxesAmountT0 - trusteeFeeAmountT0 - adminFeeAmountT0 - seniorFeeAmountT0 - hedgeCostAmountT0,
     );
     const icTests: ProjectionInitialState["icTests"] = icTriggersByClass.map((ic) => {
       const interestDueAtAndAbove = ocEligibleAtStart
@@ -551,8 +1033,42 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       return { className: ic.className, actual, trigger: ic.triggerLevel, passing: actual >= ic.triggerLevel };
     });
 
-    return { poolPar, ocNumerator, ocTests, icTests };
+    // B1 — Event of Default Par Value Test (PPM 10(a)(iv)) at T=0.
+    // Compositional numerator, Class-A-only denominator. Runs only when the
+    // resolver emitted a separately-tracked EoD test (post-B1 fixtures).
+    let eodTest: EventOfDefaultTestResult | null = null;
+    if (eventOfDefaultTest) {
+      // loanStates carry per-position par + currentPrice + isDelayedDraw; at
+      // T=0 none are defaulted (pre-existing defaults are already extracted
+      // to preExistingDefaultedPar/OcValue and excluded from the loan list).
+      const eodLoanStates = loanStates.map((l) => ({
+        survivingPar: l.survivingPar,
+        isDefaulted: false, // per-position default state activates in B1 tier-2
+        currentPrice: l.currentPrice,
+        isDelayedDraw: l.isDelayedDraw,
+      }));
+      // Class A Principal Amount Outstanding (PAO) — denominator is Class A ONLY.
+      const classATranche = tranches.find((t) => t.className === "Class A");
+      const classAPao = classATranche
+        ? trancheBalances[classATranche.className] + deferredBalances[classATranche.className]
+        : 0;
+      eodTest = computeEventOfDefaultTest(
+        eodLoanStates,
+        initialPrincipalCash,
+        classAPao,
+        eventOfDefaultTest.triggerLevel,
+      );
+    }
+
+    return { poolPar, ocNumerator, ocTests, icTests, eodTest };
   })();
+
+  // B2 — Post-acceleration mode flag. Persists across periods once set (PPM
+  // Condition 10: acceleration irreversible without Class A supermajority,
+  // which we model as permanent). Triggered by EoD breach at T=0 or in any
+  // forward period. Flip happens AT the end of the breaching period, so the
+  // NEXT period runs under acceleration.
+  let isAccelerated = initialState.eodTest !== null && !initialState.eodTest.passing;
 
   const draw: DefaultDrawFn = defaultDrawFn ?? ((par, hz) => par * hz);
   for (let q = 1; q <= totalQuarters; q++) {
@@ -618,12 +1134,31 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       }
     }
 
-    // ── 3. Per-loan defaults (only on non-maturing surviving loans) ──
-    let totalDefaults = 0;
-    const defaultsByRating: Record<string, number> = {};
-
+    // ── 3a. Drain defaulted-par-pending on loans whose recovery arrived
+    //     this period. Cash flow is handled separately by the aggregate
+    //     `recoveryPipeline`; this loop only updates the per-loan
+    //     defaultedParPending so the EoD MV × PB component reflects current
+    //     (not-yet-recovered) defaulted par at the end of this period.
     if (hasLoans) {
       for (const loan of loanStates) {
+        if (loan.defaultEvents.length === 0) continue;
+        const arrived = loan.defaultEvents.filter((e) => e.quarter <= q);
+        const remaining = loan.defaultEvents.filter((e) => e.quarter > q);
+        for (const e of arrived) {
+          loan.defaultedParPending = Math.max(0, loan.defaultedParPending - e.defaultedPar);
+        }
+        loan.defaultEvents = remaining;
+      }
+    }
+
+    // ── 3b. Per-loan defaults (only on non-maturing surviving loans) ──
+    let totalDefaults = 0;
+    const defaultsByRating: Record<string, number> = {};
+    const loanDefaultEventsThisPeriod: PeriodResult["loanDefaultEvents"] = [];
+
+    if (hasLoans) {
+      for (let idx = 0; idx < loanStates.length; idx++) {
+        const loan = loanStates[idx];
         if (loan.survivingPar <= 0) continue;
         if (loan.isDelayedDraw) continue;
         const hazard = quarterlyHazard[loan.ratingBucket] ?? 0;
@@ -632,6 +1167,17 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         totalDefaults += loanDefaults;
         if (loanDefaults > 0) {
           defaultsByRating[loan.ratingBucket] = (defaultsByRating[loan.ratingBucket] ?? 0) + loanDefaults;
+          const scheduledRecoveryQuarter = q + recoveryLagQ;
+          // B1 Tier 2: track per-position defaulted par + scheduled recovery.
+          loan.defaultedParPending += loanDefaults;
+          loan.defaultEvents.push({ quarter: scheduledRecoveryQuarter, defaultedPar: loanDefaults });
+          // Emit per-loan event to PeriodResult so tests can cross-verify the
+          // aggregate `recoveryPipeline` path uses the same per-loan schedule.
+          loanDefaultEventsThisPeriod.push({
+            loanIndex: idx,
+            defaultedPar: loanDefaults,
+            scheduledRecoveryQuarter,
+          });
         }
       }
     }
@@ -728,6 +1274,18 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       // Post-RP limited reinvestment (credit improved/risk sales, unscheduled principal)
       reinvestment = principalProceeds * (postRpReinvestmentPct / 100);
     }
+    // C1 — Reinvestment compliance enforcement. If buying at `reinvestmentRating`
+    // would push Moody's WARF past the trigger (and WARF wasn't already breaching
+    // more than the proposed buy), scale down to the boundary amount. The blocked
+    // portion falls through to the principal waterfall for senior paydown.
+    let reinvestmentBlockedCompliance = 0;
+    if (reinvestment > 0 && hasLoans && moodysWarfTriggerLevel != null) {
+      const allowed = maxCompliantReinvestment(q, reinvestment);
+      if (allowed < reinvestment) {
+        reinvestmentBlockedCompliance = reinvestment - allowed;
+        reinvestment = allowed;
+      }
+    }
     if (reinvestment > 0 && hasLoans) {
       const matQ = q + reinvestmentTenorQuarters;
       // Split reinvestment into individual loans sized to the portfolio average.
@@ -737,11 +1295,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         let remaining = reinvestment;
         while (remaining > 0) {
           const par = Math.min(avgLoanSize, remaining);
-          loanStates.push({ survivingPar: par, ratingBucket: reinvestmentRating, spreadBps: reinvestmentSpreadBps, maturityQuarter: matQ, isFixedRate: false, isDelayedDraw: false });
+          loanStates.push({ survivingPar: par, ratingBucket: reinvestmentRating, spreadBps: reinvestmentSpreadBps, warfFactor: reinvestmentWarfFactor, maturityQuarter: matQ, isFixedRate: false, isDelayedDraw: false, defaultedParPending: 0, defaultEvents: [] });
           remaining -= par;
         }
       } else {
-        loanStates.push({ survivingPar: reinvestment, ratingBucket: reinvestmentRating, spreadBps: reinvestmentSpreadBps, maturityQuarter: matQ, isFixedRate: false, isDelayedDraw: false });
+        loanStates.push({ survivingPar: reinvestment, ratingBucket: reinvestmentRating, spreadBps: reinvestmentSpreadBps, warfFactor: reinvestmentWarfFactor, maturityQuarter: matQ, isFixedRate: false, isDelayedDraw: false, defaultedParPending: 0, defaultEvents: [] });
       }
     }
 
@@ -768,13 +1326,39 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // IMPORTANT: Save BOP tranche balances first — interest DUE and
     // IC tests must use beginning-of-period balances since interest
     // accrues on the balance before any principal paydown.
-    // PPM Steps A-D: Trustee/admin fees paid before senior management fee
-    const trusteeFeeAmount = beginningPar * (trusteeFeeBps / 10000) * dayFracActual;
-    // PPM Step E: Senior collateral management fee
+    //
+    // C3 — Senior Expenses Cap at steps (B) + (C):
+    //   Trustee fee (B) + Admin expenses (C) jointly capped at
+    //   `seniorExpensesCapBps` × beginningPar × dayFrac. Capped portion is
+    //   paid up-front as part of senior expenses; any overflow defers to
+    //   PPM step (Y) trustee-overflow and (Z) admin-overflow, which pay
+    //   from residual interest AFTER tranche interest + sub mgmt fee.
+    //   When the cap isn't set (undefined), expenses emit uncapped —
+    //   legacy / synthetic-test behaviour.
+    // KI-09: Step (A)(i) Issuer taxes. Deducted before trustee fees per PPM.
+    const taxesAmount = beginningPar * (taxesBps / 10000) * dayFracActual;
+    const trusteeFeeRequested = beginningPar * (trusteeFeeBps / 10000) * dayFracActual;
+    const adminFeeRequested = beginningPar * (adminFeeBps / 10000) * dayFracActual;
+    const cappedRequested = trusteeFeeRequested + adminFeeRequested;
+    const capAmount = seniorExpensesCapBps != null
+      ? beginningPar * (seniorExpensesCapBps / 10000) * dayFracActual
+      : Infinity;
+    const cappedPaid = Math.min(cappedRequested, capAmount);
+    const cappedOverflowTotal = cappedRequested - cappedPaid;
+    // Allocate capped portion pro rata between trustee and admin so each
+    // stepTrace bucket reflects the same cap ratio.
+    const cappedRatio = cappedRequested > 0 ? cappedPaid / cappedRequested : 0;
+    const trusteeFeeAmount = trusteeFeeRequested * cappedRatio;
+    const adminFeeAmount = adminFeeRequested * cappedRatio;
+    // Overflow per bucket (for emission at steps Y/Z).
+    const trusteeOverflowRequested = trusteeFeeRequested - trusteeFeeAmount;
+    const adminOverflowRequested = adminFeeRequested - adminFeeAmount;
+
+    // PPM Step E: Senior collateral management fee (NOT capped).
     const seniorFeeAmount = beginningPar * (seniorFeePct / 100) * dayFracActual;
-    // PPM Step F: Hedge payments
+    // PPM Step F: Hedge payments (NOT capped).
     const hedgeCostAmount = beginningPar * (hedgeCostBps / 10000) * dayFracActual;
-    const totalSeniorExpenses = trusteeFeeAmount + seniorFeeAmount + hedgeCostAmount;
+    const totalSeniorExpenses = taxesAmount + trusteeFeeAmount + adminFeeAmount + seniorFeeAmount + hedgeCostAmount;
     const interestAfterFees = Math.max(0, interestCollected - totalSeniorExpenses);
 
     const bopTrancheBalances: Record<string, number> = {};
@@ -797,6 +1381,170 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       : 0;
     let prelimPrincipal = prepayments + scheduledMaturities + recoveries + q1Cash - reinvestment + liquidationProceeds;
     if (prelimPrincipal < 0) prelimPrincipal = 0;
+
+    // B2 — Post-acceleration branch. If the prior period triggered EoD
+    // (isAccelerated set at end of period q-1), pool interest + principal
+    // into a single cash stream and distribute through POST_ACCEL_SEQUENCE.
+    // Senior expenses uncapped, rated tranches P+I sequential (Class A first,
+    // then B pari passu, then C/D/E/F), sub fees and incentive only if
+    // rated notes fully retired, residual to Sub Noteholders. Deferred
+    // interest under acceleration is NOT PIKed — unpaid interest is a
+    // shortfall captured in the executor's output for diagnostic visibility.
+    if (isAccelerated) {
+      const totalCashUnderAccel = interestCollected + prelimPrincipal;
+
+      // Interest due per tranche from BOP balances × coupon × day-count fraction.
+      const interestDueByTranche: Record<string, number> = {};
+      for (const t of debtTranches) {
+        interestDueByTranche[t.className] =
+          bopTrancheBalances[t.className] * trancheCouponRate(t, baseRatePct, baseRateFloorPct) * trancheDayFrac(t);
+      }
+
+      // Sub mgmt fee amount (same formula as normal mode, subject to cash).
+      const subFeeAmountUnderAccel = beginningPar * (subFeePct / 100) * dayFracActual;
+
+      const accelResult = runPostAccelerationWaterfall({
+        totalCash: totalCashUnderAccel,
+        tranches,
+        trancheBalances,
+        deferredBalances,
+        seniorExpenses: {
+          // KI-09 closed (Sprint 3): `taxesAmount` computed from taxesBps.
+          // Under acceleration taxes are still paid at step (A)(i) per PPM.
+          taxes: taxesAmount,
+          // PPM 10(b): Senior Expenses Cap DISAPPEARS under acceleration —
+          // trustee + admin fees pay uncapped (steps B + C directly, no
+          // overflow deferral to Y/Z). Pass the REQUESTED amounts, not the
+          // cap-truncated amounts used in normal mode.
+          trusteeFees: trusteeFeeRequested,
+          adminExpenses: adminFeeRequested,
+          // Inherits KI-12a fee-base discrepancy (beginningPar vs prior
+          // Determination Date ACB) from normal mode — see KI-12a "Scope note".
+          seniorMgmtFee: seniorFeeAmount,
+          hedgePayments: hedgeCostAmount,
+        },
+        interestDueByTranche,
+        subMgmtFee: subFeeAmountUnderAccel,
+        // KI-15: incentive fee under acceleration hardcoded inactive. Correct
+        // under most distressed paths (hurdle not met) but wrong for edge
+        // scenarios with accumulated pre-breach equity distributions. Fix
+        // plan: carry equityCashFlows into accel branch and run
+        // resolveIncentiveFee here — ~0.5 day per KI-15 ledger.
+        incentiveFeeActive: false,
+        incentiveFeePct,
+      });
+
+      // Apply post-executor tranche balances.
+      for (const d of accelResult.trancheDistributions) {
+        const origPrincipal = trancheBalances[d.className];
+        // Principal portion is deducted from trancheBalances; deferred stays
+        // put (no PIK under acceleration, no cure-type drains either).
+        trancheBalances[d.className] = Math.max(0, origPrincipal - d.principalPaid);
+      }
+
+      const endingLiabilitiesAccel = debtTranches.reduce(
+        (s, t) => s + trancheBalances[t.className] + deferredBalances[t.className],
+        0,
+      );
+      const equityDistributionAccel = accelResult.residualToSub;
+      totalEquityDistributions += equityDistributionAccel;
+      equityCashFlows.push(equityDistributionAccel);
+
+      periods.push({
+        periodNum: q,
+        date: periodDate,
+        beginningPar,
+        defaults,
+        prepayments,
+        scheduledMaturities,
+        recoveries,
+        reinvestment: 0,
+        endingPar,
+        interestCollected,
+        beginningLiabilities,
+        endingLiabilities: endingLiabilitiesAccel,
+        trancheInterest: accelResult.trancheDistributions.map((d) => ({
+          className: d.className,
+          due: d.interestDue,
+          paid: d.interestPaid,
+        })),
+        tranchePrincipal: accelResult.trancheDistributions.map((d) => ({
+          className: d.className,
+          paid: d.principalPaid,
+          endBalance: d.endBalance,
+        })),
+        // OC / IC / EoD tests emitted empty under acceleration — PPM-correct,
+        // not a deferred simplification. The class-level OC/IC cure mechanics
+        // don't apply post-acceleration: coverage-test diversions only fire
+        // during normal operations to keep the deal out of distress. Once
+        // accelerated, the waterfall just pays down rated notes sequentially
+        // and those tests stop gating cash flow. Same for EoD — the condition
+        // already triggered; further checks are moot until acceleration is
+        // rescinded (which we model as never).
+        ocTests: [],
+        icTests: [],
+        eodTest: null,
+        isAccelerated: true,
+        loanDefaultEvents: loanDefaultEventsThisPeriod,
+        equityDistribution: equityDistributionAccel,
+        defaultsByRating,
+        stepTrace: {
+          // Under acceleration PPM 10(b) removes the Senior Expenses Cap, so
+          // trustee + admin pay directly at steps (B)+(C) uncapped, with no
+          // overflow deferral to (Y)/(Z). Each step emits its own bucket so
+          // the N1 harness compares B vs B and C vs C — the B2 regression
+          // guard asserts adminFeesPaid > 0 directly, no subtraction needed.
+          taxes: accelResult.seniorExpensesPaid.taxes,
+          trusteeFeesPaid: accelResult.seniorExpensesPaid.trusteeFees,
+          adminFeesPaid: accelResult.seniorExpensesPaid.adminExpenses,
+          trusteeOverflowPaid: 0,
+          adminOverflowPaid: 0,
+          seniorMgmtFeePaid: accelResult.seniorExpensesPaid.seniorMgmtFee,
+          hedgePaymentPaid: accelResult.seniorExpensesPaid.hedgePayments,
+          subMgmtFeePaid: accelResult.subMgmtFeePaid,
+          // Incentive fee collapsed into a single bucket under acceleration —
+          // the executor returns one aggregated value (pre-residual), and the
+          // normal-mode interest/principal split isn't meaningful here.
+          // incentiveFeeFromPrincipal hardcoded 0 preserves stepTrace shape
+          // without duplicating the fee. Partner-visible total = incentiveFeePaid.
+          incentiveFeeFromInterest: accelResult.incentiveFeePaid,
+          incentiveFeeFromPrincipal: 0,
+          // OC cure + reinvestment OC diversion both emit zero under
+          // acceleration — PPM-correct, not deferred. Cure mechanics only
+          // apply during normal operations; under acceleration the waterfall
+          // is unconditionally sequential P+I by seniority, no diversion.
+          ocCureDiversions: [],
+          reinvOcDiversion: 0,
+          // Equity collapsed into a single bucket (residualToSub). The
+          // normal-mode interest/principal equity split doesn't apply
+          // because under acceleration all cash is pooled before distribution.
+          equityFromInterest: equityDistributionAccel,
+          equityFromPrincipal: 0,
+          // Deferred-accrual map empty under acceleration — deferred interest
+          // does NOT PIK post-breach (PPM 10(b)); unpaid interest becomes a
+          // shortfall captured in accelResult.interestShortfall instead.
+          deferredAccrualByTranche: {},
+          // Acceleration skips the normal-mode reinvestment decision entirely
+          // (sequential P+I paydown by seniority); no C1 enforcement applies.
+          reinvestmentBlockedCompliance: 0,
+        },
+        qualityMetrics: computeQualityMetrics(q),
+      });
+
+      // Record tranche payoff quarter(s) for any tranche that reached zero.
+      for (const d of accelResult.trancheDistributions) {
+        if (d.endBalance <= 0.01 && tranchePayoffQuarter[d.className] == null) {
+          tranchePayoffQuarter[d.className] = q;
+        }
+      }
+
+      // Same early-break guard as the normal-mode path: if all debt is
+      // retired and pool is depleted, stop the loop to avoid emitting
+      // zero-padded periods for the remainder of maturityQuarters.
+      if (endingLiabilitiesAccel <= 0.01 && endingPar <= 0.01) break;
+      continue; // Skip normal waterfall for this period.
+    }
+
     if (isMaturity) {
       if (hasLoans) {
         for (const loan of loanStates) {
@@ -889,6 +1637,54 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       ocResults.push({ className: oc.className, actual, trigger: oc.triggerLevel, passing });
     }
 
+    // B1 Tier 2 — in-loop EoD check. Compositional numerator uses per-position
+    // defaultedParPending (drained as recoveries arrive) × currentPrice; plus
+    // non-defaulted surviving par; plus current principal cash. Denominator is
+    // Class A balance (post-period-mutations, since this runs after paydowns).
+    let eodPeriodResult: EventOfDefaultTestResult | null = null;
+    if (eventOfDefaultTest && hasLoans) {
+      const eodInput: Array<{
+        survivingPar: number;
+        isDefaulted: boolean;
+        currentPrice?: number | null;
+        isDelayedDraw?: boolean;
+      }> = [];
+      for (const l of loanStates) {
+        if (l.isDelayedDraw) continue;
+        if (l.survivingPar > 0) {
+          eodInput.push({ survivingPar: l.survivingPar, isDefaulted: false, isDelayedDraw: false });
+        }
+        if (l.defaultedParPending > 0) {
+          eodInput.push({
+            survivingPar: l.defaultedParPending,
+            isDefaulted: true,
+            currentPrice: l.currentPrice,
+            isDelayedDraw: false,
+          });
+        }
+      }
+      const classATranche = tranches.find((t) => t.className === "Class A");
+      const classAPao = classATranche
+        ? trancheBalances[classATranche.className] + deferredBalances[classATranche.className]
+        : 0;
+      // Principal Account cash at measurement date = `remainingPrelim` —
+      // principal proceeds still parked on the account after the first
+      // paydown pass, before any further distribution. Same quantity the
+      // class OC numerator uses (see ocNumerator computation above). Under
+      // stress (defaults spiking, reinvestment opportunities shrinking,
+      // post-RP with throttled reinvestment) this is strictly positive and
+      // flows into component (3) of the compositional numerator. Previously
+      // this was hardcoded to 0, under-counting the numerator and making
+      // forward-loop EoD detection insensitive in exactly the distressed
+      // scenarios where the test needs to be sensitive.
+      eodPeriodResult = computeEventOfDefaultTest(
+        eodInput,
+        remainingPrelim,
+        classAPao,
+        eventOfDefaultTest.triggerLevel,
+      );
+    }
+
     for (const ic of icTriggersByClass) {
       const interestDueAtAndAbove = ocEligibleTranches
         .filter((t) => t.seniorityRank <= ic.rank)
@@ -916,11 +1712,15 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     let availableInterest = interestCollected;
     const trancheInterest: PeriodResult["trancheInterest"] = [];
 
-    // PPM Steps A-D: Taxes, trustee fees, admin expenses, expense reserve
+    // PPM Step (A)(i): Issuer taxes — deducted before trustee fees.
+    availableInterest -= Math.min(taxesAmount, availableInterest);
+    // PPM Step (B): Trustee fees (capped portion; overflow defers to step Y)
     availableInterest -= Math.min(trusteeFeeAmount, availableInterest);
-    // PPM Step E: Senior collateral management fee
+    // PPM Step (C): Administrative expenses (capped portion; overflow defers to step Z)
+    availableInterest -= Math.min(adminFeeAmount, availableInterest);
+    // PPM Step (E): Senior collateral management fee
     availableInterest -= Math.min(seniorFeeAmount, availableInterest);
-    // PPM Step F: Hedge payments
+    // PPM Step (F): Hedge payments
     availableInterest -= Math.min(hedgeCostAmount, availableInterest);
 
     // Step G (PPM): Class X amort + Class A interest are paid pro rata / pari passu.
@@ -1084,9 +1884,12 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
                 survivingPar: diversion,
                 ratingBucket: reinvestmentRating,
                 spreadBps: reinvestmentSpreadBps,
+                warfFactor: reinvestmentWarfFactor,
                 maturityQuarter: q + reinvestmentTenorQuarters,
                 isFixedRate: false,
                 isDelayedDraw: false,
+                defaultedParPending: 0,
+                defaultEvents: [],
               });
             }
           } else {
@@ -1129,9 +1932,12 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
             survivingPar: diversion,
             ratingBucket: reinvestmentRating,
             spreadBps: reinvestmentSpreadBps,
+            warfFactor: reinvestmentWarfFactor,
             maturityQuarter: q + reinvestmentTenorQuarters,
             isFixedRate: false,
             isDelayedDraw: false,
+            defaultedParPending: 0,
+            defaultEvents: [],
           });
         }
       }
@@ -1144,6 +1950,23 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // PPM Step W: Subordinated management fee — paid after all debt tranches
     const subFeeAmount = beginningPar * (subFeePct / 100) * dayFracActual;
     availableInterest -= Math.min(subFeeAmount, availableInterest);
+
+    // C3 — PPM Steps (Y) trustee-overflow + (Z) admin-overflow.
+    // Senior Expenses Cap deferred any trustee+admin above the cap to
+    // here; pay what residual interest can absorb, proportionally across
+    // the two overflow buckets. Any residual-to-sub absorbs the rest as a
+    // shortfall (trustee/admin parties receive partial payment; remainder
+    // accrues to subsequent periods under PPM, but our simplified model
+    // treats the un-absorbed overflow as paid from sub distribution).
+    let trusteeOverflowPaid = 0;
+    let adminOverflowPaid = 0;
+    if (cappedOverflowTotal > 0 && availableInterest > 0) {
+      const overflowPayable = Math.min(cappedOverflowTotal, availableInterest);
+      const overflowRatio = cappedOverflowTotal > 0 ? overflowPayable / cappedOverflowTotal : 0;
+      trusteeOverflowPaid = trusteeOverflowRequested * overflowRatio;
+      adminOverflowPaid = adminOverflowRequested * overflowRatio;
+      availableInterest -= overflowPayable;
+    }
 
     // PPM Step BB: Incentive management fee — % of residual when equity IRR > hurdle.
     // Incentive fee is circular: the fee reduces equity distributions, which reduces
@@ -1215,10 +2038,22 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       tranchePrincipal,
       ocTests: ocResults,
       icTests: icResults,
+      eodTest: eodPeriodResult,
+      isAccelerated, // false at this emit site — normal path
+      loanDefaultEvents: loanDefaultEventsThisPeriod,
       equityDistribution,
       defaultsByRating,
       stepTrace: {
-        trusteeFeesPaid: trusteeFeeAmount,
+        taxes: taxesAmount,
+        // Each field maps to exactly one PPM step so the N1 harness ties
+        // engine-emission to trustee-reported on a per-step basis. Pre-C3
+        // `trusteeFeesPaid` bundled (B)+(C)+(Y)+(Z); the split lets us
+        // distinguish trustee vs admin drift (and in/out of cap) under
+        // both normal and accelerated paths.
+        trusteeFeesPaid: trusteeFeeAmount,   // PPM (B)
+        adminFeesPaid: adminFeeAmount,       // PPM (C)
+        trusteeOverflowPaid,                 // PPM (Y)
+        adminOverflowPaid,                   // PPM (Z)
         seniorMgmtFeePaid: seniorFeeAmount,
         hedgePaymentPaid: hedgeCostAmount,
         subMgmtFeePaid: subFeeAmount,
@@ -1229,7 +2064,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         equityFromInterest,
         equityFromPrincipal,
         deferredAccrualByTranche: _stepTrace_deferredAccrualByTranche,
+        reinvestmentBlockedCompliance,
       },
+      qualityMetrics: computeQualityMetrics(q),
     });
 
     // Prune exhausted loans to keep iteration cost O(active loans) per period.
@@ -1245,6 +2082,13 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // Stop early if all debt paid off and collateral is depleted
     const remainingDebt = debtTranches.reduce((s, t) => s + trancheBalances[t.className] + deferredBalances[t.className], 0);
     if (remainingDebt <= 0.01 && endingPar <= 0.01) break;
+
+    // B2 — Flip to post-acceleration mode if this period's EoD breached.
+    // Effective next period (PPM Condition 10: acceleration applies from the
+    // next payment date, not retroactively). Irreversible once set.
+    if (eodPeriodResult && !eodPeriodResult.passing) {
+      isAccelerated = true;
+    }
   }
 
   const equityIrr = calculateIrr(equityCashFlows, 4);

@@ -101,7 +101,8 @@ export function normalizePpmStepCode(description: string | null | undefined): Pp
 export type EngineBucket =
   | "taxes"                 // step a.i  — NOT EMITTED by engine (KI-01)
   | "issuerProfit"          // step a.ii — NOT EMITTED by engine (KI-01)
-  | "trusteeFeesPaid"       // steps b + c (bundled at Sprint 0; KI-08)
+  | "trusteeFeesPaid"       // step b    — Sprint 3 / C3 split from admin
+  | "adminFeesPaid"         // step c    — Sprint 3 / C3 split from trustee
   | "expenseReserve"        // step d    — NOT EMITTED by engine (KI-02)
   | "seniorMgmtFeePaid"     // steps e.1 + e.2 (current + past-due bundled)
   | "hedgePaymentPaid"      // step f
@@ -136,7 +137,8 @@ export type EngineBucket =
 export const ENGINE_BUCKET_TO_PPM: Record<EngineBucket, readonly PpmInterestStep[]> = {
   taxes: ["a.i"],
   issuerProfit: ["a.ii"],
-  trusteeFeesPaid: ["b", "c"],          // Sprint 0: bundled. Sprint 3 / C3 splits into separate buckets.
+  trusteeFeesPaid: ["b"],               // PPM step (B) trustee fee only (post-C3 split)
+  adminFeesPaid: ["c"],                 // PPM step (C) admin expenses (post-C3 split)
   expenseReserve: ["d"],
   seniorMgmtFeePaid: ["e.1", "e.2"],
   hedgePaymentPaid: ["f"],

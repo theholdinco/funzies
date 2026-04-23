@@ -20,7 +20,7 @@ import { join } from "node:path";
 
 import { runBacktestHarness } from "@/lib/clo/backtest-harness";
 import { buildBacktestInputs } from "@/lib/clo/backtest-types";
-import { buildFromResolved, DEFAULT_ASSUMPTIONS } from "@/lib/clo/build-projection-inputs";
+import { buildFromResolved, DEFAULT_ASSUMPTIONS, defaultsFromResolved } from "@/lib/clo/build-projection-inputs";
 import { normalizePpmStepCode, PPM_INTEREST_STEPS, ENGINE_BUCKET_TO_PPM } from "@/lib/clo/ppm-step-map";
 import { runProjection } from "@/lib/clo/projection";
 import type { ResolvedDealData } from "@/lib/clo/resolver-types";
@@ -229,10 +229,12 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
     for (const t of tests) {
       if (t.testType !== "OC_PAR") continue;
       if (t.triggerLevel == null) continue;
-      // Extract class key: "Class A/B Par Value Test" → "A/B"; "Event of Default" → "EOD"
+      // Extract class key: "Class A/B Par Value Test" → "A/B". EoD is no
+      // longer a class-level OC test (B1 split it to resolved.eventOfDefaultTest);
+      // skip it here and verify the EoD trigger separately below.
+      if (t.testName.toLowerCase().includes("event of default")) continue;
       const classMatch = t.testName.match(/Class\s+([A-Z](?:\/[A-Z])?(?:-\d)?)/i);
       if (classMatch) trusteeTriggers.set(classMatch[1].toUpperCase(), t.triggerLevel);
-      else if (t.testName.toLowerCase().includes("event of default")) trusteeTriggers.set("EOD", t.triggerLevel);
     }
 
     const resolvedByClass = new Map<string, number>();
@@ -252,6 +254,18 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
       }
     }
     expect(outOfTol).toEqual([]);
+  });
+
+  it("B1: resolver emits eventOfDefaultTest matching trustee EoD trigger", () => {
+    // EoD is now structurally distinct from class OC (B1). Trustee reports
+    // it as an OC_PAR row named "Event of Default"; resolver should extract
+    // it to ResolvedDealData.eventOfDefaultTest, NOT to ocTriggers.
+    const trusteeEod = tests.find(
+      (t) => t.testType === "OC_PAR" && t.testName.toLowerCase().includes("event of default"),
+    );
+    expect(trusteeEod).toBeDefined();
+    expect(fixture.resolved.eventOfDefaultTest).not.toBeNull();
+    expect(fixture.resolved.eventOfDefaultTest!.triggerLevel).toBeCloseTo(trusteeEod!.triggerLevel!, 2);
   });
 
   it("resolver icTriggers trigger levels match trustee reported triggers", () => {
@@ -363,22 +377,25 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
   // class) needs its own assertion — a bug in aggregation or denominator
   // construction wouldn't surface in per-bucket cash-flow checks.
   //
-  // Under legit pins, remaining IC drift is driven by KI-01 (€250 issuer
-  // profit) + KI-08 (€64,660 trustee fee) + KI-09 (€6,133 taxes) + KI-12a
-  // (fee-base over-payment) net, cascaded through the IC numerator. Each
-  // class's drift is documented separately because the denominators differ.
-  // When any upstream KI closes, all three IC markers need re-baselining —
-  // same maintenance discipline as KI-13 cascade.
+  // Under legit pins (defaultsFromResolved — production path), remaining IC
+  // drift is driven by KI-01 (€250 issuer profit) + KI-12a (fee-base
+  // over-payment) + KI-12b (day-count residuals) net. KI-08 admin share +
+  // KI-09 taxes cascade was closed in Sprint 3 — baselines re-baselined from
+  // pre-cascade 6.600/5.865/5.117 to post-cascade 3.960/3.525/3.070,
+  // confirming both closures moved observed drift by the expected ~2–3 pp.
+  // When any further upstream KI closes (KI-01, KI-12a), these three markers
+  // need re-baselining again.
   {
-    const projectionInputs = buildFromResolved(fixture.resolved, {
-      ...DEFAULT_ASSUMPTIONS,
-      baseRatePct:
-        fixture.raw.trancheSnapshots?.find((s) => s && s.currentIndexRate != null)?.currentIndexRate ?? 2.1,
-      seniorFeePct: fixture.resolved.fees.seniorFeePct,
-      subFeePct: fixture.resolved.fees.subFeePct,
-      incentiveFeePct: fixture.resolved.fees.incentiveFeePct,
-      incentiveFeeHurdleIrr: fixture.resolved.fees.incentiveFeeHurdleIrr * 100,
-    });
+    // Use defaultsFromResolved (production path) so taxesBps / trusteeFeeBps /
+    // adminFeeBps are populated from observed Q1 data — matches the flow in
+    // ProjectionModel.tsx. Prior implementation spread DEFAULT_ASSUMPTIONS
+    // which zeroed all three, making the markers structurally incapable of
+    // responding to KI-01 / KI-08 / KI-09 closures despite the test name
+    // labelling them as "compositional parity" that cascades on those closes.
+    const projectionInputs = buildFromResolved(
+      fixture.resolved,
+      defaultsFromResolved(fixture.resolved, fixture.raw),
+    );
     const icResult = runProjection(projectionInputs);
     const trusteeIcByClass = new Map<string, number>();
     for (const t of tests) {
@@ -397,14 +414,13 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
     failsWithMagnitude(
       {
         ki: "KI-IC-AB",
-        closesIn: "Progressively as KI-01 / KI-08 / KI-09 / KI-12a close (re-baseline on each)",
-        expectedDrift: 6.600,
+        closesIn: "Progressively as KI-01 / KI-12a close (re-baseline on each). KI-08 admin + KI-09 taxes closed Sprint 3",
+        expectedDrift: 3.960,
         tolerance: 0.05,
         // closeThreshold = tolerance is intentional and safe here: |expectedDrift|
-        // is 6.6pp and tolerance is 0.05pp, so the "partial-fix masks as close"
-        // window is 0.05/6.6 ≈ 0.75% of the expected magnitude — vanishingly
-        // narrow. Compare KI-13a where |expectedDrift| = €607 and tolerance = €50
-        // would leave a 8% window, which is why KI-13a sets closeThreshold=5.
+        // is 3.96pp and tolerance is 0.05pp, so the "partial-fix masks as close"
+        // window is 0.05/3.96 ≈ 1.3% of the expected magnitude — narrow enough
+        // that a real partial fix won't be misclassified as full closure.
         closeThreshold: 0.05,
       },
       "Class A/B IC compositional parity at T=0 (pp)",
@@ -413,8 +429,8 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
     failsWithMagnitude(
       {
         ki: "KI-IC-C",
-        closesIn: "Progressively as KI-01 / KI-08 / KI-09 / KI-12a close (re-baseline on each)",
-        expectedDrift: 5.865,
+        closesIn: "Progressively as KI-01 / KI-12a close (re-baseline on each). KI-08 admin + KI-09 taxes closed Sprint 3",
+        expectedDrift: 3.525,
         tolerance: 0.05,
         closeThreshold: 0.05,
       },
@@ -424,8 +440,8 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
     failsWithMagnitude(
       {
         ki: "KI-IC-D",
-        closesIn: "Progressively as KI-01 / KI-08 / KI-09 / KI-12a close (re-baseline on each)",
-        expectedDrift: 5.117,
+        closesIn: "Progressively as KI-01 / KI-12a close (re-baseline on each). KI-08 admin + KI-09 taxes closed Sprint 3",
+        expectedDrift: 3.070,
         tolerance: 0.05,
         closeThreshold: 0.05,
       },

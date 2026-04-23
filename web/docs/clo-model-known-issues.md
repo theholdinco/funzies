@@ -18,6 +18,15 @@ Updated per sprint. Entries are closed (marked `[CLOSED]`) when the correspondin
 
 ## Index
 
+Categorized so a partner reading cold can separate "what's still wrong" from "what we decided." Section membership is authoritative; the numerical KI order is historical (sprint-chronological).
+
+### Open — currently wrong, path to close documented
+- [KI-12a — Senior / sub management fee base discrepancy](#ki-12a)
+- [KI-16 — KI-08 closure assumptions pending PPM verification](#ki-16)
+- [KI-17 — wacSpreadBps methodology gap (±30 bps drift vs trustee)](#ki-17)
+- [KI-18 — pctCccAndBelow coarse-bucket collapse (±3pp vs trustee per-agency max)](#ki-18)
+
+### Deferred — intentionally not modeled, magnitude known
 - [KI-01 — Step (A)(ii) Issuer Profit Amount (€250/quarter)](#ki-01)
 - [KI-02 — Step (D) Expense Reserve top-up](#ki-02)
 - [KI-03 — Step (V) Effective Date Rating Event redemption](#ki-03)
@@ -25,14 +34,21 @@ Updated per sprint. Entries are closed (marked `[CLOSED]`) when the correspondin
 - [KI-05 — Supplemental Reserve Account (step BB)](#ki-05)
 - [KI-06 — Defaulted Hedge Termination (step AA)](#ki-06)
 - [KI-07 — Class C/D/E/F current + deferred interest bundled in step map](#ki-07)
-- [KI-08 — Sprint 0 `trusteeFeesPaid` bundles PPM steps B + C](#ki-08)
-- [KI-09 — Step (A)(i) Issuer taxes not modeled](#ki-09)
-- [KI-10 — baseRate pre-fill gap (D3 family)](#ki-10)
-- [KI-11 — Senior / sub management fee pre-fill gap (C3 family)](#ki-11)
-- [KI-12a — Senior / sub management fee base discrepancy](#ki-12a)
+- [KI-15 — B2 accelerated-mode incentive fee hardcoded inactive](#ki-15)
+
+### Cascades — residuals that close as upstream closes
 - [KI-12b — Day-count precision active; six class-interest markers under harness period mismatch](#ki-12b)
 - [KI-13 — Sub distribution cascade residual](#ki-13)
 - [KI-14 — IC compositional parity at T=0 (cascade)](#ki-14)
+
+### Design decisions — documented for audit clarity (not open issues)
+- [KI-19 — NR positions proxied to Caa2 for WARF (Moody's convention)](#ki-19)
+
+### Closed — fixes shipped, verification green
+- [KI-08 — `trusteeFeesPaid` bundled steps B+C **(PARTIALLY CLOSED — pre-fill D3 + cap mechanics C3; see KI-16 for the 3 remaining assumptions)**](#ki-08)
+- [KI-09 — Step (A)(i) Issuer taxes **(CLOSED Sprint 3)**](#ki-09)
+- [KI-10 — baseRate pre-fill gap **(CLOSED D3)**](#ki-10)
+- [KI-11 — Senior / sub management fee rate pre-fill **(CLOSED D3; fee-base tracked as KI-12a)**](#ki-11)
 
 ---
 
@@ -128,54 +144,59 @@ Updated per sprint. Entries are closed (marked `[CLOSED]`) when the correspondin
 ---
 
 <a id="ki-08"></a>
-### [KI-08] Sprint 0 `trusteeFeesPaid` bundles PPM steps B + C
+### [KI-08] `trusteeFeesPaid` bundled steps B+C — **PARTIALLY CLOSED (pre-fill D3 + cap mechanics C3)**
 
-**PPM reference:** Steps (B) (Trustee Fees) and (C) (Administrative Expenses), both subject to the Senior Expenses Cap.
-**Current engine behavior:** The engine uses a single `trusteeFeeBps` input covering both trustee and admin fees (`projection.ts:494`). The `stepTrace.trusteeFeesPaid` field therefore represents B+C combined. Without pre-fill from Q1 actuals, `trusteeFeeBps` defaults to 0 (PPM says "per agreement"), so the engine emits 0.
-**PPM-correct behavior:** B and C are distinct PPM steps with separate amounts in the trustee report. Euro XV Q1 2026: step B = €1,194.44, step C = €63,465.76. Jointly capped under the Senior Expenses Cap; overflow to steps (Y) and (Z).
-**Quantitative magnitude:** €64,660/quarter on €491M par = ~5.3 bps/year; ~€258K/year; ~€2.6M cumulative over a 10-year projection. Appears as `trusteeFeesPaid: -€64,660` in the N1 harness delta table. Cascades into `subDistribution` and incentive-fee timing.
-**Deferral rationale:** Requires (1) pre-fill `trusteeFeeBps` and `adminFeeBps` from observed Q1 waterfall steps (A1/D3 pre-fill family) AND (2) split the engine's single fee input into two + add the Senior Expenses Cap with overflow (C3 scope).
-**Path to close:** Sprint 3 / C3. Pre-fill lands with the cap + overflow refactor. Effort subsumed in C3.
-**Test:** `n1-correctness.test.ts > "currently broken buckets" > trusteeFeesPaid` (ki: `KI-08`, expectedDrift: −€64,660.20 ± €100) and `n1-production-path.test.ts > "pre-fill gap drifts" > trusteeFeesPaid` (ki: `KI-08`, same magnitude — trusteeFeeBps is 0 in both paths since neither pins it). Both markers remove together when C3 ships.
+**Status (2026-04-23, Sprint 3 C3 landed):** Mechanics shipped; three design assumptions remain unverified against the Ares European XV PPM. Tracking the open verifications under [KI-16](#ki-16) so the ledger does not overclaim closure.
+
+**What shipped:**
+
+1. **Pre-fill (D3, Sprint 2)**: `defaultsFromResolved` back-derives `trusteeFeeBps` AND `adminFeeBps` separately from Q1 waterfall steps B + C (Euro XV: 0.0969 bps trustee, 5.147 bps admin, 5.244 combined).
+2. **Cap + overflow (C3, Sprint 3)**: `ProjectionInputs.adminFeeBps` + `ProjectionInputs.seniorExpensesCapBps` added. Engine emits trustee + admin fees jointly capped at `seniorExpensesCapBps` × beginningPar × dayFrac; overflow routes to PPM steps (Y) trustee-overflow and (Z) admin-overflow, paying from residual interest after tranche interest + sub mgmt fee.
+
+**What is NOT verified yet (blocks "FULLY CLOSED" status — tracked in [KI-16](#ki-16)):**
+- **20 bps cap default** when `defaultsFromResolved` cannot infer from observed data: a reasonable heuristic but not cross-referenced against the Ares XV PPM Senior Expenses Cap definition.
+- **2× observed heuristic** for the cap default when Q1 observed is present (`max(2× observed, 20 bps)`): protects against breaching the cap with modest fee growth, but the "2×" multiple is engineering judgment, not a PPM-documented buffer.
+- **Pro-rata overflow allocation** between `trusteeOverflowPaid` and `adminOverflowPaid`: the engine splits overflow proportionally to the requested trustee vs admin shares, but the PPM may specify sequential payout (trustee first, then admin) or a different allocation rule.
+
+**Partner-visible behavior on Euro XV**: observed combined ~5.24 bps well below default cap of 20 bps → no overflow, `trusteeFeesPaid` ties to trustee within €722 (day-count residual from 91/360 engine vs 90/360 trustee). Stress scenarios with observed > cap produce proportional overflow split between trustee and admin buckets. The three assumptions only bite in stress scenarios; Euro XV base case is unaffected.
+
+**Tests (7 new C3 tests):**
+- `c3-senior-expenses-cap.test.ts` — base case (no overflow), high-fee overflow (50 bps + 20 bps cap → 30 bps overflow), extreme cap (1 bps), overflow-limited-by-residual, backward-compatibility (undefined cap = unbounded).
+- `d3-defaults-from-resolved.test.ts` — `trusteeFeeBps` + `adminFeeBps` separately back-derived; sum matches pre-C3 combined extraction; `seniorExpensesCapBps` derivation from Q1 observed.
+- `b2-post-acceleration.test.ts` — under acceleration (PPM 10(b)) trustee + admin pay uncapped; regression guard asserts `stepTrace.adminFeesPaid / trusteeOnly = adminFeeBps / trusteeFeeBps` exactly.
+
+**Cascade re-baselines**: KI-13a adjusted by the C3 split preserving aggregate behavior; `stepTrace.trusteeFeesPaid` currently bundles steps (B)+(C)+(Y)+(Z) to preserve the N1 harness bucket semantics. Split-out fields (`adminFeesPaid`, `trusteeOverflowPaid`, `adminOverflowPaid`) are additive diagnostic fields — the harness will be un-aggregated in a follow-up (see task #48).
+
+**Ledger disposition**: remain OPEN (partial) until KI-16 resolves the three PPM verifications. Then move to Closed issues.
 
 ---
 
 <a id="ki-09"></a>
-### [KI-09] Step (A)(i) Issuer taxes not modeled
+### [KI-09] Step (A)(i) Issuer taxes not modeled — **CLOSED (Sprint 3)**
 
-**PPM reference:** Condition 1 definitions (Issuer profit / tax provisions); step (A)(i) in the interest waterfall.
-**Current engine behavior:** Not modeled. `stepTrace.taxes` emits 0.
-**PPM-correct behavior:** Issuer income taxes deducted before any other interest waterfall payment. Per Euro XV Q1 2026 trustee report: €6,133/quarter.
-**Quantitative magnitude:** €6,133/quarter = €24,532/year on Euro XV. On a €42.56M equity cost basis (95c × €44.8M sub par) ≈ 5.8 bps annual drag; cumulative ~€245K over a 10-year projection. Flows straight into `subDistribution` residual every period. Not immaterial.
-**Deferral rationale:** Trivial additive engine change (15 lines: `taxesBps` input, deduct before trustee fees, emit on `stepTrace.taxes`). Deferred from Sprint 0 scope only because A.i's magnitude wasn't surfaced until the N1 harness ran against the fixture on Apr 23, 2026.
-**Path to close:** Tier D follow-up. ~0.5 day. When it lands, KI-09 closes and `subDistribution` drift tightens by ~€6,133/quarter.
-**Test:** Infinity-tolerance (informational) in both `n1-correctness.test.ts` and `n1-production-path.test.ts` under "engine-does-not-model steps" → `taxes`. Asserts trustee-side magnitude of ~€6,133/period. When the engine lands a `taxes` emitter, swap these informational asserts for a real tie-out assertion (|drift| ≤ €1) and move KI-09 to Closed.
+**Status (2026-04-23):** Closed. `taxesBps` added to `ProjectionInputs` + `UserAssumptions`; engine emits `stepTrace.taxes` at step (A)(i); default pre-filled via `defaultsFromResolved` from raw `waterfallSteps` step (A)(i) annualized on beginningPar. Euro XV: 0.497 bps (€6,133/quarter). Engine produces €6,202 vs trustee €6,133 = €69 day-count residual at 91/360 vs 90/360. N1 harness `taxes` bucket tolerance tightened from Infinity to €100.
 
 ---
 
 <a id="ki-10"></a>
-### [KI-10] baseRate pre-fill gap (D3 family)
+### [KI-10] baseRate pre-fill gap (D3 family) — **CLOSED (D3, 2026-04-23)**
 
-**PPM reference:** N/A — this is an input-pipeline gap, not a PPM mechanic.
-**Current engine behavior:** `DEFAULT_ASSUMPTIONS.baseRatePct = 2.1%` (static). The user-facing sliders pre-populate from this default rather than from observed EURIBOR.
-**PPM-correct behavior:** `baseRatePct` pre-fills from `raw.trancheSnapshots[*].currentIndexRate` (the per-class observed reference rate on the deal). Legitimate external authority — equivalent to reading from a rates feed.
-**Quantitative magnitude:** Euro XV Q1 2026 observed EURIBOR = 2.016% vs 2.1% default → ~8.4 bps drift on every floater. Per class on Q1 2026: Class A ~€65K, Class B ~€7K, Class C ~€7K, Class D ~€7K, Class E ~€5K, Class F ~€3K per period. Compounds every period.
-**Deferral rationale:** Pre-fill wiring lives in a future `defaultsFromResolved(resolved, raw)` consolidation; shipping it standalone would be cheap but D3 bundles the baseRate + fee + recovery-rate pre-fill family into one pass.
-**Path to close:** Sprint 1 / D3 pre-fill family.
-**Test:** `n1-production-path.test.ts > "pre-fill gap drifts" > classA_interest..classF_current` — six `failsWithMagnitude` markers (ki: `KI-10`), one per class. Markers remove as a group when D3 ships. The engine-math path (`n1-correctness.test.ts`) pins baseRate from the fixture so those six classes are green there.
+**Status:** Closed in Sprint 2 / D3. `defaultsFromResolved(resolved, raw)` pre-fills `baseRatePct` from `raw.trancheSnapshots[*].currentIndexRate` when available (Euro XV: 2.016%). Both `n1-correctness.test.ts` and the ProjectionModel UI now use this helper; the static 2.1% default only applies when no observed rate is present in the snapshot feed.
+
+**Closing commit work:** ~2 hrs (helper + 9 unit tests + wire-up in 2 consumers).
+**Residual behavior:** None. The six per-class Euro XV drifts previously attributed to KI-10 (€65K on Class A, ~€28K across B-F combined per quarter) were bundled with KI-12b day-count drifts; after D3, what remains on those buckets is purely KI-12b (harness period mismatch, one extra day of accrual).
+**Test:** `d3-defaults-from-resolved.test.ts` — 9 tests anchoring the pre-fill behavior including Euro XV observed-EURIBOR spot-check (2.016% matches fixture).
 
 ---
 
 <a id="ki-11"></a>
-### [KI-11] Senior / sub management fee pre-fill gap (C3 family)
+### [KI-11] Senior / sub management fee **rate** pre-fill — **CLOSED (D3); FEE-BASE REMAINS OPEN (KI-12a)**
 
-**PPM reference:** N/A — input-pipeline gap.
-**Current engine behavior:** `seniorFeePct` and `subFeePct` default to 0. The PPM carries contractual values that the resolver already extracts into `resolved.fees.seniorFeePct` / `subFeePct`, but the projection-inputs builder does not read them.
-**PPM-correct behavior:** Pre-fill both rates from `resolved.fees.*`. These are contractual PPM values; legitimately external authority.
-**Quantitative magnitude:** Euro XV Q1 2026: seniorMgmtFee €176,587/quarter unemitted, subMgmtFee €412,037/quarter unemitted. Flows straight into `subDistribution` overpayment.
-**Deferral rationale:** Part of the D3 consolidation pass; bundled with KI-10 to minimize churn in the inputs builder.
-**Path to close:** Sprint 3 / C3 (fee pre-fill family).
-**Test:** `n1-production-path.test.ts > "pre-fill gap drifts" > seniorMgmtFeePaid | subMgmtFeePaid` — two `failsWithMagnitude` markers (ki: `KI-11`). The engine-math path pins these two rates from `resolved.fees`, so seniorMgmtFee/subMgmtFee drift there is engine-arithmetic (KI-12) not pre-fill.
+**Status (2026-04-23):** Partial close. Pre-fill of `seniorFeePct` / `subFeePct` / `incentiveFeePct` / `incentiveFeeHurdleIrr` landed in Sprint 2 / D3 via `defaultsFromResolved`. The resolver's PPM extraction had always populated `resolved.fees.*`; D3 is the plumbing that makes those flow into `UserAssumptions` as pre-fill defaults. The KI-11 **rate** pre-fill gap is closed.
+
+**What REMAINS open (tracked under KI-12a, not KI-11):** The ~€22.35M fee-BASE discrepancy — engine computes fees off `beginningPar` (current fixture snapshot = €493.3M) while trustee computes off prior Determination Date balance (= €470.9M). This is the N1 harness period-mismatch, structurally distinct from rate pre-fill. **Do not conflate: D3 closed the wrong-rates problem; the wrong-base problem is KI-12a's territory.**
+**Residual behavior:** None from KI-11. The €24,354 subMgmtFee / €10,438 seniorMgmtFee N1 drifts that remain on Euro XV are KI-12a (period mismatch) + KI-12b (day-count on 91/360), not KI-11.
+**Test:** `d3-defaults-from-resolved.test.ts` — fee-rate pre-fill tests; expected senior=0.15%, sub=0.35%, incentive=20%, hurdle=12%.
 
 ---
 
@@ -240,6 +261,8 @@ The engine is probably not wrong about Q2; the harness is pretending Q2 is Q1. T
 Not closed by Sprint 1 / B3 (day-count) or Sprint 3 / C3 (fee pre-fill). Structural harness work, estimated ~1 day including fixture re-extraction and re-baseline of every marker.
 
 **Test:** `n1-correctness.test.ts > "currently broken buckets" > seniorMgmtFeePaid | subMgmtFeePaid` — two `failsWithMagnitude` markers (ki: `KI-12a-seniorMgmt`, `KI-12a-subMgmt`). These markers currently measure *harness period-mismatch drift*, not engine fee-base error. When the harness fix ships, both markers must be re-baselined (likely to near-zero) or removed and replaced with correctness assertions on the residual post-fix drift.
+
+**Scope note (B2 accelerated mode):** KI-12a's fee-base discrepancy applies in BOTH normal and accelerated-waterfall modes. B2's accelerated executor receives `trusteeFeeAmount`, `seniorFeeAmount`, `hedgeCostAmount` computed via the same `beginningPar * rate * dayFrac` formula as normal mode — it inherits the same fee-base gap. A partner who digs into a stress-scenario demo will see senior-expense numbers that carry the same ~€27K/quarter drift from PPM-exact as normal mode. The fix for KI-12a (harness fixture regeneration at prior Determination Date, or multi-period historical harness) closes the gap in both modes simultaneously.
 
 ---
 
@@ -330,18 +353,130 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 ### [KI-14] IC compositional parity at T=0 (cascade residual)
 
 **PPM reference:** Condition 12 (Interest Coverage Test); §(A)(i), (A)(ii), (B), (C), (E)(1) components in the numerator.
-**Current engine behavior:** Engine computes IC at T=0 (`initialState.icTests`) from `interestCollections − (issuerProfit + taxes + trusteeFees + seniorMgmt)`. Under legit pins (baseRate + senior/sub fee rates), the engine emits IC ratios higher than trustee because KI-01 + KI-08 + KI-09 (issuer profit, trustee fee, taxes) are not deducted, and KI-12a (fee-base) causes senior mgmt fee to be over-deducted — net effect is a positive drift per class.
-**PPM-correct behavior:** IC numerator includes the full set of §(A)–§(E) deductions correctly attributed.
-**Quantitative magnitude (under legit pins, Q1 2026):**
-  - Class A/B: +6.600 pp drift (engine 254.680 vs trustee 248.080)
-  - Class C: +5.865 pp drift (engine 226.475 vs trustee 220.610)
-  - Class D: +5.117 pp drift (engine 197.447 vs trustee 192.330)
-**Deferral rationale:** Cascade — not an independent formula bug. The IC parity test exists because the component cash-flow checks in n1-correctness don't exercise the aggregation/denominator logic of the IC formula itself; a mis-aggregation would slip through. Under legit pins the drift magnitudes are deterministic and documented; regressions (formula or aggregation changes) would move these magnitudes and surface.
-**Path to close:** Closes progressively as KI-01 / KI-08 / KI-09 / KI-12a close. No standalone work.
-**Test:** `backtest-harness.test.ts > "N6 harness" > Class A/B|C|D IC compositional parity at T=0` — three `failsWithMagnitude` markers (`KI-IC-AB`, `KI-IC-C`, `KI-IC-D`), tolerance 0.05pp (equals close threshold — these are relatively tight compared to expected magnitudes 5-6pp, so the conflation risk is negligible). Same re-baseline discipline as KI-13: every PR closing an upstream KI must re-run the harness and update these three `expectedDrift` values.
+**Current engine behavior:** Engine computes IC at T=0 (`initialState.icTests`) by deducting PPM §(A)(i) taxes, §(B) trustee, §(C) admin, §(E) senior mgmt, §(F) hedge from the scheduled interest base. Under legit pins (production path via `defaultsFromResolved`), engine IC ratios still sit slightly above trustee because KI-01 (issuer profit) and KI-12a (senior mgmt fee base mismatch) remain open — net residual drift ~3 pp per class.
+**PPM-correct behavior:** IC numerator includes the full set of §(A)–§(F) deductions correctly attributed.
+**Quantitative magnitude (post-Sprint-3 KI-08 admin + KI-09 taxes closure, Q1 2026):**
+  - Class A/B: +3.960 pp drift (was +6.600 pre-cascade; Δ −2.64 pp from admin+taxes deductions landing in initialState)
+  - Class C: +3.525 pp drift (was +5.865; Δ −2.34 pp)
+  - Class D: +3.070 pp drift (was +5.117; Δ −2.05 pp)
+**Deferral rationale:** Cascade — not an independent formula bug. The IC parity test exists because the component cash-flow checks in n1-correctness don't exercise the aggregation/denominator logic of the IC formula itself; a mis-aggregation would slip through.
+
+**Important — test input path correctness (fixed Sprint 3):** The prior test setup spread `DEFAULT_ASSUMPTIONS` with `taxesBps: 0, adminFeeBps: 0, trusteeFeeBps: 0`, meaning the markers could not move when KI-08 admin or KI-09 taxes closed (the input path zeroed the very fields those closures would add to the numerator). Swapped to `defaultsFromResolved(fixture.resolved, fixture.raw)` — the production path used by `ProjectionModel.tsx` — so the cascade actually cascades. Closure of admin/taxes then shifted the observed drift by the expected ~2-3 pp per class, confirming both the fix and the cascade wiring.
+**Path to close:** Closes progressively as KI-01 / KI-12a close. No standalone work.
+**Test:** `backtest-harness.test.ts > "N6 harness" > Class A/B|C|D IC compositional parity at T=0` — three `failsWithMagnitude` markers (`KI-IC-AB`, `KI-IC-C`, `KI-IC-D`), tolerance 0.05pp. Every PR closing an upstream KI must re-run the harness and update these three `expectedDrift` values.
+
+---
+
+<a id="ki-15"></a>
+### [KI-15] B2 accelerated-mode incentive fee hardcoded inactive
+
+**PPM reference:** Post-acceleration Priority of Payments step (V) — "Incentive Collateral Management Fee (if Incentive Fee IRR Threshold met)." Same IRR-threshold mechanics as the normal-mode step (CC) / (U).
+**Current engine behavior:** B2's accelerated executor is called with `incentiveFeeActive: false` hardcoded at `projection.ts` in the accel branch (deliberate simplification). Under acceleration the incentive fee is emitted as zero regardless of whether equity cash-flow history would satisfy the IRR hurdle.
+**PPM-correct behavior:** Run the same IRR-threshold test used in normal-mode step (CC), on the combined pre-breach + accelerated-mode equity cash-flow series. If the hurdle is met, incentive fee fires at the configured percentage; else zero.
+**Quantitative magnitude:** Scenario-dependent. Under most distressed paths the hurdle is NOT met (equity cash flows collapse under acceleration — if the deal is accelerating, it's usually because upstream losses have swamped distributions), so the hardcoded behavior matches PPM intent within tolerance. BUT in scenarios where pre-breach equity distributions were large (e.g., a previously well-performing deal that trips EoD late in the reinvestment period due to a single large default cluster), the accumulated equity IRR may still clear the hurdle. In those scenarios, the hardcoded `false` under-reports incentive fee owed and over-reports residual to Sub Notes.
+**Deferral rationale:** Restoring the IRR solver under acceleration requires carrying equity-cash-flow state across the normal → accelerated mode transition and wiring the same `resolveIncentiveFee` circular solver used in normal mode. Not structural; tedious. Low priority relative to the Sprint 2 B1+B2 scope.
+**Path to close:** Add `incentiveFeeActive` computation in the engine's accel branch: call `resolveIncentiveFee` with the current equity-cash-flow series and hurdle, pass the resulting active flag + computed fee to the executor. ~0.5 day.
+**Test:** No active marker — requires a synthetic scenario where pre-breach equity distributions accumulate above the hurdle, then EoD triggers. Not covered by current B2 stress tests (which use low-MV + high-default scenarios that have near-zero pre-breach distributions). When the fix lands, add a test that constructs such a scenario and verifies incentive fee fires correctly under acceleration.
+
+---
+
+<a id="ki-16"></a>
+### [KI-16] KI-08 closure assumptions pending PPM verification
+
+**PPM reference:** Condition 10 (Senior Expenses Cap) + steps (Y) / (Z) (post-cap overflow distribution). Ares European XV PPM — sections have not yet been cross-referenced against the C3 implementation.
+
+**What is assumed without PPM confirmation:**
+
+1. **20 bps default cap** when no observed Q1 senior-expense data is present. The engine falls back to 20 bps × beginningPar × dayFrac; this is a market-convention heuristic, not an Ares XV-specific figure. If the PPM specifies a different absolute bps cap, all stress-scenario overflow math is off by the ratio.
+2. **`max(2× observed, 20 bps)` heuristic** when D3 can infer observed fees. The "2×" buffer is engineering judgment to keep the cap from biting in modest fee-growth scenarios; the PPM may specify a different buffer (1.5×, 3×) or no heuristic at all (cap is a hard bps number independent of observed).
+3. **Pro-rata overflow allocation** between trustee and admin overflow buckets (steps Y / Z). The engine splits overflow proportionally to each component's uncapped request. The PPM may specify sequential payout (trustee overflow pays before admin overflow), or a fixed allocation (e.g., admin gets 100% of overflow up to a sub-cap). Under Euro XV base case observed is below cap so this doesn't manifest; under stress it drives whether trustee or admin is under-paid first.
+
+**Quantitative magnitude:** Zero on Euro XV base case (observed < cap → no overflow). Material in stress scenarios: the C3 high-fee overflow test uses 50 bps requested vs 20 bps cap → 30 bps overflow = ~€37K/quarter on beginningPar €493M, and the current pro-rata split routes ~€36K to trustee overflow and ~€1K to admin overflow. If PPM specifies sequential payout trustee-first, the numbers don't change; if sequential admin-first, the split flips.
+
+**Path to close:** Read the Ares European XV PPM sections on Senior Expenses Cap and steps (Y) / (Z). Compare against `projection.ts:1764-1773` overflow logic and `build-projection-inputs.ts` cap default derivation. Either (a) confirm the three assumptions are correct and promote KI-08 to FULLY CLOSED, or (b) amend the engine to match PPM and re-run C3 tests.
+
+**Estimated effort:** ~1 hour (PPM read + cross-reference + small code amendment if needed). Blocked only on having the PPM available.
+
+**Tests:** C3 tests continue to pin the current assumptions. When the PPM read completes, the stress-scenario tests may need their expected overflow values re-calibrated; the base-case Euro XV test is insensitive.
+
+---
+
+<a id="ki-17"></a>
+### [KI-17] wacSpreadBps methodology gap (Sprint 3 C2)
+
+**PPM reference:** Condition 1 / definitions — "Weighted Average Spread". Trustee reports pool WAS via a specific methodology that likely (a) adjusts fixed-rate coupons to a floating equivalent via `(coupon − baseRate) × par`, (b) excludes defaulted or discount-obligation positions from the denominator, and/or (c) applies a PPM-defined WAS formula that differs from a simple par-weighted average of `spreadBps`.
+
+**Current engine behavior:** `PeriodQualityMetrics.wacSpreadBps` in `projection.ts` is a par-weighted average of `LoanState.spreadBps` as-set by the resolver. At T=0 on Euro XV the engine emits ~397 bps vs trustee 368 bps — a systematic +29 bps drift.
+
+**PPM-correct behavior:** Match the trustee's WAS methodology bit-for-bit.
+
+**Quantitative magnitude:** ±30 bps at T=0 (≈8% relative). Grows or shrinks as fixed-rate loans default or are added via reinvestment.
+
+**Impact on compliance enforcement:** Euro XV's Minimum WAS trigger is 3.65% vs observed 3.68% — a **3 bps cushion**. Engine's ±30 bps uncertainty straddles that cushion by 10×. C1 reinvestment compliance explicitly does NOT enforce against the WAS trigger until this gap closes; the Minimum WAS check is left as a partner-facing advisory (not a hard block).
+
+**Path to close:** Read Ares European XV PPM "Weighted Average Spread" definition. Amend `computeQualityMetrics` to match — likely adjust fixed-rate loans to `max(0, fixedCouponPct − baseRatePct)` bps and exclude defaulted par from the denominator. Re-baseline the C2 T=0 parity test (`wacSpreadBps` tolerance from ±30 bps to ±5 bps). Then extend C1 enforcement to include Minimum WAS.
+
+**Test:** `c2-quality-forward-projection.test.ts > "period-1 WARF, WAL, WAS match resolver within day-count tolerance"` — current tolerance ±30 bps on WAS documents the gap. When closed, tighten to ±5 bps and add an assertion that fixed-rate adjustment is applied.
+
+**⚠ Test deletion required on closure:** `c1-reinvestment-compliance.test.ts > "Minimum WAS breach via reinvestment spread=0 does NOT block (KI-17 — deferred)"` is a deferred-enforcement honesty guard — it asserts the current non-enforcement behavior and **must be DELETED (not flipped) when KI-17 closes**. The PR that lands WAS enforcement must delete the test and replace it with a "spread=0 reinvestment is blocked" positive-enforcement assertion. A surviving honesty guard would assert an old non-enforcement claim against the new correct code.
+
+---
+
+<a id="ki-18"></a>
+### [KI-18] pctCccAndBelow coarse-bucket collapse (Sprint 3 C2)
+
+**PPM reference:** Condition 1 / definitions — "Caa Obligation", "CCC Obligation". Separate per-agency definitions (Moody's Caa1/Caa2/Caa3 + Ca + C, and Fitch CCC+/CCC/CCC-/CC/C). The trustee's "Caa and below" concentration test takes the **max across agencies** — a position counted by either rating agency flips it into the bucket.
+
+**Current engine behavior:** `PeriodQualityMetrics.pctCccAndBelow` counts positions with `ratingBucket === "CCC"` from the engine's coarse `RatingBucket` ("AAA", "AA", "A", "BBB", "BB", "B", "CCC", "NR"). This collapses all sub-bucket and per-agency granularity into a single bucket, sourced from whichever rating the resolver picked (typically Moody's if available, else Fitch). It may also mis-treat defaulted positions depending on how the resolver assigns `ratingBucket` on default.
+
+**PPM-correct behavior:** Compute per-agency buckets (Moody's Caa rollup, Fitch CCC rollup), take the max. Include defaulted positions in the Caa bucket (PPM convention).
+
+**Quantitative magnitude:** ±3pp at T=0 on Euro XV (engine vs trustee reported 6.92%). That's ≈43% relative error on a compliance bucket.
+
+**Impact on compliance enforcement:** Euro XV's Moody's Caa concentration trigger is ~7.5% vs observed 6.92% — a **0.58 pp cushion**. Engine's ±3 pp uncertainty is 5× the cushion. C1 reinvestment compliance explicitly does NOT enforce against the Caa concentration test until this gap closes.
+
+**Path to close:** (a) Extend `ResolvedLoan` to carry per-agency rating tuples (e.g., `moodysRating`, `fitchRating`, `moodysIsCaa`, `fitchIsCcc`) already partially populated by the resolver. (b) Update `PeriodQualityMetrics.pctCccAndBelow` to compute max across agencies per position, summed over par. (c) Verify defaulted-position handling matches PPM convention. (d) Re-baseline the C2 T=0 parity test (tolerance from ±3 pp to ±0.1 pp).
+
+**Test:** `c2-quality-forward-projection.test.ts > "period-1 WARF, WAL, WAS match resolver within day-count tolerance"` — current tolerance ±3 pp on pctCccAndBelow documents the gap. When closed, tighten to ±0.1 pp and extend C1 to enforce the Caa concentration test.
+
+**⚠ No active honesty-guard test yet** (C1 test file currently guards only the WAS path via the KI-17 test). When KI-18 closure extends C1 to enforce Caa concentration, add a pre-closure honesty guard AND document its deletion sibling here — same discipline as KI-17. Do not leave a stale "we don't enforce Caa" assertion in the codebase once Caa enforcement ships.
+
+---
+
+<a id="ki-19"></a>
+### [KI-19] NR positions proxied to Caa2 for WARF — Moody's CLO methodology convention
+
+**Moody's methodology reference:** "Moody's Global Approach to Rating Collateralized Loan Obligations" / CLO rating methodology: **unrated positions are treated as Caa2 (WARF=6500) unless the manager has obtained and documented a shadow rating on the position.** This is the conservative default — it prevents NR-heavy portfolios from understating expected credit risk.
+
+**Current engine behavior (Sprint 3):** `BUCKET_WARF_FALLBACK.NR = 6500` (Caa2). An earlier design considered a B2 midpoint (2720, non-investment-grade proxy) but was rejected because it understates WARF drift under NR-concentrated reinvestment scenarios, which materially affects C1's WARF enforcement (a reinvestment at "NR" would appear to improve WARF when Moody's would treat it as worsening).
+
+**PPM-correct behavior:** Matches current engine (Caa2 = 6500). Decision documented for audit clarity; not an open item.
+
+**Quantitative magnitude:** On Euro XV (12 NR positions, ~2.8% of par), NR=6500 vs NR=2720 shifts T=0 engine WARF by ~100 WARF points. That's material relative to the 113-point trigger cushion (3148 vs 3035). Engine-trustee WARF parity is tighter under the 6500 convention.
+
+**Decision status:** CLOSED — 6500 convention shipped Sprint 3. Tracked here so a future reviewer sees the rationale (B2=2720 would have been a partner-visible under-enforcement).
+
+**Alternative considered:** Make NR fallback a user input so the partner can override (e.g., when managers have obtained shadow ratings). Not done in Sprint 3 — adds UI surface without clear demand. Revisit if a deal ships NR loans with documented shadow ratings.
+
+**Test:** `c2-quality-forward-projection.test.ts > "every period has a qualityMetrics object with finite numbers"` covers the path. Explicit NR-convention test could be added when a fixture with meaningful NR concentration arrives.
 
 ---
 
 ## Closed issues
 
-_(None yet. Entries move here when their corresponding fix ships and is verified green in the N1 harness.)_
+_Entries move here when their corresponding fix ships and is verified green in the N1 harness._
+
+<a id="ki-09-closed"></a>
+### [KI-09] Step (A)(i) Issuer taxes not modeled — CLOSED (Sprint 3, 2026-04-23)
+
+**PPM reference:** Condition 1 definitions (Issuer profit / tax provisions); step (A)(i) in the interest waterfall.
+
+**Pre-fix behavior:** Not modeled. `stepTrace.taxes` emitted 0. Engine `subDistribution` over-stated by ~€6,133/quarter on Euro XV because taxes never came out of the top of the waterfall.
+
+**Pre-fix quantitative magnitude:** €6,133/quarter = €24,532/year on Euro XV. On a €42.56M equity cost basis (95c × €44.8M sub par) ≈ 5.8 bps annual drag; cumulative ~€245K over a 10-year projection.
+
+**Fix (Sprint 3):** `taxesBps` added to `ProjectionInputs` + `UserAssumptions`. Engine deducts taxes at step (A)(i) before any other senior expense. `stepTrace.taxes` emits the amount. `defaultsFromResolved` back-derives `taxesBps` from raw `waterfallSteps` step (A)(i) annualized on beginningPar (Euro XV: 0.497 bps = €6,133/quarter, matched to the cent). Accel branch (B2) also passes `taxesAmount` through to the post-acceleration executor since taxes remain payable under acceleration per PPM 10.
+
+**Verification:** Engine produces €6,202/period vs trustee €6,133 = €69 day-count residual at 91/360 vs 90/360. Decomposed: engine taxesAmount = beginningPar × (taxesBps / 10000) × (91 / 360), trustee reports annualized tax × (90 / 360) window. On the €493.3M Euro XV pool at 0.497 bps the ratio is 91/90 = 1.0111, so residual ≈ €6,133 × 0.0111 = €68.7 (matches observed €69 to the cent). Same day-count mechanic as KI-12b for tranche interest — it's a harness-period-mismatch artifact, not an engine bug; closes with KI-12a.
+
+N1 harness `taxes` bucket tolerance tightened from Infinity to €100. KI-13a cascade re-baselined from −€44,540 to −€50,742 (Δ = −€6,202 matching engine emission to the euro). KI-IC-AB/C/D cascade moved ~1-2 pp on each class (see KI-14).

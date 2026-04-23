@@ -1,5 +1,5 @@
 import type { ExtractedConstraints, CloPoolSummary, CloComplianceTest, CloTranche, CloTrancheSnapshot, CloHolding, CloAccountBalance, CloParValueAdjustment } from "./types";
-import type { ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolvedComplianceTest, ResolvedMetadata, ResolutionWarning } from "./resolver-types";
+import type { ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolvedComplianceTest, ResolvedEodTest, ResolvedMetadata, ResolutionWarning } from "./resolver-types";
 import { parseSpreadToBps, normalizeWacSpread } from "./ingestion-gate";
 import { mapToRatingBucket, moodysWarfFactor } from "./rating-mapping";
 import { isRatingSentinel } from "./sdf/csv-utils";
@@ -314,7 +314,8 @@ function resolveTriggers(
   constraints: ExtractedConstraints,
   resolvedTranches: ResolvedTranche[],
   warnings: ResolutionWarning[],
-): { oc: ResolvedTrigger[]; ic: ResolvedTrigger[] } {
+  eventOfDefaultConstraint: { required_ratio_pct?: number; source_pages?: number[] } | null | undefined,
+): { oc: ResolvedTrigger[]; ic: ResolvedTrigger[]; eventOfDefaultTest: ResolvedEodTest | null } {
   // Resolve a class name (possibly compound like "A/B") to its most junior seniority rank
   function resolveRank(cls: string): number {
     const parts = cls.split("/").map(s => s.trim());
@@ -408,7 +409,36 @@ function resolveTriggers(
     return { className: t.className, triggerLevel, rank: resolveRank(t.className), testType: "IC" as const, source: t.source };
   });
 
-  return { oc, ic };
+  // B1: Extract Event of Default Par Value Test (PPM Condition 10(a)(iv)) as
+  // a distinct artifact, not a class-level OC trigger. The compliance test is
+  // emitted with testClass "EOD" → rank 99 by resolveRank fallback. Filter
+  // that entry out of the OC list and carry it on its own field with spec
+  // metadata from raw.constraints when available.
+  const eodEntries = oc.filter((t) => normClass(t.className) === "eod");
+  const ocWithoutEod = oc.filter((t) => normClass(t.className) !== "eod");
+  let eventOfDefaultTest: ResolvedEodTest | null = null;
+  const constraintTrigger = eventOfDefaultConstraint?.required_ratio_pct;
+  if (eodEntries.length > 0) {
+    // Prefer compliance-reported level; fall back to PPM constraint if somehow missing.
+    const eodLevel = eodEntries[0].triggerLevel;
+    const sourcePage = eventOfDefaultConstraint?.source_pages?.[0] ?? null;
+    eventOfDefaultTest = { triggerLevel: eodLevel, sourcePage };
+    if (constraintTrigger != null && Math.abs(constraintTrigger - eodLevel) > 0.01) {
+      warnings.push({
+        field: "eventOfDefaultTest",
+        message: `EoD trigger mismatch: compliance reports ${eodLevel}%, PPM constraint reports ${constraintTrigger}%. Using compliance value.`,
+        severity: "warn",
+      });
+    }
+  } else if (constraintTrigger != null) {
+    // No compliance row (older reports), fall back to PPM constraint.
+    eventOfDefaultTest = {
+      triggerLevel: constraintTrigger,
+      sourcePage: eventOfDefaultConstraint?.source_pages?.[0] ?? null,
+    };
+  }
+
+  return { oc: ocWithoutEod, ic, eventOfDefaultTest };
 }
 
 function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarning[]): ResolvedFees {
@@ -642,11 +672,15 @@ export function resolveWaterfallInputs(
   }
 
   // --- Triggers ---
-  const { oc: ocTriggers, ic: icTriggers } = resolveTriggers(
+  const eodConstraint =
+    (constraints as unknown as { eventOfDefaultParValueTest?: { required_ratio_pct?: number; source_pages?: number[] } | null })
+      .eventOfDefaultParValueTest ?? null;
+  const { oc: ocTriggers, ic: icTriggers, eventOfDefaultTest } = resolveTriggers(
     complianceData?.complianceTests ?? [],
     constraints,
     tranches,
     warnings,
+    eodConstraint,
   );
 
   // --- Dates ---
@@ -924,11 +958,21 @@ export function resolveWaterfallInputs(
   }, 0);
 
   // --- Principal Account Cash ---
-  // Uninvested principal sitting in accounts (counts toward OC numerator).
-  // Sum all accounts with type PRINCIPAL or name containing "principal".
+  // Uninvested principal sitting in the Principal Account. Counts toward the
+  // OC numerator per PPM 10(a)(iv) — SIGNED: credits positive, overdrafts
+  // negative. Euro XV Q1 fixture carries a −€1,817,413 overdraft which the
+  // trustee correctly deducts from the numerator (158.52% tie-out). A
+  // positive-only filter under-reports in exactly this case.
+  //
+  // Name match also covers the "Principle" typo variant (some ingest paths
+  // produce it) without requiring data cleanup upstream.
   const principalAccountCash = (accountBalances ?? [])
-    .filter(a => a.balanceAmount != null && a.balanceAmount > 0 &&
-      (a.accountType === "PRINCIPAL" || (a.accountName ?? "").toLowerCase().includes("principal")))
+    .filter((a) => {
+      if (a.balanceAmount == null) return false;
+      if (a.accountType === "PRINCIPAL") return true;
+      const name = (a.accountName ?? "").toLowerCase();
+      return name.includes("principal") || name.includes("principle");
+    })
     .reduce((s, a) => s + a.balanceAmount!, 0);
 
   // --- Discount & Long-Dated Obligation Haircuts ---
@@ -1235,7 +1279,7 @@ export function resolveWaterfallInputs(
   }
 
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, dates, fees, loans, metadata, principalAccountCash, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, baseRateFloorPct },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, baseRateFloorPct },
     warnings,
   };
 }
