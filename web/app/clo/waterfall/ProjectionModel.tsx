@@ -12,7 +12,11 @@ import type {
   ExtractedConstraints,
   BuyListItem,
   EquityInceptionData,
+  CloWaterfallStep,
+  CloAccountBalance,
 } from "@/lib/clo/types";
+import { buildBacktestInputs } from "@/lib/clo/backtest-types";
+import HarnessPanel from "./HarnessPanel";
 import {
   runProjection,
   validateInputs,
@@ -22,7 +26,7 @@ import {
   type LoanInput,
 } from "@/lib/clo/projection";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
-import { buildFromResolved, EMPTY_RESOLVED } from "@/lib/clo/build-projection-inputs";
+import { buildFromResolved, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED } from "@/lib/clo/build-projection-inputs";
 import { DEFAULT_RATES_BY_RATING, RATING_BUCKETS, type RatingBucket } from "@/lib/clo/rating-mapping";
 import SuggestAssumptions from "./SuggestAssumptions";
 import { CLO_DEFAULTS } from "@/lib/clo/defaults";
@@ -54,6 +58,11 @@ interface Props {
   resolutionWarnings?: ResolutionWarning[];
   buyList?: BuyListItem[];
   equityInceptionData?: EquityInceptionData | null;
+  // N1 harness inputs — realized trustee data for the latest period
+  waterfallSteps?: CloWaterfallStep[];
+  accountBalances?: CloAccountBalance[];
+  reportDate?: string | null;
+  paymentDate?: string | null;
 }
 
 export default function ProjectionModel({
@@ -71,6 +80,10 @@ export default function ProjectionModel({
   resolutionWarnings,
   buyList,
   equityInceptionData,
+  waterfallSteps,
+  accountBalances,
+  reportDate,
+  paymentDate,
 }: Props) {
   // Read URL params for pre-filling switch simulator from analysis page
   const searchParams = useSearchParams();
@@ -255,6 +268,23 @@ export default function ProjectionModel({
       callDate, callPricePct, ddtlDrawAssumption, ddtlDrawQuarter, ddtlDrawPercent, equityEntryPrice,
     ]
   );
+
+  // Legit-pinned inputs for HarnessPanel's engine-math mode. Mirrors
+  // n1-correctness.test.ts: DEFAULT_ASSUMPTIONS + observed EURIBOR + PPM fees
+  // from resolved.fees. trusteeFeeBps intentionally NOT pinned (circular).
+  const engineMathInputs: ProjectionInputs | undefined = useMemo(() => {
+    if (!resolved) return undefined;
+    const observedBaseRate = trancheSnapshots.find(s => s && s.currentIndexRate != null)?.currentIndexRate;
+    if (observedBaseRate == null) return undefined;
+    return buildFromResolved(resolved, {
+      ...DEFAULT_ASSUMPTIONS,
+      baseRatePct: observedBaseRate,
+      seniorFeePct: resolved.fees.seniorFeePct,
+      subFeePct: resolved.fees.subFeePct,
+      incentiveFeePct: resolved.fees.incentiveFeePct,
+      incentiveFeeHurdleIrr: resolved.fees.incentiveFeeHurdleIrr * 100,
+    });
+  }, [resolved, trancheSnapshots]);
 
   const userAssumptions: UserAssumptions = useMemo(() => ({
     baseRatePct,
@@ -1018,6 +1048,25 @@ export default function ProjectionModel({
             </div>
           </div>
         </div>
+      )}
+
+      {/* N1 Waterfall Replay Harness — reactive to user assumptions above */}
+      {(waterfallSteps?.length ?? 0) > 0 && trancheSnapshots.length > 0 && (
+        <HarnessPanel
+          inputs={inputs}
+          engineMathInputs={engineMathInputs}
+          backtest={buildBacktestInputs({
+            waterfallSteps,
+            trancheSnapshots,
+            tranches,
+            complianceData: {
+              complianceTests,
+              poolSummary: poolSummary ? { totalPrincipalBalance: poolSummary.totalPrincipalBalance } : null,
+            },
+            accountBalances,
+            dealDates: { reportDate, paymentDate },
+          })}
+        />
       )}
     </div>
   );

@@ -73,6 +73,38 @@ export interface ProjectionInputs {
   equityEntryPrice?: number; // user-specified entry price for equity IRR (overrides balance-sheet implied value)
 }
 
+/** Per-step waterfall emission for N1 harness comparison against trustee
+ *  realized waterfall rows. All values here are already computed as local
+ *  variables inside the period loop — this sub-object just exposes them
+ *  on the output so the harness can tie out trustee vs engine step-by-step.
+ *
+ *  Trustee-step mapping (see web/lib/clo/ppm-step-map.ts):
+ *    - trusteeFeesPaid        → PPM steps (B) + (C) (bundled until C3 splits; see KI-08)
+ *    - seniorMgmtFeePaid      → PPM step (E) (current + past-due bundled)
+ *    - hedgePaymentPaid       → PPM step (F) (non-defaulted hedge only)
+ *    - subMgmtFeePaid         → PPM step (X)
+ *    - incentiveFeeFromInterest → PPM step (CC) (interest waterfall)
+ *    - incentiveFeeFromPrincipal → PPM step (U) (principal waterfall)
+ *    - ocCureDiversions       → PPM steps (I)/(L)/(O)/(R)/(U) keyed by tranche rank
+ *    - reinvOcDiversion       → PPM step (W) (Reinvestment OC Test diversion)
+ *    - equityFromInterest     → PPM step (DD) (interest residual to sub notes)
+ *    - equityFromPrincipal    → Principal waterfall residual to sub notes
+ *    - deferredAccrualByTranche → PPM steps (K)/(N)/(Q)/(T) PIK additions this period
+ */
+export interface PeriodStepTrace {
+  trusteeFeesPaid: number;
+  seniorMgmtFeePaid: number;
+  hedgePaymentPaid: number;
+  subMgmtFeePaid: number;
+  incentiveFeeFromInterest: number;
+  incentiveFeeFromPrincipal: number;
+  ocCureDiversions: Array<{ rank: number; mode: "reinvest" | "paydown"; amount: number }>;
+  reinvOcDiversion: number;
+  equityFromInterest: number;
+  equityFromPrincipal: number;
+  deferredAccrualByTranche: Record<string, number>;
+}
+
 export interface PeriodResult {
   periodNum: number;
   date: string;
@@ -92,6 +124,25 @@ export interface PeriodResult {
   icTests: { className: string; actual: number; trigger: number; passing: boolean }[];
   equityDistribution: number;
   defaultsByRating: Record<string, number>;
+  /** Per-step trace for N1 waterfall-replay harness. */
+  stepTrace: PeriodStepTrace;
+}
+
+/** Beginning-of-period-1 snapshot — "as of the determination date" state
+ *  BEFORE any forward-projection mutations (defaults, prepayments, paydowns,
+ *  reinvestment). This is what trustee reports measure; the N6 harness ties
+ *  these out against `raw.complianceData.complianceTests` at T=0.
+ *  Expose as a separate field rather than periods[0] because periods[0] is
+ *  post-Q1 end-state. */
+export interface ProjectionInitialState {
+  /** Pool par at period start (funded loans, excludes unfunded DDTL). */
+  poolPar: number;
+  /** OC numerator at period start (APB + principal cash − haircuts + adjustments). */
+  ocNumerator: number;
+  /** Per-class OC test actuals at T=0, matching trustee determination-date values. */
+  ocTests: { className: string; actual: number; trigger: number; passing: boolean }[];
+  /** Per-class IC test actuals at T=0. */
+  icTests: { className: string; actual: number; trigger: number; passing: boolean }[];
 }
 
 export interface ProjectionResult {
@@ -99,6 +150,8 @@ export interface ProjectionResult {
   equityIrr: number | null;
   totalEquityDistributions: number;
   tranchePayoffQuarter: Record<string, number | null>;
+  /** T=0 snapshot for N6 compliance parity harness. */
+  initialState: ProjectionInitialState;
 }
 
 export function validateInputs(inputs: ProjectionInputs): { field: string; message: string }[] {
@@ -298,6 +351,63 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
 
   const rpEndDate = reinvestmentPeriodEnd ? new Date(reinvestmentPeriodEnd) : null;
 
+  // ── T=0 snapshot for N6 harness (determination-date compliance parity) ──
+  // Computed BEFORE the period loop runs. Uses initial trancheBalances (no
+  // mutations), initial pool par, initial principal cash, agency default
+  // adjustments, and haircuts — equivalent to what the trustee reports as
+  // of the determination date.
+  const initialState: ProjectionInitialState = (() => {
+    const poolPar = hasLoans ? loanTotal : initialPar;
+    const ocEligibleAtStart = debtTranches.filter((t) => !t.isAmortising);
+
+    // Pre-existing default OC adjustment — same formula as the in-loop version
+    // at period q=1 (before any recovery arrives).
+    const preExistingCashRecovery = preExistingDefaultRecovery + unpricedDefaultedPar * (recoveryPct / 100);
+    const adjustedArrivalQ = Math.max(1, 1 + recoveryLagQ - quartersSinceReport);
+    const preExistingRecoveryStillPending = preExistingDefaultedPar > 0 && 1 < adjustedArrivalQ;
+    const ocDefaultAdjustment = (preExistingDefaultOcValue > 0 && preExistingRecoveryStillPending)
+      ? preExistingDefaultOcValue - preExistingCashRecovery
+      : 0;
+    // Pending recoveries arriving at or before q=1 (zero at T=0 since we haven't elapsed any period yet)
+    const pendingRecoveryValue = 0;
+    const currentDdtlUnfundedPar = hasLoans
+      ? loanStates.filter(l => l.isDelayedDraw).reduce((s, l) => s + l.survivingPar, 0)
+      : 0;
+    const ocNumerator = poolPar + initialPrincipalCash + pendingRecoveryValue + ocDefaultAdjustment
+      - discountObligationHaircut - longDatedObligationHaircut - impliedOcAdjustment - currentDdtlUnfundedPar;
+
+    const ocTests: ProjectionInitialState["ocTests"] = ocTriggersByClass.map((oc) => {
+      const debtAtAndAbove = ocEligibleAtStart
+        .filter((t) => t.seniorityRank <= oc.rank)
+        .reduce((s, t) => s + trancheBalances[t.className] + deferredBalances[t.className], 0);
+      const actual = debtAtAndAbove > 0 ? (ocNumerator / debtAtAndAbove) * 100 : 999;
+      return { className: oc.className, actual, trigger: oc.triggerLevel, passing: actual >= oc.triggerLevel };
+    });
+
+    // At T=0, the trustee IC test uses [Interest Collection − Senior Expenses
+    // (A-D) − Senior Mgmt Fee (E) − Hedge Payments (F)] / [Interest Due on
+    // senior tranches]. Replicate with initial pool par × effective rate for
+    // the numerator base, minus the quarterly fees. Fees use the same formula
+    // as the in-loop per-period deduction so pre-fill parity flows through.
+    const scheduledInterestOnCollateral = poolPar * (wacSpreadBps / 10000 + baseRatePct / 100) / 4;
+    const trusteeFeeAmountT0 = poolPar * (trusteeFeeBps / 10000) / 4;
+    const seniorFeeAmountT0 = poolPar * (seniorFeePct / 100) / 4;
+    const hedgeCostAmountT0 = poolPar * (hedgeCostBps / 10000) / 4;
+    const interestAfterFeesT0 = Math.max(
+      0,
+      scheduledInterestOnCollateral - trusteeFeeAmountT0 - seniorFeeAmountT0 - hedgeCostAmountT0,
+    );
+    const icTests: ProjectionInitialState["icTests"] = icTriggersByClass.map((ic) => {
+      const interestDueAtAndAbove = ocEligibleAtStart
+        .filter((t) => t.seniorityRank <= ic.rank)
+        .reduce((s, t) => s + trancheBalances[t.className] * trancheCouponRate(t, baseRatePct, baseRateFloorPct) / 4, 0);
+      const actual = interestDueAtAndAbove > 0 ? (interestAfterFeesT0 / interestDueAtAndAbove) * 100 : 999;
+      return { className: ic.className, actual, trigger: ic.triggerLevel, passing: actual >= ic.triggerLevel };
+    });
+
+    return { poolPar, ocNumerator, ocTests, icTests };
+  })();
+
   const draw: DefaultDrawFn = defaultDrawFn ?? ((par, hz) => par * hz);
   for (let q = 1; q <= totalQuarters; q++) {
     const periodDate = addQuarters(currentDate, q);
@@ -324,6 +434,15 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       ? loanStates.filter(l => !l.isDelayedDraw).reduce((s, l) => s + l.survivingPar, 0)
       : currentPar;
     const beginningLiabilities = debtTranches.reduce((s, t) => s + trancheBalances[t.className] + deferredBalances[t.className], 0);
+
+    // ── Step-trace accumulators (for N1 harness) ────────────────────────
+    // Multi-site values (OC cure diversions, reinv OC diversion, PIK accrual)
+    // need accumulation across the period. Single-site fee amounts are captured
+    // directly at emission.
+    const _stepTrace_ocCureDiversions: Array<{ rank: number; mode: "reinvest" | "paydown"; amount: number }> = [];
+    let _stepTrace_reinvOcDiversion = 0;
+    const _stepTrace_deferredAccrualByTranche: Record<string, number> = {};
+    for (const t of debtTranches) _stepTrace_deferredAccrualByTranche[t.className] = 0;
 
     // Per-loan beginning par for interest calc (post-draw, so newly-funded DDTLs are included)
     const loanBeginningPar = hasLoans ? loanStates.map((l) => l.survivingPar) : [];
@@ -711,6 +830,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         } else {
           deferredBalances[t.className] += shortfall;
         }
+        _stepTrace_deferredAccrualByTranche[t.className] = (_stepTrace_deferredAccrualByTranche[t.className] ?? 0) + shortfall;
       }
 
       // Only check diversion at rank boundaries — all tranches at the same rank must be paid first
@@ -782,6 +902,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         if (availableInterest <= 0.01) diverted = true; // fully consumed → skip junior tranches
 
         if (diversion > 0) {
+          const _mode: "reinvest" | "paydown" = inRP && !failingIc ? "reinvest" : "paydown";
+          _stepTrace_ocCureDiversions.push({ rank: t.seniorityRank, mode: _mode, amount: diversion });
           if (inRP && !failingIc) {
             // During RP with OC-only failure: buy collateral to increase OC numerator
             currentPar += diversion;
@@ -826,6 +948,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     }
     if (reinvOcFailing && availableInterest > 0) {
       const diversion = availableInterest * (reinvestmentOcTrigger!.diversionPct / 100);
+      _stepTrace_reinvOcDiversion = diversion;
       availableInterest -= diversion;
       currentPar += diversion;
       if (hasLoans && diversion > 0) {
@@ -894,7 +1017,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       availablePrincipal -= incentiveFeeFromPrincipal;
     }
 
-    const equityDistribution = equityFromInterest + availablePrincipal;
+    // Capture equity-from-principal residual BEFORE it's summed into equityDistribution,
+    // so the stepTrace separates PPM step (DD) (interest residual) from principal residual.
+    const equityFromPrincipal = availablePrincipal;
+    const equityDistribution = equityFromInterest + equityFromPrincipal;
     totalEquityDistributions += equityDistribution;
     equityCashFlows.push(equityDistribution);
 
@@ -917,6 +1043,19 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       icTests: icResults,
       equityDistribution,
       defaultsByRating,
+      stepTrace: {
+        trusteeFeesPaid: trusteeFeeAmount,
+        seniorMgmtFeePaid: seniorFeeAmount,
+        hedgePaymentPaid: hedgeCostAmount,
+        subMgmtFeePaid: subFeeAmount,
+        incentiveFeeFromInterest,
+        incentiveFeeFromPrincipal,
+        ocCureDiversions: _stepTrace_ocCureDiversions,
+        reinvOcDiversion: _stepTrace_reinvOcDiversion,
+        equityFromInterest,
+        equityFromPrincipal,
+        deferredAccrualByTranche: _stepTrace_deferredAccrualByTranche,
+      },
     });
 
     // Prune exhausted loans to keep iteration cost O(active loans) per period.
@@ -936,7 +1075,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
 
   const equityIrr = calculateIrr(equityCashFlows, 4);
 
-  return { periods, equityIrr, totalEquityDistributions, tranchePayoffQuarter };
+  return { periods, equityIrr, totalEquityDistributions, tranchePayoffQuarter, initialState };
 }
 
 /**

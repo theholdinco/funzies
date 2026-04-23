@@ -149,10 +149,14 @@ describe("parseNotes", () => {
     expect(result.rows[0].class_name).toBe("Class B-1");
   });
 
-  it('trims NR ratings ("NR  " → "NR")', () => {
+  it('treats "NR" as a no-rating sentinel (returns null, not "NR")', () => {
+    // Per the rating-sentinel fix: agency "NR" / "N/R" / "***" etc. are
+    // sentinels meaning "no rating available" and map to null for consistency
+    // with downstream rating-bucket logic. Prior behavior returned "NR" verbatim;
+    // new behavior returns null. See web/lib/clo/sdf/csv-utils.ts trimRating().
     const result = parseNotes(makeCsv(ROW_SUBORDINATED));
     const row = result.rows[0];
-    expect(row.rating_fitch).toBe("NR");
-    expect(row.rating_moodys).toBe("NR");
+    expect(row.rating_fitch).toBeNull();
+    expect(row.rating_moodys).toBeNull();
   });
 });

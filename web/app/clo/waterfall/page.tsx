@@ -138,6 +138,10 @@ export default async function WaterfallPage() {
         resolutionWarnings={resolutionWarnings}
         buyList={buyList}
         equityInceptionData={profile.equityInceptionData}
+        waterfallSteps={waterfallSteps}
+        accountBalances={accountBalances}
+        reportDate={reportPeriod?.reportDate ?? null}
+        paymentDate={reportPeriod?.paymentDate ?? null}
       />
     </div>
   );
