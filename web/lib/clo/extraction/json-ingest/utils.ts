@@ -30,6 +30,7 @@ const MONTHS: Record<string, string> = {
 };
 
 // "29-Sep-2032" or "29 Sep 2032" → "2032-09-29"
+// "Dec 15, 2021" → "2021-12-15"
 // "2032-09-29" passes through untouched.
 // Returns null on unparseable input (e.g. empty, "null", unparseable).
 export function parseFlexibleDate(s: string | null | undefined): string | null {
@@ -41,9 +42,17 @@ export function parseFlexibleDate(s: string | null | undefined): string | null {
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
 
   // DD-Mon-YYYY
-  const m = trimmed.match(/^(\d{1,2})[\s\-\/](\w{3})[\s\-\/](\d{4})$/);
-  if (m) {
-    const [, day, mon, year] = m;
+  const m1 = trimmed.match(/^(\d{1,2})[\s\-\/](\w{3})[\s\-\/](\d{4})$/);
+  if (m1) {
+    const [, day, mon, year] = m1;
+    const mm = MONTHS[mon.toLowerCase()];
+    if (mm) return `${year}-${mm}-${day.padStart(2, "0")}`;
+  }
+
+  // Mon DD, YYYY (compliance notes_payment_history uses this for some inception rows)
+  const m2 = trimmed.match(/^(\w{3})\s+(\d{1,2}),\s+(\d{4})$/);
+  if (m2) {
+    const [, mon, day, year] = m2;
     const mm = MONTHS[mon.toLowerCase()];
     if (mm) return `${year}-${mm}-${day.padStart(2, "0")}`;
   }

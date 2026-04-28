@@ -69,7 +69,7 @@ function mapComplianceSummary(c: ComplianceJson): Record<string, unknown> {
 //   "LLC) - 2025 Euro Term Loans Gold Rush Bidco Ltd - ..."    → trailing-fragment + category bleed
 //   "Rate                  Adj Allwyn Fin - ..."               → column-header bleed
 //
-// Exported for use by mapAssetSchedule, mapTradingActivity, mapInterestAccrual.
+// Exported for use by mapAssetSchedule, mapTradingActivity, mapInterestAccrualDetail.
 export function splitDescription(desc: string): [string, string] {
   let s = desc;
   // Strip "Loan Subtotal: <numbers>   " style subtotal prefix that bled into a real obligor row
@@ -94,6 +94,11 @@ function mapAssetSchedule(c: ComplianceJson): Record<string, unknown> {
       const lxid = extractLxid(h.security_id);
       const isin = extractIsin(h.security_id);
       const [obligorName, facilityName] = splitDescription(h.description);
+      // Derive isDelayedDraw from loan_type — projection.ts treats DDTLs
+      // specially (don't count toward par until drawn). Without this derivation
+      // the field stays null and the engine treats every loan as funded.
+      const lt = String(h.loan_type ?? "").toLowerCase();
+      const isDelayedDraw = lt.includes("delayed draw") ? true : null;
       return {
         obligorName,
         facilityName,
@@ -107,6 +112,7 @@ function mapAssetSchedule(c: ComplianceJson): Record<string, unknown> {
           ? h.principal_balance * (h.market_price / 100)
           : null,
         currentPrice: h.market_price ?? null,
+        isDelayedDraw,
       };
     }),
   };
@@ -178,11 +184,6 @@ function mapInterestCoverageTests(c: ComplianceJson): Record<string, unknown> {
       cushionPct: t.cushion != null ? t.cushion * 100 : null,
       isPassing: t.result === "Passed" ? true : t.result === "Failed" ? false : null,
     })),
-    interestAmountsPerTranche: c.capital_structure.map((tr) => ({
-      className: tr.tranche,
-      interestAmount: tr.period_interest ?? null,
-      currency: c.meta.reporting_currency ?? "EUR",
-    })),
   };
 }
 
@@ -227,7 +228,7 @@ function mapWaterfall(c: ComplianceJson): Record<string, unknown> {
   const exec = c.current_period_execution;
   if (!exec) return { waterfallSteps: [], proceeds: [], trancheSnapshots: [] };
 
-  const waterfallSteps = (exec.interest_waterfall_execution ?? []).map((step: any, idx: number) => ({
+  const interestSteps = (exec.interest_waterfall_execution ?? []).map((step: any, idx: number) => ({
     waterfallType: "INTEREST",
     priorityOrder: idx + 1,
     description: step.clause ?? step.description ?? null,
@@ -240,6 +241,33 @@ function mapWaterfall(c: ComplianceJson): Record<string, unknown> {
     isOcTestDiversion: Boolean(step.is_oc_cure ?? /coverage test/i.test(String(step.description ?? step.clause ?? ""))),
     isIcTestDiversion: false,
   }));
+
+  // Compliance principal_waterfall is an aggregate summary, not a per-clause
+  // array — emit a single synthetic PRINCIPAL row so the harness can surface
+  // the state ("opened with X, paid Y, residual demand Z") rather than
+  // showing zero principal activity. opening/paid/outstanding fields are
+  // standard across IPDs; map them onto the same shape as INTEREST steps.
+  const pwf = (exec as { principal_waterfall?: Record<string, unknown> }).principal_waterfall;
+  const principalSteps: Array<Record<string, unknown>> = [];
+  if (pwf && typeof pwf === "object") {
+    const opening = (pwf.opening_balance as number | null | undefined) ?? null;
+    const paid = (pwf.all_clauses_paid as number | null | undefined) ?? null;
+    const outstanding = (pwf.outstanding_demand_on_clause_V_to_sub_notes as number | null | undefined) ?? null;
+    principalSteps.push({
+      waterfallType: "PRINCIPAL",
+      priorityOrder: 1,
+      description: (pwf.note as string | null | undefined) ?? "Principal waterfall (aggregate)",
+      payee: null,
+      amountDue: null,
+      amountPaid: paid,
+      shortfall: outstanding,
+      fundsAvailableBefore: opening,
+      fundsAvailableAfter: opening != null && paid != null ? opening - paid : null,
+      isOcTestDiversion: false,
+      isIcTestDiversion: false,
+    });
+  }
+  const waterfallSteps = [...interestSteps, ...principalSteps];
 
   const trancheSnapshots = (exec.tranche_distributions ?? []).map((t) => ({
     className: t.class,
@@ -321,6 +349,10 @@ function normalizeAccountType(group: string | null | undefined, name: string): s
 
 function mapAccountBalances(c: ComplianceJson): Record<string, unknown> {
   return {
+    // Trustee account snapshots are as-of the determination_date — distinct
+    // from the payment_date used by waterfall executions. Stamp the date so
+    // downstream consumers don't conflate the two.
+    asOfDate: c.meta?.determination_date ?? null,
     accounts: c.account_balances.accounts.map((a) => ({
       accountName: a.name,
       accountType: normalizeAccountType(a.group, a.name),
@@ -334,27 +366,6 @@ function mapAccountBalances(c: ComplianceJson): Record<string, unknown> {
       requiredBalance: null,
       excessDeficit: null,
     })),
-  };
-}
-
-function mapInterestAccrual(c: ComplianceJson): Record<string, unknown> {
-  // Schema expects assetRateDetails[]; we fold §22 into a sparser shape here.
-  const positions = c.interest_accrual_detail?.positions ?? [];
-  return {
-    assetRateDetails: positions.map((p) => {
-      const [obligorName, facilityName] = splitDescription(p.description);
-      return {
-        obligorName,
-        facilityName,
-        referenceRate: p.base_index ?? null,
-        baseRate: p.index_rate_pct ?? null,
-        indexFloor: p.index_floor_pct ?? null,
-        spread: p.spread_pct ?? null,
-        creditSpreadAdj: p.credit_spread_adj_pct ?? null,
-        effectiveSpread: p.effective_spread_pct ?? null,
-        allInRate: p.all_in_rate_pct ?? null,
-      };
-    }),
   };
 }
 
@@ -411,13 +422,25 @@ function mapSupplementary(c: ComplianceJson): Record<string, unknown> {
 function mapNotesInformation(c: ComplianceJson): Record<string, unknown> | null {
   const hist = c.notes_payment_history?.per_tranche;
   if (!hist) return null;
-  const allRows: Array<Record<string, unknown>> = [];
+  const perTranche: Record<string, Array<Record<string, unknown>>> = {};
   for (const [className, data] of Object.entries(hist)) {
-    for (const row of (data as any).rows ?? []) {
-      allRows.push({ className, ...row });
-    }
+    const rows = (data as any).rows ?? [];
+    if (!Array.isArray(rows) || rows.length === 0) continue;
+    perTranche[className] = rows.map((r: any) => ({
+      period:                 r.period ?? null,
+      paymentDate:            parseFlexibleDate(r.payment_date),
+      parCommitment:          r.par_commitment ?? null,
+      factor:                 r.factor ?? null,
+      interestPaid:           r.interest_paid ?? null,
+      principalPaid:          r.principal_paid ?? null,
+      cashflow:               r.cashflow ?? null,
+      endingBalance:          r.ending_balance ?? null,
+      interestShortfall:      r.interest_shortfall ?? null,
+      accumInterestShortfall: r.accum_interest_shortfall ?? null,
+    }));
   }
-  return { paymentHistory: allRows };
+  if (Object.keys(perTranche).length === 0) return null;
+  return { perTranche };
 }
 
 export function mapCompliance(c: ComplianceJson): ComplianceSections {
@@ -432,7 +455,6 @@ export function mapCompliance(c: ComplianceJson): ComplianceSections {
     waterfall: mapWaterfall(c),
     trading_activity: mapTradingActivity(c),
     account_balances: mapAccountBalances(c),
-    interest_accrual: mapInterestAccrual(c),
     default_detail: mapDefaultDetail(c),
     supplementary: mapSupplementary(c),
   };

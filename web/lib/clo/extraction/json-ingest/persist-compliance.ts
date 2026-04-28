@@ -82,6 +82,7 @@ export async function persistComplianceSections(
   sections: Record<string, Record<string, unknown> | null>,
   reportPeriodId: string,
   dealId: string,
+  profileId: string,
   rawInput: unknown,
 ): Promise<{ counts: Record<string, number> }> {
   const normalized = normalizeSectionResults(sections, reportPeriodId, dealId);
@@ -183,16 +184,47 @@ export async function persistComplianceSections(
   }
   counts.tranche_snapshots = snapshotCount;
 
-  // Payment history
-  if (normalized.paymentHistory.length > 0) {
-    await query(`DELETE FROM clo_payment_history WHERE source_period_id = $1 OR last_seen_period_id = $1`, [reportPeriodId]);
-    const rows = normalized.paymentHistory.map((r) => ({
-      ...r,
-      source_period_id: reportPeriodId,
-      last_seen_period_id: reportPeriodId,
-    }));
-    counts.payment_history = await batchInsert("clo_payment_history", rows);
+  // Payment history — mirrors runner.ts:1141-1208 (upsert on (profile_id,
+  // class_name, payment_date) with extracted_value snapshot). Cannot use
+  // batchInsert here: clo_payment_history requires profile_id + extracted_value
+  // (NOT NULL) and has snake_case columns, while normalized rows are camelCase
+  // and lack profile_id/extracted_value. Earlier batchInsert path silently
+  // dropped every row on column-name mismatch.
+  let phCount = 0;
+  for (const row of normalized.paymentHistory) {
+    await query(
+      `INSERT INTO clo_payment_history (
+         profile_id, class_name, payment_date, period, par_commitment, factor,
+         interest_paid, principal_paid, cashflow, ending_balance,
+         interest_shortfall, accum_interest_shortfall,
+         extracted_value, source_period_id, last_seen_period_id
+       )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14)
+       ON CONFLICT (profile_id, class_name, payment_date) DO UPDATE SET
+         period = EXCLUDED.period,
+         par_commitment = EXCLUDED.par_commitment,
+         factor = EXCLUDED.factor,
+         interest_paid = EXCLUDED.interest_paid,
+         principal_paid = EXCLUDED.principal_paid,
+         cashflow = EXCLUDED.cashflow,
+         ending_balance = EXCLUDED.ending_balance,
+         interest_shortfall = EXCLUDED.interest_shortfall,
+         accum_interest_shortfall = EXCLUDED.accum_interest_shortfall,
+         extracted_value = EXCLUDED.extracted_value,
+         source_period_id = EXCLUDED.source_period_id,
+         last_seen_period_id = EXCLUDED.last_seen_period_id,
+         updated_at = NOW()`,
+      [
+        profileId, row.className, row.paymentDate, row.period, row.parCommitment, row.factor,
+        row.interestPaid, row.principalPaid, row.cashflow, row.endingBalance,
+        row.interestShortfall, row.accumInterestShortfall,
+        JSON.stringify(row),
+        reportPeriodId,
+      ],
+    );
+    phCount++;
   }
+  counts.payment_history = phCount;
 
   // Final UPDATE on clo_report_periods
   await query(

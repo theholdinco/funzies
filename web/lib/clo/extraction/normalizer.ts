@@ -468,6 +468,15 @@ export function normalizeSectionResults(
         if ((name.includes("was") || name.includes("weighted average spread") || (name.includes("floating") && name.includes("spread"))) && ps.wac_spread == null) ps.wac_spread = val;
         if (name.includes("diversity") && ps.diversity_score == null) ps.diversity_score = val;
         if (name.includes("recovery")) {
+          // F4 canary — recovery rates are stored as percent (30-80 typical).
+          // A value in (0,1] smells like a decimal that wasn't ×100'd at
+          // extraction; >100 is impossible. Warn but don't auto-correct since
+          // the field has no engine consumer today.
+          if (val > 0 && val <= 1) {
+            console.warn(`[normalizer] recovery rate canary: agency="${agency || "n/a"}" name="${t.testName}" value=${val} smells like decimal — expected percent (30-80 typical). Check extraction unit.`);
+          } else if (val > 100) {
+            console.warn(`[normalizer] recovery rate canary: agency="${agency || "n/a"}" name="${t.testName}" value=${val} exceeds 100% — extraction may have multiplied a percent by 100.`);
+          }
           if (isMoodys && ps.wa_moodys_recovery == null) ps.wa_moodys_recovery = val;
           else if (isSp && ps.wa_sp_recovery == null) ps.wa_sp_recovery = val;
           else if (isFitch && ps.wa_fitch_recovery == null) ps.wa_fitch_recovery = val;

@@ -715,6 +715,21 @@ export function resolveWaterfallInputs(
     warnings.push({ field: "poolSummary.totalPar", message: "Total par is 0 — no pool summary data", severity: "error" });
   }
 
+  // F3 canary — extracted pool.pct* fields are silent-null when extraction
+  // misses them; resolver back-fills from concentrations. Loud-warn when
+  // upstream extraction missed >2 of 7 to surface partial-extraction drift.
+  const rawPctNullCount = [
+    pool?.pctFixedRate, pool?.pctCovLite, pool?.pctBonds, pool?.pctCccAndBelow,
+    pool?.pctSeniorSecured, pool?.pctSecondLien, pool?.pctCurrentPay,
+  ].filter((v) => v == null).length;
+  if (rawPctNullCount > 2) {
+    warnings.push({
+      field: "poolSummary.pct*",
+      message: `${rawPctNullCount}/7 pool composition pct fields null in upstream extraction; resolver re-derived from concentrations. Verify ingest is reading the concentration table correctly.`,
+      severity: "warn",
+    });
+  }
+
   // --- Triggers ---
   const eodConstraint =
     (constraints as unknown as { eventOfDefaultParValueTest?: { required_ratio_pct?: number; source_pages?: number[]; source_condition?: string } | null })

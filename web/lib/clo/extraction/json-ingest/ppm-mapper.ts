@@ -32,6 +32,32 @@ function mapTransactionOverview(ppm: PpmJson): Record<string, unknown> {
 
 function mapCapitalStructure(ppm: PpmJson): Record<string, unknown> {
   const tranches = ppm.section_3_capital_structure.tranches;
+
+  // section_7_interest_mechanics.interest_deferral is keyed by snake_case base
+  // class (class_a, class_b, ...). Sub-classes (B-1, B-2) inherit from base.
+  // Subordinated has "n/a" — residual notes don't accrue/defer like rated notes,
+  // so we map that to false (not deferrable in the rated-note sense).
+  const deferralBlock = (ppm as unknown as { section_7_interest_mechanics?: { interest_deferral?: Record<string, { deferral_permitted: boolean | string }> } })
+    .section_7_interest_mechanics?.interest_deferral ?? {};
+  const deferrableForClass = (className: string): boolean | undefined => {
+    const lc = className.toLowerCase().trim();
+    if (/sub|subordinated|residual|equity|income/.test(lc)) {
+      const sub = deferralBlock.subordinated_notes?.deferral_permitted;
+      if (sub === true) return true;
+      if (sub === false) return false;
+      // "n/a" or missing → not deferrable in the rated sense
+      return false;
+    }
+    // Base class: "Class B-1" → "b" → look up "class_b"
+    const stripped = lc.replace(/^class\s+/, "");
+    const baseLetter = stripped.match(/^([a-z])/)?.[1];
+    if (!baseLetter) return undefined;
+    const entry = deferralBlock[`class_${baseLetter}`];
+    if (!entry) return undefined;
+    if (typeof entry.deferral_permitted === "boolean") return entry.deferral_permitted;
+    return undefined;
+  };
+
   return {
     capitalStructure: tranches.map((t: PpmJsonTranche) => {
       const spreadBps =
@@ -52,6 +78,7 @@ function mapCapitalStructure(ppm: PpmJson): Record<string, unknown> {
           moodys: t.moodys ?? undefined,
         },
         isSubordinated: isSub,
+        deferrable: deferrableForClass(t.class),
         maturityDate: parseFlexibleDate(ppm.section_3_capital_structure.common_maturity as string | undefined) ?? undefined,
       };
     }),

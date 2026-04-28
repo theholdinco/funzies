@@ -29,11 +29,14 @@ function num(v: unknown): number | null {
   return isNaN(n) ? null : n;
 }
 
-// Merge the legacy equity_inception_data JSONB blob with rows from
-// clo_payment_history for the Sub tranche. Dates present in payment_history
-// win; dates only in the blob (legacy manual edits) are preserved.
-// purchaseDate and purchasePriceCents always come from the blob — they are
-// user-entered and not extractable.
+// Resolve equity_inception_data: when clo_payment_history has rows for the Sub
+// tranche, those rows are the truth (Intex / compliance-ingest derived) and
+// blob.payments is ignored entirely — historically the blob held stale,
+// partially-entered values that drifted from the trustee/Intex source.
+// purchaseDate and purchasePriceCents are kept from the blob — they are
+// user-entered and not extractable. With no payment_history rows we fall
+// back to the legacy blob to avoid regressing deals that haven't ingested
+// compliance yet.
 async function mergeEquityInceptionData(
   profileId: string,
   blob: EquityInceptionData | null,
@@ -60,15 +63,10 @@ async function mergeEquityInceptionData(
     distribution: p.cashflow !== null ? parseFloat(p.cashflow) : null,
   }));
 
-  const historyDates = new Set(historyPayments.map(p => p.date));
-  const blobPaymentsNotInHistory = (blob?.payments ?? []).filter(p => !historyDates.has(p.date));
-  const mergedPayments = [...historyPayments, ...blobPaymentsNotInHistory]
-    .sort((a, b) => a.date.localeCompare(b.date));
-
   return {
     purchaseDate: blob?.purchaseDate ?? null,
     purchasePriceCents: blob?.purchasePriceCents ?? null,
-    payments: mergedPayments,
+    payments: historyPayments,
   };
 }
 

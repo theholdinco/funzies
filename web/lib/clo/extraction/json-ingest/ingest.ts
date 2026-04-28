@@ -18,7 +18,6 @@ import {
   waterfallSchema,
   tradingActivitySchema,
   accountBalancesSchema,
-  interestAccrualSchema,
   interestAccrualDetailSchema,
   defaultDetailSchema,
   supplementarySchema,
@@ -57,7 +56,6 @@ const COMPLIANCE_SCHEMAS: Record<string, SchemaLike> = {
   concentration_tables: concentrationSchema,
   waterfall: waterfallSchema,
   trading_activity: tradingActivitySchema,
-  interest_accrual: interestAccrualSchema,
   account_balances: accountBalancesSchema,
   default_detail: defaultDetailSchema,
   supplementary: supplementarySchema,
@@ -219,7 +217,7 @@ export async function ingestComplianceJson(
   const reportPeriodId = periods[0].id;
 
   console.log(`[json-ingest:compliance] starting persist for reportPeriodId=${reportPeriodId} dealId=${dealId}`);
-  const result = await persistComplianceSections(sections, reportPeriodId, dealId, compliance);
+  const result = await persistComplianceSections(sections, reportPeriodId, dealId, profileId, compliance);
   console.log(`[json-ingest:compliance] persist done, counts=${JSON.stringify(result.counts)}`);
 
   // Read-after-write to prove pool_summary + compliance_tests actually landed.

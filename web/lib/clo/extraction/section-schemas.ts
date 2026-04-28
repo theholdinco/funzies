@@ -316,6 +316,11 @@ export const interestAccrualSchema = z.object({
 export type InterestAccrual = z.infer<typeof interestAccrualSchema>;
 
 export const accountBalancesSchema = z.object({
+  // asOfDate disambiguates determination-date snapshots from payment-date
+  // flows when both land in the same report. Trustee accounts are typically
+  // reported as-of the determination date; downstream consumers must not
+  // assume balanceAmount is at payment date.
+  asOfDate: z.string().nullable().optional(),
   accounts: z.array(z.object({
     accountName: z.string(),
     accountType: z.string().nullable().optional(),
