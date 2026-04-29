@@ -1,88 +1,175 @@
 import React from "react";
-import type { PeriodResult, ProjectionInputs } from "@/lib/clo/projection";
+import type { PeriodResult } from "@/lib/clo/projection";
 import { formatAmount } from "./helpers";
+import { buildPeriodTraceLines, isAccelerationPeriod, type PeriodTraceLine } from "./period-trace-lines";
 
-export function PeriodTrace({ period, inputs }: { period: PeriodResult; inputs: ProjectionInputs }) {
-  const beginPar = period.beginningPar;
-  const trusteeFee = beginPar * (inputs.trusteeFeeBps / 10000) / 4;
-  const seniorFee = beginPar * (inputs.seniorFeePct / 100) / 4;
-  const hedgeCost = beginPar * (inputs.hedgeCostBps / 10000) / 4;
-  const subFee = beginPar * (inputs.subFeePct / 100) / 4;
-  const availableAfterSenior = period.interestCollected - trusteeFee - seniorFee - hedgeCost;
+/**
+ * Renders the per-period waterfall trace using engine-emitted values.
+ *
+ * Architectural contract: this component MUST NOT compute semantic
+ * numbers. All amounts come from the helper (`buildPeriodTraceLines`)
+ * which reads engine output directly. The Phase 6 AST enforcement test
+ * forbids `inputs.<member>` arithmetic in this file.
+ *
+ * See CLAUDE.md § Engine ↔ UI separation.
+ */
+export function PeriodTrace({ period }: { period: PeriodResult }) {
+  const lines = buildPeriodTraceLines(period);
+  const acceleration = isAccelerationPeriod(lines);
 
-  const principalAvailable = Math.max(0, period.prepayments + period.scheduledMaturities + period.recoveries - period.reinvestment);
-  const equityFromInterest = Math.max(0, period.equityDistribution - principalAvailable);
-
-  const lineStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", padding: "0.2rem 0", fontSize: "0.72rem", fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" };
-  const indent: React.CSSProperties = { paddingLeft: "1.2rem" };
-  const labelStyle: React.CSSProperties = { color: "var(--color-text-muted)" };
-  const feeColor = "var(--color-low)";
-  const eqColor = "var(--color-high)";
-  const dividerStyle: React.CSSProperties = { borderTop: "1px solid var(--color-border-light)", margin: "0.3rem 0" };
+  const interestLines = lines.filter((l) => l.section === "interest");
+  const principalLines = lines.filter((l) => l.section === "principal");
+  const summaryLines = lines.filter((l) => l.section === "summary");
 
   return (
-    <div style={{ padding: "0.75rem 1rem", background: "var(--color-surface-alt, var(--color-surface))", borderTop: "1px dashed var(--color-border-light)", fontSize: "0.72rem" }}>
-      <div style={{ fontWeight: 600, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--color-text-muted)", marginBottom: "0.4rem" }}>Interest Waterfall</div>
-      <div style={lineStyle}><span>Interest Collected</span><span>{formatAmount(period.interestCollected)}</span></div>
-      <div style={{ ...lineStyle, ...indent }}><span style={{ color: feeColor }}>Trustee/Admin ({inputs.trusteeFeeBps} bps)</span><span style={{ color: feeColor }}>-{formatAmount(trusteeFee)}</span></div>
-      <div style={{ ...lineStyle, ...indent }}><span style={{ color: feeColor }}>Senior Mgmt Fee ({inputs.seniorFeePct}%)</span><span style={{ color: feeColor }}>-{formatAmount(seniorFee)}</span></div>
-      {hedgeCost > 0 && <div style={{ ...lineStyle, ...indent }}><span style={{ color: feeColor }}>Hedge Costs ({inputs.hedgeCostBps} bps)</span><span style={{ color: feeColor }}>-{formatAmount(hedgeCost)}</span></div>}
-      <div style={{ ...lineStyle, ...indent, fontWeight: 500 }}><span>Available for tranches</span><span>{formatAmount(Math.max(0, availableAfterSenior))}</span></div>
+    <div style={containerStyle}>
+      {acceleration && <AccelerationHeader />}
 
-      {period.trancheInterest.map((t) => {
-        // Show Class X amort alongside its interest (both paid from interest waterfall)
-        const principalEntry = period.tranchePrincipal.find((p) => p.className === t.className);
-        const isAmortising = principalEntry && principalEntry.paid > 0 && inputs.tranches.find((tr) => tr.className === t.className)?.isAmortising;
-        return (
-          <React.Fragment key={t.className}>
-            <div style={{ ...lineStyle, ...indent }}>
-              <span style={labelStyle}>{t.className} interest{t.paid < t.due ? ` (shortfall: ${formatAmount(t.due - t.paid)})` : ""}</span>
-              <span>{t.paid > 0 ? `-${formatAmount(t.paid)}` : "\u2014"}</span>
-            </div>
-            {isAmortising && (
-              <div style={{ ...lineStyle, ...indent }}>
-                <span style={labelStyle}>{t.className} amort (from interest)</span>
-                <span>-{formatAmount(principalEntry!.paid)}</span>
-              </div>
-            )}
-          </React.Fragment>
-        );
-      })}
+      <SectionHeader>Interest Waterfall</SectionHeader>
+      {interestLines.map((line, i) => (
+        <Line key={`i-${i}`} line={line} />
+      ))}
+
+      <SectionHeader style={{ marginTop: "0.75rem" }}>Principal Waterfall</SectionHeader>
+      {principalLines.map((line, i) => (
+        <Line key={`p-${i}`} line={line} />
+      ))}
+
+      {summaryLines.length > 0 && (
+        <>
+          <div style={dividerStyle} />
+          {summaryLines.map((line, i) => (
+            <Line key={`s-${i}`} line={line} />
+          ))}
+        </>
+      )}
 
       {(period.ocTests.length > 0 || period.icTests.length > 0) && (
-        <div style={{ ...lineStyle, ...indent, flexWrap: "wrap", gap: "0.4rem" }}>
+        <div style={{ ...lineStyle, ...indentStyle(1), flexWrap: "wrap", gap: "0.4rem", marginTop: "0.4rem" }}>
           {period.ocTests.map((t) => (
             <span key={`oc-${t.className}`} style={{ color: t.passing ? "var(--color-high)" : "var(--color-low)", fontSize: "0.68rem" }}>
-              {t.passing ? "\u2713" : "\u2717"} {t.className} OC {t.actual.toFixed(1)}%
+              {t.passing ? "✓" : "✗"} {t.className} OC {t.actual.toFixed(1)}%
             </span>
           ))}
           {period.icTests.map((t) => (
             <span key={`ic-${t.className}`} style={{ color: t.passing ? "var(--color-high)" : "var(--color-low)", fontSize: "0.68rem" }}>
-              {t.passing ? "\u2713" : "\u2717"} {t.className} IC {t.actual.toFixed(1)}%
+              {t.passing ? "✓" : "✗"} {t.className} IC {t.actual.toFixed(1)}%
             </span>
           ))}
         </div>
       )}
-
-      <div style={{ ...lineStyle, ...indent }}><span style={{ color: feeColor }}>Sub Mgmt Fee ({inputs.subFeePct}%)</span><span style={{ color: feeColor }}>-{formatAmount(subFee)}</span></div>
-      <div style={dividerStyle} />
-      <div style={{ ...lineStyle, fontWeight: 600 }}><span style={{ color: eqColor }}>Equity (from interest)</span><span style={{ color: eqColor }}>{formatAmount(equityFromInterest)}</span></div>
-
-      <div style={{ fontWeight: 600, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--color-text-muted)", marginTop: "0.75rem", marginBottom: "0.4rem" }}>Principal Waterfall</div>
-      <div style={lineStyle}><span>Prepayments</span><span>{formatAmount(period.prepayments)}</span></div>
-      <div style={lineStyle}><span>Maturities</span><span>{formatAmount(period.scheduledMaturities)}</span></div>
-      <div style={lineStyle}><span>Recoveries</span><span>{formatAmount(period.recoveries)}</span></div>
-      {period.reinvestment > 0 && <div style={{ ...lineStyle, ...indent }}><span style={{ color: feeColor }}>Reinvested</span><span style={{ color: feeColor }}>-{formatAmount(period.reinvestment)}</span></div>}
-      {period.tranchePrincipal.filter((t) => {
-        if (t.paid <= 0) return false;
-        // Skip amortising tranches — their principal is already shown under Interest Waterfall
-        const trancheInput = inputs.tranches.find((tr) => tr.className === t.className);
-        return !trancheInput?.isAmortising;
-      }).map((t) => (
-        <div key={t.className} style={{ ...lineStyle, ...indent }}><span style={labelStyle}>{t.className} principal</span><span>-{formatAmount(t.paid)}</span></div>
-      ))}
-      <div style={dividerStyle} />
-      <div style={{ ...lineStyle, fontWeight: 700 }}><span style={{ color: eqColor }}>Total Equity Distribution</span><span style={{ color: eqColor }}>{formatAmount(period.equityDistribution)}</span></div>
     </div>
   );
 }
+
+function Line({ line }: { line: PeriodTraceLine }) {
+  // Hide rows where the engine emits null (e.g. availableForTranches under
+  // acceleration). Acceleration header is rendered separately at the top.
+  if (line.amount === null) return null;
+
+  const color =
+    line.severity === "fee" ? "var(--color-low)" :
+    line.severity === "warn" ? "var(--color-low)" :
+    line.severity === "equity" ? "var(--color-high)" :
+    undefined;
+
+  const isOutflow = line.outflow && line.amount > 0;
+  const formatted = isOutflow ? `-${formatAmount(line.amount)}` : formatAmount(line.amount);
+
+  const fontWeight = line.severity === "equity" ? 600 : undefined;
+
+  const rowStyle: React.CSSProperties = {
+    ...lineStyle,
+    ...indentStyle(line.indent ?? 0),
+    ...(line.muted ? mutedStyle : {}),
+    fontWeight,
+  };
+  const labelStyleResolved: React.CSSProperties = {
+    color: color ?? (line.indent ? "var(--color-text-muted)" : undefined),
+  };
+  const amountStyleResolved: React.CSSProperties = { color };
+
+  return (
+    <div style={rowStyle}>
+      <span style={labelStyleResolved}>
+        {line.ppmStep && <span style={ppmStepStyle}>({line.ppmStep})</span>}
+        {line.label}
+      </span>
+      <span style={amountStyleResolved}>{formatted}</span>
+    </div>
+  );
+}
+
+function AccelerationHeader() {
+  return (
+    <div style={accelHeaderStyle}>
+      <strong>Accelerated distribution active.</strong>{" "}
+      Interest and principal pool together, with tranches paid sequentially by
+      seniority. Senior-expenses cap is suspended (PPM § 10(b)).
+    </div>
+  );
+}
+
+function SectionHeader({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{
+      fontWeight: 600,
+      fontSize: "0.68rem",
+      textTransform: "uppercase",
+      letterSpacing: "0.04em",
+      color: "var(--color-text-muted)",
+      marginBottom: "0.4rem",
+      ...style,
+    }}>{children}</div>
+  );
+}
+
+const containerStyle: React.CSSProperties = {
+  padding: "0.75rem 1rem",
+  background: "var(--color-surface-alt, var(--color-surface))",
+  borderTop: "1px dashed var(--color-border-light)",
+  fontSize: "0.72rem",
+};
+
+const lineStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  padding: "0.2rem 0",
+  fontSize: "0.72rem",
+  fontFamily: "var(--font-mono)",
+  fontVariantNumeric: "tabular-nums",
+};
+
+function indentStyle(level: 0 | 1 | 2): React.CSSProperties {
+  if (level === 0) return {};
+  return { paddingLeft: level === 1 ? "1.2rem" : "2.4rem" };
+}
+
+const mutedStyle: React.CSSProperties = {
+  opacity: 0.55,
+  fontStyle: "italic",
+  fontSize: "0.68rem",
+};
+
+const ppmStepStyle: React.CSSProperties = {
+  fontSize: "0.62rem",
+  fontWeight: 500,
+  marginRight: "0.4rem",
+  opacity: 0.65,
+  fontFamily: "var(--font-mono)",
+};
+
+const dividerStyle: React.CSSProperties = {
+  borderTop: "1px solid var(--color-border-light)",
+  margin: "0.3rem 0",
+};
+
+const accelHeaderStyle: React.CSSProperties = {
+  padding: "0.5rem 0.75rem",
+  marginBottom: "0.6rem",
+  background: "var(--color-warning-bg, rgba(255, 193, 7, 0.08))",
+  border: "1px solid var(--color-warning-border, rgba(255, 193, 7, 0.4))",
+  borderRadius: "4px",
+  fontSize: "0.68rem",
+  lineHeight: 1.4,
+};

@@ -1427,3 +1427,87 @@ describe("Structural Invariants", () => {
     }
   });
 });
+
+// ─── PR1 / Phase 1: PeriodResult.principalProceeds ──────────────────────────
+//
+// Engine emits the aggregate prepayments + scheduledMaturities + recoveries
+// so the UI never sums these three fields itself. See CLAUDE.md
+// § Engine ↔ UI separation.
+describe("PeriodResult.principalProceeds", () => {
+  it("equals prepayments + scheduledMaturities + recoveries on every period", () => {
+    const result = runProjection(makeSimpleInputs({
+      defaultRatesByRating: uniformRates(2),
+      cprPct: 10,
+      recoveryPct: 60,
+      recoveryLagMonths: 6,
+    }));
+
+    for (const p of result.periods) {
+      expect(p.principalProceeds).toBeCloseTo(
+        p.prepayments + p.scheduledMaturities + p.recoveries,
+        -2,
+      );
+    }
+  });
+});
+
+// ─── PR1 / Phase 1: ProjectionInitialState.equityBookValue + equityWipedOut ─
+//
+// Single canonical "what equity is worth right now" value. Same number used
+// internally as forward-IRR cost basis (projection.ts line ~1033) and
+// externally as the partner-facing book-value card. UI must consume from
+// initialState — see CLAUDE.md § Engine ↔ UI separation.
+describe("ProjectionInitialState.equityBookValue / equityWipedOut", () => {
+  it("solvent deal: equityBookValue = totalAssets − debt > 0; equityWipedOut = false", () => {
+    const inputs = makeSimpleInputs({ initialPrincipalCash: 0 });
+    const result = runProjection(inputs);
+
+    const totalLoans = inputs.loans!
+      .filter((l) => !l.isDelayedDraw)
+      .reduce((s, l) => s + l.parBalance, 0);
+    const debt = inputs.tranches
+      .filter((t) => !t.isIncomeNote)
+      .reduce((s, t) => s + t.currentBalance, 0);
+    const expected = Math.max(0, totalLoans + (inputs.initialPrincipalCash ?? 0) - debt);
+
+    expect(result.initialState.equityBookValue).toBeCloseTo(expected, -2);
+    expect(result.initialState.equityWipedOut).toBe(false);
+    expect(result.initialState.equityBookValue).toBeGreaterThan(0);
+  });
+
+  it("signed overdraft: equityBookValue subtracts negative principalAccountCash", () => {
+    const overdraft = -1_000_000;
+    const inputs = makeSimpleInputs({ initialPrincipalCash: overdraft });
+    const result = runProjection(inputs);
+
+    const totalLoans = inputs.loans!
+      .filter((l) => !l.isDelayedDraw)
+      .reduce((s, l) => s + l.parBalance, 0);
+    const debt = inputs.tranches
+      .filter((t) => !t.isIncomeNote)
+      .reduce((s, t) => s + t.currentBalance, 0);
+    const expected = Math.max(0, totalLoans + overdraft - debt);
+
+    expect(result.initialState.equityBookValue).toBeCloseTo(expected, -2);
+    expect(result.initialState.equityWipedOut).toBe(false);
+  });
+
+  it("balance-sheet insolvent (debt > assets): equityBookValue = 0; equityWipedOut = true; equityIrr = null", () => {
+    const inputs = makeSimpleInputs({
+      tranches: [
+        // Total non-equity debt 200M > 100M loan assets → insolvent
+        { className: "A", currentBalance: 150_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "J", currentBalance: 50_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: true },
+        { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
+      ],
+      ocTriggers: [],
+      icTriggers: [],
+    });
+    const result = runProjection(inputs);
+
+    expect(result.initialState.equityBookValue).toBe(0);
+    expect(result.initialState.equityWipedOut).toBe(true);
+    // calculateIrr returns null on all-non-negative cashflows (-0 + positives).
+    expect(result.equityIrr).toBeNull();
+  });
+});

@@ -54,6 +54,7 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-10 — baseRate pre-fill gap **(CLOSED D3)**](#ki-10)
 - [KI-11 — Senior / sub management fee rate pre-fill **(CLOSED D3; fee-base tracked as KI-12a)**](#ki-11)
 - [KI-22 — Fixture-regeneration test was a spot-check for 20 days **(CLOSED Sprint 4)**](#ki-22)
+- [KI-25 — UI back-derivation of engine values (PeriodTrace + bookValue) **(CLOSED 2026-04-29)**](#ki-25)
 
 ---
 
@@ -628,4 +629,25 @@ Both drifts had been invisible for ~20 days of active development. Every "fixtur
 **Alternative considered:** Make NR fallback a user input so the partner can override (e.g., when managers have obtained shadow ratings). Not done in Sprint 3 — adds UI surface without clear demand. Revisit if a deal ships NR loans with documented shadow ratings.
 
 **Test:** `c2-quality-forward-projection.test.ts > "every period has a qualityMetrics object with finite numbers"` covers the path. Explicit NR-convention test could be added when a fixture with meaningful NR concentration arrives.
+
+---
+
+<a id="ki-25"></a>
+### [KI-25] UI back-derivation of engine values — CLOSED (2026-04-29)
+
+**Incident reference:** April 2026 "missing €1.80M of interest residual" investigation. Two confidently-wrong diagnoses across two LLM agents and the user before root cause was identified.
+
+**Pre-fix behavior:** `web/app/clo/waterfall/PeriodTrace.tsx:13-14` back-derived `equityFromInterest` as `Math.max(0, period.equityDistribution - principalAvailable)` from totals. When `principalAvailable` exceeded the residual, this silently dropped clause-DD distribution from the displayed trace. A second instance: `ProjectionModel.tsx:374` independently re-computed `bookValue` with the same formula the engine emits — two parallel implementations of the same calculation.
+
+**Quantitative magnitude:** UI displayed €0 instead of €1.80M of equity-from-interest in Q1 of Euro XV. Engine output was correct throughout; the UI was lying about which values came from where. No engine number was wrong.
+
+**Fix:**
+1. `period.stepTrace.equityFromInterest` and `equityFromPrincipal` now consumed directly by the UI via `web/app/clo/waterfall/period-trace-lines.ts` (pure helper). `PeriodTrace.tsx` is now a thin renderer over engine output.
+2. `result.initialState.equityBookValue` and `result.initialState.equityWipedOut` added to engine output. UI reads these directly; the parallel UI computation deleted.
+3. Service module `web/lib/clo/services/inception-irr.ts` extracted from inline UI useMemo — accepts engine output + user inputs, returns IRR result. Pure-function, unit-tested.
+4. AST enforcement test `lib/clo/__tests__/architecture-boundary.test.ts` codifies four anti-patterns (UI arithmetic on `inputs.*`, back-derivation from `period.equityDistribution`, raw reads of `resolved.principalAccountCash` in arithmetic, re-deriving `Math.max(0, loans - debt)` book-value formula). Per-occurrence opt-out via `// arch-boundary-allow: <ruleId>`.
+
+**Path to close:** Closed. See `CLAUDE.md § Engine ↔ UI separation` for the layering rules and `docs/plans/2026-04-29-engine-ui-separation-plan.md` for the full implementation history.
+
+**Tests:** `app/clo/waterfall/__tests__/period-trace-lines.test.ts` (engineField completeness + per-row engine equality + acceleration handling). `lib/clo/__tests__/inception-irr.test.ts` (8 cases: default anchor, user override, counterfactual, terminal, empty, subNotePar≤0, equityWipedOut). `lib/clo/__tests__/architecture-boundary.test.ts` (regression-prevention).
 

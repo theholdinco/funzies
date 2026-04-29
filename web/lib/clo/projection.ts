@@ -199,6 +199,21 @@ export interface PeriodStepTrace {
   adminFeesPaid: number;
   seniorMgmtFeePaid: number;
   hedgePaymentPaid: number;
+  /** Interest residual after PPM steps (A.i)→(F): `interestCollected` minus
+   *  taxes, issuerProfit, trustee+admin (capped portions only), seniorMgmt,
+   *  hedge. The amount entering the tranche-interest pari-passu loop (PPM
+   *  step (G) onward).
+   *
+   *  NULL under acceleration mode (PPM 10(b)): senior expenses cap is removed
+   *  and interest+principal pool together for sequential P+I distribution by
+   *  seniority; "available for tranches" doesn't have a coherent meaning. UI
+   *  must hide the row when null AND render an explanatory header.
+   *
+   *  See CLAUDE.md § Engine ↔ UI separation: the UI MUST consume this field
+   *  directly rather than recomputing `interestCollected − fees`. The
+   *  original PeriodTrace incident did exactly that and silently dropped
+   *  clauses A.i, A.ii, C. */
+  availableForTranches: number | null;
   subMgmtFeePaid: number;
   incentiveFeeFromInterest: number;
   incentiveFeeFromPrincipal: number;
@@ -252,6 +267,10 @@ export interface PeriodResult {
   prepayments: number;
   scheduledMaturities: number;
   recoveries: number;
+  /** Aggregate principal proceeds for the period: prepayments + scheduledMaturities
+   *  + recoveries. Emitted from the engine so the UI never sums these three fields
+   *  itself. See CLAUDE.md § Engine ↔ UI separation. */
+  principalProceeds: number;
   reinvestment: number;
   endingPar: number;
   interestCollected: number;
@@ -307,6 +326,21 @@ export interface ProjectionInitialState {
   /** B1 — Event of Default Par Value Test at T=0. Null if deal has no
    *  separately-tracked EoD test (legacy fixture / test scenario). */
   eodTest: EventOfDefaultTestResult | null;
+  /** Total non-DDTL non-defaulted loan par + signed principalAccountCash −
+   *  non-equity tranche balance, floored at 0. THE canonical "what equity
+   *  is worth right now" value — same number used internally as the equity
+   *  cost basis for forward IRR (line ~1014: `equityCashFlows.push(-equityInvestment)`)
+   *  and externally as the partner-facing book-value card and the inception-IRR
+   *  terminal. Single source of truth; UI must read this field, not recompute it.
+   *
+   *  See CLAUDE.md § Engine ↔ UI separation. */
+  equityBookValue: number;
+  /** True iff totalAssets ≤ totalDebtOutstanding at t=0 — i.e., the line-995
+   *  floor fired and equityCashFlows[0] = -0. The deal is balance-sheet
+   *  insolvent; calculateIrr() returns null on the all-non-negative series.
+   *  UI must label this state ("Deal is balance-sheet insolvent; IRR not
+   *  meaningful") rather than show "N/A". */
+  equityWipedOut: boolean;
 }
 
 export interface ProjectionResult {
@@ -992,7 +1026,24 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   const totalDebtOutstanding = debtTranches.reduce((s, t) => s + t.currentBalance, 0);
   // Equity investment: user-specified entry price if provided, otherwise balance-sheet implied value.
   const totalAssets = hasLoans ? loanTotal + initialPrincipalCash : initialPar;
-  const bookValue = Math.max(0, totalAssets - totalDebtOutstanding);
+  // The Math.max(0, totalAssets - totalDebtOutstanding) here is an
+  // ACCOUNTING-CONVENTION floor (Phase 8 triage category β): negative
+  // balance-sheet equity is reported as zero by convention. NOT a heuristic-
+  // disguised-as-value (the once-proposed `q1Cash` floor at line ~1316 was
+  // that, and was rejected because it manufactured fake alpha by ignoring
+  // the determination-date overdraft).
+  //
+  // When this floor fires, equityCashFlows[0] = -0 and calculateIrr() returns
+  // null on the all-non-negative series. Surfaced via initialState.equityWipedOut
+  // so the UI can label this state rather than show "N/A".
+  //
+  // Note: the negative principalAccountCash IS retained inside totalAssets —
+  // the determination-date overdraft is a real claim against equity at t=0.
+  // Q1's principal-collection netting at line ~1316 uses the same signed
+  // value; both are correct; floored variants would be wrong.
+  const equityBookValueRaw = totalAssets - totalDebtOutstanding;
+  const bookValue = Math.max(0, equityBookValueRaw);
+  const equityWipedOut = equityBookValueRaw <= 0;
   const equityInvestment = inputs.equityEntryPrice != null && inputs.equityEntryPrice > 0
     ? inputs.equityEntryPrice
     : bookValue;
@@ -1094,7 +1145,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       );
     }
 
-    return { poolPar, ocNumerator, ocTests, icTests, eodTest };
+    return { poolPar, ocNumerator, ocTests, icTests, eodTest, equityBookValue: bookValue, equityWipedOut };
   })();
 
   // B2 — Post-acceleration mode flag. Persists across periods once set (PPM
@@ -1426,6 +1477,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       adminOverflow: 0,
     };
     const totalSeniorExpenses = sumSeniorExpensesPreOverflow(seniorExpenseBreakdown);
+    // Heuristic-as-value triage (Phase 8): category β — accounting convention.
+    // Used as the IC test denominator base (line ~1820); when senior expenses
+    // exceed interest collected (extreme uncapped-fee scenarios), the denominator
+    // is reported as 0, not negative. Cap mechanics upstream (cappedRatio above)
+    // make this defensive in practice.
     const interestAfterFees = Math.max(0, interestCollected - totalSeniorExpenses);
 
     const bopTrancheBalances: Record<string, number> = {};
@@ -1528,6 +1584,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         prepayments,
         scheduledMaturities,
         recoveries,
+        principalProceeds: prepayments + scheduledMaturities + recoveries,
         reinvestment: 0,
         endingPar,
         interestCollected,
@@ -1572,6 +1629,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           adminOverflowPaid: 0,
           seniorMgmtFeePaid: accelResult.seniorExpensesPaid.seniorMgmtFee,
           hedgePaymentPaid: accelResult.seniorExpensesPaid.hedgePayments,
+          // Acceleration mode (PPM 10(b)): senior expenses cap is removed
+          // and interest+principal pool together for sequential P+I
+          // distribution. "Available for tranches" doesn't have a coherent
+          // meaning here. UI hides the row + renders an explanatory header.
+          availableForTranches: null,
           subMgmtFeePaid: accelResult.subMgmtFeePaid,
           // Incentive fee collapsed into a single bucket under acceleration —
           // the executor returns one aggregated value (pre-residual), and the
@@ -1791,6 +1853,14 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       seniorExpenseBreakdown,
       availableInterest,
     ));
+
+    // Capture residual at this point for stepTrace.availableForTranches —
+    // the amount entering the tranche-interest pari-passu loop (PPM step G
+    // onward), before any tranche or OC-cure mutations. UI consumes this
+    // directly. See CLAUDE.md § Engine ↔ UI separation: the original
+    // PeriodTrace incident recomputed this from period × inputs and dropped
+    // clauses (A.i), (A.ii), (C).
+    const availableForTranches = availableInterest;
 
     // Step G (PPM): Class X amort + Class A interest are paid pro rata / pari passu.
     // Class X amort starts on the second payment date (q >= 2) per PPM definition.
@@ -2098,6 +2168,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       prepayments,
       scheduledMaturities,
       recoveries,
+      principalProceeds: prepayments + scheduledMaturities + recoveries,
       reinvestment,
       endingPar,
       beginningLiabilities,
@@ -2126,6 +2197,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         adminOverflowPaid,                                     // PPM (Z)
         seniorMgmtFeePaid: seniorExpenseBreakdown.seniorMgmt,
         hedgePaymentPaid: seniorExpenseBreakdown.hedge,
+        availableForTranches,
         subMgmtFeePaid: subFeeAmount,
         incentiveFeeFromInterest,
         incentiveFeeFromPrincipal,
@@ -2161,7 +2233,15 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     }
   }
 
-  const equityIrr = calculateIrr(equityCashFlows, 4);
+  // Explicit insolvency guard: if t=0 balance sheet is underwater, IRR is
+  // undefined regardless of subsequent cashflow series. The implicit chain
+  // (bookValue=0 → equityInvestment=0 → cf[0]=-0 → calculateIrr early-return
+  // on all-non-negative) holds today but depends on JS treating -0 >= 0 as
+  // true and on every downstream equity flow remaining non-negative. Make
+  // the contract explicit instead of inferring it.
+  const equityIrr = initialState.equityWipedOut
+    ? null
+    : calculateIrr(equityCashFlows, 4);
 
   return { periods, equityIrr, totalEquityDistributions, tranchePayoffQuarter, initialState };
 }

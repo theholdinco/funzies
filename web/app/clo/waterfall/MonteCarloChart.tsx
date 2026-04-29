@@ -181,7 +181,22 @@ export default function MonteCarloChart({ result, running, progress }: Props) {
         </div>
       )}
 
-      {result && (
+      {result && result.wipedOut && (
+        <div style={{
+          padding: "0.75rem 1rem",
+          border: "1px solid var(--color-low)",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--color-low-bg)",
+          fontSize: "0.8rem",
+          color: "var(--color-low)",
+          lineHeight: 1.5,
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>Monte Carlo not meaningful for insolvent deal.</div>
+          The deal is balance-sheet insolvent at t=0 (total debt exceeds total assets). Every scenario yields no positive equity IRR; percentiles would all be undefined. Run an entry-price override to model recovery scenarios from a non-zero cost basis.
+        </div>
+      )}
+
+      {result && !result.wipedOut && (
         <>
           {/* Percentile summary */}
           <div style={{

@@ -18,6 +18,10 @@ export interface MonteCarloResult {
   ocFailureByQuarter: { quarter: number; failurePct: number; byClass: Record<string, number> }[];
   peakOcFailurePct: number;
   medianEquityDistributions: number;
+  /** True when the deal is balance-sheet insolvent at t=0 (calibration's
+   *  initialState.equityWipedOut). Every scenario would produce equityIrr=null,
+   *  collapsing percentiles to -Infinity; we short-circuit instead. */
+  wipedOut: boolean;
 }
 
 function bernoulliDraw(survivingPar: number, hazardRate: number): number {
@@ -41,6 +45,23 @@ export function runMonteCarlo(
   // Use the maximum possible projection length so MC runs with different
   // default paths don't silently lose OC data for later quarters.
   const calibration = runProjection(inputs);
+
+  // Short-circuit insolvent deals: equityWipedOut is determined deterministically
+  // from t=0 balance sheet, so every scenario would yield equityIrr=null and
+  // percentiles would collapse to -Infinity. Surface the state explicitly.
+  if (calibration.initialState.equityWipedOut) {
+    return {
+      runCount: 0,
+      irrs: new Float64Array(0),
+      percentiles: { p5: NaN, p25: NaN, p50: NaN, p75: NaN, p95: NaN },
+      meanIrr: NaN,
+      ocFailureByQuarter: [],
+      peakOcFailurePct: 0,
+      medianEquityDistributions: 0,
+      wipedOut: true,
+    };
+  }
+
   const totalQuarters = Math.max(calibration.periods.length, inputs.maturityDate
     ? Math.max(1, quartersBetween(inputs.currentDate, inputs.maturityDate))
     : calibration.periods.length);
@@ -115,5 +136,6 @@ export function runMonteCarlo(
     ocFailureByQuarter,
     peakOcFailurePct,
     medianEquityDistributions: percentile(sortedDists, 0.50),
+    wipedOut: false,
   };
 }

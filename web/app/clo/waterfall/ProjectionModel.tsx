@@ -25,11 +25,11 @@ import HarnessPanel from "./HarnessPanel";
 import {
   runProjection,
   validateInputs,
-  calculateIrrFromDatedCashflows,
   type ProjectionInputs,
   type ProjectionResult,
   type LoanInput,
 } from "@/lib/clo/projection";
+import { computeInceptionIrr } from "@/lib/clo/services";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
 import { buildFromResolved, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED, defaultsFromResolved, defaultsFromIntex, diagnoseFeePrefill } from "@/lib/clo/build-projection-inputs";
 import type { IntexAssumptions } from "@/lib/clo/intex/parse-past-cashflows";
@@ -364,111 +364,6 @@ export default function ProjectionModel({
     };
   }, [resolved?.loans]);
 
-  // Equity position metrics
-  const equityMetrics = useMemo(() => {
-    if (!resolved) return null;
-    const subTranche = resolved.tranches.find(t => t.isIncomeNote);
-    const subPar = subTranche?.originalBalance ?? subTranche?.currentBalance ?? 0;
-    const totalLoans = resolved.loans.filter(l => !l.isDelayedDraw).reduce((s, l) => s + l.parBalance, 0);
-    const debt = resolved.tranches.filter(t => !t.isIncomeNote).reduce((s, t) => s + t.currentBalance, 0);
-    const bookValue = Math.max(0, totalLoans + resolved.principalAccountCash - debt);
-    const bookValueCents = subPar > 0 ? (bookValue / subPar) * 100 : 0;
-    return { subPar, bookValue, bookValueCents };
-  }, [resolved]);
-
-  /**
-   * T3 — Since-inception IRR for the sub note position.
-   *
-   * Default semantics: anchor at the deal's closing date with cost basis at
-   * par (100c × originalSubPar), use Intex past distributions (ties to the
-   * cent) as the cashflow series, and place the terminal book value at the
-   * current determination date — not at index `len+1` of an indexed array,
-   * which silently added a phantom quarter of discount under the old
-   * `calculateIrr(_, 4)` periodic-rate path.
-   *
-   * Override semantics: when the user explicitly enters a purchase date AND
-   * price (via the inception form), anchor there instead of the closing
-   * date. Distributions before the override anchor are filtered out (a
-   * secondary buyer didn't earn them).
-   *
-   * Discount: `calculateIrrFromDatedCashflows` uses Actual/365 year-fractions
-   * relative to the anchor, so non-uniform spacing (the deal's irregular
-   * first period, missed payments, etc.) is handled correctly.
-   */
-  const inceptionIrr = useMemo<{
-    primary: {
-      irr: number | null;
-      anchorDate: string;
-      anchorPriceCents: number;
-      distributionCount: number;
-      isUserOverride: boolean;
-    };
-    /** Counterfactual: when the user has set a purchaseDate/Price, also show
-     *  what the IRR would be at the deal-closing default. Lets partners read
-     *  "secondary-buyer return vs original-investor return" at a glance and
-     *  notice when an upstream-populated purchaseDate is producing surprising
-     *  numbers. Null when no user override is set (primary == default). */
-    counterfactual: {
-      irr: number | null;
-      anchorDate: string;
-      anchorPriceCents: number;
-      distributionCount: number;
-    } | null;
-    terminalValue: number;
-    terminalDate: string;
-  } | null>(() => {
-    if (!resolved || !equityMetrics) return null;
-    const subPar = equityMetrics.subPar;
-    if (subPar <= 0) return null;
-
-    const terminalDate = resolved.dates.currentDate;
-    const terminalValue = equityMetrics.bookValue;
-
-    const computeAt = (anchorDate: string, anchorPriceCents: number) => {
-      const purchasePrice = subPar * (anchorPriceCents / 100);
-      if (purchasePrice <= 0) return null;
-      const dists = (extractedDistributions ?? [])
-        .filter((d) => d.date > anchorDate && d.date < terminalDate && Number.isFinite(d.distribution))
-        .map((d) => ({ date: d.date, amount: d.distribution }));
-      const flows: Array<{ date: string; amount: number }> = [
-        { date: anchorDate, amount: -purchasePrice },
-        ...dists,
-        { date: terminalDate, amount: terminalValue },
-      ];
-      return {
-        irr: calculateIrrFromDatedCashflows(flows),
-        anchorDate,
-        anchorPriceCents,
-        distributionCount: dists.length,
-      };
-    };
-
-    const userAnchorDate = equityInceptionData?.purchaseDate ?? null;
-    const userAnchorCents = equityInceptionData?.purchasePriceCents ?? null;
-    const hasUserOverride = userAnchorDate != null && userAnchorCents != null;
-    const primaryAnchor = userAnchorDate ?? closingDate;
-    const primaryCents = userAnchorCents ?? 100;
-    if (!primaryAnchor) return null;
-
-    const primary = computeAt(primaryAnchor, primaryCents);
-    if (!primary) return null;
-
-    // Counterfactual: only render when (a) user override is set AND (b)
-    // we have a closingDate to anchor the default. Skip when both anchors
-    // would be identical (override == closing date at par).
-    let counterfactual = null;
-    if (hasUserOverride && closingDate && (closingDate !== primaryAnchor || primaryCents !== 100)) {
-      counterfactual = computeAt(closingDate, 100);
-    }
-
-    return {
-      primary: { ...primary, isUserOverride: hasUserOverride },
-      counterfactual,
-      terminalValue,
-      terminalDate,
-    };
-  }, [equityInceptionData, equityMetrics, resolved, extractedDistributions, closingDate]);
-
   const inputs: ProjectionInputs = useMemo(
     () => {
       const resolvedData = resolved ?? EMPTY_RESOLVED;
@@ -577,6 +472,49 @@ export default function ProjectionModel({
     () => (validationErrors.length === 0 ? runProjection(inputs) : null),
     [inputs, validationErrors]
   );
+
+  // Equity metrics — single canonical source.
+  // bookValue + wipedOut come from engine output (result.initialState);
+  // subNotePar is a presentation lookup against resolved.tranches (no
+  // arithmetic on resolved fields). Phase-6 AST rule forbids re-deriving
+  // bookValue locally; engine is the source of truth.
+  // See CLAUDE.md § Engine ↔ UI separation.
+  const equityMetrics = useMemo(() => {
+    if (!resolved || !result) return null;
+    const subTranche = resolved.tranches.find((t) => t.isIncomeNote);
+    const subNotePar = subTranche?.originalBalance ?? subTranche?.currentBalance ?? 0;
+    const bookValue = result.initialState.equityBookValue;
+    const bookValueCents = subNotePar > 0 ? (bookValue / subNotePar) * 100 : 0;
+    return {
+      subNotePar,
+      bookValue,
+      bookValueCents,
+      wipedOut: result.initialState.equityWipedOut,
+    };
+  }, [resolved, result]);
+
+  /**
+   * T3 — Since-inception IRR for the sub note position.
+   * Composition delegated to the service layer
+   * (web/lib/clo/services/inception-irr.ts). Pure function; downstream
+   * surfaces (PDF export, partner deck, chat) consume identical numbers.
+   * See CLAUDE.md § Engine ↔ UI separation.
+   */
+  const inceptionIrr = useMemo(() => {
+    if (!resolved || !equityMetrics) return null;
+    return computeInceptionIrr({
+      subNotePar: equityMetrics.subNotePar,
+      equityBookValue: equityMetrics.bookValue,
+      equityWipedOut: equityMetrics.wipedOut,
+      closingDate: closingDate ?? null,
+      currentDate: resolved.dates.currentDate,
+      userAnchor:
+        equityInceptionData?.purchaseDate && equityInceptionData?.purchasePriceCents != null
+          ? { date: equityInceptionData.purchaseDate, priceCents: equityInceptionData.purchasePriceCents }
+          : null,
+      historicalDistributions: extractedDistributions ?? [],
+    });
+  }, [equityInceptionData, equityMetrics, resolved, extractedDistributions, closingDate]);
 
   const deferredInputs = React.useDeferredValue(inputs);
   const deferredResult = React.useDeferredValue(result);
@@ -855,11 +793,17 @@ export default function ProjectionModel({
       )}
 
       {/* Equity Entry Price */}
-      {equityMetrics && equityMetrics.subPar > 0 && (
+      {equityMetrics && equityMetrics.wipedOut && equityMetrics.subNotePar > 0 && (
+        <div style={{ marginTop: "1rem", padding: "0.75rem 1rem", border: "1px solid var(--color-low)", borderRadius: "var(--radius-sm)", background: "var(--color-low-bg)", fontSize: "0.75rem", color: "var(--color-low)", lineHeight: 1.5 }}>
+          <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>Equity is balance-sheet insolvent.</div>
+          Total debt outstanding exceeds total assets at the projection start date. The equity tranche has no positive cost basis, and IRR is not meaningful for this scenario.
+        </div>
+      )}
+      {equityMetrics && !equityMetrics.wipedOut && equityMetrics.subNotePar > 0 && (
         <div style={{ marginTop: "1rem", padding: "0.75rem 1rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", fontSize: "0.75rem" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
             <div style={{ color: "var(--color-text-muted)", lineHeight: 1.5 }}>
-              <span style={{ fontWeight: 600 }}>Equity par:</span> {"\u20AC"}{(equityMetrics.subPar / 1e6).toFixed(1)}M
+              <span style={{ fontWeight: 600 }}>Equity par:</span> {"\u20AC"}{(equityMetrics.subNotePar / 1e6).toFixed(1)}M
               {" \u00B7 "}
               <span style={{ fontWeight: 600 }}>Book value:</span> {"\u20AC"}{(equityMetrics.bookValue / 1e6).toFixed(1)}M ({equityMetrics.bookValueCents.toFixed(1)} cents)
             </div>
@@ -1309,7 +1253,7 @@ export default function ProjectionModel({
                     {expandedPeriod === p.periodNum && (
                       <tr>
                         <td colSpan={12} style={{ padding: 0 }}>
-                          <PeriodTrace period={p} inputs={inputs} />
+                          <PeriodTrace period={p} />
                         </td>
                       </tr>
                     )}
