@@ -59,7 +59,8 @@ import { ModelAssumptions } from "./ModelAssumptions";
 import { DefaultRatePanel } from "./DefaultRatePanel";
 import { SwitchSimulator } from "./SwitchSimulator";
 import { type UserAssumptions } from "@/lib/clo/build-projection-inputs";
-import { SideBySideIrr, type IrrCellValue } from "./SideBySideIrr";
+import { formatCallDate, type IrrCellValue } from "./comparison-encoding";
+import { ForwardIrrTable } from "./ForwardIrrTable";
 
 interface Props {
   maturityDate: string | null;
@@ -521,12 +522,24 @@ export default function ProjectionModel({
     return deriveNoCallBaseInputs(inputs as ProjectionInputs & { equityEntryPrice?: number });
   }, [inputs]);
 
-  const withCallBaseInputs = useMemo<ProjectionInputs | null>(() => {
-    if (!noCallBaseInputs) return null;
+  // Effective with-call date: the EARLIEST legal call from currentDate
+  // forward. If the deal's non-call period has already ended (common for
+  // older deals), `nonCallPeriodEnd` is in the past — using it as the
+  // call date asks the engine to retroactively call the deal at par,
+  // which produces nonsensical IRRs (e.g., -87% modeling "par redemption
+  // 3 years ago"). Floor to currentDate so the comparison answers the
+  // partner-relevant question: "what if the manager calls today?".
+  const withCallDate = useMemo<string | null>(() => {
     const ncEnd = resolved?.dates.nonCallPeriodEnd ?? null;
-    if (!ncEnd) return null;
-    return applyOptionalRedemptionCall(noCallBaseInputs, ncEnd);
-  }, [noCallBaseInputs, resolved?.dates.nonCallPeriodEnd]);
+    const currentDate = resolved?.dates.currentDate ?? null;
+    if (!ncEnd || !currentDate) return null;
+    return ncEnd > currentDate ? ncEnd : currentDate;
+  }, [resolved?.dates.nonCallPeriodEnd, resolved?.dates.currentDate]);
+
+  const withCallBaseInputs = useMemo<ProjectionInputs | null>(() => {
+    if (!noCallBaseInputs || !withCallDate) return null;
+    return applyOptionalRedemptionCall(noCallBaseInputs, withCallDate);
+  }, [noCallBaseInputs, withCallDate]);
 
   // Fair value @ hurdle — computed under both no-call and with-call so the
   // partner sees both anchor prices (option (d): two columns wherever
@@ -1226,112 +1239,18 @@ export default function ProjectionModel({
                 }}
               />
               <div style={{ fontSize: "0.7rem", fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: "0.55rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                Forward IRR{" "}
-                <span style={{ fontSize: "0.55rem", fontWeight: 400, letterSpacing: "0.02em", opacity: 0.7 }}>
-                  {withCallBaseInputs && resolved?.dates.nonCallPeriodEnd
-                    ? `(no-call · with-call @ ${resolved.dates.nonCallPeriodEnd}, par)`
-                    : "(held to legal final, no call)"}
-                </span>
+                Forward IRR
               </div>
               {forwardIrrRows ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", fontVariantNumeric: "tabular-nums" }}>
-                  {forwardIrrRows.map((row) => (
-                    <div
-                      key={row.label}
-                      style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", fontSize: "0.78rem", gap: "0.4rem" }}
-                    >
-                      <span style={{ color: "rgba(255,255,255,0.85)" }}>
-                        {row.label}
-                        {row.cents != null && ` (${row.cents.toFixed(0)}c)`}
-                      </span>
-                      <SideBySideIrr noCall={row.noCall} withCall={row.withCall} />
-                    </div>
-                  ))}
-                  {/* Fair value @ 10% row: side-by-side prices when both
-                      runs converged. Lower price = higher implied yield
-                      = more conservative for the buyer. Conservative side
-                      renders bold/full opacity; the higher side dims
-                      (matching SideBySideIrr's weight/opacity encoding).
-                      The single card-level legend below the rows
-                      explains the convention. */}
-                  {fairValues && (() => {
-                    const fv10NoCall = fairValues.find((fv) => fv.hurdle === 0.10) ?? null;
-                    const fv10WithCall = fairValuesWithCall?.find((fv) => fv.hurdle === 0.10) ?? null;
-                    const renderPrice = (fv: FairValueResult | null) => {
-                      if (!fv) return "—";
-                      if (fv.status === "converged" && fv.priceCents != null) return `${fv.priceCents.toFixed(0)}c`;
-                      if (fv.status === "below_hurdle") return "below hurdle";
-                      if (fv.status === "above_max_bracket") return "exceeds 200c";
-                      return "—";
-                    };
-                    const noCallPrice = fv10NoCall?.status === "converged" ? fv10NoCall.priceCents : null;
-                    const withCallPrice = fv10WithCall?.status === "converged" ? fv10WithCall.priceCents : null;
-                    const noCallLower = noCallPrice != null && withCallPrice != null && noCallPrice < withCallPrice;
-                    const withCallLower = noCallPrice != null && withCallPrice != null && withCallPrice < noCallPrice;
-                    const sideStyle = (isConservative: boolean, isDimmed: boolean): React.CSSProperties => ({
-                      fontFamily: "var(--font-display)",
-                      fontSize: "1rem",
-                      letterSpacing: "-0.02em",
-                      fontWeight: isConservative ? 700 : 500,
-                      opacity: isDimmed ? 0.55 : 1,
-                    });
-                    return (
-                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", fontSize: "0.78rem", gap: "0.4rem" }}>
-                        <span style={{ color: "rgba(255,255,255,0.85)" }}>
-                          @ fair value-10%
-                        </span>
-                        {fv10WithCall ? (
-                          <span style={{ display: "inline-flex", alignItems: "baseline", gap: "0.3rem", justifyContent: "flex-end" }}>
-                            <span style={sideStyle(noCallLower, withCallLower)}>{renderPrice(fv10NoCall)}</span>
-                            <span style={{ opacity: 0.4 }}>{"·"}</span>
-                            <span style={sideStyle(withCallLower, noCallLower)}>{renderPrice(fv10WithCall)}</span>
-                          </span>
-                        ) : (
-                          <strong style={{ fontFamily: "var(--font-display)", fontSize: "1rem", letterSpacing: "-0.02em" }}>
-                            {renderPrice(fv10NoCall)}
-                          </strong>
-                        )}
-                      </div>
-                    );
-                  })()}
-                  {equityEntryPriceCents != null && customEntryIrr && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "baseline",
-                        justifyContent: "space-between",
-                        fontSize: "0.72rem",
-                        marginTop: "0.35rem",
-                        paddingTop: "0.4rem",
-                        borderTop: "1px solid rgba(255,255,255,0.18)",
-                        color: "rgba(255,255,255,0.7)",
-                        gap: "0.4rem",
-                      }}
-                    >
-                      <span>@ custom ({equityEntryPriceCents}c)</span>
-                      <SideBySideIrr noCall={customEntryIrr.noCall} withCall={customEntryIrr.withCall} />
-                    </div>
-                  )}
-                  {/* Single card-level legend explaining the conservative
-                      encoding. Replaces the per-row "(more conservative)"
-                      text that previously repeated 3-5x and forced row
-                      wrapping. Only renders when there's a with-call
-                      companion to compare against. */}
-                  {withCallBaseInputs && (
-                    <div
-                      style={{
-                        fontSize: "0.55rem",
-                        fontWeight: 400,
-                        color: "rgba(255,255,255,0.55)",
-                        marginTop: "0.5rem",
-                        textAlign: "right",
-                        letterSpacing: "0.02em",
-                      }}
-                    >
-                      bold = more conservative
-                    </div>
-                  )}
-                </div>
+                <ForwardIrrTable
+                  rows={forwardIrrRows}
+                  fairValueNoCall={fairValues?.find((fv) => fv.hurdle === 0.10) ?? null}
+                  fairValueWithCall={fairValuesWithCall?.find((fv) => fv.hurdle === 0.10) ?? null}
+                  hasWithCall={withCallBaseInputs != null && withCallDate != null}
+                  withCallDate={withCallDate}
+                  customEntryIrr={customEntryIrr}
+                  customEntryPriceCents={equityEntryPriceCents}
+                />
               ) : (
                 <div
                   style={{
@@ -1401,38 +1320,78 @@ export default function ProjectionModel({
                         : "—"}
                     </strong>
                   </div>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", fontSize: "0.78rem", gap: "0.4rem" }}>
-                    <span style={{ color: "rgba(255,255,255,0.85)" }} title="Historical cashflows + engine-projected forward distributions — model-based hold-to-maturity return.">
-                      Mark-to-model
-                    </span>
-                    {(() => {
-                      // Option (d): mark-to-model row shows two columns when
-                      // a with-call companion is available. Each column carries
-                      // its own status — a "wiped out" / "no forward data" cell
-                      // can sit beside a numeric one. SideBySideIrr accepts
-                      // IrrCellValue (number | string | null) and formats per-
-                      // column accordingly.
-                      const cellFor = (
-                        status: "computed" | "no_realized_data" | "wiped_out" | "no_forward_data",
-                        irr: number | null,
-                      ): IrrCellValue => {
-                        if (status === "computed" || status === "no_realized_data") return irr;
-                        if (status === "wiped_out") return "wiped out";
-                        return "no forward data";
-                      };
-                      const noCallCell = cellFor(
-                        inceptionIrr.primary.markToModelStatus,
-                        inceptionIrr.primary.markToModelIrr,
-                      );
-                      const withCallCell: IrrCellValue | undefined = inceptionIrrWithCall
-                        ? cellFor(
-                            inceptionIrrWithCall.primary.markToModelStatus,
-                            inceptionIrrWithCall.primary.markToModelIrr,
-                          )
-                        : undefined;
-                      return <SideBySideIrr noCall={noCallCell} withCall={withCallCell} />;
-                    })()}
-                  </div>
+                  {(() => {
+                    // Mark-to-model is the only row in this card with a
+                    // potential with-call companion. Inline per-value labels
+                    // ("no call" / "called Mmm 'YY") read clearer than a
+                    // separate column-header treatment when there's only
+                    // one comparison row.
+                    //
+                    // No bold/dim encoding here: with explicit per-cell
+                    // labels the partner can read both numbers and decide;
+                    // adding bold/dim without a legend (the Forward IRR
+                    // card has one, this one doesn't) created an
+                    // unexplained visual cue. Both cells render at full
+                    // strength.
+                    const cellFor = (
+                      status: "computed" | "no_realized_data" | "wiped_out" | "no_forward_data",
+                      irr: number | null,
+                    ): IrrCellValue => {
+                      if (status === "computed" || status === "no_realized_data") return irr;
+                      if (status === "wiped_out") return "wiped out";
+                      return "no forward data";
+                    };
+                    const fmtIrr = (v: IrrCellValue): string => {
+                      if (typeof v === "string") return v;
+                      if (v == null) return "—";
+                      return formatPct(v * 100);
+                    };
+                    const noCallCell = cellFor(
+                      inceptionIrr.primary.markToModelStatus,
+                      inceptionIrr.primary.markToModelIrr,
+                    );
+                    const withCallCell: IrrCellValue | undefined = inceptionIrrWithCall
+                      ? cellFor(
+                          inceptionIrrWithCall.primary.markToModelStatus,
+                          inceptionIrrWithCall.primary.markToModelIrr,
+                        )
+                      : undefined;
+                    const valueStyle: React.CSSProperties = {
+                      fontFamily: "var(--font-display)",
+                      fontSize: "0.95rem",
+                      letterSpacing: "-0.02em",
+                      fontWeight: 600,
+                      fontVariantNumeric: "tabular-nums",
+                    };
+                    const captionStyle: React.CSSProperties = {
+                      fontSize: "0.55rem",
+                      fontWeight: 400,
+                      color: "rgba(255,255,255,0.55)",
+                      letterSpacing: "0.02em",
+                      marginLeft: "0.25rem",
+                    };
+                    return (
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", fontSize: "0.78rem", gap: "0.4rem", flexWrap: "wrap" }}>
+                        <span style={{ color: "rgba(255,255,255,0.85)" }} title="Historical cashflows + engine-projected forward distributions — model-based hold-to-maturity return.">
+                          Mark-to-model
+                        </span>
+                        {withCallCell === undefined ? (
+                          <span style={valueStyle}>{fmtIrr(noCallCell)}</span>
+                        ) : (
+                          <span style={{ display: "inline-flex", alignItems: "baseline", gap: "0.6rem", justifyContent: "flex-end" }}>
+                            <span style={{ display: "inline-flex", alignItems: "baseline" }}>
+                              <span style={valueStyle}>{fmtIrr(noCallCell)}</span>
+                              <span style={captionStyle}>no call</span>
+                            </span>
+                            <span style={{ display: "inline-flex", alignItems: "baseline" }}>
+                              <span style={valueStyle}>{fmtIrr(withCallCell)}</span>
+                              {withCallDate && <span style={captionStyle}>called {formatCallDate(withCallDate)}</span>}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div
                     style={{
                       fontSize: "0.58rem",
@@ -1465,23 +1424,6 @@ export default function ProjectionModel({
                         {formatPct(inceptionIrr.counterfactual.markToBookIrr * 100)}
                       </strong>
                       {" "}at {inceptionIrr.counterfactual.anchorDate} · 100c
-                    </div>
-                  )}
-                  {/* Mark-to-model row may show two columns when a with-call
-                      companion exists. Single legend explains the encoding —
-                      identical convention to the Forward IRR card. */}
-                  {inceptionIrrWithCall && (
-                    <div
-                      style={{
-                        fontSize: "0.55rem",
-                        fontWeight: 400,
-                        color: "rgba(255,255,255,0.55)",
-                        marginTop: "0.4rem",
-                        textAlign: "right",
-                        letterSpacing: "0.02em",
-                      }}
-                    >
-                      bold = more conservative
                     </div>
                   )}
                 </div>
