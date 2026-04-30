@@ -84,9 +84,10 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
     incentiveFeePct: 0,
     incentiveFeeHurdleIrr: 0,
     postRpReinvestmentPct: 0,
+    callMode: "none",
     callDate: null,
     callPricePct: 100,
-    callPriceMode: "multiplier",
+    callPriceMode: "par",
     reinvestmentOcTrigger: null,
     tranches: [
       // Class X — amortising, paid from interest waterfall

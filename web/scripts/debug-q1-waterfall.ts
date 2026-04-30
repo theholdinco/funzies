@@ -254,10 +254,15 @@ async function main() {
     currentDate: resolved.dates.currentDate,
     userAnchor: null,
     historicalDistributions: rawAny.extractedDistributions ?? [],
+    forwardDistributions: result.periods.map((p) => ({ date: p.date, amount: p.equityDistribution })),
   });
+  // Note: `default IRR` here is the mark-to-book mode (`primary.irr` is kept
+  // as a back-compat alias for `primary.markToBookIrr`). Post-v6 §3.2 ships
+  // three modes in the partner UI; this script prints only mark-to-book for
+  // brevity.
   if (defaultRun) {
     const irr = defaultRun.primary.irr;
-    console.log(`  default IRR (100c):       ${irr != null ? (irr * 100).toFixed(2) + "%" : "null"} (${defaultRun.primary.distributionCount} distributions)`);
+    console.log(`  default IRR (100c, mark-to-book): ${irr != null ? (irr * 100).toFixed(2) + "%" : "null"} (${defaultRun.primary.distributionCount} distributions)`);
   }
 
   // User-override IRR + counterfactual when an override is present in context.
@@ -270,6 +275,7 @@ async function main() {
       currentDate: resolved.dates.currentDate,
       userAnchor: { date: userAnchorDate, priceCents: userAnchorCents },
       historicalDistributions: rawAny.extractedDistributions ?? [],
+      forwardDistributions: result.periods.map((p) => ({ date: p.date, amount: p.equityDistribution })),
     });
     const irr = userRun?.primary.irr;
     console.log(`  user override anchor:     ${userAnchorDate} @ ${userAnchorCents}c`);

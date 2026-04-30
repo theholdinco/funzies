@@ -38,9 +38,10 @@ function makeFullDealInputs(overrides: Partial<ProjectionInputs> = {}): Projecti
     incentiveFeePct: 0,
     incentiveFeeHurdleIrr: 0,
     postRpReinvestmentPct: 0,
+    callMode: "none",
     callDate: null,
     callPricePct: 100,
-    callPriceMode: "multiplier",
+    callPriceMode: "par",
     reinvestmentOcTrigger: null,
     tranches: [
       // Class X: amortising, paid from interest waterfall
@@ -527,7 +528,9 @@ describe("Call date termination", () => {
   it("projection has exactly N periods when callDate is N quarters from currentDate", () => {
     const callQuarters = 8;
     const result = runProjection(makeFullDealInputs({
+      callMode: "optionalRedemption",
       callDate: addQuarters("2025-01-15", callQuarters),
+      callPriceMode: "par",
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
     }));
@@ -537,7 +540,9 @@ describe("Call date termination", () => {
 
   it("final period liquidates all remaining par", () => {
     const result = runProjection(makeFullDealInputs({
+      callMode: "optionalRedemption",
       callDate: addQuarters("2025-01-15", 8),
+      callPriceMode: "par",
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
     }));
@@ -550,9 +555,10 @@ describe("Call date termination", () => {
 
   it("all remaining par is liquidated in the final period (no orphan par)", () => {
     const result = runProjection(makeFullDealInputs({
+      callMode: "optionalRedemption",
       callDate: addQuarters("2025-01-15", 8),
       callPricePct: 100,
-    callPriceMode: "multiplier",
+      callPriceMode: "par",
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
     }));
@@ -569,7 +575,9 @@ describe("Call date termination", () => {
 
   it("call stops projection before legal maturity", () => {
     const result = runProjection(makeFullDealInputs({
+      callMode: "optionalRedemption",
       callDate: addQuarters("2025-01-15", 8),
+      callPriceMode: "par",
       maturityDate: addQuarters("2025-01-15", 36), // maturity is far away
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
@@ -597,9 +605,10 @@ describe("Fee waterfall order", () => {
       incentiveFeePct: 0,
       incentiveFeeHurdleIrr: 0,
       postRpReinvestmentPct: 0,
+      callMode: "none",
       callDate: null,
       callPricePct: 100,
-    callPriceMode: "multiplier",
+      callPriceMode: "par",
       reinvestmentOcTrigger: null,
       tranches: [
         { className: "A",   currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true,  isIncomeNote: false, isDeferrable: false },

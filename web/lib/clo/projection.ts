@@ -74,14 +74,42 @@ export interface ProjectionInputs {
   incentiveFeePct: number; // % of residual above IRR hurdle (PPM Steps BB/U), e.g. 20
   incentiveFeeHurdleIrr: number; // annualized IRR hurdle, e.g. 0.12 for 12%
   postRpReinvestmentPct: number; // % of principal proceeds reinvested post-RP (0-100, typically 0-50)
-  callDate: string | null; // optional redemption date — if set, projection stops here and liquidates
-  callPricePct: number; // liquidation price as % (semantics depend on callPriceMode — see below)
+  /** Manager call gating (post-v6 plan §4.1). When "none", `callDate` is
+   *  ignored and the projection runs to maturity. When "optionalRedemption",
+   *  the engine liquidates at `callDate` per `callPriceMode`. The Phase A
+   *  type union deliberately excludes `"economic"` — that mode requires a
+   *  threshold-design pre-commit (Phase D §7.4). */
+  callMode: "none" | "optionalRedemption";
+  /** Stub-period engine (post-v6 plan §4.2). When true (and
+   *  `firstPeriodEndDate` is set), period 1 runs from `currentDate` to
+   *  `firstPeriodEndDate` (intra-period stub) instead of a full quarter; CDR
+   *  and CPR are prorated by the actual day-count fraction. Subsequent
+   *  periods are full quarters from `firstPeriodEndDate`. Default
+   *  undefined/false preserves byte-identical engine output on existing
+   *  fixtures (period 1 = currentDate → currentDate + 1 quarter, no
+   *  hazard proration). Caller computes `firstPeriodEndDate` from the deal's
+   *  payment-cadence anchor (typically `dates.firstPaymentDate` walked
+   *  forward by quarters until the first scheduled date strictly after
+   *  `currentDate`). */
+  stubPeriod?: boolean;
+  firstPeriodEndDate?: string | null;
+  /** Reinvestment-period extension (post-v6 plan §4.5). When set, the engine
+   *  uses `max(reinvestmentPeriodEnd, reinvestmentPeriodExtension)` as the
+   *  effective RP end — the user's extension can extend, but cannot
+   *  inadvertently shorten, an already-late extracted RP end. Null means no
+   *  extension; the extracted RP end is used as-is. */
+  reinvestmentPeriodExtension?: string | null;
+  callDate: string | null; // optional redemption date — when callMode === "optionalRedemption", projection stops here and liquidates
+  callPricePct: number; // liquidation price as % of par; only used when callPriceMode === "manual"
   /** Call liquidation price semantics (A3):
-   *  - 'multiplier': liquidate each position at `currentPrice × callPricePct / 100`.
-   *    callPricePct=100 means "sell at current market"; 95 means "5% haircut on market".
-   *  - 'flat': every position sells at `callPricePct` regardless of its market price.
+   *  - 'par': every position sells at face value (callPricePct ignored).
+   *  - 'market': every position sells at its observed currentPrice; throws if
+   *    holdings-level prices aren't available (post-v6 plan §4.1 — no silent
+   *    par fallback; that would manufacture optimism on healthy deals).
+   *  - 'manual': every position sells at `callPricePct` (flat percentage of par,
+   *    regardless of market).
    *    Legacy behavior; useful for quick stress ("assume everything sells at 98c"). */
-  callPriceMode: "multiplier" | "flat";
+  callPriceMode: "par" | "market" | "manual";
   reinvestmentOcTrigger: { triggerLevel: number; rank: number; diversionPct: number } | null; // Reinvestment OC test — diversionPct % of remaining interest diverted during RP
   /** B1 — Event of Default Par Value Test (PPM 10(a)(iv)). Distinct from
    *  class-level OC; uses compositional numerator + Class-A-only denominator.
@@ -108,6 +136,42 @@ export interface ProjectionInputs {
   currentDate: string;
   loans: LoanInput[];
   defaultRatesByRating: Record<string, number>;
+  /** §7.5 — Optional time-varying CDR path. When present, called once per
+   *  quarter (1-indexed) to obtain that period's `defaultRatesByRating`
+   *  map. When absent, the engine uses the constant `defaultRatesByRating`
+   *  for every quarter (current behavior).
+   *
+   *  Semantics under each hazard branch:
+   *
+   *  1. **Legacy bucket-hazard branch** (`useLegacyBucketHazard: true`,
+   *     used in tests and legacy callers): the returned map *replaces*
+   *     `defaultRatesByRating` for that quarter outright. A bucket
+   *     reading 5% means "this quarter's annualized CDR for that bucket
+   *     is 5%."
+   *
+   *  2. **Per-position WARF branch** (`useLegacyBucketHazard: false`,
+   *     production default): the returned map is converted to a per-
+   *     bucket *multiplier* against `defaultRatesByRating`. If the
+   *     returned bucket is `5%` and the constant baseline is `2%`, the
+   *     multiplier is `5/2 = 2.5×`, which scales each loan's WARF-
+   *     derived hazard by 2.5× for that quarter. When the constant
+   *     baseline for a bucket is zero, the multiplier is undefined and
+   *     the engine falls back to the bucket-map hazard for that loan
+   *     (matches the legacy branch's semantic for the zero-baseline
+   *     edge case). See `cdr-path-fn.test.ts` "production-config" suite
+   *     and decision R for why both branches must be exercised.
+   *
+   *  The function form is the breakage-free alternative to the original
+   *  `Record<bucket, pct[]>` proposal — same modeling power, no fixture
+   *  migration cost. Monte Carlo callers supply a path that draws each
+   *  quarter from a calibrated distribution; deterministic callers can
+   *  hard-code a stress curve.
+   *
+   *  Naming note: previously `cdrPathFn`. The `Multiplier` infix in the
+   *  current name signals the production-branch semantics — the dominant
+   *  use site (per-position WARF) treats the path values as a scaling
+   *  factor, not an absolute override. */
+  cdrMultiplierPathFn?: (q: number) => Record<string, number>;
   cprPct: number;
   recoveryPct: number;
   recoveryLagMonths: number;
@@ -273,6 +337,26 @@ export interface PeriodResult {
   principalProceeds: number;
   reinvestment: number;
   endingPar: number;
+  /** Per-period balance instrumentation (post-v6 plan §4.3). Conservation
+   *  invariant: `endingPerformingPar[N] === beginningPerformingPar[N+1]`. */
+  endingPerformingPar: number;
+  beginningPerformingPar: number;
+  /** Sum of `defaultedParPending` across all loans at period end (loan-level mode);
+   *  zero in aggregate mode. Conservation: `endingDefaultedPar[N+1] - endingDefaultedPar[N]`
+   *  matches new defaults this period − recovered defaults this period. */
+  endingDefaultedPar: number;
+  beginningDefaultedPar: number;
+  /** Principal POP account balance at start/end of period. The engine fully
+   *  distributes collections each period, so these are typically 0 — non-zero
+   *  only in the q=1 case where `initialPrincipalCash` is non-zero (the
+   *  determination-date overdraft / surplus carried into the period). Emitted
+   *  for trustee tie-out comparison. */
+  beginningPrincipalAccount: number;
+  endingPrincipalAccount: number;
+  /** Interest POP account balance at start/end. Same fully-distribute model;
+   *  always 0 in the current engine. Emitted for tie-out symmetry. */
+  beginningInterestAccount: number;
+  endingInterestAccount: number;
   interestCollected: number;
   beginningLiabilities: number;
   endingLiabilities: number;
@@ -668,35 +752,64 @@ export function runPostAccelerationWaterfall(input: PostAccelExecutorInput): Pos
 }
 
 /**
- * Call-liquidation proceeds per PPM: each position sells at market. Two modes:
- *   - 'multiplier': effective price = currentPrice × callPricePct/100. The
- *     default. callPricePct=100 means "sell at current market". callPricePct=95
- *     means "5% haircut below market" — i.e. stress-test scenario.
- *   - 'flat': every position sells at callPricePct regardless of its market
- *     price. Legacy behavior; useful for quick "assume everything at 98c"
- *     scenarios.
+ * Call-liquidation proceeds per PPM. Three modes (post-v6 plan §4.1):
+ *   - 'par': every position sells at face value. `callPricePct` ignored.
+ *   - 'market': every position sells at its observed `currentPrice`. Throws
+ *     when `currentPrice` is null/undefined on any non-delayed-draw funded
+ *     position — the engine refuses a silent par fallback because that would
+ *     bias the displayed IRR upward on healthy deals (par-call IRR is generally
+ *     better than market-call IRR for deals trading above par). Callers must
+ *     choose 'par' or 'manual' for deals without holdings-level prices.
+ *   - 'manual': every position sells at `callPricePct` (flat percentage of par,
+ *     regardless of market). Useful for "assume 95c liquidation" stress runs.
  *
- * currentPrice convention (matches resolver contract):
- *   - `null` / `undefined` → "not observed"; falls back to par (100)
- *   - `0` → "genuinely worthless" (distressed position with zero recovery
- *     expected); used as-is, yields 0 liquidation proceeds on that position
- *   Reinvested positions (carried without a price from the resolver) fall
- *   through the null path and liquidate at par.
+ * Unfunded DDTLs are excluded — no deployed collateral to liquidate.
  *
- * Unfunded DDTLs are excluded — they have no deployed collateral to liquidate.
+ * Throws `MarketPriceMissingError` (a plain `Error` subclass with discriminator)
+ * when 'market' is selected but data is missing, so the UI can catch and
+ * prompt the user to switch modes.
  */
+export class MarketPriceMissingError extends Error {
+  readonly kind = "market_price_missing";
+  constructor(message: string) {
+    super(message);
+    this.name = "MarketPriceMissingError";
+  }
+}
+
 export function computeCallLiquidation(
   loanStates: Array<{ survivingPar: number; currentPrice?: number | null; isDelayedDraw?: boolean }>,
   callPricePct: number,
-  mode: "multiplier" | "flat",
+  mode: "par" | "market" | "manual",
 ): number {
   let total = 0;
+  let missingMarketPriceCount = 0;
   for (const l of loanStates) {
     if (l.isDelayedDraw) continue;
     if (l.survivingPar <= 0) continue;
-    const marketPrice = l.currentPrice != null ? l.currentPrice : 100;
-    const effectivePrice = mode === "flat" ? callPricePct : marketPrice * (callPricePct / 100);
+    let effectivePrice: number;
+    switch (mode) {
+      case "par":
+        effectivePrice = 100;
+        break;
+      case "market":
+        if (l.currentPrice == null) {
+          missingMarketPriceCount++;
+          continue;
+        }
+        effectivePrice = l.currentPrice;
+        break;
+      case "manual":
+        effectivePrice = callPricePct;
+        break;
+    }
     total += l.survivingPar * (effectivePrice / 100);
+  }
+  if (mode === "market" && missingMarketPriceCount > 0) {
+    throw new MarketPriceMissingError(
+      `Market call price requires loan-level market values; ${missingMarketPriceCount} ` +
+        `position(s) lack currentPrice. Set callPriceMode to 'par' or 'manual'.`,
+    );
   }
   return total;
 }
@@ -769,10 +882,12 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   const {
     initialPar, wacSpreadBps, baseRatePct, baseRateFloorPct, seniorFeePct, subFeePct,
     taxesBps = 0, issuerProfitAmount = 0, trusteeFeeBps, adminFeeBps = 0, seniorExpensesCapBps, hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr,
-    postRpReinvestmentPct, callDate, callPricePct, callPriceMode, reinvestmentOcTrigger, eventOfDefaultTest,
+    postRpReinvestmentPct, callMode, callDate, callPricePct, callPriceMode, reinvestmentOcTrigger, eventOfDefaultTest,
+    stubPeriod, firstPeriodEndDate,
+    reinvestmentPeriodExtension,
     tranches, ocTriggers, icTriggers,
     reinvestmentPeriodEnd, maturityDate, currentDate,
-    loans, defaultRatesByRating, cprPct, recoveryPct, recoveryLagMonths,
+    loans, defaultRatesByRating, cdrMultiplierPathFn, cprPct, recoveryPct, recoveryLagMonths,
     reinvestmentSpreadBps, reinvestmentTenorQuarters, reinvestmentRating: reinvestmentRatingOverride,
     cccBucketLimitPct, cccMarketValuePct, deferredInterestCompounds,
     initialPrincipalCash = 0, preExistingDefaultedPar = 0, preExistingDefaultRecovery = 0, unpricedDefaultedPar = 0, preExistingDefaultOcValue = 0,
@@ -820,9 +935,34 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     }
   }
 
-  const maturityQuarters = maturityDate ? Math.max(1, quartersBetween(currentDate, maturityDate)) : CLO_DEFAULTS.defaultMaxTenorYears * 4;
-  // If a call date is set, the projection ends at the earlier of call or maturity
-  const callQuarters = callDate ? Math.max(1, quartersBetween(currentDate, callDate)) : null;
+  // Stub-period anchor (post-v6 plan §4.2). When `stubPeriod === true` and
+  // `firstPeriodEndDate` is supplied, period 1 ends at the supplied date and
+  // is shorter than a full quarter. Subsequent periods are full quarters
+  // starting from that date. When `stubPeriod` is absent/false, the anchor
+  // is `addQuarters(currentDate, 1)` — preserves pre-§4.2 behavior exactly.
+  const useStub = stubPeriod === true && firstPeriodEndDate != null;
+  const stubAnchor = useStub ? firstPeriodEndDate! : addQuarters(currentDate, 1);
+  // periodEnd(q): end of period q. q=1 → stubAnchor; q>=2 → stubAnchor + (q-1) quarters.
+  const periodEndDate = (q: number): string =>
+    q === 1 ? stubAnchor : addQuarters(stubAnchor, q - 1);
+  const periodStartDate = (q: number): string =>
+    q === 1 ? currentDate : periodEndDate(q - 1);
+
+  const maturityQuarters = maturityDate
+    ? useStub
+      ? 1 + Math.max(0, quartersBetween(stubAnchor, maturityDate))
+      : Math.max(1, quartersBetween(currentDate, maturityDate))
+    : CLO_DEFAULTS.defaultMaxTenorYears * 4;
+  // Manager call gate (post-v6 plan §4.1): the call only fires when callMode is
+  // "optionalRedemption" AND callDate is set. callMode === "none" is the
+  // conservative baseline (project to legal final). Either condition false →
+  // ignore callDate.
+  const callActive = callMode === "optionalRedemption" && callDate != null;
+  const callQuarters = callActive && callDate
+    ? useStub
+      ? 1 + Math.max(0, quartersBetween(stubAnchor, callDate))
+      : Math.max(1, quartersBetween(currentDate, callDate))
+    : null;
   const totalQuarters = callQuarters ? Math.min(callQuarters, maturityQuarters) : maturityQuarters;
   const recoveryLagQ = Math.max(0, Math.round(recoveryLagMonths / 3));
 
@@ -830,11 +970,22 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   // fallback when the D2 per-position path is explicitly opted out via
   // `useLegacyBucketHazard`, and for positions without a per-position
   // `warfFactor` when the flag is absent. See the default-draw loop below.
-  const quarterlyHazard: Record<string, number> = {};
-  for (const [rating, annualCDR] of Object.entries(defaultRatesByRating)) {
+  // §7.5: when `cdrMultiplierPathFn` is supplied the engine recomputes
+  // hazard per quarter from the path; the constant-path (`quarterlyHazard`)
+  // is the q=undefined / fallback case used everywhere
+  // `cdrMultiplierPathFn` is absent.
+  const cdrToHazard = (annualCDR: number): number => {
     const clamped = Math.max(0, Math.min(annualCDR, 99.99));
-    quarterlyHazard[rating] = 1 - Math.pow(1 - clamped / 100, 0.25);
-  }
+    return 1 - Math.pow(1 - clamped / 100, 0.25);
+  };
+  const computeQuarterlyHazard = (cdrMap: Record<string, number>): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const [rating, annualCDR] of Object.entries(cdrMap)) {
+      out[rating] = cdrToHazard(annualCDR);
+    }
+    return out;
+  };
+  const quarterlyHazardConstant = computeQuarterlyHazard(defaultRatesByRating);
 
   // Quarterly prepay rate
   const clampedCpr = Math.max(0, Math.min(cprPct, 99.99));
@@ -1053,7 +1204,16 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     tranchePayoffQuarter[t.className] = null;
   }
 
-  const rpEndDate = reinvestmentPeriodEnd ? new Date(reinvestmentPeriodEnd) : null;
+  // Post-v6 plan §4.5: effective RP end is `max(extracted, user extension)`.
+  // The max() preserves a late extracted RP — a user-set extension can lengthen
+  // but never shorten the active reinvestment window.
+  const effectiveRpEnd =
+    reinvestmentPeriodExtension && reinvestmentPeriodEnd
+      ? reinvestmentPeriodExtension > reinvestmentPeriodEnd
+        ? reinvestmentPeriodExtension
+        : reinvestmentPeriodEnd
+      : reinvestmentPeriodExtension ?? reinvestmentPeriodEnd;
+  const rpEndDate = effectiveRpEnd ? new Date(effectiveRpEnd) : null;
 
   // ── T=0 snapshot for N6 harness (determination-date compliance parity) ──
   // Computed BEFORE the period loop runs. Uses initial trancheBalances (no
@@ -1132,11 +1292,23 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         currentPrice: l.currentPrice,
         isDelayedDraw: l.isDelayedDraw,
       }));
-      // Class A Principal Amount Outstanding (PAO) — denominator is Class A ONLY.
-      const classATranche = tranches.find((t) => t.className === "Class A");
-      const classAPao = classATranche
-        ? trancheBalances[classATranche.className] + deferredBalances[classATranche.className]
-        : 0;
+      // Class A Principal Amount Outstanding (PAO) — denominator is the
+      // senior-most rated debt tranche(s). Identified by `seniorityRank`,
+      // not by string match on "Class A": real CLOs name this tranche
+      // variously (e.g. "Class A", "Class A-1", "A1F", "A"), and a
+      // pari-passu split (A-1 + A-2 sharing rank 1) sums both balances.
+      // String-match on "Class A" was a Euro-XV-shaped overfit; see the
+      // synthetic-fixture #10 test (post-v6 plan §6.1) which surfaces it.
+      const debtTranchesAtT0 = tranches.filter((t) => !t.isIncomeNote);
+      const classAPao = (() => {
+        if (debtTranchesAtT0.length === 0) return 0;
+        const minRank = Math.min(...debtTranchesAtT0.map((t) => t.seniorityRank));
+        const seniorMost = debtTranchesAtT0.filter((t) => t.seniorityRank === minRank);
+        return seniorMost.reduce(
+          (s, t) => s + trancheBalances[t.className] + deferredBalances[t.className],
+          0,
+        );
+      })();
       eodTest = computeEventOfDefaultTest(
         eodLoanStates,
         initialPrincipalCash,
@@ -1157,22 +1329,64 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
 
   const draw: DefaultDrawFn = defaultDrawFn ?? ((par, hz) => par * hz);
   for (let q = 1; q <= totalQuarters; q++) {
-    const periodDate = addQuarters(currentDate, q);
+    const periodDate = periodEndDate(q);
     const inRP = rpEndDate ? new Date(periodDate) <= rpEndDate : false;
     const isMaturity = q === totalQuarters;
+    // §7.5 + decision R: pull this quarter's path map once and use it for
+    // BOTH the bucket-map hazard (legacy / fallback branch of the per-loan
+    // default loop) AND the per-bucket multiplier on the per-position WARF
+    // branch. Calling `cdrMultiplierPathFn(q)` once per quarter — calling
+    // it twice would duplicate-count `q` in observability tests and double
+    // any side effects the caller might have.
+    const cdrPathMapThisQuarter = cdrMultiplierPathFn ? cdrMultiplierPathFn(q) : null;
+    const quarterlyHazard = cdrPathMapThisQuarter
+      ? computeQuarterlyHazard(cdrPathMapThisQuarter)
+      : quarterlyHazardConstant;
+    // Per-bucket multiplier = path[bucket] / baseline[bucket]. Applied to
+    // warfFactor-derived hazards. When baseline is zero (path non-zero),
+    // the multiplier is undefined and we fall back to the path's bucket-map
+    // hazard for that loan — matches the bucket-map branch's semantic.
+    const cdrPathMultiplier = (() => {
+      if (!cdrPathMapThisQuarter) return null;
+      const out: Record<string, number> = {};
+      for (const bucket of Object.keys(cdrPathMapThisQuarter)) {
+        const baseline = defaultRatesByRating[bucket] ?? 0;
+        if (baseline > 0) {
+          out[bucket] = cdrPathMapThisQuarter[bucket] / baseline;
+        } else {
+          // Baseline 0 → multiplier undefined. Encode as Infinity sentinel;
+          // the consumer below interprets this as "use bucket-map hazard".
+          out[bucket] = cdrPathMapThisQuarter[bucket] > 0 ? Infinity : 1;
+        }
+      }
+      return out;
+    })();
 
-    // B3: period accrual window. Period q runs from addQuarters(currentDate, q-1)
-    // to addQuarters(currentDate, q) — e.g. for currentDate=2026-04-01 and q=1:
-    // Apr 1 → Jul 1. Day-count fractions use these dates with convention-specific
-    // rules (Actual/360 for floating + fees, 30/360 for fixed-rate tranches).
-    const periodStart = addQuarters(currentDate, q - 1);
+    // B3 / §4.2: period accrual window. Default cadence is full quarters from
+    // currentDate; with stubPeriod=true, period 1 is `currentDate → firstPeriodEndDate`
+    // (partial quarter), and periods 2+ run as full quarters from firstPeriodEndDate.
+    const periodStart = periodStartDate(q);
     const periodEnd = periodDate;
     const dayFracActual = dayCountFraction("actual_360", periodStart, periodEnd);
     const dayFrac30 = dayCountFraction("30_360", periodStart, periodEnd);
+    // Period fraction relative to a standard quarter (0.25 year). Used to
+    // prorate quarterly hazard / prepay rates for stub periods. For full
+    // quarters this is approximately 1.0 and would alter pinned hazards by
+    // ~1% (90 vs 91 days); we therefore only enable proration when stub mode
+    // is active to preserve byte-identical output on legacy fixtures.
+    const periodFraction = dayFracActual / 0.25;
+    const prorate = (rate: number): number =>
+      useStub && q === 1 ? 1 - Math.pow(1 - rate, periodFraction) : rate;
     /** Day-count fraction for a given tranche this period: Actual/360 for
      *  floating, 30/360 for fixed-rate. */
     const trancheDayFrac = (t: ProjectionInputs["tranches"][number]): number =>
       t.isFloating ? dayFracActual : dayFrac30;
+
+    // ── §4.3 balance instrumentation: capture defaulted-par at period start
+    // BEFORE any per-period mutations so the conservation invariant holds.
+    const beginningDefaultedPar = hasLoans
+      ? loanStates.reduce((s, l) => s + l.defaultedParPending, 0)
+      : 0;
 
     // ── 1. Beginning par ──────────────────────────────────────────
     // ── 1b. DDTL draw event (before beginningPar capture) ──────────
@@ -1256,10 +1470,31 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         // populates from LoanInput or BUCKET_WARF_FALLBACK) fall back to
         // the bucket map as a defensive path.
         const isBucketOverridden = overriddenBucketSet?.has(loan.ratingBucket) ?? false;
-        const hazard =
-          useLegacyBucketHazard || isBucketOverridden || loan.warfFactor <= 0
-            ? (quarterlyHazard[loan.ratingBucket] ?? 0)
-            : warfFactorToQuarterlyHazard(loan.warfFactor);
+        const usingBucketBranch =
+          useLegacyBucketHazard || isBucketOverridden || loan.warfFactor <= 0;
+        let baseHazard: number;
+        if (usingBucketBranch) {
+          // Bucket-map branch — already path-aware via `quarterlyHazard`
+          // recompute above.
+          baseHazard = quarterlyHazard[loan.ratingBucket] ?? 0;
+        } else {
+          // Per-position WARF branch. Scale by cdrPathMultiplier when a
+          // path is active; otherwise constant.
+          const warfHazard = warfFactorToQuarterlyHazard(loan.warfFactor);
+          if (cdrPathMultiplier == null) {
+            baseHazard = warfHazard;
+          } else {
+            const m = cdrPathMultiplier[loan.ratingBucket] ?? 1;
+            if (m === Infinity) {
+              // Baseline 0, path non-zero — fall back to bucket-map path
+              // hazard since the multiplier is undefined.
+              baseHazard = quarterlyHazard[loan.ratingBucket] ?? 0;
+            } else {
+              baseHazard = warfHazard * m;
+            }
+          }
+        }
+        const hazard = prorate(baseHazard);
         const loanDefaults = draw(loan.survivingPar, hazard);
         loan.survivingPar -= loanDefaults;
         totalDefaults += loanDefaults;
@@ -1290,7 +1525,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       for (const loan of loanStates) {
         if (loan.survivingPar > 0) {
           if (loan.isDelayedDraw) continue;
-          const prepay = loan.survivingPar * qPrepayRate;
+          const prepay = loan.survivingPar * prorate(qPrepayRate);
           loan.survivingPar -= prepay;
           totalPrepayments += prepay;
         }
@@ -1313,9 +1548,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         ? allRates.reduce((s, v) => s + v, 0) / allRates.length
         : 0;
       const qHazard = 1 - Math.pow(1 - Math.min(avgAnnualCdr, 99.99) / 100, 0.25);
-      defaults = currentPar * qHazard;
+      defaults = currentPar * prorate(qHazard);
       currentPar -= defaults;
-      prepayments = currentPar * qPrepayRate;
+      prepayments = currentPar * prorate(qPrepayRate);
       currentPar -= prepayments;
 
       if (defaults > 0 && recoveryPct > 0) {
@@ -1489,17 +1724,20 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       bopTrancheBalances[t.className] = trancheBalances[t.className];
     }
 
-    // A3: on call (callDate set), liquidate each position at its market price
-    // × callPricePct under 'multiplier' semantics, or at a flat callPricePct
-    // under 'flat' semantics. On natural maturity (no callDate), loans redeem
-    // at par so legacy behaviour (endingPar × 100%) is preserved. Aggregate
-    // mode (no loans) falls back to the flat endingPar × callPricePct/100 —
-    // there are no per-position prices to apply.
+    // Post-v6 plan §4.1: when manager call fires (callActive), liquidate per
+    // callPriceMode. When the projection reaches legal final without a call,
+    // loans redeem at par. Aggregate-mode deals (no loan list) under manual
+    // mode fall back to endingPar × callPricePct/100; under par/market modes
+    // the aggregate fallback is endingPar at face value (no per-position info
+    // to apply market prices to). The "market without loans" combination is
+    // not supported — runProjection's pre-period validation should catch.
     const liquidationProceeds = isMaturity
-      ? (callDate
+      ? (callActive
           ? (hasLoans
               ? computeCallLiquidation(loanStates, callPricePct, callPriceMode)
-              : endingPar * (callPricePct / 100))
+              : callPriceMode === "manual"
+                ? endingPar * (callPricePct / 100)
+                : endingPar)
           : endingPar)
       : 0;
     let prelimPrincipal = prepayments + scheduledMaturities + recoveries + q1Cash - reinvestment + liquidationProceeds;
@@ -1576,10 +1814,23 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       totalEquityDistributions += equityDistributionAccel;
       equityCashFlows.push(equityDistributionAccel);
 
+      // §4.3 balance instrumentation (post-acceleration branch).
+      const endingDefaultedParAccel = hasLoans
+        ? loanStates.reduce((s, l) => s + l.defaultedParPending, 0)
+        : 0;
+
       periods.push({
         periodNum: q,
         date: periodDate,
         beginningPar,
+        beginningPerformingPar: beginningPar,
+        endingPerformingPar: endingPar,
+        beginningDefaultedPar,
+        endingDefaultedPar: endingDefaultedParAccel,
+        beginningPrincipalAccount: 0,
+        endingPrincipalAccount: 0,
+        beginningInterestAccount: 0,
+        endingInterestAccount: 0,
         defaults,
         prepayments,
         scheduledMaturities,
@@ -2160,10 +2411,23 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     totalEquityDistributions += equityDistribution;
     equityCashFlows.push(equityDistribution);
 
+    // §4.3 balance instrumentation (normal-waterfall branch).
+    const endingDefaultedParNormal = hasLoans
+      ? loanStates.reduce((s, l) => s + l.defaultedParPending, 0)
+      : 0;
+
     periods.push({
       periodNum: q,
       date: periodDate,
       beginningPar,
+      beginningPerformingPar: beginningPar,
+      endingPerformingPar: endingPar,
+      beginningDefaultedPar,
+      endingDefaultedPar: endingDefaultedParNormal,
+      beginningPrincipalAccount: 0,
+      endingPrincipalAccount: 0,
+      beginningInterestAccount: 0,
+      endingInterestAccount: 0,
       defaults,
       prepayments,
       scheduledMaturities,

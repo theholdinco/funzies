@@ -19,7 +19,6 @@ import {
 import { getBuyListForUser } from "@/lib/clo/buy-list";
 import type { ExtractedConstraints } from "@/lib/clo/types";
 import { resolveWaterfallInputs } from "@/lib/clo/resolver";
-import WaterfallVisualization from "./WaterfallVisualization";
 import ProjectionModel from "./ProjectionModel";
 import DataQualityCheck from "./DataQualityCheck";
 
@@ -119,13 +118,6 @@ export default async function WaterfallPage() {
       )}
 
       {panel && <DataQualityCheck panelId={panel.id} dealContext={dealContext} />}
-
-      <WaterfallVisualization
-        waterfallSteps={waterfallSteps}
-        tranches={tranches}
-        trancheSnapshots={trancheSnapshots}
-        complianceTests={periodData?.complianceTests ?? []}
-      />
 
       <ProjectionModel
         maturityDate={maturityDate}

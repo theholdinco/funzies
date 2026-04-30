@@ -31,9 +31,10 @@ function makeSimpleInputs(overrides: Partial<ProjectionInputs> = {}): Projection
     incentiveFeePct: 0,
     incentiveFeeHurdleIrr: 0,
     postRpReinvestmentPct: 0,
+    callMode: "none",
     callDate: null,
     callPricePct: 100,
-    callPriceMode: "multiplier",
+    callPriceMode: "par",
     reinvestmentOcTrigger: null,
     tranches: [
       { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
@@ -84,9 +85,10 @@ function makeMultiTrancheInputs(overrides: Partial<ProjectionInputs> = {}): Proj
     incentiveFeePct: 0,
     incentiveFeeHurdleIrr: 0,
     postRpReinvestmentPct: 0,
+    callMode: "none",
     callDate: null,
     callPricePct: 100,
-    callPriceMode: "multiplier",
+    callPriceMode: "par",
     reinvestmentOcTrigger: null,
     tranches: [
       { className: "A", currentBalance: 55_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
@@ -1053,9 +1055,10 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
       defaultRatesByRating: uniformRates(0),
       cprPct: 0,
       recoveryPct: 0,
+      callMode: "optionalRedemption",
       callDate: addQuarters("2026-01-15", 4),
       callPricePct: 100,
-    callPriceMode: "multiplier",
+      callPriceMode: "par",
       loans: [], // aggregate mode
       ocTriggers: [],
       icTriggers: [],
@@ -1066,8 +1069,10 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
       defaultRatesByRating: uniformRates(0),
       cprPct: 0,
       recoveryPct: 0,
+      callMode: "optionalRedemption",
       callDate: addQuarters("2026-01-15", 4),
       callPricePct: 95,
+      callPriceMode: "manual",
       loans: [], // aggregate mode
       ocTriggers: [],
       icTriggers: [],
@@ -1094,9 +1099,10 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
       defaultRatesByRating: uniformRates(0),
       cprPct: 0,
       recoveryPct: 0,
+      callMode: "optionalRedemption",
       callDate: addQuarters("2026-01-15", 4),
       callPricePct: 100,
-    callPriceMode: "multiplier",
+      callPriceMode: "par",
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 }],
       ocTriggers: [],
       icTriggers: [],
@@ -1107,8 +1113,10 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
       defaultRatesByRating: uniformRates(0),
       cprPct: 0,
       recoveryPct: 0,
+      callMode: "optionalRedemption",
       callDate: addQuarters("2026-01-15", 4),
       callPricePct: 95,
+      callPriceMode: "manual",
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 }],
       ocTriggers: [],
       icTriggers: [],
@@ -1137,15 +1145,16 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
       defaultRatesByRating: uniformRates(0),
       cprPct: 20, // prepayments generate principal → gets reinvested during RP
       recoveryPct: 0,
+      callMode: "optionalRedemption",
       callDate: addQuarters(currentDate, callQ),
       callPricePct: 100,
-    callPriceMode: "multiplier",
+      callPriceMode: "par",
       reinvestmentTenorQuarters: 20, // 5-year tenor → reinvested loans mature at Q20+ >> callQ
       ocTriggers: [],
       icTriggers: [],
     });
 
-    const atDiscount = { ...atPar, callPricePct: 95 };
+    const atDiscount = { ...atPar, callPricePct: 95, callPriceMode: "manual" as const };
 
     const parResult = runProjection(atPar);
     const discountResult = runProjection(atDiscount);

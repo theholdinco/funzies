@@ -111,14 +111,17 @@ describe("A. Aggregate mode (no loans)", () => {
   });
 
   it("A5: aggregate mode callDate — callPricePct applies to endingPar at maturity", () => {
-    // Branches: hasLoans=false, isMaturity=true, callDate set
-    // In aggregate mode, no loan clamping issue — endingPar is from currentPar
+    // Branches: hasLoans=false, isMaturity=true, callDate set, callPriceMode "manual"
+    // (manual mode is the partner-facing nomenclature for "flat % of par"; in
+    // aggregate-mode liquidation that's `endingPar × callPricePct/100`).
     const atPar = makeInputs({
       loans: [],
       defaultRatesByRating: uniformRates(0),
       cprPct: 0,
+      callMode: "optionalRedemption",
       callDate: addQuarters("2026-01-15", 4),
       callPricePct: 100,
+      callPriceMode: "manual",
     });
 
     const atDiscount = { ...atPar, callPricePct: 90 };
@@ -147,8 +150,10 @@ describe("B. Call date × loan maturity interactions", () => {
       cprPct: 0,
       recoveryPct: 0,
       reinvestmentPeriodEnd: "2026-01-01",
+      callMode: "optionalRedemption",
       callDate: addQuarters("2026-01-15", 4),
       callPricePct: 95,
+      callPriceMode: "manual",
       loans: [
         { parBalance: 50_000_000, maturityDate: addQuarters("2026-01-15", 2), ratingBucket: "B", spreadBps: 400 },
         { parBalance: 50_000_000, maturityDate: addQuarters("2026-01-15", 20), ratingBucket: "B", spreadBps: 400 },
@@ -167,8 +172,8 @@ describe("B. Call date × loan maturity interactions", () => {
     const lastPeriod = result.periods[result.periods.length - 1];
     // liquidationProceeds = endingPar * 0.95 = 50M * 0.95 = 47.5M
     // Total principal available = 47.5M (liquidation) — no maturities since loan doesn't mature at Q4
-    // Compare with 100% call price to verify 2.5M difference
-    const atParResult = runProjection({ ...inputs, callPricePct: 100 });
+    // Compare with par mode to verify 2.5M difference (par sells at 100c).
+    const atParResult = runProjection({ ...inputs, callPricePct: 100, callPriceMode: "par" });
     const diff = atParResult.totalEquityDistributions - result.totalEquityDistributions;
     // Discount only applies to the 50M that didn't naturally mature → 50M * 5% = 2.5M
     expect(diff).toBeCloseTo(2_500_000, -4);
@@ -181,14 +186,16 @@ describe("B. Call date × loan maturity interactions", () => {
       cprPct: 0,
       recoveryPct: 0,
       reinvestmentPeriodEnd: "2026-01-01",
+      callMode: "optionalRedemption",
       callDate: addQuarters("2026-01-15", 4),
       callPricePct: 100,
+      callPriceMode: "par",
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 20), ratingBucket: "B", spreadBps: 400 }],
       ocTriggers: [],
       icTriggers: [],
     });
 
-    const atPremium = { ...atPar, callPricePct: 102 };
+    const atPremium = { ...atPar, callPricePct: 102, callPriceMode: "manual" as const };
 
     const parResult = runProjection(atPar);
     const premiumResult = runProjection(atPremium);
@@ -235,8 +242,10 @@ describe("B. Call date × loan maturity interactions", () => {
     const inputs = makeInputs({
       currentDate,
       reinvestmentPeriodEnd: addQuarters(currentDate, 8), // RP until Q8
+      callMode: "optionalRedemption",
       callDate: addQuarters(currentDate, 4), // but call at Q4
       callPricePct: 100,
+      callPriceMode: "par",
       defaultRatesByRating: uniformRates(0),
       cprPct: 0,
       recoveryPct: 0,
@@ -1194,8 +1203,10 @@ describe("M. Conservation laws", () => {
     incentiveFeeHurdleIrr: 0.08,
     postRpReinvestmentPct: 30,
     deferredInterestCompounds: false,
+    callMode: "optionalRedemption",
     callDate: addQuarters("2026-01-15", 20),
     callPricePct: 98,
+    callPriceMode: "manual",
     reinvestmentOcTrigger: { triggerLevel: 110, rank: 2, diversionPct: 50 },
     ocTriggers: [
       { className: "A", triggerLevel: 125, rank: 1 },

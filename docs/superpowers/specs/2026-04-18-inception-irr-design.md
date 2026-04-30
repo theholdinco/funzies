@@ -1,5 +1,12 @@
 # Inception IRR
 
+> **Superseded notice (2026-04-29):** this design shipped a single mark-to-book
+> "Inception IRR" line. Post-v6 plan §3.1 + §3.2 replaces it with three
+> simultaneously-displayed modes (Realized / Mark-to-book / Mark-to-model)
+> and three forward-IRR rows at fixed anchor prices. Read this doc as
+> historical context for the v6 ship; consult the post-v6 plan for current
+> behavior.
+
 ## Problem
 
 The waterfall model currently shows a **forward-projected IRR** (what will the equity return from today onward given assumptions). There is no way to see **how the position has actually performed since purchase** — the inception IRR based on real cash flows.

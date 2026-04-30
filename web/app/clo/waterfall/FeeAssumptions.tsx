@@ -14,6 +14,7 @@ export function FeeAssumptions({
   incentiveFeeHurdleIrr, onHurdleChange,
   hasResolvedFees,
   feesCitation,
+  callMode, onCallModeChange,
   callDate, onCallDateChange,
   callPricePct, onCallPriceChange,
   callPriceMode, onCallPriceModeChange,
@@ -30,9 +31,10 @@ export function FeeAssumptions({
   incentiveFeeHurdleIrr: number; onHurdleChange: (v: number) => void;
   hasResolvedFees: boolean;
   feesCitation?: Citation | null;
+  callMode: "none" | "optionalRedemption"; onCallModeChange: (v: "none" | "optionalRedemption") => void;
   callDate: string | null; onCallDateChange: (v: string | null) => void;
   callPricePct: number; onCallPriceChange: (v: number) => void;
-  callPriceMode: "multiplier" | "flat"; onCallPriceModeChange: (v: "multiplier" | "flat") => void;
+  callPriceMode: "par" | "market" | "manual"; onCallPriceModeChange: (v: "par" | "market" | "manual") => void;
   portfolioInfo: {
     fixedRateCount: number; fixedRatePar: number; fixedRatePct: number;
     ddtlCount: number; ddtlPar: number; hasDdtls: boolean; hasFixedRate: boolean;
@@ -77,89 +79,113 @@ export function FeeAssumptions({
             <SliderInput label="Incentive Hurdle" value={incentiveFeeHurdleIrr} onChange={onHurdleChange} min={0} max={20} step={0.5} suffix="% IRR" hint="Fee is zero while equity IRR is below this rate. Above it, the full percentage applies unless it would push IRR below the hurdle" />
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.25rem" }}>
-                <label style={{ fontSize: "0.72rem", color: "var(--color-text-muted)", fontWeight: 500 }}>Call Date</label>
-                <span style={{ fontSize: "0.82rem", fontWeight: 600, fontFamily: "var(--font-mono)", color: "var(--color-text)" }}>
-                  {callDate ?? "Not set"}
+                <label style={{ fontSize: "0.72rem", color: "var(--color-text-muted)", fontWeight: 500 }}>Manager call</label>
+                <span style={{ fontSize: "0.7rem", fontWeight: 600, fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}>
+                  {callMode === "none" ? "no call" : callDate ?? "no date set"}
                 </span>
               </div>
               <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginBottom: "0.3rem", lineHeight: 1.4, opacity: 0.8 }}>
-                If set, projection ends here with full liquidation. Most CLOs are called at or near the non-call period end date.
+                Models an optional-redemption call at the chosen date. Per the post-v6 plan §4.1, "no call" is the conservative baseline.
               </div>
-              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <input
-                  type="date"
-                  value={callDate ?? ""}
-                  onChange={(e) => onCallDateChange(e.target.value || null)}
-                  style={{ fontSize: "0.75rem", fontFamily: "var(--font-mono)", padding: "0.3rem 0.5rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text)" }}
-                />
-                {callDate && (
-                  <button
-                    onClick={() => onCallDateChange(null)}
-                    style={{ fontSize: "0.65rem", padding: "0.2rem 0.5rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text-muted)", cursor: "pointer" }}
-                  >
-                    Clear
-                  </button>
-                )}
+              <div style={{ display: "flex", gap: "0.35rem", marginBottom: "0.4rem" }}>
+                <button
+                  onClick={() => onCallModeChange("none")}
+                  style={{
+                    flex: 1,
+                    padding: "0.3rem 0.5rem",
+                    fontSize: "0.7rem",
+                    fontWeight: callMode === "none" ? 600 : 500,
+                    border: `1px solid ${callMode === "none" ? "var(--color-accent)" : "var(--color-border-light)"}`,
+                    background: callMode === "none" ? "var(--color-accent-bg, rgba(59,130,246,0.08))" : "var(--color-surface)",
+                    color: callMode === "none" ? "var(--color-accent)" : "var(--color-text-muted)",
+                    borderRadius: "var(--radius-sm)",
+                    cursor: "pointer",
+                  }}
+                >
+                  No call
+                </button>
+                <button
+                  onClick={() => onCallModeChange("optionalRedemption")}
+                  style={{
+                    flex: 1,
+                    padding: "0.3rem 0.5rem",
+                    fontSize: "0.7rem",
+                    fontWeight: callMode === "optionalRedemption" ? 600 : 500,
+                    border: `1px solid ${callMode === "optionalRedemption" ? "var(--color-accent)" : "var(--color-border-light)"}`,
+                    background: callMode === "optionalRedemption" ? "var(--color-accent-bg, rgba(59,130,246,0.08))" : "var(--color-surface)",
+                    color: callMode === "optionalRedemption" ? "var(--color-accent)" : "var(--color-text-muted)",
+                    borderRadius: "var(--radius-sm)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Optional redemption
+                </button>
               </div>
+              {callMode === "optionalRedemption" && (
+                <>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.4rem" }}>
+                    <input
+                      type="date"
+                      value={callDate ?? ""}
+                      onChange={(e) => onCallDateChange(e.target.value || null)}
+                      style={{ fontSize: "0.75rem", fontFamily: "var(--font-mono)", padding: "0.3rem 0.5rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text)" }}
+                    />
+                    {callDate && (
+                      <button
+                        onClick={() => onCallDateChange(null)}
+                        style={{ fontSize: "0.65rem", padding: "0.2rem 0.5rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text-muted)", cursor: "pointer" }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.2rem" }}>
+                    <label style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", fontWeight: 500 }}>Call price</label>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.3rem", marginBottom: callPriceMode === "manual" ? "0.4rem" : 0 }}>
+                    {(["par", "market", "manual"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => onCallPriceModeChange(mode)}
+                        style={{
+                          flex: 1,
+                          padding: "0.25rem 0.4rem",
+                          fontSize: "0.66rem",
+                          fontWeight: callPriceMode === mode ? 600 : 500,
+                          border: `1px solid ${callPriceMode === mode ? "var(--color-accent)" : "var(--color-border-light)"}`,
+                          background: callPriceMode === mode ? "var(--color-accent-bg, rgba(59,130,246,0.08))" : "var(--color-surface)",
+                          color: callPriceMode === mode ? "var(--color-accent)" : "var(--color-text-muted)",
+                          borderRadius: "var(--radius-sm)",
+                          cursor: "pointer",
+                          textTransform: "capitalize",
+                        }}
+                        title={
+                          mode === "par"
+                            ? "Each position sells at face value (100c)."
+                            : mode === "market"
+                            ? "Each position sells at its observed market price. Throws if any position is missing currentPrice."
+                            : "Every position sells at the flat % below, regardless of market."
+                        }
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                  {callPriceMode === "manual" && (
+                    <SliderInput
+                      label="Liquidation price"
+                      value={callPricePct}
+                      onChange={onCallPriceChange}
+                      min={80}
+                      max={105}
+                      step={0.5}
+                      suffix="% of par"
+                      hint="Flat sale price for every position, regardless of market."
+                    />
+                  )}
+                </>
+              )}
             </div>
-            {callDate && (
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.25rem" }}>
-                  <label style={{ fontSize: "0.72rem", color: "var(--color-text-muted)", fontWeight: 500 }}>Call price mode</label>
-                </div>
-                <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginBottom: "0.35rem", lineHeight: 1.4, opacity: 0.85 }}>
-                  {callPriceMode === "multiplier"
-                    ? "Each position sells at its own market price × the multiplier below. Default 100 = liquidate at current market."
-                    : "Every position sells at the flat price below, regardless of its market value. Useful for quick stress scenarios (e.g. \"everything at 98c\")."}
-                </div>
-                <div style={{ display: "flex", gap: "0.35rem", marginBottom: "0.5rem" }}>
-                  <button
-                    onClick={() => onCallPriceModeChange("multiplier")}
-                    style={{
-                      flex: 1,
-                      padding: "0.3rem 0.5rem",
-                      fontSize: "0.7rem",
-                      fontWeight: callPriceMode === "multiplier" ? 600 : 500,
-                      border: `1px solid ${callPriceMode === "multiplier" ? "var(--color-accent)" : "var(--color-border-light)"}`,
-                      background: callPriceMode === "multiplier" ? "var(--color-accent-bg, rgba(59,130,246,0.08))" : "var(--color-surface)",
-                      color: callPriceMode === "multiplier" ? "var(--color-accent)" : "var(--color-text-muted)",
-                      borderRadius: "var(--radius-sm)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Multiplier (per-position MtM)
-                  </button>
-                  <button
-                    onClick={() => onCallPriceModeChange("flat")}
-                    style={{
-                      flex: 1,
-                      padding: "0.3rem 0.5rem",
-                      fontSize: "0.7rem",
-                      fontWeight: callPriceMode === "flat" ? 600 : 500,
-                      border: `1px solid ${callPriceMode === "flat" ? "var(--color-accent)" : "var(--color-border-light)"}`,
-                      background: callPriceMode === "flat" ? "var(--color-accent-bg, rgba(59,130,246,0.08))" : "var(--color-surface)",
-                      color: callPriceMode === "flat" ? "var(--color-accent)" : "var(--color-text-muted)",
-                      borderRadius: "var(--radius-sm)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Flat (same price for all)
-                  </button>
-                </div>
-                <SliderInput
-                  label={callPriceMode === "multiplier" ? "Liquidation Multiplier" : "Liquidation Price"}
-                  value={callPricePct}
-                  onChange={onCallPriceChange}
-                  min={80}
-                  max={callPriceMode === "multiplier" ? 120 : 105}
-                  step={0.5}
-                  suffix={callPriceMode === "multiplier" ? "% of market" : "% of par"}
-                  hint={callPriceMode === "multiplier"
-                    ? "Haircut/premium applied to each position's market price. 100 = market unchanged; 95 = 5% haircut below market; 105 = 5% premium."
-                    : "Flat sale price for every position, irrespective of its market value."}
-                />
-              </div>
-            )}
           </div>
           {(portfolioInfo.hasFixedRate || portfolioInfo.hasDdtls) && (
             <div style={{ marginTop: "0.75rem", padding: "0.5rem 0.6rem", background: "var(--color-surface-alt, #f8f9fa)", borderRadius: "var(--radius-sm)", fontSize: "0.68rem", color: "var(--color-text-muted)", lineHeight: 1.5 }}>

@@ -20,6 +20,7 @@ function baseInput(overrides: Partial<InceptionIrrInput> = {}): InceptionIrrInpu
       { date: "2024-01-15", distribution: 400_000 },
       { date: "2025-01-15", distribution: 350_000 },
     ],
+    forwardDistributions: null,
     ...overrides,
   };
 }
@@ -95,7 +96,7 @@ describe("computeInceptionIrr", () => {
     expect(computeInceptionIrr(baseInput({ subNotePar: -1 }))).toBeNull();
   });
 
-  it("equityWipedOut: true returns wipedOut=true with null IRR", () => {
+  it("equityWipedOut: true returns wipedOut=true with null mark-to-book IRR", () => {
     const r = computeInceptionIrr(baseInput({
       equityWipedOut: true,
       equityBookValue: 0,
@@ -103,6 +104,124 @@ describe("computeInceptionIrr", () => {
     expect(r).not.toBeNull();
     expect(r!.wipedOut).toBe(true);
     expect(r!.primary.irr).toBeNull();
+    expect(r!.primary.markToBookIrr).toBeNull();
     expect(r!.terminalValue).toBe(0);
+  });
+});
+
+describe("computeInceptionIrr — three IRR modes (post-v6 plan §3.2)", () => {
+  it("realized IRR uses cashflows received only, no terminal — strictly negative when distributions < cost", () => {
+    const r = computeInceptionIrr(baseInput());
+    // 5 distributions sum to €1.5M against €10M cost basis → realized IRR
+    // is negative (haven't recovered cost yet, no terminal mark).
+    expect(r!.primary.realizedIrr).not.toBeNull();
+    expect(r!.primary.realizedIrr!).toBeLessThan(0);
+  });
+
+  it("realized IRR is null when there are no realized distributions in the anchor window", () => {
+    const r = computeInceptionIrr(baseInput({
+      historicalDistributions: [],
+    }));
+    // Without any received cashflow there's no defined realized IRR.
+    expect(r!.primary.realizedIrr).toBeNull();
+    // Mark-to-book remains computed (cost + terminal alone is a 2-flow series).
+    expect(r!.primary.markToBookIrr).not.toBeNull();
+  });
+
+  it("mark-to-book equals legacy `irr` field (back-compat)", () => {
+    const r = computeInceptionIrr(baseInput());
+    expect(r!.primary.markToBookIrr).toBe(r!.primary.irr);
+  });
+
+  it("mark-to-model: 'no_forward_data' status when forwardDistributions is null", () => {
+    const r = computeInceptionIrr(baseInput({ forwardDistributions: null }));
+    expect(r!.primary.markToModelStatus).toBe("no_forward_data");
+    expect(r!.primary.markToModelIrr).toBeNull();
+    expect(r!.primary.forwardDistributionCount).toBe(0);
+  });
+
+  it("mark-to-model: 'computed' status with realized + forward stream", () => {
+    const r = computeInceptionIrr(baseInput({
+      forwardDistributions: [
+        { date: "2026-07-15", amount: 600_000 },
+        { date: "2027-01-15", amount: 500_000 },
+        { date: "2027-07-15", amount: 5_000_000 }, // terminal-ish
+      ],
+    }));
+    expect(r!.primary.markToModelStatus).toBe("computed");
+    expect(r!.primary.markToModelIrr).not.toBeNull();
+    expect(Number.isFinite(r!.primary.markToModelIrr!)).toBe(true);
+    expect(r!.primary.forwardDistributionCount).toBe(3);
+  });
+
+  it("mark-to-model: 'no_realized_data' status when historicalDistributions is empty but forward exists", () => {
+    const r = computeInceptionIrr(baseInput({
+      historicalDistributions: [],
+      forwardDistributions: [
+        { date: "2026-07-15", amount: 1_000_000 },
+        { date: "2027-07-15", amount: 5_500_000 },
+      ],
+    }));
+    expect(r!.primary.markToModelStatus).toBe("no_realized_data");
+    expect(r!.primary.markToModelIrr).not.toBeNull();
+    expect(r!.primary.forwardDistributionCount).toBe(2);
+  });
+
+  it("mark-to-model: 'wiped_out' status when equityWipedOut, even with forward stream", () => {
+    const r = computeInceptionIrr(baseInput({
+      equityWipedOut: true,
+      equityBookValue: 0,
+      forwardDistributions: [{ date: "2026-07-15", amount: 100_000 }],
+    }));
+    expect(r!.primary.markToModelStatus).toBe("wiped_out");
+    expect(r!.primary.markToModelIrr).toBeNull();
+    expect(r!.primary.forwardDistributionCount).toBe(0);
+  });
+
+  it("mark-to-model differs from mark-to-book when forward distributions sum != equityBookValue", () => {
+    // Forward distributions far exceeding book → mark-to-model > mark-to-book.
+    const r = computeInceptionIrr(baseInput({
+      equityBookValue: 5_500_000,
+      forwardDistributions: [
+        { date: "2026-07-15", amount: 2_000_000 },
+        { date: "2027-07-15", amount: 8_000_000 }, // way above book
+      ],
+    }));
+    expect(r!.primary.markToModelIrr).not.toBeNull();
+    expect(r!.primary.markToBookIrr).not.toBeNull();
+    expect(r!.primary.markToModelIrr!).toBeGreaterThan(r!.primary.markToBookIrr!);
+  });
+
+  it("inverse-case error: historical distribution dated after currentDate throws", () => {
+    expect(() =>
+      computeInceptionIrr(baseInput({
+        historicalDistributions: [
+          { date: "2022-07-15", distribution: 200_000 },
+          { date: "2027-01-01", distribution: 300_000 }, // after currentDate=2026-04-01
+        ],
+      })),
+    ).toThrow(/historical distribution dated 2027-01-01 is after currentDate/);
+  });
+
+  it("inverse-case error: forward distribution dated on or before currentDate throws", () => {
+    expect(() =>
+      computeInceptionIrr(baseInput({
+        forwardDistributions: [
+          { date: "2026-04-01", amount: 100_000 }, // == currentDate (not strictly after)
+          { date: "2027-01-15", amount: 500_000 },
+        ],
+      })),
+    ).toThrow(/forward distribution dated 2026-04-01 is not after currentDate/);
+  });
+
+  it("counterfactual anchor also carries all three modes", () => {
+    const r = computeInceptionIrr(baseInput({
+      userAnchor: { date: "2024-04-17", priceCents: 95 },
+      forwardDistributions: [{ date: "2026-07-15", amount: 1_000_000 }],
+    }));
+    expect(r!.counterfactual).not.toBeNull();
+    expect(r!.counterfactual!.markToBookIrr).not.toBeNull();
+    expect(r!.counterfactual!.realizedIrr).not.toBeNull();
+    expect(r!.counterfactual!.markToModelStatus).toBe("computed");
   });
 });

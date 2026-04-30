@@ -64,12 +64,18 @@ export interface UserAssumptions {
   deferredInterestCompounds: boolean;
   postRpReinvestmentPct: number;
   hedgeCostBps: number;
+  /** Manager-call gating (post-v6 plan §4.1). Default "none" so the engine
+   *  projects to legal final unless the user explicitly chooses to model a
+   *  call. The Phase A type union excludes "economic" mode (Phase D §7.4). */
+  callMode: "none" | "optionalRedemption";
   callDate: string | null;
-  callPricePct: number; // liquidation price % (semantics depend on callPriceMode)
-  // Call-liquidation pricing semantics (A3):
-  //   'multiplier' (default): per-position price = currentPrice × callPricePct/100
-  //   'flat': every position sells at callPricePct regardless of market price
-  callPriceMode: "multiplier" | "flat";
+  callPricePct: number; // liquidation price % of par; only used when callPriceMode === "manual"
+  /** Call-liquidation pricing (post-v6 plan §4.1):
+   *   'par': every position sells at face value
+   *   'market': every position sells at observed currentPrice; throws when missing
+   *   'manual': every position sells at callPricePct (flat % of par)
+   */
+  callPriceMode: "par" | "market" | "manual";
   ddtlDrawAssumption: 'draw_at_deadline' | 'never_draw' | 'custom_quarter';
   ddtlDrawQuarter: number;
   ddtlDrawPercent: number;
@@ -123,9 +129,10 @@ export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
   deferredInterestCompounds: true,
   postRpReinvestmentPct: 0,
   hedgeCostBps: 0,
+  callMode: "none",
   callDate: null,
   callPricePct: 100,
-  callPriceMode: "multiplier",
+  callPriceMode: "par",
   ddtlDrawAssumption: 'draw_at_deadline' as const,
   ddtlDrawQuarter: CLO_DEFAULTS.ddtlDrawQuarter,
   ddtlDrawPercent: CLO_DEFAULTS.ddtlDrawPercent,
@@ -420,6 +427,7 @@ export function buildFromResolved(
     incentiveFeePct: userAssumptions.incentiveFeePct,
     incentiveFeeHurdleIrr: userAssumptions.incentiveFeeHurdleIrr / 100, // convert from % to decimal
     postRpReinvestmentPct: userAssumptions.postRpReinvestmentPct,
+    callMode: userAssumptions.callMode,
     callDate: userAssumptions.callDate,
     callPricePct: userAssumptions.callPricePct,
     callPriceMode: userAssumptions.callPriceMode,
