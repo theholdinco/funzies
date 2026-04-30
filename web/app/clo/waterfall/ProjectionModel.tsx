@@ -60,7 +60,6 @@ import { DefaultRatePanel } from "./DefaultRatePanel";
 import { SwitchSimulator } from "./SwitchSimulator";
 import { type UserAssumptions } from "@/lib/clo/build-projection-inputs";
 import { formatCallDate, type IrrCellValue } from "./comparison-encoding";
-import { ForwardIrrTable } from "./ForwardIrrTable";
 
 interface Props {
   maturityDate: string | null;
@@ -182,6 +181,15 @@ export default function ProjectionModel({
   const [ddtlDrawQuarter, setDdtlDrawQuarter] = useState<number>(CLO_DEFAULTS.ddtlDrawQuarter);
   const [ddtlDrawPercent, setDdtlDrawPercent] = useState<number>(CLO_DEFAULTS.ddtlDrawPercent);
   const [equityEntryPriceCents, setEquityEntryPriceCents] = useState<number | null>(null); // null = use book value
+  // Forward IRR anchor: which price anchors the projected return. Default
+  // is "book" (today's mark-to-book). Other options surface only when the
+  // underlying data is available (cost basis from PPM/EquityInceptionData;
+  // custom from the entry-price input).
+  const [forwardAnchor, setForwardAnchor] = useState<"book" | "cost" | "custom">("book");
+  // User-overridable call date for the with-call comparison. `null` means
+  // "use the engine-derived default" (max(NCP, currentDate)). Empty string
+  // means "no call" — collapse to single column.
+  const [userCallDate, setUserCallDate] = useState<string | null>(null);
   // Post-v6 plan §9 #5 / option (d): there is no toggle. When the deal has
   // an extracted `nonCallPeriodEnd`, the no-call/with-call comparison is
   // displayed side-by-side wherever call-mode matters (Forward IRR rows,
@@ -522,19 +530,24 @@ export default function ProjectionModel({
     return deriveNoCallBaseInputs(inputs as ProjectionInputs & { equityEntryPrice?: number });
   }, [inputs]);
 
-  // Effective with-call date: the EARLIEST legal call from currentDate
-  // forward. If the deal's non-call period has already ended (common for
-  // older deals), `nonCallPeriodEnd` is in the past — using it as the
-  // call date asks the engine to retroactively call the deal at par,
-  // which produces nonsensical IRRs (e.g., -87% modeling "par redemption
-  // 3 years ago"). Floor to currentDate so the comparison answers the
-  // partner-relevant question: "what if the manager calls today?".
+  // Effective with-call date: user override > engine default. The engine
+  // default is max(NCP, currentDate) — the EARLIEST legal call from
+  // currentDate forward. For older deals where NCP has already passed,
+  // using the literal NCP date produces nonsensical IRRs ("called at par
+  // three years ago"); flooring to currentDate answers the partner-
+  // relevant question "what if the manager calls today?".
+  //
+  // `userCallDate === null` → use engine default. `userCallDate === ""` →
+  // no call (with-call comparison disabled). Any other string → use that
+  // date verbatim.
   const withCallDate = useMemo<string | null>(() => {
+    if (userCallDate === "") return null;
+    if (userCallDate != null) return userCallDate;
     const ncEnd = resolved?.dates.nonCallPeriodEnd ?? null;
     const currentDate = resolved?.dates.currentDate ?? null;
     if (!ncEnd || !currentDate) return null;
     return ncEnd > currentDate ? ncEnd : currentDate;
-  }, [resolved?.dates.nonCallPeriodEnd, resolved?.dates.currentDate]);
+  }, [resolved?.dates.nonCallPeriodEnd, resolved?.dates.currentDate, userCallDate]);
 
   const withCallBaseInputs = useMemo<ProjectionInputs | null>(() => {
     if (!noCallBaseInputs || !withCallDate) return null;
@@ -562,44 +575,14 @@ export default function ProjectionModel({
   // when nonCallPeriodEnd is extracted; no-call only otherwise. The
   // structure unifies the prior `forwardIrrTriple` + `forwardIrrTripleWithCall`
   // into a single per-row pair so consumers iterate once.
-  const forwardIrrRows = useMemo(() => {
-    if (!noCallBaseInputs || !equityMetrics || equityMetrics.wipedOut || !fairValues) return null;
-
-    type Row = {
-      label: string;
-      cents: number | null; // anchor price; null for fair-value row (variable)
-      noCall: number | null;
-      // `undefined` = no with-call companion exists (single-column display);
-      // `null` = with-call exists but produced no IRR (renders "—").
-      withCall: number | null | undefined;
-    };
-
-    const rows: Row[] = [];
-
-    // Cost basis row (only if user has a purchase price).
-    if (
-      equityInceptionData?.purchasePriceCents != null &&
-      equityInceptionData.purchasePriceCents > 0
-    ) {
-      const cents = equityInceptionData.purchasePriceCents;
-      const ep = equityMetrics.subNotePar * (cents / 100);
-      const noCallIrr = runProjection({ ...noCallBaseInputs, equityEntryPrice: ep }).equityIrr;
-      const withCallIrr = withCallBaseInputs
-        ? runProjection({ ...withCallBaseInputs, equityEntryPrice: ep }).equityIrr
-        : undefined;
-      rows.push({ label: "@ cost basis", cents, noCall: noCallIrr, withCall: withCallIrr });
-    }
-
-    // Book row.
-    const noCallBook = runProjection(noCallBaseInputs).equityIrr;
-    const withCallBook = withCallBaseInputs ? runProjection(withCallBaseInputs).equityIrr : undefined;
-    rows.push({ label: "@ book", cents: equityMetrics.bookValueCents, noCall: noCallBook, withCall: withCallBook });
-
-    return rows;
-  }, [noCallBaseInputs, withCallBaseInputs, equityMetrics, equityInceptionData, fairValues]);
-
-  // Mark-to-model forward distributions for the inception IRR. Computed
-  // under both call regimes so the inception card can show two columns.
+  // Mark-to-model forward distributions for the inception IRR.
+  // `noCallResult` is the no-call projection used as the canonical
+  // mark-to-model forward stream; `withCallResult` was previously used
+  // for a with-call mark-to-model variant in the inception card but the
+  // call-mode comparison now lives in the Forward IRR card alone, so
+  // only the no-call variant is consumed here. (Kept as a hook to
+  // preserve `inceptionIrrWithCall` wiring; can be removed when that
+  // memo is dropped in a follow-up.)
   const noCallResult = useMemo<ProjectionResult | null>(() => {
     if (!noCallBaseInputs) return null;
     return runProjection(noCallBaseInputs);
@@ -610,20 +593,48 @@ export default function ProjectionModel({
     return runProjection(withCallBaseInputs);
   }, [withCallBaseInputs]);
 
-  // @ custom entry-price row: shown when user types a price into the
-  // custom-entry input. Two columns (no-call and with-call) at the same
-  // price. Independent of the FeeAssumptions slider — slider drives the
-  // per-period waterfall trace below; this row is the canonical pair.
-  const customEntryIrr = useMemo<{ noCall: number | null; withCall: number | null | undefined } | null>(() => {
+  // Forward IRR — single-anchor view. The user picks the anchor from a
+  // dropdown ("book", "cost", "custom"); the engine produces one no-call
+  // IRR and (optionally) one with-call IRR for that anchor. Replaces the
+  // prior multi-row layout that displayed all three anchors stacked
+  // simultaneously, which the partner found dense and unhelpful.
+  const anchorOptions = useMemo<Array<{ id: "book" | "cost" | "custom"; label: string; cents: number | null }>>(() => {
+    const options: Array<{ id: "book" | "cost" | "custom"; label: string; cents: number | null }> = [];
+    if (equityMetrics?.bookValueCents != null && !equityMetrics.wipedOut) {
+      options.push({ id: "book", label: "Book", cents: Math.round(equityMetrics.bookValueCents) });
+    }
+    if (
+      equityInceptionData?.purchasePriceCents != null &&
+      equityInceptionData.purchasePriceCents > 0
+    ) {
+      options.push({ id: "cost", label: "Cost basis", cents: equityInceptionData.purchasePriceCents });
+    }
+    if (equityEntryPriceCents != null) {
+      options.push({ id: "custom", label: "Custom", cents: equityEntryPriceCents });
+    }
+    return options;
+  }, [equityMetrics, equityInceptionData, equityEntryPriceCents]);
+
+  // The selected anchor falls back to "book" when the chosen option
+  // isn't available (e.g., user picks "custom" and then clears the
+  // custom-price input). Stable in render — never returns null when at
+  // least book is available.
+  const effectiveAnchor = useMemo<"book" | "cost" | "custom">(() => {
+    if (anchorOptions.find((o) => o.id === forwardAnchor)) return forwardAnchor;
+    return anchorOptions[0]?.id ?? "book";
+  }, [anchorOptions, forwardAnchor]);
+
+  const selectedAnchorIrr = useMemo<{ cents: number; noCall: number | null; withCall: number | null | undefined } | null>(() => {
     if (!noCallBaseInputs || !equityMetrics || equityMetrics.wipedOut) return null;
-    if (equityEntryPriceCents == null) return null;
-    const ep = equityMetrics.subNotePar * (equityEntryPriceCents / 100);
+    const opt = anchorOptions.find((o) => o.id === effectiveAnchor);
+    if (!opt || opt.cents == null) return null;
+    const ep = equityMetrics.subNotePar * (opt.cents / 100);
     const noCall = runProjection({ ...noCallBaseInputs, equityEntryPrice: ep }).equityIrr;
     const withCall = withCallBaseInputs
       ? runProjection({ ...withCallBaseInputs, equityEntryPrice: ep }).equityIrr
       : undefined;
-    return { noCall, withCall };
-  }, [noCallBaseInputs, withCallBaseInputs, equityMetrics, equityEntryPriceCents]);
+    return { cents: opt.cents, noCall, withCall };
+  }, [noCallBaseInputs, withCallBaseInputs, equityMetrics, anchorOptions, effectiveAnchor]);
 
   // Post-v6 plan §5.1 / §5.4: entry-price-vs-IRR sweep. Two columns
   // (no-call IRR / with-call IRR per price point) per option (d) — the
@@ -1238,19 +1249,135 @@ export default function ProjectionModel({
                   borderRadius: "0 0 0 60px",
                 }}
               />
-              <div style={{ fontSize: "0.7rem", fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: "0.55rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                Forward IRR
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", marginBottom: "0.65rem" }}>
+                <div style={{ fontSize: "0.7rem", fontWeight: 500, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Forward IRR
+                </div>
+                <span
+                  title={
+                    "What does 'called' mean? The deal's manager has the option, after the non-call period ends, to redeem all senior notes at par on a quarterly payment date and unwind the deal. " +
+                    "Equity then receives whatever's left from selling the underlying loan portfolio. " +
+                    "If the portfolio's market value is below par-of-debt, calling wipes out equity — that's why a 'called' IRR can come back deeply negative even when 'no call' is fine."
+                  }
+                  style={{
+                    fontSize: "0.65rem",
+                    color: "rgba(255,255,255,0.5)",
+                    cursor: "help",
+                    border: "1px solid rgba(255,255,255,0.4)",
+                    borderRadius: "50%",
+                    width: "0.95rem",
+                    height: "0.95rem",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 500,
+                  }}
+                >
+                  ?
+                </span>
               </div>
-              {forwardIrrRows ? (
-                <ForwardIrrTable
-                  rows={forwardIrrRows}
-                  fairValueNoCall={fairValues?.find((fv) => fv.hurdle === 0.10) ?? null}
-                  fairValueWithCall={fairValuesWithCall?.find((fv) => fv.hurdle === 0.10) ?? null}
-                  hasWithCall={withCallBaseInputs != null && withCallDate != null}
-                  withCallDate={withCallDate}
-                  customEntryIrr={customEntryIrr}
-                  customEntryPriceCents={equityEntryPriceCents}
-                />
+              {selectedAnchorIrr ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+                  {/* Controls row: anchor selector + call date input. */}
+                  <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "0.2rem", flex: "1 1 6rem" }}>
+                      <span style={{ fontSize: "0.55rem", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Anchor
+                      </span>
+                      <select
+                        value={effectiveAnchor}
+                        onChange={(e) => setForwardAnchor(e.target.value as "book" | "cost" | "custom")}
+                        style={{
+                          fontSize: "0.78rem",
+                          padding: "0.25rem 0.4rem",
+                          background: "rgba(255,255,255,0.12)",
+                          color: "#fff",
+                          border: "1px solid rgba(255,255,255,0.18)",
+                          borderRadius: "0.2rem",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        {anchorOptions.map((opt) => (
+                          <option key={opt.id} value={opt.id} style={{ color: "#000" }}>
+                            {opt.label} ({opt.cents}c)
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "0.2rem", flex: "1 1 7rem" }}>
+                      <span style={{ fontSize: "0.55rem", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Call date
+                      </span>
+                      <input
+                        type="date"
+                        value={withCallDate ?? ""}
+                        min={resolved?.dates.currentDate ?? undefined}
+                        onChange={(e) => setUserCallDate(e.target.value || "")}
+                        style={{
+                          fontSize: "0.78rem",
+                          padding: "0.25rem 0.4rem",
+                          background: "rgba(255,255,255,0.12)",
+                          color: "#fff",
+                          border: "1px solid rgba(255,255,255,0.18)",
+                          borderRadius: "0.2rem",
+                          fontFamily: "inherit",
+                          colorScheme: "dark",
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {/* IRR values: no-call always shown; called shown when the
+                      with-call comparison is active. */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontVariantNumeric: "tabular-nums" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                      <span style={{ color: "rgba(255,255,255,0.85)" }}>Held to maturity</span>
+                      <strong style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", letterSpacing: "-0.02em" }}>
+                        {selectedAnchorIrr.noCall != null ? formatPct(selectedAnchorIrr.noCall * 100) : "—"}
+                      </strong>
+                    </div>
+                    {withCallDate && selectedAnchorIrr.withCall !== undefined && (
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                        <span style={{ color: "rgba(255,255,255,0.85)" }}>
+                          If called {formatCallDate(withCallDate)}
+                        </span>
+                        <strong style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", letterSpacing: "-0.02em" }}>
+                          {selectedAnchorIrr.withCall != null ? formatPct(selectedAnchorIrr.withCall * 100) : "—"}
+                        </strong>
+                      </div>
+                    )}
+                  </div>
+                  {/* Implied price for 10% IRR — separate concept (price, not
+                      IRR), shown as a small footer note. */}
+                  {(() => {
+                    const fv10NoCall = fairValues?.find((fv) => fv.hurdle === 0.10) ?? null;
+                    const fv10WithCall = fairValuesWithCall?.find((fv) => fv.hurdle === 0.10) ?? null;
+                    const renderPrice = (fv: FairValueResult | null): string => {
+                      if (!fv) return "—";
+                      if (fv.status === "converged" && fv.priceCents != null) return `${fv.priceCents.toFixed(0)}c`;
+                      if (fv.status === "below_hurdle") return "below hurdle";
+                      if (fv.status === "above_max_bracket") return "exceeds 200c";
+                      return "—";
+                    };
+                    if (!fv10NoCall) return null;
+                    return (
+                      <div
+                        style={{
+                          fontSize: "0.6rem",
+                          color: "rgba(255,255,255,0.7)",
+                          marginTop: "0.2rem",
+                          paddingTop: "0.4rem",
+                          borderTop: "1px solid rgba(255,255,255,0.18)",
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        Buy at <strong style={{ color: "rgba(255,255,255,0.9)" }}>{renderPrice(fv10NoCall)}</strong> for 10% IRR (no call)
+                        {fv10WithCall && (
+                          <> · <strong style={{ color: "rgba(255,255,255,0.9)" }}>{renderPrice(fv10WithCall)}</strong> if called</>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
               ) : (
                 <div
                   style={{
@@ -1292,142 +1419,85 @@ export default function ProjectionModel({
                 letterSpacing: "0.06em",
               }}>
                 Since-inception IRR
-                {inceptionIrr && (
-                  <span style={{ fontSize: "0.55rem", fontWeight: 400, letterSpacing: "0.02em", opacity: 0.7 }}>
-                    {" "}({inceptionIrr.primary.isUserOverride ? "user anchor" : "since closing"})
-                  </span>
-                )}
               </div>
-              {inceptionIrr ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", fontVariantNumeric: "tabular-nums" }}>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", fontSize: "0.78rem" }}>
-                    <span style={{ color: "rgba(255,255,255,0.85)" }} title="Historical cashflows received only — backward-looking realized return.">
-                      Realized
-                    </span>
-                    <strong style={{ fontFamily: "var(--font-display)", fontSize: "1rem", letterSpacing: "-0.02em" }}>
-                      {inceptionIrr.primary.realizedIrr != null
-                        ? formatPct(inceptionIrr.primary.realizedIrr * 100)
-                        : "—"}
-                    </strong>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", fontSize: "0.78rem" }}>
-                    <span style={{ color: "rgba(255,255,255,0.85)" }} title="Historical cashflows + terminal at today's book value — hypothetical 'called at book today' exit.">
-                      Mark-to-book
-                    </span>
-                    <strong style={{ fontFamily: "var(--font-display)", fontSize: "1rem", letterSpacing: "-0.02em" }}>
-                      {inceptionIrr.primary.markToBookIrr != null
-                        ? formatPct(inceptionIrr.primary.markToBookIrr * 100)
-                        : "—"}
-                    </strong>
-                  </div>
-                  {(() => {
-                    // Mark-to-model is the only row in this card with a
-                    // potential with-call companion. Inline per-value labels
-                    // ("no call" / "called Mmm 'YY") read clearer than a
-                    // separate column-header treatment when there's only
-                    // one comparison row.
-                    //
-                    // No bold/dim encoding here: with explicit per-cell
-                    // labels the partner can read both numbers and decide;
-                    // adding bold/dim without a legend (the Forward IRR
-                    // card has one, this one doesn't) created an
-                    // unexplained visual cue. Both cells render at full
-                    // strength.
-                    const cellFor = (
-                      status: "computed" | "no_realized_data" | "wiped_out" | "no_forward_data",
-                      irr: number | null,
-                    ): IrrCellValue => {
-                      if (status === "computed" || status === "no_realized_data") return irr;
-                      if (status === "wiped_out") return "wiped out";
-                      return "no forward data";
-                    };
-                    const fmtIrr = (v: IrrCellValue): string => {
-                      if (typeof v === "string") return v;
-                      if (v == null) return "—";
-                      return formatPct(v * 100);
-                    };
-                    const noCallCell = cellFor(
-                      inceptionIrr.primary.markToModelStatus,
-                      inceptionIrr.primary.markToModelIrr,
-                    );
-                    const withCallCell: IrrCellValue | undefined = inceptionIrrWithCall
-                      ? cellFor(
-                          inceptionIrrWithCall.primary.markToModelStatus,
-                          inceptionIrrWithCall.primary.markToModelIrr,
-                        )
-                      : undefined;
-                    const valueStyle: React.CSSProperties = {
-                      fontFamily: "var(--font-display)",
-                      fontSize: "0.95rem",
-                      letterSpacing: "-0.02em",
-                      fontWeight: 600,
-                      fontVariantNumeric: "tabular-nums",
-                    };
-                    const captionStyle: React.CSSProperties = {
-                      fontSize: "0.55rem",
-                      fontWeight: 400,
-                      color: "rgba(255,255,255,0.55)",
-                      letterSpacing: "0.02em",
-                      marginLeft: "0.25rem",
-                    };
-                    return (
-                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", fontSize: "0.78rem", gap: "0.4rem", flexWrap: "wrap" }}>
-                        <span style={{ color: "rgba(255,255,255,0.85)" }} title="Historical cashflows + engine-projected forward distributions — model-based hold-to-maturity return.">
-                          Mark-to-model
-                        </span>
-                        {withCallCell === undefined ? (
-                          <span style={valueStyle}>{fmtIrr(noCallCell)}</span>
-                        ) : (
-                          <span style={{ display: "inline-flex", alignItems: "baseline", gap: "0.6rem", justifyContent: "flex-end" }}>
-                            <span style={{ display: "inline-flex", alignItems: "baseline" }}>
-                              <span style={valueStyle}>{fmtIrr(noCallCell)}</span>
-                              <span style={captionStyle}>no call</span>
-                            </span>
-                            <span style={{ display: "inline-flex", alignItems: "baseline" }}>
-                              <span style={valueStyle}>{fmtIrr(withCallCell)}</span>
-                              {withCallDate && <span style={captionStyle}>called {formatCallDate(withCallDate)}</span>}
-                            </span>
-                          </span>
-                        )}
+              {inceptionIrr ? (() => {
+                // Lead with the deal's lifetime IRR (mark-to-book at
+                // closing) — that's what most readers mean by "since
+                // inception". Show the user's actual position as a
+                // secondary line if they have a purchase override.
+                //
+                // Why this shape:
+                //   - The realized IRR (cashflows / -purchase) was the
+                //     headline before, but on a position that hasn't
+                //     returned principal yet it reads as a huge negative
+                //     number ("-61%") that's mathematically valid but
+                //     economically misleading. Dropped from the headline.
+                //   - Mark-to-model added a forward-projection IRR with
+                //     no-call/with-call columns; partners reported it as
+                //     unclear without a clear question being answered.
+                //     Moved into the Forward IRR card (where call-mode
+                //     comparison belongs).
+                //   - What remains: one mark-to-book number per anchor —
+                //     "the IRR if you sold at book today, anchored at X."
+                const dealLifetime = inceptionIrr.primary.isUserOverride
+                  ? inceptionIrr.counterfactual
+                  : inceptionIrr.primary;
+                const yourPosition = inceptionIrr.primary.isUserOverride
+                  ? inceptionIrr.primary
+                  : null;
+                const fmtIrr = (v: number | null): string => v != null ? formatPct(v * 100) : "—";
+                return (
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {dealLifetime && dealLifetime.markToBookIrr != null ? (
+                      <>
+                        <div
+                          style={{
+                            fontFamily: "var(--font-display)",
+                            fontSize: "1.6rem",
+                            fontWeight: 700,
+                            letterSpacing: "-0.02em",
+                            fontVariantNumeric: "tabular-nums",
+                            lineHeight: 1.1,
+                          }}
+                        >
+                          {fmtIrr(dealLifetime.markToBookIrr)}
+                        </div>
+                        <div style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.7)", marginTop: "0.25rem", lineHeight: 1.4 }}>
+                          Mark-to-book since closing ({dealLifetime.anchorDate} at {dealLifetime.anchorPriceCents.toFixed(0)}c)
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.85)" }}>
+                        No closing-date anchor available.
                       </div>
-                    );
-                  })()}
-                  <div
-                    style={{
-                      fontSize: "0.58rem",
-                      color: "rgba(255,255,255,0.7)",
-                      marginTop: "0.4rem",
-                      paddingTop: "0.4rem",
-                      borderTop: "1px solid rgba(255,255,255,0.18)",
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    Anchored {inceptionIrr.primary.anchorDate} at {inceptionIrr.primary.anchorPriceCents.toFixed(0)}c
-                    {" · "}
-                    {inceptionIrr.primary.distributionCount} realized
-                    {inceptionIrr.primary.markToModelStatus === "computed" || inceptionIrr.primary.markToModelStatus === "no_realized_data"
-                      ? ` · ${inceptionIrr.primary.forwardDistributionCount} forward`
-                      : ""}
+                    )}
+                    {yourPosition && yourPosition.markToBookIrr != null && (
+                      <div
+                        style={{
+                          marginTop: "0.65rem",
+                          paddingTop: "0.5rem",
+                          borderTop: "1px solid rgba(255,255,255,0.18)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.15rem",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "0.5rem" }}>
+                          <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.85)" }}>
+                            Since you bought
+                          </span>
+                          <strong style={{ fontFamily: "var(--font-display)", fontSize: "1rem", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
+                            {fmtIrr(yourPosition.markToBookIrr)}
+                          </strong>
+                        </div>
+                        <div style={{ fontSize: "0.55rem", color: "rgba(255,255,255,0.55)", lineHeight: 1.4 }}>
+                          Mark-to-book at {yourPosition.anchorDate} ({yourPosition.anchorPriceCents.toFixed(0)}c) · {yourPosition.distributionCount} realized
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {inceptionIrr.counterfactual && inceptionIrr.counterfactual.markToBookIrr != null && (
-                    <div
-                      style={{
-                        fontSize: "0.6rem",
-                        color: "rgba(255,255,255,0.55)",
-                        marginTop: "0.4rem",
-                        paddingTop: "0.4rem",
-                        borderTop: "1px solid rgba(255,255,255,0.15)",
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      Since closing (mark-to-book): <strong style={{ color: "rgba(255,255,255,0.85)" }}>
-                        {formatPct(inceptionIrr.counterfactual.markToBookIrr * 100)}
-                      </strong>
-                      {" "}at {inceptionIrr.counterfactual.anchorDate} · 100c
-                    </div>
-                  )}
-                </div>
-              ) : (
+                );
+              })() : (
                 <div style={{ textAlign: "center" }}>
                   <div
                     style={{
