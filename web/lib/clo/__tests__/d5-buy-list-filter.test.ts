@@ -258,4 +258,42 @@ describe("Industry-cap — industry filter (excludeIndustryCodes)", () => {
     const filters = buyListFiltersFromResolved(fixture.resolved);
     expect(filters.excludeIndustryCodes).toEqual([]);
   });
+
+  it("buyListFiltersFromResolved skips post-RP rules during the reinvestment period (regression)", () => {
+    // Pre-fix: identifyAtCapIndustries ignored appliesWhen — a post-RP rule
+    // was treated as binding even while the deal was still in RP, dropping
+    // viable buy candidates from the recommendation list. Post-fix: the
+    // rule's appliesWhen={kind:"post_reinvestment_period"} is skipped when
+    // currentDate ≤ reinvestmentPeriodEnd.
+    const taggedResolved: typeof fixture.resolved = {
+      ...fixture.resolved,
+      industryCapRules: [
+        {
+          kind: "single_rank_max",
+          rank: 1,
+          triggerPct: 15,
+          appliesWhen: { kind: "post_reinvestment_period" },
+        },
+      ],
+      industryCapPresentInPpm: true,
+      industryTaxonomy: "moodys_33",
+      poolSummary: {
+        ...fixture.resolved.poolSummary,
+        industryDistributionPct: [
+          { industryCode: "1160", industryName: "High Tech", parPct: 15.2 }, // would be at-cap if rule applied
+          { industryCode: "1020", industryName: "Automotive", parPct: 8 },
+        ],
+        largestIndustryPct: 15.2,
+      },
+      // Force inRP=true: currentDate before reinvestmentPeriodEnd.
+      dates: {
+        ...fixture.resolved.dates,
+        currentDate: "2025-01-01",
+        reinvestmentPeriodEnd: "2027-01-01",
+      },
+    };
+    const filters = buyListFiltersFromResolved(taggedResolved);
+    // Post-RP rule doesn't apply during RP → industry not flagged.
+    expect(filters.excludeIndustryCodes).toEqual([]);
+  });
 });

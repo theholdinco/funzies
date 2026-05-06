@@ -154,21 +154,52 @@ export function buyListFiltersFromResolved(resolved: ResolvedDealData): BuyListF
 /** industry-cap: identify industries currently AT OR OVER a binding clause-(t)
  *  cap. Returns the canonical industryCode list — caller surfaces in UI as
  *  the "exclude buckets at cap" checkbox's pre-fill set. Empty when the
- *  resolved deal has no industry distribution / no rules.
+ *  resolved deal has no industry distribution / no rules, or when every
+ *  rule's `appliesWhen` predicate is currently inactive.
  *
  *  Threshold is exact equality (parPct >= triggerPct): a bucket is flagged
  *  when its current share is at or beyond the rule's trigger. A "near
  *  cap with cushion" interpretation requires a partner-set buffer (not
  *  available here without a UI surface for the parameter); shipping the
- *  exact-cap version is the unambiguous default. */
+ *  exact-cap version is the unambiguous default.
+ *
+ *  appliesWhen evaluation: rules with conditional triggers (post-RP,
+ *  ccc-pct-above, defaulted-pct-above) only flag at-cap when their
+ *  condition is satisfied at the current period. Skipping this evaluation
+ *  would over-flag — e.g., a post-RP rule treated as binding while still
+ *  in RP would drop industries from the buy-list that aren't actually
+ *  constrained, hiding viable buy candidates. */
 function identifyAtCapIndustries(resolved: ResolvedDealData): string[] {
   if (resolved.industryCapRules == null || resolved.industryCapRules.length === 0) return [];
   const dist = resolved.poolSummary.industryDistributionPct;
   if (dist == null || dist.length === 0) return [];
 
+  // Evaluate appliesWhen against the resolved closing-state pool. This is
+  // the partner's "current period" snapshot — the buy-list view is at-this-
+  // moment, not forward-projected. Engine forward periods evaluate
+  // appliesWhen against per-period state; here we only care about NOW.
+  const inRP = resolved.dates.reinvestmentPeriodEnd != null
+    ? resolved.dates.currentDate <= resolved.dates.reinvestmentPeriodEnd
+    : false;
+  const pctMoodysCaa = resolved.poolSummary.pctCccAndBelow ?? 0;
+  const pctDefaulted = resolved.poolSummary.totalPar > 0
+    ? (resolved.preExistingDefaultedPar / resolved.poolSummary.totalPar) * 100
+    : 0;
+
+  const ruleApplies = (rule: IndustryCapRule): boolean => {
+    if (!rule.appliesWhen) return true;
+    switch (rule.appliesWhen.kind) {
+      case "during_reinvestment_period": return inRP;
+      case "post_reinvestment_period": return !inRP;
+      case "ccc_pct_above": return pctMoodysCaa > rule.appliesWhen.thresholdPct;
+      case "defaulted_pct_above": return pctDefaulted > rule.appliesWhen.thresholdPct;
+    }
+  };
+
   const atCap = new Set<string>();
 
   for (const rule of resolved.industryCapRules) {
+    if (!ruleApplies(rule)) continue;
     switch (rule.kind) {
       case "single_rank_max":
         if (dist[rule.rank - 1]?.parPct >= rule.triggerPct) {
@@ -196,11 +227,10 @@ function identifyAtCapIndustries(resolved: ResolvedDealData): string[] {
         // threshold bucket as at-cap (caller may not want to add ANY new
         // bucket in that state). When count is < maxCount the rule isn't
         // binding and no buckets are flagged.
-        const thresholdPar = rule.thresholdPct;
-        const aboveCount = dist.filter((b) => b.parPct > thresholdPar).length;
+        const aboveCount = dist.filter((b) => b.parPct > rule.thresholdPct).length;
         if (aboveCount >= rule.maxCount) {
           for (const b of dist) {
-            if (b.parPct <= thresholdPar) atCap.add(b.industryCode);
+            if (b.parPct <= rule.thresholdPct) atCap.add(b.industryCode);
           }
         }
         break;
