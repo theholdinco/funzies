@@ -273,7 +273,6 @@ export interface ExtractedConstraints {
         >
       | null;
     excludedIndustryNames: string[] | null;
-    dealSpecificIndustryList: string[] | null;
     unmappedRuleDescriptions?: string[];
     sourcePages: number[] | null;
     sourceCondition: string | null;

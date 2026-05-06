@@ -506,7 +506,10 @@ Moody's pursuant to its industry classification" or "S&P Industry Classification
   - "moodys_33"     → Moody's CLO industry classification
   - "sp"            → S&P CLO industry classification
   - "deal_specific" → PPM names a custom list inline or via schedule reference
-For "deal_specific", populate 'deal_specific_industry_list' with the named industries.
+Note: "deal_specific" deals are extracted but the engine refuses to project them
+(no canonical taxonomy seed exists for partner-defined lists; per-loan code
+resolution would be ambiguous). Extraction still records the taxonomy honestly so
+the downstream block warning fires with the correct cause.
 
 Step 3 — verbatim quote (when present:true). Capture the clause sub-paragraph
 verbatim into 'verbatim_quote'. Required for downstream review.

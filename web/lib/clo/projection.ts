@@ -497,11 +497,6 @@ export interface ProjectionInputs {
    *  projection.ts:3327, distributing reinvested par across feasible
    *  industry buckets per the configured prior. */
   industryCapRules?: import("./resolver-types").IndustryCapRule[] | null;
-  /** industry-cap: deal's active industry taxonomy. Drives per-loan industryCode
-   *  matching at the synthesis site (so synthetic reinvestment loans are
-   *  tagged with codes from the same taxonomy as existing positions).
-   *  Null when no clause (t). */
-  industryTaxonomy?: import("./resolver-types").ResolvedDealData["industryTaxonomy"];
   /** industry-cap: PPM clause-(t) industries excluded from rank/combined ordering.
    *  Engine drops loans matching these names before per-bucket aggregation
    *  + before allocator runs. Null when no exclusions. */
@@ -1597,7 +1592,6 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     discountObligationRule = null,
     longDatedValuationRule = null,
     industryCapRules = null,
-    industryTaxonomy = null,
     excludedIndustryNames = null,
     ddtlDrawPercent = 100,
     moodysWarfTriggerLevel = null,
@@ -3408,10 +3402,13 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         excludedIndustryNames,
       );
       const initialTotalPar = Array.from(currentPerBucket.values()).reduce((s, v) => s + v, 0);
-      // Tier 2 prior — current pool composition. Each bucket weighted by
-      // its current par share. Falls back to uniform across observed
-      // buckets when the pool happens to be empty (greenfield ramp; rare
-      // path through this site since `hasLoans` gates entry).
+      // Allocator prior: current pool composition (each bucket weighted by
+      // its current par share). The water-filling allocator normalizes this
+      // over feasible buckets each iteration, so over-target buckets cap
+      // and remaining par redistributes proportionally to the rest. When
+      // the pool is empty (greenfield ramp; not reachable here since
+      // `hasLoans` gates entry), priorWeights stays empty and the allocator
+      // returns parBlocked = parToReinvest.
       const priorWeights = new Map<string, number>();
       if (initialTotalPar > 0) {
         for (const [code, par] of currentPerBucket) {

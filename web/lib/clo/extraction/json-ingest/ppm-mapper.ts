@@ -450,7 +450,6 @@ export function mapIndustryConcentrationTest(ppm: PpmJson): unknown {
       taxonomy: null,
       rules: null,
       excludedIndustryNames: null,
-      dealSpecificIndustryList: null,
       sourcePages,
       sourceCondition,
       verbatimQuote,
@@ -476,9 +475,6 @@ export function mapIndustryConcentrationTest(ppm: PpmJson): unknown {
       excludedIndustryNames: Array.isArray(block.excluded_industry_names)
         ? block.excluded_industry_names.filter((s): s is string => typeof s === "string")
         : null,
-      dealSpecificIndustryList: Array.isArray(block.deal_specific_industry_list)
-        ? block.deal_specific_industry_list.filter((s): s is string => typeof s === "string")
-        : null,
       unmappedRuleDescriptions: unmapped,
       sourcePages,
       sourceCondition,
@@ -492,7 +488,6 @@ export function mapIndustryConcentrationTest(ppm: PpmJson): unknown {
       taxonomy: null,
       rules: null,
       excludedIndustryNames: null,
-      dealSpecificIndustryList: null,
       sourcePages,
       sourceCondition,
       verbatimQuote,
@@ -545,9 +540,6 @@ export function mapIndustryConcentrationTest(ppm: PpmJson): unknown {
     rules: anyRejected ? null : rules,
     excludedIndustryNames: Array.isArray(block.excluded_industry_names)
       ? block.excluded_industry_names.filter((s): s is string => typeof s === "string")
-      : null,
-    dealSpecificIndustryList: Array.isArray(block.deal_specific_industry_list)
-      ? block.deal_specific_industry_list.filter((s): s is string => typeof s === "string")
       : null,
     sourcePages,
     sourceCondition,

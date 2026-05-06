@@ -216,8 +216,7 @@ describe("Industry-cap — industry filter (excludeIndustryCodes)", () => {
     expect(result.passed).toHaveLength(1);
   });
 
-  it("buyListFiltersFromResolved pre-fills excludeIndustryCodes from at-or-near-cap industries", () => {
-    // Synthetic resolved with a tight rank-1 cap that one bucket is hitting.
+  it("buyListFiltersFromResolved pre-fills excludeIndustryCodes from at-or-over-cap industries", () => {
     const taggedResolved: typeof fixture.resolved = {
       ...fixture.resolved,
       industryCapRules: [{ kind: "single_rank_max", rank: 1, triggerPct: 15 }],
@@ -226,14 +225,33 @@ describe("Industry-cap — industry filter (excludeIndustryCodes)", () => {
       poolSummary: {
         ...fixture.resolved.poolSummary,
         industryDistributionPct: [
-          { industryCode: "1160", industryName: "High Tech", parPct: 14.5 }, // 14.5/15 = 96.7% of cap → at-or-near
-          { industryCode: "1020", industryName: "Automotive", parPct: 8 },   // far from cap
+          { industryCode: "1160", industryName: "High Tech", parPct: 15.2 }, // at-or-over cap
+          { industryCode: "1020", industryName: "Automotive", parPct: 8 },
+        ],
+        largestIndustryPct: 15.2,
+      },
+    };
+    const filters = buyListFiltersFromResolved(taggedResolved);
+    expect(filters.excludeIndustryCodes).toEqual(["1160"]);
+  });
+
+  it("buyListFiltersFromResolved does NOT flag buckets under cap (no fabricated cushion)", () => {
+    const taggedResolved: typeof fixture.resolved = {
+      ...fixture.resolved,
+      industryCapRules: [{ kind: "single_rank_max", rank: 1, triggerPct: 15 }],
+      industryCapPresentInPpm: true,
+      industryTaxonomy: "moodys_33",
+      poolSummary: {
+        ...fixture.resolved.poolSummary,
+        industryDistributionPct: [
+          { industryCode: "1160", industryName: "High Tech", parPct: 14.5 }, // close but under
+          { industryCode: "1020", industryName: "Automotive", parPct: 8 },
         ],
         largestIndustryPct: 14.5,
       },
     };
     const filters = buyListFiltersFromResolved(taggedResolved);
-    expect(filters.excludeIndustryCodes).toEqual(["1160"]);
+    expect(filters.excludeIndustryCodes).toEqual([]);
   });
 
   it("buyListFiltersFromResolved returns empty excludeIndustryCodes when no rules / no distribution", () => {

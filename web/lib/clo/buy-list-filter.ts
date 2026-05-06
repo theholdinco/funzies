@@ -151,39 +151,40 @@ export function buyListFiltersFromResolved(resolved: ResolvedDealData): BuyListF
   };
 }
 
-/** industry-cap: identify industries currently at-or-near a binding clause-(t) cap.
- *  Returns the canonical industryCode list — caller surfaces in UI as
+/** industry-cap: identify industries currently AT OR OVER a binding clause-(t)
+ *  cap. Returns the canonical industryCode list — caller surfaces in UI as
  *  the "exclude buckets at cap" checkbox's pre-fill set. Empty when the
- *  resolved deal has no industry distribution / no rules. */
+ *  resolved deal has no industry distribution / no rules.
+ *
+ *  Threshold is exact equality (parPct >= triggerPct): a bucket is flagged
+ *  when its current share is at or beyond the rule's trigger. A "near
+ *  cap with cushion" interpretation requires a partner-set buffer (not
+ *  available here without a UI surface for the parameter); shipping the
+ *  exact-cap version is the unambiguous default. */
 function identifyAtCapIndustries(resolved: ResolvedDealData): string[] {
   if (resolved.industryCapRules == null || resolved.industryCapRules.length === 0) return [];
   const dist = resolved.poolSummary.industryDistributionPct;
   if (dist == null || dist.length === 0) return [];
 
-  const NEAR_CAP_RATIO = 0.9; // bucket within 90% of trigger pct = "at-or-near"
   const atCap = new Set<string>();
 
   for (const rule of resolved.industryCapRules) {
     switch (rule.kind) {
       case "single_rank_max":
-        // The rank-N bucket. Add when rank-N par share is within 90% of trigger.
-        if (dist[rule.rank - 1]?.parPct >= NEAR_CAP_RATIO * rule.triggerPct) {
+        if (dist[rule.rank - 1]?.parPct >= rule.triggerPct) {
           atCap.add(dist[rule.rank - 1].industryCode);
         }
         break;
       case "combined_top_n_max": {
-        // Top-N combined sum. When sum is within 90% of trigger, EVERY
-        // top-N bucket is "at-or-near" (any addition to one of them
-        // potentially pushes the combined sum over).
         const combined = dist.slice(0, rule.n).reduce((s, b) => s + b.parPct, 0);
-        if (combined >= NEAR_CAP_RATIO * rule.triggerPct) {
+        if (combined >= rule.triggerPct) {
           for (const b of dist.slice(0, rule.n)) atCap.add(b.industryCode);
         }
         break;
       }
       case "single_class_max": {
         const bucket = dist.find((b) => b.industryCode === rule.industryCode);
-        if (bucket && bucket.parPct >= NEAR_CAP_RATIO * rule.triggerPct) {
+        if (bucket && bucket.parPct >= rule.triggerPct) {
           atCap.add(rule.industryCode);
         }
         break;

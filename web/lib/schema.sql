@@ -875,20 +875,6 @@ CREATE TABLE IF NOT EXISTS clo_buy_list_items (
 );
 CREATE INDEX IF NOT EXISTS idx_clo_buy_list_items_profile ON clo_buy_list_items(profile_id);
 
--- Industry-cap: per-user free-text → canonical industry alias overrides.
-CREATE TABLE IF NOT EXISTS clo_industry_alias_overrides (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  taxonomy TEXT NOT NULL
-    CHECK (taxonomy IN ('moodys_33', 'sp', 'deal_specific')),
-  free_text TEXT NOT NULL,
-  industry_code TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (user_id, taxonomy, free_text)
-);
-CREATE INDEX IF NOT EXISTS idx_clo_industry_alias_user_taxonomy
-  ON clo_industry_alias_overrides(user_id, taxonomy);
-
 -- ============================================================
 -- Free Trial System
 -- ============================================================

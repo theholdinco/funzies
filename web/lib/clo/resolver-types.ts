@@ -448,13 +448,15 @@ export interface ResolvedDealData {
    *  the static `longDatedObligationHaircut` scalar in the OC numerator. */
   longDatedValuationRule: ResolvedLongDatedValuationRule | null;
   /** Active industry-classification taxonomy named in the PPM clause (t).
-   *  Drives per-loan industry-code matching (engine consumes the holding's
-   *  Moody's code when `moodys_33`, S&P code when `sp`). `deal_specific`
-   *  resolves against `dealSpecificIndustryList` instead. Null when the deal
-   *  has no clause (t) (`industryCapPresentInPpm === false`). industry-cap closure. */
+   *  Drives per-loan industry-code matching: engine consumes the holding's
+   *  `moodys_industry_code` when `moodys_33`, `sp_industry_code` when `sp`.
+   *  `deal_specific` is structurally unsupported by engine enforcement —
+   *  per-loan code resolution requires the canonical taxonomy seed lookup,
+   *  which has no entries for deal-specific lists; the resolver emits a
+   *  blocking warning when extraction surfaces this case. Null when the
+   *  deal has no clause (t) (`industryCapPresentInPpm === false`). */
   industryTaxonomy: "moodys_33" | "sp" | "deal_specific" | null;
-  /** Three-state presence signal driving the resolver's blocking gate
-   *  (industry-cap closure, Option D):
+  /** Three-state presence signal driving the resolver's blocking gate:
    *    - `true`  + `industryCapRules: [...]`     → engine enforces caps
    *    - `true`  + `industryCapRules: null/[]`   → resolver blocks (extraction failed)
    *    - `false`                                  → no constraint to enforce
@@ -470,12 +472,8 @@ export interface ResolvedDealData {
    *  ("industries A and B do not count toward this test"). Engine filters
    *  out matching loans before computing per-bucket par sums. Names
    *  (canonical or alias) — engine resolves to `industryCode` via the
-   *  active taxonomy. Null when none. industry-cap closure. */
+   *  active taxonomy. Null when none. */
   excludedIndustryNames: string[] | null;
-  /** PPM clause-(t) industry list when `industryTaxonomy === "deal_specific"`.
-   *  Null otherwise. Each entry is a canonical industry name as written in
-   *  the PPM schedule. industry-cap closure. */
-  dealSpecificIndustryList: string[] | null;
   preExistingDefaultedPar: number; // par of defaulted loans excluded from loan list
   preExistingDefaultRecovery: number; // market-price recovery for priced defaulted holdings
   unpricedDefaultedPar: number; // par of defaulted holdings without market price (engine applies recoveryPct)

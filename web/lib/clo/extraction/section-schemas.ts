@@ -519,7 +519,6 @@ export const ppmPortfolioConstraintsSchema = z.object({
     taxonomy: z.union([z.literal("moodys_33"), z.literal("sp"), z.literal("deal_specific"), z.null()]),
     rules: z.union([z.array(industryCapRuleSchema), z.null()]),
     excludedIndustryNames: z.union([z.array(z.string()), z.null()]),
-    dealSpecificIndustryList: z.union([z.array(z.string()), z.null()]),
     unmappedRuleDescriptions: z.array(z.string()).optional(),
     sourcePages: z.union([z.array(z.number()), z.null()]),
     sourceCondition: z.union([z.string(), z.null()]),

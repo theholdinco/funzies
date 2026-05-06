@@ -246,9 +246,6 @@ export interface PpmJson {
        *  "as classified by Moody's [or S&P] under its industry classification".
        *  Required when `present: true`. */
       taxonomy?: "moodys_33" | "sp" | "deal_specific";
-      /** When taxonomy === "deal_specific", the per-deal industry list
-       *  spelled out in the PPM (rare). */
-      deal_specific_industry_list?: string[];
       /** Industries explicitly excluded from the test ("industries A, B do
        *  not count toward this test"). Engine filters out matching loans
        *  from rank/combined ordering before computing per-bucket par sums.

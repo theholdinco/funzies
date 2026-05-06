@@ -951,7 +951,6 @@ function resolveIndustryConcentrationTest(
   industryCapPresentInPpm: ResolvedDealData["industryCapPresentInPpm"];
   industryCapRules: ResolvedDealData["industryCapRules"];
   excludedIndustryNames: ResolvedDealData["excludedIndustryNames"];
-  dealSpecificIndustryList: ResolvedDealData["dealSpecificIndustryList"];
 } {
   const block = constraints.industryConcentrationTest;
   const hasSdfIndustryEvidence = concentrationTests.some(
@@ -977,7 +976,6 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: null,
       industryCapRules: null,
       excludedIndustryNames: null,
-      dealSpecificIndustryList: null,
     };
   }
 
@@ -987,7 +985,6 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: false,
       industryCapRules: null,
       excludedIndustryNames: null,
-      dealSpecificIndustryList: null,
     };
   }
 
@@ -1010,7 +1007,6 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: true,
       industryCapRules: null,
       excludedIndustryNames: null,
-      dealSpecificIndustryList: null,
     };
   }
 
@@ -1029,7 +1025,32 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: true,
       industryCapRules: null,
       excludedIndustryNames: block.excludedIndustryNames,
-      dealSpecificIndustryList: block.dealSpecificIndustryList,
+    };
+  }
+
+  if (block.taxonomy === "deal_specific") {
+    // Engine industry-cap enforcement requires per-loan code resolution
+    // against a canonical taxonomy seed. Deal-specific lists have no seed;
+    // there is no way to bucket per-position industry without one. Block
+    // explicitly rather than silently ship rules:null which would surface
+    // as a different error.
+    warnings.push({
+      field: "industryTaxonomy",
+      message:
+        "PPM clause (t) anchored on a deal-specific industry list. Engine " +
+        "industry-cap enforcement only supports moodys_33 / sp taxonomies in " +
+        "v1; deal-specific lists need a per-deal taxonomy seed populated under " +
+        "web/lib/clo/services/taxonomies/ before they can be enforced. Either " +
+        "remap the deal to one of the supported taxonomies or extend the " +
+        "taxonomy seed support before projecting this deal.",
+      severity: "error",
+      blocking: true,
+    });
+    return {
+      industryTaxonomy: "deal_specific",
+      industryCapPresentInPpm: true,
+      industryCapRules: null,
+      excludedIndustryNames: block.excludedIndustryNames,
     };
   }
 
@@ -1050,7 +1071,6 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: true,
       industryCapRules: null,
       excludedIndustryNames: block.excludedIndustryNames,
-      dealSpecificIndustryList: block.dealSpecificIndustryList,
     };
   }
 
@@ -1091,7 +1111,6 @@ function resolveIndustryConcentrationTest(
       return { ...r };
     }) as ResolvedDealData["industryCapRules"],
     excludedIndustryNames: block.excludedIndustryNames,
-    dealSpecificIndustryList: block.dealSpecificIndustryList,
   };
 }
 
@@ -3501,11 +3520,10 @@ export function resolveWaterfallInputs(
     industryCapPresentInPpm,
     industryCapRules,
     excludedIndustryNames,
-    dealSpecificIndustryList,
   } = resolveIndustryConcentrationTest(constraints, concentrationTests, warnings);
 
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, dealSpecificIndustryList, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
     warnings,
   };
 }

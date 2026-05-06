@@ -4,7 +4,9 @@
  * Re-exports the canonical industry classification lists + the
  * `selectTaxonomy` helper that resolves a `IndustryTaxonomy` enum value to
  * the corresponding canonical list. `deal_specific` resolves to null —
- * caller must consume `ResolvedDealData.dealSpecificIndustryList` instead.
+ * the resolver emits a blocking warning when a PPM names a deal-specific
+ * industry list (no canonical seed exists), so engine code never sees a
+ * `deal_specific` deal that wasn't refused upstream.
  */
 
 import type { IndustryClassification, IndustryTaxonomy } from "./types";
