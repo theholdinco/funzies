@@ -106,12 +106,11 @@ describe("per-position hazard differentiates within a bucket", () => {
 });
 
 describe("LoanInput.warfFactor boundary guard", () => {
-  // Per-position WARF is the only hazard branch; the legacy `warfFactor <= 0`
-  // bucket-branch fallback was removed in the KI-20 closure as unreachable
-  // under the prevailing fallback chain. The construction-site guard at
-  // `resolveLoanWarfFactor` exists to keep that "unreachable" status from
-  // becoming a silent silent-zero-hazard hole if a future caller passes
-  // `warfFactor: 0` explicitly. Pinning the boundary throw here so a future
+  // Per-position WARF is the only hazard branch. The construction-site
+  // guard at `resolveWarfFactor` exists so a caller passing `warfFactor: 0`
+  // explicitly cannot create a silent zero-hazard hole — downstream
+  // `warfFactorToQuarterlyHazard` returns 0 on <=0, silently disabling
+  // defaults for the position. Pinning the boundary throw here so a future
   // engine refactor that softens the guard fails this test loudly.
   it("explicit warfFactor: 0 throws at construction (no silent zero-hazard)", () => {
     const baseInputs = buildFromResolved(fixture.resolved, defaultsFromResolved(fixture.resolved, fixture.raw));
@@ -209,14 +208,13 @@ describe("reinvested loans carry bucket-fallback factor into per-position path",
 });
 
 describe("hazard upper-bound clamp (per-position × cdrMultiplierPathFn stress)", () => {
-  // Pre-KI-20 the legacy bucket-hazard branch implicitly clamped via
-  // cdrToHazard's [0, 99.99] annual CDR range → quarterly hazard < 1.
-  // Per-position never had its own clamp; legacy was the safety valve.
-  // Now legacy is gone, the per-position branch needs its own clamp at
-  // projection.ts's default loop. Without it, warfFactor=10000 (Ca/C →
-  // hazard=1) combined with cdrMultiplierPathFn returning multiplier > 1
-  // produces hazard > 1 → loanDefaults > par → negative survivingPar.
-  // Pinning the clamp here so a future refactor that drops it fails loud.
+  // The per-position WARF branch needs a [0, 1] hazard clamp at the
+  // projection.ts default loop. Without it, warfFactor=10000 (Ca/C →
+  // per-position hazard = 1) combined with cdrMultiplierPathFn returning
+  // multiplier > 1 produces hazard > 1 → loanDefaults > par → negative
+  // survivingPar → silent OC/WARF/interest-aggregation poisoning every
+  // subsequent period. Pinning the clamp here so a future refactor that
+  // drops it fails loud.
   it("warfFactor=10000 with multiplier=2 produces ≤100% defaults, not negative survivingPar", () => {
     const baseInputs = buildFromResolved(fixture.resolved, defaultsFromResolved(fixture.resolved, fixture.raw));
     const ultraDefault: LoanInput = {
