@@ -346,9 +346,9 @@ export function deriveQualityMetrics(
 /** Compute portfolio quality metrics from a flat list of loans. Pure function
  *  — no side effects, no access to closures.
  *
- *  Caller filters DDTL / unfunded portions and defaulted positions before
- *  calling (engine consumers naturally exclude these via `survivingPar`;
- *  switch simulator filters via `!isDelayedDraw`). The helper applies the
+ *  Caller filters un-drawn DDTL/revolver portions and defaulted positions
+ *  before calling (engine consumers naturally exclude these via `survivingPar`;
+ *  switch simulator filters via `parBalance > 0`). The helper applies the
  *  remaining PPM exclusions internally based on per-loan flags.
  *
  *  Composition: `aggregateQualityMetrics` does the loop, `deriveQualityMetrics`

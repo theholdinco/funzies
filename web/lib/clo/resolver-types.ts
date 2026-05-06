@@ -613,7 +613,22 @@ export interface ResolvedLoan {
   obligorName?: string;
   isFixedRate?: boolean;       // true = flat coupon, no EURIBOR sensitivity
   fixedCouponPct?: number;     // e.g. 8.0 for 8%. Only meaningful when isFixedRate=true
-  isDelayedDraw?: boolean;     // true = unfunded commitment, no interest until drawn
+  /** Facility-type tag — DDTL (informational). Survives the draw event.
+   *  The currently-unfunded quantity lives on `undrawnCommitment`. */
+  isDelayedDraw?: boolean;
+  /** Facility-type tag — revolving credit facility. Informational; survives
+   *  draws. The currently-unfunded quantity lives on `undrawnCommitment`. */
+  isRevolving?: boolean;
+  /** Currently-unfunded commitment in deal currency. Populated by the
+   *  resolver from `clo_holdings.unfunded_commitment` only when the holding
+   *  is tagged DDTL or revolving (defends against the Tele-Columbus parser
+   *  artifact where PIK accretion produces a non-zero unfunded delta on a
+   *  facility that isn't actually a DDTL/revolver). When > 0 on a deal
+   *  reaching the engine, the resolver also emits a blocking warning —
+   *  URRA cash-flow modeling and per-loan commitment-fee accrual are not
+   *  yet supported, and silently projecting an active unfunded commitment
+   *  would understate or overstate cash by an unknown amount. */
+  undrawnCommitment?: number;
   ddtlSpreadBps?: number;      // spread from parent facility, applied at draw
   drawQuarter?: number;        // quarter in which the DDTL converts to funded
   // Full ratings (not just ratingBucket)

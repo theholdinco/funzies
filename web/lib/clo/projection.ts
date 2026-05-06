@@ -21,13 +21,33 @@ import type { ResolvedDiscountObligationRule, ResolvedLongDatedValuationRule } f
 import { resolveAgencyRecovery } from "./recovery-rate";
 
 export interface LoanInput {
+  /** Currently-funded (drawn) par. Interest accrues on this balance only.
+   *  For a fully-drawn DDTL this equals the SDF Principal_Funded_Balance
+   *  (Eleda-shape: parBalance > 0, undrawnCommitment === 0); for an entirely
+   *  unfunded DDTL pre-draw this is 0 with the future commitment carried in
+   *  `undrawnCommitment`. The engine never accrues interest on the unfunded
+   *  portion. */
   parBalance: number;
   maturityDate: string;
   ratingBucket: string;
   spreadBps: number;
   isFixedRate?: boolean;
   fixedCouponPct?: number;
+  /** Facility-type tag — DDTL (Delayed Draw Term Loan). Informational only.
+   *  Survives the draw event (a fully drawn DDTL is still a DDTL facility,
+   *  used by the Revolving/DDTL concentration test). The currently-unfunded
+   *  state lives on `undrawnCommitment`, NOT here. */
   isDelayedDraw?: boolean;
+  /** Facility-type tag — revolving credit facility. Informational; same
+   *  semantics as `isDelayedDraw` (tag survives draws). The currently-
+   *  unfunded state lives on `undrawnCommitment`. */
+  isRevolving?: boolean;
+  /** Currently-unfunded commitment (un-drawn portion of a DDTL or revolver).
+   *  Subtracted from the OC numerator per PPM Adjusted Collateral Principal
+   *  Amount. Defaults to 0 when undefined. Drops as the engine's draw event
+   *  fires; preserved across partial draws (the un-drawn residual remains
+   *  on this field rather than being silently discarded). */
+  undrawnCommitment?: number;
   ddtlSpreadBps?: number;
   drawQuarter?: number;
   /** Current market price as percentage of par (e.g. 98.5 = 98.5c on the euro).
@@ -699,6 +719,15 @@ export interface PeriodResult {
    *  matches new defaults this period − recovered defaults this period. */
   endingDefaultedPar: number;
   beginningDefaultedPar: number;
+  /** Σ undrawnCommitment across all loanStates at period end. Subtracted from
+   *  the OC numerator per PPM Adjusted Collateral Principal Amount (the
+   *  un-drawn portion of a DDTL/revolver doesn't count as deployable
+   *  collateral). Conserved across partial draws — when a DDTL draws
+   *  ddtlDrawPercent of its commitment, the (1 − ddtlDrawPercent) residual
+   *  remains on this field rather than being silently discarded. Zero on
+   *  deals with no DDTL/revolver positions and on deals where every DDTL is
+   *  fully drawn (Eleda-shape: `parBalance > 0`, `undrawnCommitment === 0`). */
+  endingUndrawnCommitment: number;
   /** Principal POP account balance at start/end of period. The engine fully
    *  distributes collections each period, so these are typically 0 — non-zero
    *  only in the q=1 case where `initialPrincipalCash` is non-zero (the
@@ -1015,7 +1044,6 @@ export function computeEventOfDefaultTest(
     survivingPar: number;
     isDefaulted?: boolean;
     currentPrice?: number | null;
-    isDelayedDraw?: boolean;
   }>,
   principalCash: number,
   classAPrincipalOutstanding: number,
@@ -1025,7 +1053,8 @@ export function computeEventOfDefaultTest(
   let nonDefaultedApb = 0;
   let defaultedMvPb = 0;
   for (const l of loanStates) {
-    if (l.isDelayedDraw) continue; // unfunded DDTLs don't count
+    // survivingPar > 0 is the funded-base predicate; un-drawn DDTL/revolver
+    // commitments contribute zero (their notional sits on undrawnCommitment).
     if (l.survivingPar <= 0) continue;
     if (l.isDefaulted) {
       const price = l.currentPrice != null ? l.currentPrice : defaultedPriceFallbackPct;
@@ -1354,14 +1383,15 @@ export class InvalidCallDateError extends Error {
 }
 
 export function computeCallLiquidation(
-  loanStates: Array<{ survivingPar: number; currentPrice?: number | null; isDelayedDraw?: boolean }>,
+  loanStates: Array<{ survivingPar: number; currentPrice?: number | null }>,
   callPricePct: number,
   mode: "par" | "market" | "manual",
 ): number {
   let total = 0;
   let missingMarketPriceCount = 0;
   for (const l of loanStates) {
-    if (l.isDelayedDraw) continue;
+    // survivingPar > 0 covers both "fully matured / liquidated" and
+    // "currently un-drawn DDTL/revolver" — neither has cash to liquidate.
     if (l.survivingPar <= 0) continue;
     let effectivePrice: number;
     switch (mode) {
@@ -1739,6 +1769,16 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     moodysRatingSource?: import("./resolve-rating").MoodysRatingSource;
     isCreditEstimateOrPrivateRating?: boolean;
     isDelayedDraw?: boolean;
+    /** Facility-type tag — revolving credit facility. Informational; survives
+     *  draws. Currently-unfunded quantity lives on `undrawnCommitment`. */
+    isRevolving?: boolean;
+    /** Currently-unfunded commitment (drawn par lives on `survivingPar`).
+     *  Initialized from `LoanInput.undrawnCommitment ?? 0`. Decremented in
+     *  the per-period draw event by the drawn amount; preserved across
+     *  partial draws so the residual still subtracts from the OC numerator
+     *  (per PPM Adjusted Collateral Principal Amount) and is still visible
+     *  to the never-draw splice / commitment-end disposition. */
+    undrawnCommitment: number;
     ddtlSpreadBps?: number;
     drawQuarter?: number;
     /** Per-position market price as % of par. Set from LoanInput.currentPrice on
@@ -1844,6 +1884,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     moodysRatingSource: l.moodysRatingSource,
     isCreditEstimateOrPrivateRating: l.isCreditEstimateOrPrivateRating,
     isDelayedDraw: l.isDelayedDraw,
+    isRevolving: l.isRevolving,
+    undrawnCommitment: l.undrawnCommitment ?? 0,
     ddtlSpreadBps: l.ddtlSpreadBps,
     drawQuarter: l.drawQuarter,
     currentPrice: l.currentPrice,
@@ -1867,17 +1909,31 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     isLongDated: l.isLongDated,
   }));
 
-  // Remove never_draw DDTLs (drawQuarter <= 0) — they never fund and shouldn't appear in the portfolio
+  // Remove never-draw DDTL/revolver commitments (drawQuarter <= 0) — the un-
+  // drawn notional terminates without funding, so it shouldn't sit on the OC
+  // subtractor for the rest of the projection. Gate on undrawnCommitment > 0
+  // (the quantitative state); a fully-drawn DDTL facility (Eleda-shape:
+  // parBalance > 0, undrawnCommitment === 0) is NOT a never-draw — it has
+  // nothing left to draw, and its funded balance continues to accrue
+  // interest. A partially-drawn DDTL with a positive residual on
+  // undrawnCommitment and a non-positive drawQuarter is the never-draw shape:
+  // zero the un-drawn residual, keep the funded portion.
   for (let i = loanStates.length - 1; i >= 0; i--) {
-    if (loanStates[i].isDelayedDraw && (loanStates[i].drawQuarter ?? 0) <= 0) {
-      loanStates.splice(i, 1);
+    const l = loanStates[i];
+    if (l.undrawnCommitment > 0 && (l.drawQuarter ?? 0) <= 0) {
+      if (l.survivingPar > 0) {
+        l.undrawnCommitment = 0;
+      } else {
+        loanStates.splice(i, 1);
+      }
     }
   }
 
   const hasLoans = loanStates.length > 0;
-  // Average loan size — used to chunk reinvestment into realistic individual loans for Monte Carlo.
-  // Excludes unfunded DDTLs (already spliced for never_draw, still present for draw_at_deadline).
-  const fundedLoans = loanStates.filter(l => !l.isDelayedDraw);
+  // Average loan size — used to chunk reinvestment into realistic individual
+  // loans for Monte Carlo. "Funded" = currently-drawn par > 0 — independent
+  // of the isDelayedDraw facility-type tag (a fully-drawn DDTL is funded).
+  const fundedLoans = loanStates.filter(l => l.survivingPar > 0);
   const avgLoanSize = fundedLoans.length > 0
     ? fundedLoans.reduce((s, l) => s + l.survivingPar, 0) / fundedLoans.length
     : 0;
@@ -1958,7 +2014,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // prevent.
     const qLoans: QualityMetricLoan[] = [];
     for (const l of loanStates) {
-      if (l.isDelayedDraw && (l.drawQuarter ?? 0) > currentQuarter) continue;
+      // survivingPar <= 0 covers both matured/liquidated loans and currently
+      // un-drawn DDTL/revolver commitments (the un-drawn notional sits on
+      // undrawnCommitment, not survivingPar — it is not deployed collateral
+      // for purposes of the quality gate).
       if (l.survivingPar <= 0) continue;
       // Same partial-default exclusion as `computeQualityMetrics` —
       // mirroring the per-period helper exactly is load-bearing: the
@@ -2093,14 +2152,15 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   };
 
   // C2 — Compute end-of-period portfolio quality + concentration metrics from
-  // `loanStates`. Ignores unfunded DDTLs and defaulted par pending recovery.
+  // `loanStates`. Ignores un-drawn commitment and defaulted par pending recovery.
   // Called at each period emit so partner can see forward drift. Delegates
   // the math to `computePoolQualityMetrics` in pool-metrics.ts so the switch
   // simulator uses identical formulas — single source of truth, no drift.
   const computeQualityMetrics = (currentQuarter: number): PeriodQualityMetrics => {
     const qloans = [];
     for (const l of loanStates) {
-      if (l.isDelayedDraw && (l.drawQuarter ?? 0) > currentQuarter) continue;
+      // survivingPar <= 0 catches both matured/liquidated and un-drawn
+      // DDTL/revolver — neither contributes to the deployed pool.
       if (l.survivingPar <= 0) continue;
       // Per PPM Condition 1 / definitions ("Defaulted Obligations", PDF p.
       // index TBD), the whole obligor is excluded from the Caa/CCC
@@ -2245,7 +2305,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   // When loans are provided, use their total as the starting par (not the Adjusted CPA
   // which includes cash, haircuts, and other OC adjustments that are modeled separately).
   // Funded loan total excludes unfunded DDTLs — consistent with beginningPar/endingPar.
-  const loanTotal = hasLoans ? loanStates.filter(l => !l.isDelayedDraw).reduce((s, l) => s + l.survivingPar, 0) : 0;
+  // survivingPar IS the funded balance — un-drawn DDTL/revolver commitments
+  // sit on `undrawnCommitment` and contribute zero here. The pre-fix
+  // `!isDelayedDraw` filter was redundant and Eleda-shape unsafe (a fully-
+  // drawn DDTL was excluded by the tag despite carrying live funded par).
+  const loanTotal = hasLoans ? loanStates.reduce((s, l) => s + l.survivingPar, 0) : 0;
   let currentPar = hasLoans ? loanTotal : initialPar;
   const periods: PeriodResult[] = [];
   const equityCashFlows: number[] = [];
@@ -2315,17 +2379,17 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   //
   // Skips contribution when `purchasePricePct == null` (no extracted
   // price — no signal, contribute zero), `purchasePricePct >= 100`
-  // (premium-purchase has no haircut by definition), or `isDelayedDraw`
-  // (unfunded commitment doesn't carry an OC haircut). Hand-constructed
-  // test fixtures that don't model the discount mechanic see all loans
-  // with `isDiscountObligation === undefined` and the haircut collapses
-  // to zero.
+  // (premium-purchase has no haircut by definition). Hand-constructed test
+  // fixtures that don't model the discount mechanic see all loans with
+  // `isDiscountObligation === undefined` and the haircut collapses to zero
+  // — same numerical output as the pre-KI-29 path on those inputs. Un-drawn
+  // DDTL/revolver commitments contribute zero implicitly via survivingPar=0;
+  // their un-drawn notional is captured separately on the OC subtractor.
   const computeDiscountHaircut = (states: LoanState[]): number => {
     let total = 0;
     for (const l of states) {
       if (l.isDiscountObligation !== true) continue;
       if (l.purchasePricePct == null || l.purchasePricePct >= 100) continue;
-      if (l.isDelayedDraw) continue;
       total += l.survivingPar * (1 - l.purchasePricePct / 100);
     }
     return total;
@@ -2488,8 +2552,14 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       : 0;
     // Pending recoveries arriving at or before q=1 (zero at T=0 since we haven't elapsed any period yet)
     const pendingRecoveryValue = 0;
+    // OC-numerator subtractor for un-drawn DDTL/revolver commitments. Sums
+    // `undrawnCommitment` across all loans — independent of the
+    // `isDelayedDraw` facility-type tag (a fully-drawn DDTL contributes 0
+    // here because its undrawnCommitment is 0; a partial draw correctly
+    // contributes the residual rather than the silently-discarded zero of
+    // the pre-fix path).
     const currentDdtlUnfundedPar = hasLoans
-      ? loanStates.filter(l => l.isDelayedDraw).reduce((s, l) => s + l.survivingPar, 0)
+      ? loanStates.reduce((s, l) => s + l.undrawnCommitment, 0)
       : 0;
     if (hasLoans) applyCureDispatch(loanStates, currentDate);
     const discountHaircutT0 = hasLoans ? computeDiscountHaircut(loanStates) : 0;
@@ -2666,14 +2736,15 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // resolver emitted a separately-tracked EoD test (post-B1 fixtures).
     let eodTest: EventOfDefaultTestResult | null = null;
     if (eventOfDefaultTest) {
-      // loanStates carry per-position par + currentPrice + isDelayedDraw; at
-      // T=0 none are defaulted (pre-existing defaults are already extracted
-      // to preExistingDefaultedPar/OcValue and excluded from the loan list).
+      // loanStates carry per-position par + currentPrice; at T=0 none are
+      // defaulted (pre-existing defaults are already extracted to
+      // preExistingDefaultedPar/OcValue and excluded from the loan list).
+      // computeEventOfDefaultTest gates on survivingPar > 0; un-drawn
+      // DDTL/revolver commitments contribute zero implicitly.
       const eodLoanStates = loanStates.map((l) => ({
         survivingPar: l.survivingPar,
         isDefaulted: false, // per-position default state activates in B1 tier-2
         currentPrice: l.currentPrice,
-        isDelayedDraw: l.isDelayedDraw,
       }));
       const classAPao = computeSeniorTranchePao(tranches, trancheBalances);
       eodTest = computeEventOfDefaultTest(
@@ -2864,23 +2935,35 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       : 0;
 
     // ── 1. Beginning par ──────────────────────────────────────────
-    // ── 1b. DDTL draw event (before beginningPar capture) ──────────
+    // ── 1b. DDTL/revolver draw event (before beginningPar capture) ──────
+    // Gates on `undrawnCommitment > 0` (the quantitative state), not on
+    // `isDelayedDraw` (the facility-type tag — survives the draw). At the
+    // configured drawQuarter we move `ddtlDrawPercent` of the un-drawn
+    // notional into `survivingPar`; the (1 − ddtlDrawPercent) residual is
+    // PRESERVED on `undrawnCommitment` rather than silently overwritten —
+    // pre-fix the residual was discarded, dropping it from the OC subtractor
+    // and any subsequent draw window. Spread is promoted to the parent-
+    // facility ddtlSpread on the first draw that actually funds; subsequent
+    // partial draws keep the same spread.
     if (hasLoans) {
       for (const loan of loanStates) {
-        if (!loan.isDelayedDraw) continue;
+        if (loan.undrawnCommitment <= 0) continue;
         if (q === loan.drawQuarter) {
-          const fundedPar = loan.survivingPar * (ddtlDrawPercent / 100);
-          loan.survivingPar = fundedPar;
-          loan.spreadBps = loan.ddtlSpreadBps ?? 0;
-          loan.isDelayedDraw = false;
+          const drawn = loan.undrawnCommitment * (ddtlDrawPercent / 100);
+          if (drawn > 0) {
+            loan.survivingPar += drawn;
+            loan.undrawnCommitment -= drawn;
+            loan.spreadBps = loan.ddtlSpreadBps ?? loan.spreadBps;
+          }
         }
       }
     }
 
-    // Beginning par excludes unfunded DDTLs — they are not deployed collateral
-    // and should not be in the fee base (trustee, management, hedge fees).
+    // Beginning par sums currently-funded balances. Un-drawn DDTL/revolver
+    // commitments contribute zero (their notional sits on undrawnCommitment
+    // and is captured separately by the OC subtractor).
     const beginningPar = hasLoans
-      ? loanStates.filter(l => !l.isDelayedDraw).reduce((s, l) => s + l.survivingPar, 0)
+      ? loanStates.reduce((s, l) => s + l.survivingPar, 0)
       : currentPar;
     const beginningLiabilities = debtTranches.reduce((s, t) => s + trancheBalances[t.className] + deferredBalances[t.className], 0);
 
@@ -2903,7 +2986,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     let totalMaturities = 0;
     if (hasLoans) {
       for (const loan of loanStates) {
-        if (loan.isDelayedDraw) continue;
+        if (loan.survivingPar <= 0) continue;
         if (q === loan.maturityQuarter) {
           totalMaturities += loan.survivingPar;
           loan.survivingPar = 0;
@@ -2936,8 +3019,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     if (hasLoans) {
       for (let idx = 0; idx < loanStates.length; idx++) {
         const loan = loanStates[idx];
+        // survivingPar <= 0 covers matured / liquidated loans AND un-drawn
+        // DDTL/revolver commitments (notional on undrawnCommitment, no
+        // funded leg to suffer a default).
         if (loan.survivingPar <= 0) continue;
-        if (loan.isDelayedDraw) continue;
         // D2 — Per-position hazard is the default behavior (Moody's CLO
         // methodology). `useLegacyBucketHazard` escapes to the pre-D2
         // bucket-averaged path when legacy tests need their pinning
@@ -3023,8 +3108,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     let totalPrepayments = 0;
     if (hasLoans) {
       for (const loan of loanStates) {
+        // survivingPar > 0 already excludes un-drawn DDTL/revolver
+        // commitments (their notional sits on undrawnCommitment).
         if (loan.survivingPar > 0) {
-          if (loan.isDelayedDraw) continue;
           const prepay = loan.survivingPar * prorate(qPrepayRate);
           loan.survivingPar -= prepay;
           totalPrepayments += prepay;
@@ -3103,8 +3189,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       interestCollected = 0;
       for (let i = 0; i < loanStates.length; i++) {
         const loan = loanStates[i];
-        if (loan.isDelayedDraw) continue;
         const loanBegPar = loanBeginningPar[i];
+        // Un-drawn DDTL/revolver commitments have loanBegPar=0 (their notional
+        // sits on undrawnCommitment, not survivingPar) and contribute 0
+        // interest; skip explicitly so the per-loan accrual block is a no-op.
+        if (loanBegPar <= 0) continue;
         // Per-position accrual convention. Reads from
         // `clo_holdings.day_count_convention` via the resolver/canonicalizer.
         // Synthetic reinvestment loans carry no convention and fall back to
@@ -3271,6 +3360,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         maturityQuarter: matQ,
         isFixedRate: reinvIsFixedRate,
         isDelayedDraw: false,
+        undrawnCommitment: 0,
         defaultedParPending: 0,
         defaultEvents: [],
         purchasePricePct: reinvestmentPricePct,
@@ -3290,10 +3380,12 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       }
     }
 
-    // Update currentPar from loan states or fallback.
-    // Excludes unfunded DDTLs — they are not deployed collateral.
+    // Update currentPar / endingPar from currently-drawn balances.
+    // Un-drawn DDTL/revolver commitments contribute zero implicitly via
+    // survivingPar=0; their notional is captured separately on the OC
+    // subtractor (Σ undrawnCommitment).
     if (hasLoans) {
-      currentPar = loanStates.filter(l => !l.isDelayedDraw).reduce((s, l) => s + l.survivingPar, 0);
+      currentPar = loanStates.reduce((s, l) => s + l.survivingPar, 0);
     } else {
       if (reinvestment > 0) {
         currentPar += reinvestment;
@@ -3301,7 +3393,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     }
 
     let endingPar = hasLoans
-      ? loanStates.filter(l => !l.isDelayedDraw).reduce((s, l) => s + l.survivingPar, 0)
+      ? loanStates.reduce((s, l) => s + l.survivingPar, 0)
       : currentPar;
 
     // ── 8. Preliminary principal paydown ─────────────────────────
@@ -3652,6 +3744,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       const endingDefaultedParAccel = hasLoans
         ? loanStates.reduce((s, l) => s + l.defaultedParPending, 0)
         : 0;
+      const endingUndrawnCommitmentAccel = hasLoans
+        ? loanStates.reduce((s, l) => s + l.undrawnCommitment, 0)
+        : 0;
 
       periods.push({
         periodNum: q,
@@ -3661,6 +3756,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         endingPerformingPar: endingPar,
         beginningDefaultedPar,
         endingDefaultedPar: endingDefaultedParAccel,
+        endingUndrawnCommitment: endingUndrawnCommitmentAccel,
         beginningPrincipalAccount: 0,
         endingPrincipalAccount: 0,
         beginningInterestAccount: 0,
@@ -3885,8 +3981,12 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     const ocDefaultAdjustment = (preExistingDefaultOcValue > 0 && preExistingRecoveryStillPending)
       ? preExistingDefaultOcValue - preExistingCashRecovery
       : 0;
+    // OC-numerator subtractor — Σ undrawnCommitment over all loans.
+    // Independent of the isDelayedDraw facility tag (a fully-drawn DDTL
+    // contributes 0; a partially-drawn DDTL contributes the preserved
+    // residual rather than the silently-discarded zero of the pre-fix path).
     const currentDdtlUnfundedPar = hasLoans
-      ? loanStates.filter(l => l.isDelayedDraw).reduce((s, l) => s + l.survivingPar, 0)
+      ? loanStates.reduce((s, l) => s + l.undrawnCommitment, 0)
       : 0;
     // Adjusted CPA per PPM Condition 1(d) limits account-cash credit to
     // the Principal Account and Unused Proceeds Account — Reserve accounts
@@ -3931,7 +4031,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       - discountHaircut - longDatedHaircut - impliedOcAdjustment - currentDdtlUnfundedPar;
     if (hasLoans && cccBucketLimitPct > 0) {
       const cccPar = loanStates
-        .filter((l) => !l.isDelayedDraw && l.ratingBucket === "CCC" && l.survivingPar > 0)
+        .filter((l) => l.ratingBucket === "CCC" && l.survivingPar > 0)
         .reduce((s, l) => s + l.survivingPar, 0);
       const cccLimitAbs = endingPar * (cccBucketLimitPct / 100);
       const cccExcess = Math.max(0, cccPar - cccLimitAbs);
@@ -3968,19 +4068,16 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         survivingPar: number;
         isDefaulted: boolean;
         currentPrice?: number | null;
-        isDelayedDraw?: boolean;
       }> = [];
       for (const l of loanStates) {
-        if (l.isDelayedDraw) continue;
         if (l.survivingPar > 0) {
-          eodInput.push({ survivingPar: l.survivingPar, isDefaulted: false, isDelayedDraw: false });
+          eodInput.push({ survivingPar: l.survivingPar, isDefaulted: false });
         }
         if (l.defaultedParPending > 0) {
           eodInput.push({
             survivingPar: l.defaultedParPending,
             isDefaulted: true,
             currentPrice: l.currentPrice,
-            isDelayedDraw: false,
           });
         }
       }
@@ -4324,6 +4421,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
                 maturityQuarter: cureMaturityQ,
                 isFixedRate: reinvIsFixedRate,
                 isDelayedDraw: false,
+                undrawnCommitment: 0,
                 defaultedParPending: 0,
                 defaultEvents: [],
                 purchasePricePct: reinvestmentPricePct,
@@ -4419,6 +4517,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
             maturityQuarter: synthMaturityQ,
             isFixedRate: reinvIsFixedRate,
             isDelayedDraw: false,
+            undrawnCommitment: 0,
             defaultedParPending: 0,
             defaultEvents: [],
             purchasePricePct: reinvestmentPricePct,
@@ -4430,8 +4529,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       }
     }
 
-    // Refresh endingPar after any RP OC diversion may have purchased collateral
-    if (hasLoans) endingPar = loanStates.filter(l => !l.isDelayedDraw).reduce((s, l) => s + l.survivingPar, 0);
+    // Refresh endingPar after any RP OC diversion may have purchased collateral.
+    // survivingPar IS the funded balance — un-drawn commitments contribute zero implicitly.
+    if (hasLoans) endingPar = loanStates.reduce((s, l) => s + l.survivingPar, 0);
     else endingPar = currentPar;
 
     // PPM Step X: Subordinated management fee — paid after all debt tranches.
@@ -4527,6 +4627,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     const endingDefaultedParNormal = hasLoans
       ? loanStates.reduce((s, l) => s + l.defaultedParPending, 0)
       : 0;
+    const endingUndrawnCommitmentNormal = hasLoans
+      ? loanStates.reduce((s, l) => s + l.undrawnCommitment, 0)
+      : 0;
 
     // PPM § 10(a)(i) EoD-on-shortfall trigger — Phase 1 (pre-emit):
     // update `shortfallCount` based on this period's accrual and compute
@@ -4558,6 +4661,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       endingPerformingPar: endingPar,
       beginningDefaultedPar,
       endingDefaultedPar: endingDefaultedParNormal,
+      endingUndrawnCommitment: endingUndrawnCommitmentNormal,
       beginningPrincipalAccount: 0,
       endingPrincipalAccount: 0,
       beginningInterestAccount: 0,
@@ -4638,11 +4742,19 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     });
 
     // Prune exhausted loans to keep iteration cost O(active loans) per period.
-    // Critical for Monte Carlo performance where thousands of runs accumulate dead entries.
+    // "Exhausted" requires BOTH survivingPar <= 0 AND undrawnCommitment <= 0
+    // — a currently-un-drawn DDTL/revolver has survivingPar=0 but a live
+    // commitment waiting for its draw event; pruning it pre-draw silently
+    // drops the un-drawn notional from the OC subtractor and prevents the
+    // draw event from firing in any subsequent period. Critical for Monte
+    // Carlo performance where thousands of runs accumulate dead entries.
     if (hasLoans) {
       let write = 0;
       for (let read = 0; read < loanStates.length; read++) {
-        if (loanStates[read].survivingPar > 0) loanStates[write++] = loanStates[read];
+        const l = loanStates[read];
+        if (l.survivingPar > 0 || l.undrawnCommitment > 0) {
+          loanStates[write++] = l;
+        }
       }
       loanStates.length = write;
     }

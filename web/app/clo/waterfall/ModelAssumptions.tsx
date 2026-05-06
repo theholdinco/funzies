@@ -53,7 +53,7 @@ const ASSUMPTIONS_REGISTER: { domain: string; items: Assumption[] }[] = [
       { label: "No call prediction", detail: "The model does not predict when a deal will be called. Most performing CLOs are called at or near the first call date, which dramatically changes equity returns. Use the call date input to model this scenario.", impact: "high" },
       { label: "No frequency switch", detail: "Some deals switch from quarterly to semi-annual payments after a trigger event. The model is hardcoded to quarterly periods.", impact: "low" }, // KI-04 (Frequency Switch mid-projection cadence/rate switch)
       { label: "Quarterly periodicity", detail: "Cash flows are modeled in quarterly periods with beginning-of-period accrual. Real deals accrue daily and pay on specific calendar dates with business day adjustments.", impact: "low" }, // KI-04 (Frequency Switch mid-projection cadence/rate switch)
-      { label: "DDTL draw is a single event", detail: "Unfunded DDTLs draw fully (or at the user-specified percentage) in a single quarter. Real DDTLs may draw in tranches over time. Commitment fees on unfunded amounts are not modeled.", impact: "low" }, // KI-35 (partial DDTL draw discards un-drawn commitment)
+      { label: "Long-dated obligation valuation is static", detail: "Long-dated obligations (loans whose maturity exceeds the deal maturity) carry a static trustee-reported haircut that does not amortize as positions mature or are paid down. Per-deal valuation rules (e.g. cap at 5% of APB, excess deemed zero) are not yet extracted.", impact: "low" }, // KI-29 (long-dated valuation residual)
     ],
   },
 ];

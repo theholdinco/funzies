@@ -9,6 +9,8 @@ import { makeInputs, uniformRates } from "./test-helpers";
 const Q1_ACTUAL = dayCountFraction("actual_360", "2026-03-09", "2026-06-09");
 // Q2 (same helper's next period): 2026-06-09 → 2026-09-09 = 92 days.
 const Q2_ACTUAL = dayCountFraction("actual_360", "2026-06-09", "2026-09-09");
+// Q3: 2026-09-09 → 2026-12-09 = 91 days.
+const Q3_ACTUAL = dayCountFraction("actual_360", "2026-09-09", "2026-12-09");
 
 describe("Fixed-rate loan projection", () => {
   it("earns flat coupon regardless of base rate", () => {
@@ -116,9 +118,17 @@ describe("Fixed-rate loan projection", () => {
 });
 
 describe("DDTL projection", () => {
+  // Convention: an entirely-un-drawn DDTL has parBalance=0 and the future
+  // commitment on `undrawnCommitment`. Funded leg accrues interest on
+  // `parBalance` (drawn par); un-drawn notional is captured separately on
+  // the OC subtractor (Σ undrawnCommitment) and decremented as the engine's
+  // draw event fires — partial draws preserve the (1 − ddtlDrawPercent)
+  // residual rather than discard it.
+
   it("earns no interest before draw quarter", () => {
     const ddtl = {
-      parBalance: 500_000,
+      parBalance: 0,
+      undrawnCommitment: 500_000,
       maturityDate: addQuarters("2026-03-09", 20),
       ratingBucket: "B",
       spreadBps: 0,
@@ -145,7 +155,8 @@ describe("DDTL projection", () => {
 
   it("earns parent spread after draw", () => {
     const ddtl = {
-      parBalance: 500_000,
+      parBalance: 0,
+      undrawnCommitment: 500_000,
       maturityDate: addQuarters("2026-03-09", 20),
       ratingBucket: "B",
       spreadBps: 0,
@@ -179,7 +190,8 @@ describe("DDTL projection", () => {
       spreadBps: 375,
     };
     const neverDraw = {
-      parBalance: 500_000,
+      parBalance: 0,
+      undrawnCommitment: 500_000,
       maturityDate: addQuarters("2026-03-09", 20),
       ratingBucket: "B",
       spreadBps: 0,
@@ -207,7 +219,8 @@ describe("DDTL projection", () => {
 
   it("partial draw funds only ddtlDrawPercent of par", () => {
     const ddtl = {
-      parBalance: 500_000,
+      parBalance: 0,
+      undrawnCommitment: 500_000,
       maturityDate: addQuarters("2026-03-09", 20),
       ratingBucket: "B",
       spreadBps: 0,
@@ -234,7 +247,8 @@ describe("DDTL projection", () => {
 
   it("DDTL not subject to defaults/prepay before draw", () => {
     const ddtl = {
-      parBalance: 500_000,
+      parBalance: 0,
+      undrawnCommitment: 500_000,
       maturityDate: addQuarters("2026-03-09", 20),
       ratingBucket: "CCC",
       spreadBps: 0,
@@ -269,7 +283,8 @@ describe("DDTL projection", () => {
       spreadBps: 375,
     };
     const ddtl = {
-      parBalance: 500_000,
+      parBalance: 0,
+      undrawnCommitment: 500_000,
       maturityDate: addQuarters("2026-03-09", 20),
       ratingBucket: "B",
       spreadBps: 0,
@@ -330,8 +345,20 @@ describe("DDTL projection", () => {
       ratingBucket: "B",
       spreadBps: 375,
     };
+    // Convention shift (KI-35 closure): un-drawn notional lives on
+    // `undrawnCommitment`, not on `parBalance`. Pre-KI-35 the test used
+    // `parBalance: 10_000_000, isDelayedDraw: true` and relied on the
+    // engine's `!isDelayedDraw` filter to exclude the loan from
+    // `beginningPar` while counting its `survivingPar` toward
+    // `currentDdtlUnfundedPar`. Post-KI-35 those two semantics are
+    // separated: `parBalance` is the drawn balance, `undrawnCommitment`
+    // is the un-drawn notional. The bug magnitude (frozen
+    // `impliedOcAdjustment` + bucket-move drift across the draw event)
+    // is identical under both conventions; only the LoanInput shape
+    // changes.
     const ddtl = {
-      parBalance: drawnPar,
+      parBalance: 0,
+      undrawnCommitment: drawnPar,
       maturityDate: addQuarters("2026-03-09", 20),
       ratingBucket: "B",
       spreadBps: 0,
@@ -365,5 +392,211 @@ describe("DDTL projection", () => {
     // = ~30 points. Asserting > 10 captures the lower bound.
     const ocJump = ocPostDraw! - ocPreDraw!;
     expect(ocJump).toBeGreaterThan(10);
+  });
+});
+
+describe("DDTL convention: facility tag vs. unfunded state", () => {
+  // The `isDelayedDraw` flag is a facility-type tag (DDTL), not a quantitative
+  // state. The currently-unfunded amount lives on `undrawnCommitment`. A
+  // fully-drawn DDTL has parBalance > 0 + undrawnCommitment === 0 and must
+  // accrue interest like a regular loan; a partial draw must preserve the
+  // (1 − ddtlDrawPercent) residual on `undrawnCommitment` rather than
+  // silently overwrite it. Both shapes were latent failure modes pre-fix.
+
+  it("fully-drawn DDTL accrues interest from Q1 (Eleda-shape)", () => {
+    // Eleda Management AB on Ares Euro XV: a DDTL FACILITY (isDelayedDraw=true
+    // tags it for the Revolving / DDTL concentration test) that is fully
+    // drawn (parBalance = principalFundedBalance > 0, unfundedCommitment = 0).
+    // Pre-fix, the engine conflated facility-type with currently-unfunded
+    // state — a fully-drawn DDTL was excluded from beginningPar, the interest
+    // accrual loop, defaults, prepayments, and EoD MV × PB. Magnitude on Euro
+    // XV: ~€5,591/quarter of dropped interest revenue (€363,636 × 6%/yr ×
+    // 92/360) plus knock-on understatement of management fee base — silent.
+    const drawnDdtl = {
+      parBalance: 500_000,        // currently funded balance
+      undrawnCommitment: 0,       // nothing un-drawn — facility fully tapped
+      maturityDate: addQuarters("2026-03-09", 20),
+      ratingBucket: "B",
+      spreadBps: 350,             // funded leg accrues at this spread
+      isDelayedDraw: true,        // facility-type tag survives the draw
+      drawQuarter: 4,             // distant; the no-op draw event preserves state
+    };
+
+    const result = runProjection(
+      makeInputs({
+        loans: [drawnDdtl],
+        initialPar: 500_000,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        defaultRatesByRating: uniformRates(0),
+        cprPct: 0,
+      })
+    );
+
+    // Q1: fully drawn — interest accrues on the full €500K from period 1.
+    expect(result.periods[0].beginningPar).toBeCloseTo(500_000, 0);
+    expect(result.periods[0].interestCollected).toBeCloseTo(
+      500_000 * (2.5 + 3.5) / 100 * Q1_ACTUAL,
+      0,
+    );
+    // No un-drawn commitment exposed via the OC subtractor.
+    expect(result.periods[0].endingUndrawnCommitment).toBeCloseTo(0, 0);
+  });
+
+  it("partial draw preserves the un-drawn portion", () => {
+    // Pre-fix the draw event at projection.ts overwrote `loan.survivingPar =
+    // drawn` and silently discarded the (1 − ddtlDrawPercent) residual. The
+    // un-drawn residual must (a) remain on the OC subtractor (per PPM
+    // Adjusted Collateral Principal Amount), (b) survive across periods until
+    // a subsequent draw or commitment-end disposition.
+    const ddtl = {
+      parBalance: 0,                  // not yet drawn
+      undrawnCommitment: 500_000,     // future commitment
+      maturityDate: addQuarters("2026-03-09", 20),
+      ratingBucket: "B",
+      spreadBps: 0,
+      isDelayedDraw: true,
+      ddtlSpreadBps: 350,
+      drawQuarter: 2,
+    };
+
+    const result = runProjection(
+      makeInputs({
+        loans: [ddtl],
+        initialPar: 500_000,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        defaultRatesByRating: uniformRates(0),
+        cprPct: 0,
+        ddtlDrawPercent: 60,
+      })
+    );
+
+    // Q1 — pre-draw: full €500K un-drawn, no interest.
+    expect(result.periods[0].endingUndrawnCommitment).toBeCloseTo(500_000, 0);
+    expect(result.periods[0].interestCollected).toBeCloseTo(0, 2);
+
+    // Q2 — partial draw: 60% × 500K = 300K funded (accrues at parent spread);
+    // the 40% × 500K = 200K residual is PRESERVED, not discarded.
+    expect(result.periods[1].endingUndrawnCommitment).toBeCloseTo(200_000, 0);
+    expect(result.periods[1].interestCollected).toBeCloseTo(
+      300_000 * (2.5 + 3.5) / 100 * Q2_ACTUAL,
+      0,
+    );
+
+    // Q3 — residual carried forward unchanged; funded portion continues to
+    // accrue at the parent spread on the post-draw €300K balance. Pinning
+    // the post-draw interest assertion catches a regression where the
+    // engine forgets to accrue on the post-draw funded balance (e.g. a
+    // future refactor that erroneously zeroes survivingPar between periods
+    // or doesn't roll the per-loan beginning par forward).
+    expect(result.periods[2].endingUndrawnCommitment).toBeCloseTo(200_000, 0);
+    expect(result.periods[2].interestCollected).toBeCloseTo(
+      300_000 * (2.5 + 3.5) / 100 * Q3_ACTUAL,
+      0,
+    );
+  });
+
+  it("never-draw with surviving funded leg preserves the funded portion", () => {
+    // Splice path branch coverage at projection.ts:1909-1918: a partially-
+    // drawn DDTL where the user opts to model the un-drawn residual as
+    // never-drawing (drawQuarter <= 0). The funded leg (parBalance > 0)
+    // is preserved; only the un-drawn residual zeroes out so the OC
+    // subtractor doesn't carry phantom unfunded forever.
+    const partiallyDrawnNeverDraw = {
+      parBalance: 300_000,        // already drawn
+      undrawnCommitment: 200_000, // un-drawn residual that never funds
+      maturityDate: addQuarters("2026-03-09", 20),
+      ratingBucket: "B",
+      spreadBps: 350,             // funded leg accrues at this spread
+      isDelayedDraw: true,
+      drawQuarter: 0,             // never_draw signal
+    };
+
+    const result = runProjection(
+      makeInputs({
+        loans: [partiallyDrawnNeverDraw],
+        initialPar: 300_000,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        defaultRatesByRating: uniformRates(0),
+        cprPct: 0,
+      })
+    );
+
+    // Funded €300K leg accrues normally from Q1 onward at base + spread.
+    expect(result.periods[0].beginningPar).toBeCloseTo(300_000, 0);
+    expect(result.periods[0].interestCollected).toBeCloseTo(
+      300_000 * (2.5 + 3.5) / 100 * Q1_ACTUAL,
+      0,
+    );
+    // Un-drawn residual zeroed by the splice — no longer in OC subtractor.
+    // The pre-fix splice would have removed the loan entirely (loanStates
+    // .splice), dropping the funded leg too. The splice now branches:
+    // survivingPar > 0 → zero undrawnCommitment, keep loan.
+    expect(result.periods[0].endingUndrawnCommitment).toBeCloseTo(0, 0);
+  });
+
+  it("multi-DDTL fixture: fully-drawn + un-drawn coexist correctly", () => {
+    // Coverage gap closure: prior tests exercised single-DDTL shapes in
+    // isolation. A real deal carries multiple DDTLs in different states.
+    // This fixture pairs (a) Eleda-shape (fully drawn at T=0, accrues
+    // immediately) with (b) a future-draw DDTL (un-drawn at T=0, funds
+    // at q=2). Asserts (i) endingUndrawnCommitment correctly aggregates
+    // across loans, (ii) Q1 interest reflects only the funded loan, (iii)
+    // Q2 interest reflects both after draw, (iv) the un-drawn residual
+    // tracking doesn't cross-contaminate.
+    const fullyDrawn = {
+      parBalance: 500_000,
+      undrawnCommitment: 0,
+      maturityDate: addQuarters("2026-03-09", 20),
+      ratingBucket: "B",
+      spreadBps: 350,
+      isDelayedDraw: true,
+      drawQuarter: 4,             // distant; would-be no-op draw
+    };
+    const futureDraw = {
+      parBalance: 0,
+      undrawnCommitment: 1_000_000,
+      maturityDate: addQuarters("2026-03-09", 20),
+      ratingBucket: "B",
+      spreadBps: 0,
+      isDelayedDraw: true,
+      ddtlSpreadBps: 400,
+      drawQuarter: 2,
+    };
+
+    const result = runProjection(
+      makeInputs({
+        loans: [fullyDrawn, futureDraw],
+        initialPar: 500_000,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        defaultRatesByRating: uniformRates(0),
+        cprPct: 0,
+        ddtlDrawPercent: 100,
+      })
+    );
+
+    // Q1: only the fully-drawn DDTL accrues. Un-drawn DDTL contributes
+    // €1M to endingUndrawnCommitment (pre-draw, full notional).
+    expect(result.periods[0].beginningPar).toBeCloseTo(500_000, 0);
+    expect(result.periods[0].interestCollected).toBeCloseTo(
+      500_000 * (2.5 + 3.5) / 100 * Q1_ACTUAL,
+      0,
+    );
+    expect(result.periods[0].endingUndrawnCommitment).toBeCloseTo(1_000_000, 0);
+
+    // Q2: future-draw DDTL fires (100% draw). Both DDTLs now funded.
+    // Beginning par includes both. Interest accrues on both at their
+    // respective spreads (350 bps fully-drawn, 400 bps post-draw via
+    // ddtlSpreadBps promotion).
+    expect(result.periods[1].beginningPar).toBeCloseTo(1_500_000, 0);
+    const q2Interest =
+      500_000 * (2.5 + 3.5) / 100 * Q2_ACTUAL +
+      1_000_000 * (2.5 + 4.0) / 100 * Q2_ACTUAL;
+    expect(result.periods[1].interestCollected).toBeCloseTo(q2Interest, 0);
+    // Both DDTLs now fully drawn → endingUndrawnCommitment = 0.
+    expect(result.periods[1].endingUndrawnCommitment).toBeCloseTo(0, 0);
   });
 });

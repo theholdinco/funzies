@@ -99,8 +99,11 @@ export function applySwitch(
   // compliance impact of the proposed trade. Uses the same `computePoolQualityMetrics`
   // helper as the projection engine's per-period metrics — single source of
   // truth, no parallel-implementation drift.
-  // Funded-only filter: unfunded DDTLs don't count toward current pool composition.
-  const fundedSwitched = switchedLoans.filter((l) => !l.isDelayedDraw);
+  // Funded-only filter: currently-unfunded DDTL/revolver positions
+  // (parBalance === 0) don't count toward current pool composition.
+  // A fully-drawn DDTL (parBalance > 0) IS in the funded set — its
+  // facility-type tag is informational, not a funded-state predicate.
+  const fundedSwitched = switchedLoans.filter((l) => l.parBalance > 0);
   const qloans = fundedSwitched.map((l) => toQualityMetricLoan(l, resolved.dates.currentDate));
   const switchedQuality = computePoolQualityMetrics(qloans, {
     referenceWAFC: resolved.referenceWeightedAverageFixedCoupon ?? undefined,

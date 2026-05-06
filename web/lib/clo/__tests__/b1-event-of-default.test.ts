@@ -53,7 +53,6 @@ describe("B1 — computeEventOfDefaultTest (pure helper)", () => {
       survivingPar: l.parBalance,
       isDefaulted: l.isDefaulted ?? false,
       currentPrice: l.currentPrice,
-      isDelayedDraw: l.isDelayedDraw,
     }));
     const principalCash = fixture.resolved.principalAccountCash; // −€1,817,413
     const classABalance = fixture.resolved.tranches.find((t) => t.className === "Class A")!.currentBalance;
@@ -119,10 +118,14 @@ describe("B1 — computeEventOfDefaultTest (pure helper)", () => {
     expect(result.actualPct).toBeCloseTo(142.86, 1);
   });
 
-  it("unfunded DDTL excluded entirely (neither numerator nor denominator)", () => {
+  it("currently-un-drawn DDTL/revolver excluded entirely (neither numerator nor denominator)", () => {
+    // Convention: un-drawn portion sits on undrawnCommitment, NOT survivingPar.
+    // The helper gates on survivingPar > 0 — un-drawn loans have survivingPar=0
+    // and contribute nothing. The facility-type tag is informational only and
+    // is not consulted by this helper.
     const loanStates = [
       { survivingPar: 90_000_000, isDefaulted: false },
-      { survivingPar: 10_000_000, isDefaulted: false, isDelayedDraw: true },
+      { survivingPar: 0, isDefaulted: false }, // un-drawn DDTL/revolver
     ];
     const result = computeEventOfDefaultTest(loanStates, 0, 70_000_000, 102.5);
     // Only the funded 90M counts.

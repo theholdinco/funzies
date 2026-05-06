@@ -78,10 +78,13 @@ describe("A3 — computeCallLiquidation (pure helper)", () => {
     expect(computeCallLiquidation(loans, 100, "par")).toBeCloseTo(350, 6);
   });
 
-  it("skips unfunded DDTL positions across all modes", () => {
+  it("skips currently-un-drawn DDTL/revolver positions across all modes", () => {
+    // Convention: an un-drawn DDTL/revolver has survivingPar=0 (its notional
+    // sits on undrawnCommitment). The helper gates on survivingPar > 0; the
+    // facility-type tag is informational and not consulted here.
     const loans = [
       { survivingPar: 100, currentPrice: 95 },
-      { survivingPar: 50, currentPrice: 100, isDelayedDraw: true },
+      { survivingPar: 0, currentPrice: 100 }, // un-drawn DDTL — no funded leg to liquidate
       { survivingPar: 200, currentPrice: 100 },
     ];
     expect(computeCallLiquidation(loans, 100, "market")).toBeCloseTo(295, 6); // 95 + 200

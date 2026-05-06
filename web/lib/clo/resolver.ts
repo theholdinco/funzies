@@ -1562,11 +1562,46 @@ export function resolveWaterfallInputs(
     return purchasePricePct < threshold;
   };
 
+  // DDTL classification — additive: parser regex on Security_Type1 /
+  // Security_Name OR structural signal (active unfunded commitment on a
+  // non-PIK holding). Anti-pattern #1: the SDF parser at
+  // `parse-collateral.ts:201-204` only matches `/delayed.{0,5}draw/i`
+  // against the security name. Eleda Management AB's "Delayed Draw Term
+  // Loan" matches; Admiral Bidco's "Facility B (EUR)" does NOT, even
+  // though the Q1 2026 SDF Transactions file shows it paid a "Facility -
+  // Ticking Fee (R)" — the canonical industry signal that a facility is a
+  // DDTL/revolver with active unfunded commitment. Without this additive
+  // branch, the activeHoldings filter would silently drop any un-named
+  // un-drawn facility (works on Eleda; silent on the next deal). PIK
+  // guard (`!hasPikSignal`) prevents the Tele-Columbus shape from
+  // false-positiving — for a PIK toggle-off bond, `Commitment > PFB`
+  // because cumulative PIK has accreted into Commitment but not
+  // Principal_Balance, NOT because of an undrawn capacity.
+  const inferIsDdtl = (h: CloHolding): boolean => {
+    if (h.isDelayedDraw === true) return true;
+    const hasUnfundedCommitment = (h.unfundedCommitment ?? 0) > 0;
+    const hasPikSignal =
+      (h.pikAmount ?? 0) > 0
+      || (h.pikSpreadBps ?? 0) > 0
+      || h.isPik === true;
+    return hasUnfundedCommitment && !hasPikSignal;
+  };
+
   // `holdingPar` and the active-holdings predicate are defined above
   // (just before the discount-obligation gate) so a single helper backs
-  // both the gate and the consumer-side `activeHoldings` filter.
-  const activeHoldings = holdings.filter(h => holdingPar(h) > 0 && !h.isDefaulted);
-  const nonDdtlHoldings = activeHoldings.filter(h => !h.isDelayedDraw);
+  // both the gate and the consumer-side `activeHoldings` filter. Un-drawn
+  // DDTL/revolver positions (parBalance === 0, unfundedCommitment > 0)
+  // are admitted so the downstream blocking-warning gate sees them — the
+  // pre-fix filter dropped them entirely, silently zeroing their unfunded
+  // commitment from the OC subtractor and from the URRA modeling check.
+  const activeHoldings = holdings.filter(h =>
+    !h.isDefaulted && (
+      holdingPar(h) > 0
+      || ((inferIsDdtl(h) || h.isRevolving === true)
+          && (h.unfundedCommitment ?? 0) > 0)
+    ),
+  );
+  const nonDdtlHoldings = activeHoldings.filter(h => !inferIsDdtl(h));
 
   // --- Rating Agencies set (computed pre-loop so the resolveMoodysRating /
   //     resolveFitchRating helpers can gate cross-agency derivation +
@@ -1602,7 +1637,68 @@ export function resolveWaterfallInputs(
 
   const loans: ResolvedLoan[] = activeHoldings.map(h => {
     const isFixed = h.isFixedRate === true;
-    const isDdtl = h.isDelayedDraw === true;
+    // Use the additive classification helper so un-named DDTLs (Admiral
+    // Bidco's "Facility B (EUR)" shape: regex miss but unfundedCommitment
+    // > 0 on a non-PIK holding) are tagged consistently with the
+    // activeHoldings filter above — same predicate flowing through the
+    // entire resolver pipeline (admission, parent-facility lookup,
+    // unfunded-commitment population, blocking gate, output tag).
+    const isDdtl = inferIsDdtl(h);
+    const isRevolving = h.isRevolving === true;
+    // Per-loan currently-unfunded commitment. Only populated when the
+    // facility is tagged DDTL or revolving — protects against the
+    // Tele-Columbus parser artifact where PIK accretion produces a
+    // non-zero `unfunded_commitment` delta on holdings that are neither
+    // DDTL nor revolving (the parser computes
+    // `unfunded_commitment = max(0, Commitment − parBalance)` from raw SDF
+    // columns and the difference can reflect post-acquisition PIK
+    // accretion rather than a true un-drawn portion). Treating that
+    // delta as un-drawn would silently inflate the OC subtractor.
+    const undrawnCommitment =
+      (isDdtl || isRevolving) && h.unfundedCommitment != null && h.unfundedCommitment > 0
+        ? h.unfundedCommitment
+        : 0;
+    if (undrawnCommitment > 0) {
+      // Per anti-pattern #3 in CLAUDE.md: when a per-deal computational input
+      // is unavailable, the resolver MUST emit a blocking warning rather than
+      // silently fall back. URRA cash-flow modeling and per-loan commitment-
+      // fee accrual are not yet supported by the engine; the source data
+      // (SDF Collateral File) carries no commitment-fee bps column and no
+      // commitment-end-date column, and ppm.json carries no structured URRA
+      // mechanic — only a passing reference inside the Discount Obligation
+      // rule. Silently projecting an active unfunded commitment would
+      // (a) accrue zero interest on a leg that pays a commitment fee in
+      // reality, (b) skip the URRA at-acquisition deposit and any release
+      // at commitment expiry — magnitudes unbounded per loan. On Euro XV
+      // today this gate is dormant (Eleda is fully drawn, undrawnCommitment
+      // === 0); on the next deal with a live unfunded DDTL or revolver the
+      // gate fires and the UI surfaces "DATA INCOMPLETE" rather than show
+      // a plausible-but-wrong projection.
+      warnings.push({
+        field: "undrawnCommitment",
+        message:
+          `${isDdtl ? "DDTL" : "Revolver"} "${h.obligorName ?? "unknown"}" carries an active ` +
+          `unfunded commitment of ${undrawnCommitment.toFixed(2)}. Projecting requires (a) ` +
+          `per-loan commitment-fee bps, (b) per-loan commitment-end date, and (c) URRA ` +
+          `cash-flow mechanics — none of which are extractable from the SDF Collateral ` +
+          `File or structured ppm.json today. Silent fallback would zero out the commitment ` +
+          `fee leg AND skip the URRA at-acquisition deposit / commitment-expiry release; ` +
+          `magnitude is per-loan and unbounded. Refuse and extend the source-data extraction ` +
+          `before projecting this deal.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+    // Pre-fix the resolver hardcoded `spreadBps = 0` on every DDTL,
+    // delegating spread assignment to the engine's draw event (which
+    // promoted ddtlSpread from a parent-facility lookup at drawQuarter).
+    // For a fully-drawn DDTL (Eleda-shape: parBalance > 0,
+    // undrawnCommitment === 0) the draw event never fires and the funded
+    // leg silently accrued at base rate only — dropping ~€5,591/quarter on
+    // Euro XV's only DDTL. The funded portion of any DDTL/revolver carries
+    // its actual spread directly on `h.spreadBps`; the parent-facility
+    // ddtlSpread is only relevant for the un-drawn leg's eventual draw.
+    const isCurrentlyFundedDdtl = (isDdtl || isRevolving) && holdingPar(h) > 0;
     // Clean rating sentinels defensively — pre-fix rows in the DB still carry
     // "***" / "NR" / "--" etc. from the SDF; trimRating handles new ingests.
     const moodys = cleanRating(h.moodysRating);
@@ -1657,7 +1753,17 @@ export function resolveWaterfallInputs(
     }
 
     let ddtlSpreadBps: number | undefined;
-    if (isDdtl) {
+    // Parent-facility lookup gates on un-drawn capacity. The engine's draw
+    // event at projection.ts:2836-2848 gates on `undrawnCommitment > 0`, so
+    // `ddtlSpreadBps` is only consulted when there's actual un-drawn par to
+    // promote into a funded leg. For a fully-drawn DDTL (Eleda-shape:
+    // parBalance > 0, undrawnCommitment === 0) the draw event is a no-op and
+    // the parent-facility lookup is structurally irrelevant. Pre-fix, the
+    // lookup ran for any isDdtl=true holding and fired blocking when no
+    // sibling parent shared the obligorName — anti-pattern #1: works on
+    // Eleda's live data (which has a Term Loan B sibling) but blocks any
+    // deal whose orphan fully-drawn DDTL has no sibling.
+    if (isDdtl && undrawnCommitment > 0) {
       const candidates = nonDdtlHoldings.filter(c => c.obligorName != null && c.obligorName === h.obligorName);
       if (candidates.length > 1) {
         warnings.push({ field: "ddtlSpreadBps", message: `DDTL "${h.obligorName ?? "unknown"}" matched ${candidates.length} parent facilities — using largest par with closest maturity as tiebreaker.`, severity: "warn", blocking: false });
@@ -1829,11 +1935,24 @@ export function resolveWaterfallInputs(
       parBalance: holdingPar(h),
       maturityDate: h.maturityDate ?? fallbackMaturity,
       ratingBucket,
-      spreadBps: isFixed ? 0 : (isDdtl ? 0 : (h.spreadBps ?? wacSpreadBps)),
+      // Spread assignment (anti-pattern #5 boundary invariant):
+      //   - fixed-rate: 0 (coupon path uses fixedCouponPct)
+      //   - currently-funded DDTL/revolver: real funded-leg spread from h.spreadBps
+      //   - currently-unfunded DDTL/revolver: 0 (engine draw event promotes ddtlSpread on first draw)
+      //   - regular floating: h.spreadBps (or pool WAC fallback)
+      spreadBps: isFixed
+        ? 0
+        : isCurrentlyFundedDdtl
+          ? (h.spreadBps ?? wacSpreadBps)
+          : (isDdtl || isRevolving)
+            ? 0
+            : (h.spreadBps ?? wacSpreadBps),
       obligorName: h.obligorName ?? undefined,
       isFixedRate: isFixed || undefined,
       fixedCouponPct,
       isDelayedDraw: isDdtl || undefined,
+      isRevolving: isRevolving || undefined,
+      undrawnCommitment: undrawnCommitment > 0 ? undrawnCommitment : undefined,
       ddtlSpreadBps,
       // Full ratings (sentinel-cleaned)
       moodysRating: moodys ?? undefined,
@@ -2426,9 +2545,10 @@ export function resolveWaterfallInputs(
     }
   }
 
-  const ddtlUnfundedPar = loans
-    .filter(l => l.isDelayedDraw)
-    .reduce((s, l) => s + l.parBalance, 0);
+  // Σ undrawnCommitment over all loans (independent of facility-type tag).
+  // A fully-drawn DDTL (Eleda-shape: parBalance > 0, undrawnCommitment === 0)
+  // contributes 0; a partially-drawn DDTL contributes its preserved residual.
+  const ddtlUnfundedPar = loans.reduce((s, l) => s + (l.undrawnCommitment ?? 0), 0);
   if (ddtlUnfundedPar > 0 && impliedOcAdjustment > 0) {
     impliedOcAdjustment = Math.max(0, impliedOcAdjustment - ddtlUnfundedPar);
   }

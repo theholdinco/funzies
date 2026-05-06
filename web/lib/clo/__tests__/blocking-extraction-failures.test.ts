@@ -550,10 +550,15 @@ describe("Pattern B (silent acceptance of sentinel value)", () => {
   it("DDTL no parent (resolver.ts:1073) — DDTL holding with no matching parent facility → blocking", () => {
     const raw = loadRaw();
     // Euro XV has zero DDTL holdings (verified by grep). Convert an active
-    // non-DDTL holding to DDTL and give it a unique obligor name (no other
-    // holding shares it), so the resolver's parent-match (filter by
-    // obligorName equality on funded holdings) returns empty and falls
-    // through to the WAC-spread substitution.
+    // non-DDTL holding into an UN-DRAWN DDTL and give it a unique obligor
+    // name (no other holding shares it), so the resolver's parent-match
+    // (filter by obligorName equality on funded holdings) returns empty.
+    // The lookup gates on `undrawnCommitment > 0` — an orphan with
+    // un-drawn capacity NEEDS a draw spread (the engine's draw event
+    // will consult ddtlSpreadBps when the draw fires), so the blocking
+    // warning fires. A fully-drawn orphan does NOT block per the
+    // companion test at the end of this file (the engine never consults
+    // ddtlSpreadBps for it — draw event is a no-op).
     const holding = (raw.holdings as any[]).find(
       (h: any) =>
         !h.isDelayedDraw &&
@@ -563,6 +568,12 @@ describe("Pattern B (silent acceptance of sentinel value)", () => {
     expect(holding, "fixture should have an active non-DDTL holding").toBeDefined();
     holding.isDelayedDraw = true;
     holding.obligorName = "KI59_TEST_OBLIGOR_NO_PARENT_MATCH";
+    holding.parBalance = 0;
+    holding.principalBalance = 0;
+    holding.unfundedCommitment = 500_000;
+    holding.pikAmount = 0;
+    holding.pikSpreadBps = 0;
+    holding.isPik = false;
     const { resolved, warnings } = runResolver(raw);
     const w = warnings.find((w) =>
       w.field === "ddtlSpreadBps" && w.message.includes("no matching parent"),
@@ -861,5 +872,135 @@ describe("Pattern E (per-position rating ladder absence — aggregated post-loop
     expectBlockingError(w, "fitchRating (aggregated absent)");
     expect(w!.message).toMatch(/active position\(s\) have no Fitch rating/);
     expectGateThrows(resolved, warnings);
+  });
+
+  it("undrawnCommitment — active unfunded DDTL/revolver → blocking (URRA + commitment fee unmodeled)", () => {
+    // Convention: a fully-drawn DDTL (Eleda-shape: parBalance > 0,
+    // unfundedCommitment === 0) is supported and projects normally. An
+    // ACTIVELY un-drawn DDTL/revolver (unfundedCommitment > 0) requires
+    // (a) commitment-fee bps, (b) commitment-end date, (c) URRA cash-flow
+    // mechanics — none extractable from the SDF Collateral File or
+    // structured ppm.json. The resolver refuses to project rather than
+    // silently zero out the commitment-fee leg or skip the URRA cash flow.
+    // The Euro XV Q1 fixture predates the Eleda Management AB DDTL extraction
+    // (every holding has isDelayedDraw=null); promote the first holding to a
+    // synthetic actively-unfunded DDTL to exercise the gate without depending
+    // on the next fixture refresh.
+    const raw = loadRaw();
+    const target = (raw.holdings as any[])[0];
+    target.isDelayedDraw = true;
+    target.parBalance = 0;
+    target.principalBalance = 0;
+    target.unfundedCommitment = 500_000;
+    const { resolved, warnings } = runResolver(raw);
+    const w = warnings.find((w) => w.field === "undrawnCommitment");
+    expectBlockingError(w, "undrawnCommitment (URRA + commitment fee unmodeled)");
+    expect(w!.message).toMatch(/unfunded commitment/i);
+    expectGateThrows(resolved, warnings);
+  });
+
+  it("undrawnCommitment — un-named DDTL caught by structural signal → blocking", () => {
+    // Anti-pattern #1: the SDF parser regex at parse-collateral.ts:201-204
+    // tags `is_delayed_draw=true` only when "Delayed Draw" appears in
+    // Security_Type1 or Security_Name. Verified against
+    // ~/Downloads/ARESXV_CDSDF_260401/SDF Transactions ECB.csv:44 — Admiral
+    // Bidco's "Facility B (EUR)" paid a "Facility - Ticking Fee" in Q1
+    // 2026 (canonical industry signal of an active unfunded
+    // commitment) but the regex misses it. Pre-fix, the resolver's
+    // activeHoldings filter would silently drop a Facility-B-shape un-drawn
+    // loan whose unfunded_commitment > 0 because (isDelayedDraw === false &&
+    // isRevolving === false) → the OR-branch in the filter rejects it →
+    // blocking gate never fires. Post-fix, `inferIsDdtl(h)` adds a
+    // structural-signal branch (unfundedCommitment > 0 AND not-PIK) that
+    // admits the holding and routes it through the same blocking gate.
+    const raw = loadRaw();
+    const target = (raw.holdings as any[])[0];
+    target.isDelayedDraw = false;       // regex miss
+    target.isRevolving = false;
+    target.parBalance = 0;
+    target.principalBalance = 0;
+    target.unfundedCommitment = 500_000;
+    target.pikAmount = 0;
+    target.pikSpreadBps = 0;
+    target.isPik = false;
+    const { resolved, warnings } = runResolver(raw);
+    const w = warnings.find((w) => w.field === "undrawnCommitment");
+    expectBlockingError(w, "undrawnCommitment (un-named DDTL via structural signal)");
+    expect(w!.message).toMatch(/unfunded commitment/i);
+    expectGateThrows(resolved, warnings);
+  });
+
+  it("ddtlSpreadBps — orphan fully-drawn DDTL does NOT block (un-drawn=0 → lookup irrelevant)", () => {
+    // Anti-pattern #1: pre-fix, the resolver's parent-facility lookup at
+    // resolver.ts:1683-1707 ran unconditionally for any isDdtl=true holding
+    // and fired `blocking: true` when no sibling holding shared the
+    // obligorName. For a fully-drawn DDTL (Eleda-shape: parBalance > 0,
+    // undrawnCommitment === 0) the engine's draw event at
+    // projection.ts:2836-2848 is a no-op (gates on undrawnCommitment > 0)
+    // and `ddtlSpreadBps` is never consulted — so the blocking gate fired
+    // for a value that's structurally irrelevant. Eleda has a sibling
+    // parent in Euro XV's live data (Term Loan B at €1.82M); a deal whose
+    // orphan DDTL has no sibling would silently block. Post-fix the lookup
+    // gates on `undrawnCommitment > 0`, so a fully-drawn orphan passes.
+    const raw = loadRaw();
+    const target = (raw.holdings as any[])[0];
+    target.isDelayedDraw = true;
+    target.obligorName = "Single-Facility Orphan Obligor LLC"; // unique — no sibling
+    target.parBalance = 500_000;
+    target.principalBalance = 500_000;
+    target.unfundedCommitment = 0;
+    target.spreadBps = 350;
+    // Sanity: only one row with this obligorName in the modified fixture.
+    const siblings = (raw.holdings as any[]).filter(
+      (h: any) => h.obligorName === target.obligorName,
+    );
+    expect(siblings.length).toBe(1);
+    const { resolved, warnings } = runResolver(raw);
+    // No blocking warning fires for an orphan FULLY-DRAWN DDTL.
+    const blocking = warnings.find(
+      (w) => w.field === "ddtlSpreadBps" && w.blocking === true,
+    );
+    expect(blocking).toBeUndefined();
+    // Resolved holding admitted with funded balance + real spread (not
+    // hardcoded 0). The Eleda-bug fix flows through.
+    const orphan = resolved.loans.find(
+      (l) => l.obligorName === "Single-Facility Orphan Obligor LLC",
+    );
+    expect(orphan).toBeDefined();
+    expect(orphan!.parBalance).toBe(500_000);
+    expect(orphan!.spreadBps).toBe(350);
+  });
+
+  it("undrawnCommitment — PIK accretion shape NOT classified as DDTL (Tele-Columbus guard)", () => {
+    // Tele-Columbus shape per parse-collateral.ts:130-137: a PIK toggle-off
+    // bond carries `Commitment > Principal_Balance` because cumulative PIK
+    // has accreted into Commitment but not into Principal_Balance — the
+    // delta is PIK accretion, NOT un-drawn capacity. Naive
+    // `Commitment > PFB` would false-positive this as a DDTL. The
+    // structural-signal branch in `inferIsDdtl` is gated on `!hasPikSignal`
+    // (pikAmount > 0 OR pikSpreadBps > 0 OR isPik === true) so a PIK
+    // holding with non-zero unfundedCommitment is NOT classified as a
+    // DDTL/revolver and does NOT fire the blocking gate. The holding
+    // continues to project as a regular PIK loan.
+    const raw = loadRaw();
+    const target = (raw.holdings as any[])[0];
+    target.isDelayedDraw = false;
+    target.isRevolving = false;
+    // Funded balance preserved — this is a normal PIK loan, NOT a DDTL.
+    // Setting unfundedCommitment > 0 simulates the parser's
+    // `unfunded_commitment = Commitment - parBalance` artifact when PIK
+    // has accreted into Commitment.
+    target.unfundedCommitment = 100_000;
+    target.pikAmount = 100_000;          // PIK signal — guards against false-positive
+    target.pikSpreadBps = 250;
+    target.isPik = true;
+    const { resolved, warnings } = runResolver(raw);
+    const w = warnings.find((w) => w.field === "undrawnCommitment");
+    // No blocking warning on undrawnCommitment — PIK guard should fire.
+    // The holding still passes the activeHoldings filter via parBalance > 0
+    // (it's a normal funded PIK loan) and proceeds through normal resolution.
+    expect(w).toBeUndefined();
+    // resolved is constructed (no IncompleteDataError thrown for this field).
+    expect(resolved.loans.length).toBeGreaterThan(0);
   });
 });

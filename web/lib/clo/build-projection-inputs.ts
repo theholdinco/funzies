@@ -759,8 +759,12 @@ export function composeBuildWarnings(
   // stating cure cash sizing on a deal in its reinvestment period whose
   // true market is sub-par. Anti-pattern #3: computational fallbacks block.
   if (userAssumptions.reinvestmentPricePct == null && resolved.loans.length > 0) {
+    // Currently-unfunded DDTL/revolver positions (parBalance === 0,
+    // undrawnCommitment > 0) carry no funded leg to price; exclude them
+    // from the price-aware reinvestment derivation. Fully-drawn DDTLs
+    // (Eleda-shape) carry a real currentPrice and ARE included.
     const anyPriced = resolved.loans.some(
-      l => !l.isDelayedDraw && l.currentPrice != null && l.currentPrice > 0,
+      l => l.parBalance > 0 && l.currentPrice != null && l.currentPrice > 0,
     );
     if (!anyPriced) {
       composedWarnings.push({
@@ -835,11 +839,17 @@ export function buildFromResolved(
       ? userAssumptions.ddtlDrawQuarter
       : CLO_DEFAULTS.ddtlDrawQuarter; // draw_at_deadline default
 
-  // Set drawQuarter on DDTL loans
-  const loans = resolved.loans.map(l => l.isDelayedDraw
-    ? { ...l, drawQuarter: ddtlDrawQuarter }
-    : l
-  );
+  // Set drawQuarter on DDTL/revolver loans that have an actual un-drawn
+  // commitment (undrawnCommitment > 0). Fully-drawn DDTLs (Eleda-shape:
+  // parBalance > 0, undrawnCommitment === 0) skip drawQuarter — they have
+  // nothing left to draw, and the engine's draw event would be a no-op
+  // anyway under the new gate (`if (loan.undrawnCommitment <= 0) continue`).
+  const loans = resolved.loans.map(l => {
+    const hasUndrawn = (l.undrawnCommitment ?? 0) > 0;
+    return hasUndrawn
+      ? { ...l, drawQuarter: ddtlDrawQuarter }
+      : l;
+  });
 
   // Equity entry price: if user assumption is set in cents, resolve against
   // sub note ORIGINAL par (face at issuance). The buyer's cost basis is a
@@ -872,7 +882,10 @@ export function buildFromResolved(
     let pxParSum = 0;
     for (const l of resolved.loans) {
       if (l.currentPrice == null || l.currentPrice <= 0) continue;
-      if (l.isDelayedDraw) continue;
+      // Currently-unfunded positions (parBalance === 0, undrawnCommitment > 0)
+      // contribute nothing to a par-weighted price; the loop is implicitly
+      // gated by parBalance > 0 below — but be explicit for clarity.
+      if (l.parBalance <= 0) continue;
       parWithPrice += l.parBalance;
       pxParSum += l.parBalance * l.currentPrice;
     }

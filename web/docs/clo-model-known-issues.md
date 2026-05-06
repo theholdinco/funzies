@@ -27,7 +27,6 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-12a — Senior / sub management fee base discrepancy](#ki-12a) — **BLOCKED ON DATA ACQUISITION** (Q4 2025 historical SDF + trustee-report bundles)
 - [KI-20 — D2 legacy escape-hatch on 6 test-factory sites](#ki-20)
 - [KI-23 — Industry taxonomy missing on BuyListItem + ResolvedLoan blocks industry-cap filtering](#ki-23)
-- [KI-35 — Partial DDTL draw silently discards the un-drawn commitment](#ki-35)
 
 ### Latent — currently inactive on Euro XV; emerges on portability or stress
 *Distinct from "Deferred" (those are intentional design choices about mechanics that exist in the indenture but the model elects not to simulate). "Latent" entries are unmodeled or hardcoded paths whose current Euro XV magnitude happens to be zero, but which will produce wrong numbers the moment a deal hits the triggering condition (different deal structure, different PPM, non-zero balance, FX exposure, etc.). Treat each as a real bug whose materiality is data-dependent, not a deliberate scope decision.*
@@ -456,43 +455,52 @@ Partner-demo gap but not blocking for Euro XV where industry concentration is li
 
 ---
 
-<a id="ki-35"></a>
-### [KI-35] Partial DDTL draw silently discards the un-drawn commitment
+<a id="ki-29"></a>
+### [KI-29] Long-dated obligation forward-period valuation rule not modeled — **PARTIAL: discount-obligation leg closed; long-dated classification done; long-dated valuation residual remains**
 
-**PPM reference:** DDTL (Delayed-Draw Term Loan) commitment mechanics. A DDTL has (a) a committed but undrawn balance accruing a commitment fee until termination or full draw, (b) a draw event that transfers some or all of the commitment to a funded loan, (c) any undrawn portion at the commitment-end date that is then either rolled or terminated.
+**Status (closure of discount-obligation leg + KI-33 in same PR, 2026-05-05):**
 
-**Current engine behavior:** `web/lib/clo/projection.ts:1396-1401`:
+The discount-obligation leg of this entry CLOSED:
+- `ResolvedLoan` carries `purchasePricePct`, `acquisitionDate`, `isDiscountObligation`, `isLongDated` per-position.
+- Per-deal `ResolvedDiscountObligationRule` (Condition 1 classification + cure mechanic) extracted from PPM via `ppm.json:section_5_fees_and_hurdle.discount_obligation`. Resolver blocks via `severity: "error", blocking: true` when missing on a non-greenfield deal.
+- Engine drives the OC numerator's discount-obligation haircut from per-position Σ at every period (T=0 and forward) via `computeDiscountHaircut(loanStates)` at `projection.ts:2266` + `:3655`. Per-position survivingPar decays naturally as positions amortize / prepay / default.
+- Cure mechanic dispatch (`continuous_threshold` with rate-type discriminator and holding-since-acquisition window; `permanent_until_paid`) re-evaluates classification per period via `applyCureDispatch`.
+- KI-33 closed in the same PR: `computeReinvOcDiversion` is price-aware (returns `{ cashDiverted, parBought }` with above-threshold-vs-sub-threshold dispatch); all four reinvestment synthesis sites set per-position fields including `purchasePricePct = reinvestmentPricePct` and `isDiscountObligation = isSubThreshold`.
 
+Long-dated leg:
+- Per-position **classification** done — `loan.isLongDated = (loan.maturityDate > deal.maturityDate)`. Cross-deal indenture surveys (Law Insider, SEC EDGAR-filed CLO indentures) confirm this classification rule is law-firm-templated and identical across managers; safe to treat as universal.
+- Per-deal **valuation rule** NOT modeled. Engine continues to consume the trustee's static `longDatedObligationHaircut` scalar at every period; mechanically bound to a partner-facing banner (`LongDatedStaticBanner`) that fires whenever the scalar is > 0.
+
+**PPM reference + design space (long-dated residual):** Condition 1 ("Long-Dated Obligation"); Condition 10(a)(iv) Adjusted Collateral Principal Amount. Industry research (S&P "Par Wars" series, Sep 2022 + Feb 2020; Fitch "U.S. CLO Indenture Features Explained"; Law Insider canonical clauses; SEC EDGAR-filed indentures from Carlyle, Owl Rock, et al.) shows the long-dated valuation rule has TWO canonical shapes — variation between managers is parameter-tuning within these shapes, not structural divergence:
+
+- **Shape A — "binary exclusion / cap-then-zero"** (older / simpler / typical of European CLO 2.0). Cap percentage is the load-bearing knob; canonical conservative is 2.5% of CPA, with 5% (Ares XV) at the more permissive end. Excess deemed zero. Within-cap valued at par.
+- **Shape B — "tiered haircut by years past Stated Maturity"** (newer / post-2018, post-2017 manager-flexibility trend). Within-cap (≤ 2 years past Stated Maturity): `min(MarketValue × par, 70% × par)`. Beyond cliff (> 2 years past Stated Maturity): zero. Excess-above-cap valuation: hard zero (conservative) or `min(S&P CV, Fitch CV)` (manager-friendly variant; e.g. Ares XVIII).
+
+A finite enum suffices to encode the design space:
+```ts
+type LongDatedValuationRule = {
+  shape: "binary" | "tiered_70_or_mv";
+  capPctOfBase: number;            // 2.5 / 5 typical
+  capBase: "APB" | "CPA";
+  postCapTreatment: "zero" | "agency_cv_min";
+  cliffYearsPastStatedMaturity: number | null;  // null for binary; 2 typical for tiered
+};
 ```
-for (const loan of loanStates) {
-  if (!loan.isDelayedDraw) continue;
-  if (q === loan.drawQuarter) {
-    const fundedPar = loan.survivingPar * (ddtlDrawPercent / 100);
-    loan.survivingPar = fundedPar;
-    loan.spreadBps = loan.ddtlSpreadBps ?? 0;
-    loan.isDelayedDraw = false;
-  }
-}
-```
+Local PPM sample (Ares XV + Ares XVIII) maps cleanly into this schema. Other major managers (Apollo, Blackstone, Carlyle, KKR, GSO, Sound Point, etc.) are documented in the same shape space — variation is in the parameters, not the structure.
 
-When `ddtlDrawPercent < 100`, `loan.survivingPar = fundedPar` overwrites the full commitment with the drawn portion only. The undrawn balance is discarded with no further accounting: no commitment fee on undrawn (the engine emits zero), no carry-forward of the commitment, no termination-of-commitment cash event.
+**Current engine behavior (residual):** `ResolvedDealData.longDatedObligationHaircut` (number) is consumed at the OC numerator construction at every period (the same scalar across all periods). Per-position `LoanState.isLongDated` is set but never read by the haircut Σ — there's no per-deal valuation rule for the engine to dispatch on.
 
-**PPM-correct behavior:** Two parts:
-1. Commitment fee on undrawn balance: a fixed bps × undrawn-par × dayFrac flows through interest collections each period until full draw or commitment termination.
-2. At commitment end: the undrawn portion is either rolled (extending the commitment) or terminated (zero-cash event for the deal — the commitment evaporates with no recovery owed).
+**Quantitative magnitude (residual) on Euro XV today: zero bias.** Verified by direct probe: T=0 long-dated count is 0 (no loan in the pool has stated maturity > 2036-01-15); forward-projected reinvestments never go long-dated (reinvestment cutoff at Q1, latest synthesised loan matures at Q21, deal runs to Q28 — every reinvestment matures within deal life). Engine's static-scalar output (0) and a fully-implemented per-deal valuation rule's output (0) are identical for every period of every projection. The residual is genuinely portability-only — it produces wrong numbers on a different deal (longer reinvestment-tenor-vs-deal-maturity ratio, or T=0 long-dated positions present), not on Ares XV.
 
-**Quantitative magnitude:** Zero on Euro XV Q1 (no DDTL draw event in period 1). Latent on any deal with active DDTLs that draw partially. On a typical European CLO with 5-10% of par in DDTLs at average commitment fee of 50 bps, partial-draw commitment fees accumulate to ~25-50 bps × pool × commitment lifetime. For €493M pool with 5% DDTL share at 50 bps commitment fee, that is ~€31K/quarter of missing interest over the commitment period.
+**Path to close (residual):**
+1. Encode the discriminated union above as `ResolvedDealData.longDatedValuationRule` (new field).
+2. Extend `ppm.json` schema with `section_5_fees_and_hurdle.long_dated_obligation` block; populate Ares XV (Shape A: binary, 5% APB, post-cap zero, no cliff) and Ares XVIII (Shape B: tiered, 2.5% CPA, post-cap agency_cv_min, 2yr cliff).
+3. Resolver consumes the block; blocks via `severity: "error", blocking: true` when missing on a deal whose pool composition could carry long-dated positions (same shape as the discount-obligation gate).
+4. Engine drives the long-dated haircut from per-position Σ over `loanStates` filtered by `isLongDated`, applying the per-deal rule's dispatch.
+5. Delete `LongDatedStaticBanner.tsx` in lockstep with the engine swap; remove this entry from the ledger entirely (closed = deleted).
+6. Validate the schema by ingesting at least one non-Ares PPM (Apollo, Blackstone, Carlyle, KKR, etc.) before declaring the residual closed — confirms the canonical shapes survive a manager-different deal.
 
-**Deferral rationale:** DDTL fine-grain mechanics not yet modeled. The `ddtlDrawPercent` was added as a sensitivity dial, not as a full commitment-tracking mechanism.
-
-**Path to close:**
-1. Add `commitmentFeeBps: number | null` to `ResolvedLoan` (extracted from the loan's instrument terms).
-2. Add `commitmentEndDate: string | null` for the commitment expiration.
-3. In `projection.ts:1396-1401`: instead of `loan.survivingPar = fundedPar`, split into `loan.fundedPar` and `loan.undrawnCommitment = loan.survivingPar - fundedPar`. Track both as separate fields.
-4. Per period, accrue commitment fee on `undrawnCommitment × commitmentFeeBps × dayFrac` and add to `interestCollected`.
-5. At `commitmentEndDate`, terminate the undrawn commitment (set to 0; emit a one-line stepTrace event for auditability).
-
-**Test:** No active marker. When the fix lands, add `KI-35-ddtlPartialDraw` against a synthetic fixture with a DDTL drawing at 50% — assert (a) commitment fee accrues on the un-drawn 50% pre-end, (b) commitment terminates at end-date with no other cash effect.
+**Test:** behavior pinned by `KI-29-longDatedStatic` in `c5-discount-obligation.test.ts` (synthetic fixture with non-zero `longDatedObligationHaircut`; asserts the static scalar deducts identically at T=0 and at q=1 — flips when the per-deal forward-period valuation rule lands). Not in `failsWithMagnitude` shape because the residual carries zero current magnitude on Euro XV (no long-dated positions; trustee scalar = 0); the marker pins the behavior, not a wrong-number drift.
 
 ---
 
