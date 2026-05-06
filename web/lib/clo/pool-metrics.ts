@@ -434,7 +434,10 @@ export function resolveWarfFactor(
       `Use null or undefined to fall back to BUCKET_WARF_FALLBACK[ratingBucket]; ` +
       `passing 0, negative, NaN, or Infinity silently disables defaults for ` +
       `this position via warfFactorToQuarterlyHazard's <=0 / !isFinite guard ` +
-      `returning 0.`,
+      `returning 0. NaN additionally poisons downstream WARF aggregation ` +
+      `(warfSum += par × NaN propagates through \`??\` which coalesces only ` +
+      `null/undefined, surfacing as NaN in partner-facing WARF display rather ` +
+      `than just suppressed defaults).`,
     );
   }
   return rawWarfFactor ?? BUCKET_WARF_FALLBACK[ratingBucket] ?? BUCKET_WARF_FALLBACK.NR;

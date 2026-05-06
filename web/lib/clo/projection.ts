@@ -1740,10 +1740,23 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     maturityQuarter: number;
     ratingBucket: string;
     spreadBps: number;
-    /** C2 — Moody's WARF factor for this position. Set from LoanInput.warfFactor
-     *  when present (per-position rating), else fallback to coarse-bucket midpoint
-     *  via BUCKET_WARF_FALLBACK. Reinvested loans use the bucket fallback on
-     *  `reinvestmentRating`. */
+    /** C2 — Moody's WARF factor for this position. **Post-condition: always
+     *  finite > 0.** Set via one of two sanctioned construction paths:
+     *  (a) ingested loans: `resolveWarfFactor(l.warfFactor, l.ratingBucket)`
+     *      at the LoanInput → LoanState boundary (throws on 0/negative/NaN/
+     *      Infinity);
+     *  (b) reinvested synthetic loans: `BUCKET_WARF_FALLBACK[reinvestmentRating]
+     *      ?? BUCKET_WARF_FALLBACK.NR` chain — every entry in
+     *      BUCKET_WARF_FALLBACK is ≥ 1 and the NR fallback is 6500.
+     *
+     *  ANY new construction path that writes `warfFactor` MUST go through
+     *  one of these two routes. The downstream consumer
+     *  `warfFactorToQuarterlyHazard` silently returns 0 on `<= 0` or
+     *  `!Number.isFinite`, so a third construction path that bypasses the
+     *  guard would silently zero-hazard the position with no observable
+     *  signal. Per CLAUDE.md anti-pattern #5 (boundaries assert sign and
+     *  scale): the type signature `number` is not strong enough to enforce
+     *  this — the runtime invariant lives in the construction sites. */
     warfFactor: number;
     isFixedRate?: boolean;
     fixedCouponPct?: number;
