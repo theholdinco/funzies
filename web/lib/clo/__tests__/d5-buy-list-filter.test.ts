@@ -30,6 +30,8 @@ function makeItem(overrides: Partial<BuyListItem>): BuyListItem {
     obligorName: "Test Obligor",
     facilityName: null,
     sector: null,
+    industryTaxonomy: null,
+    industryCode: null,
     moodysRating: null,
     spRating: null,
     spreadBps: null,

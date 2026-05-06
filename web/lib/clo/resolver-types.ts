@@ -22,6 +22,24 @@ export type ComplianceTestType =
   | "fitch_ccc_concentration"
   | "other";
 
+/** Concentration-test SDF tag — preserved from the upstream
+ *  `clo_concentrations.concentration_type` column. Lifting this into the
+ *  resolved shape replaces regex-on-testName boundary erosion (see the
+ *  former `/industry/i.test(testName)` patterns in resolver.ts and
+ *  validator.ts) with a structured field consumed by industry-cap
+ *  enforcement and trustee cross-validation. Null when the row didn't
+ *  originate from a CONCENTRATION SDF tag (e.g., quality tests). */
+export type ResolvedConcentrationType =
+  | "INDUSTRY"
+  | "COUNTRY"
+  | "SINGLE_OBLIGOR"
+  | "RATING"
+  | "MATURITY"
+  | "SPREAD"
+  | "ASSET_TYPE"
+  | "CURRENCY"
+  | "OTHER";
+
 export interface ResolvedComplianceTest {
   testName: string;
   testClass: string | null;
@@ -30,6 +48,15 @@ export interface ResolvedComplianceTest {
   cushion: number | null;
   isPassing: boolean | null;
   canonicalType: ComplianceTestType;
+  /** Structured concentration tag (anti-pattern #5 — boundary asserts
+   *  shape rather than relying on testName regex). Null on quality-test
+   *  rows. */
+  concentrationType?: ResolvedConcentrationType | null;
+  /** Industry bucket name when `concentrationType === "INDUSTRY"`. Sourced
+   *  from `clo_concentrations.bucket_name` (e.g., "Hotels and Restaurants").
+   *  Display + cross-reference only — engine enforcement uses per-loan
+   *  `industryCode` against `industryCapRules`, not these aggregate rows. */
+  bucketName?: string | null;
 }
 
 export interface ResolvedMetadata {
@@ -289,6 +316,59 @@ export interface ResolvedLongDatedValuationRule {
   citation?: Citation | null;
 }
 
+/** PPM industry-cap rule conditional applicability. When undefined the rule
+ *  applies unconditionally; otherwise the engine evaluates the predicate
+ *  against current pool/period state and skips the rule when the predicate
+ *  is false. KI-23 closure — anti-pattern #3 honest treatment of
+ *  conditional clauses ("during RP: 15%; after: 12%", "if CCC > 5%, …").
+ *  Unrecognized condition kinds at extraction time fall through to
+ *  `unmapped_rule_descriptions`; resolver blocks rather than silently
+ *  collapsing to base-case. */
+export type IndustryCapAppliesWhen =
+  | { kind: "during_reinvestment_period" }
+  | { kind: "post_reinvestment_period" }
+  | { kind: "ccc_pct_above"; thresholdPct: number }
+  | { kind: "defaulted_pct_above"; thresholdPct: number };
+
+/** Single industry-cap rule extracted from PPM clause (t). Four discriminants:
+ *
+ *  - `single_rank_max`: "the largest industry shall not exceed N%" (rank=1),
+ *    "the second largest …" (rank=2), etc.
+ *  - `combined_top_n_max`: "the three largest combined shall not exceed N%".
+ *  - `single_class_max`: "no more than N% in [named industry]". `industryCode`
+ *    is the canonical code under the deal's active taxonomy.
+ *  - `count_above_threshold`: "no more than N industries above K%". Cap is on
+ *    a count, not a par share.
+ *
+ *  Per anti-pattern #5, codes — not names — are the load-bearing identifier
+ *  on `single_class_max`. `industryName` is display-only. */
+export type IndustryCapRule =
+  | {
+      kind: "single_rank_max";
+      rank: number;
+      triggerPct: number;
+      appliesWhen?: IndustryCapAppliesWhen;
+    }
+  | {
+      kind: "combined_top_n_max";
+      n: number;
+      triggerPct: number;
+      appliesWhen?: IndustryCapAppliesWhen;
+    }
+  | {
+      kind: "single_class_max";
+      industryCode: string;
+      industryName: string;
+      triggerPct: number;
+      appliesWhen?: IndustryCapAppliesWhen;
+    }
+  | {
+      kind: "count_above_threshold";
+      thresholdPct: number;
+      maxCount: number;
+      appliesWhen?: IndustryCapAppliesWhen;
+    };
+
 export interface ResolvedDealData {
   tranches: ResolvedTranche[];
   poolSummary: ResolvedPool;
@@ -367,6 +447,35 @@ export interface ResolvedDealData {
    *  rule's `withinCap` + `postCap` variants. Replaces consumption of
    *  the static `longDatedObligationHaircut` scalar in the OC numerator. */
   longDatedValuationRule: ResolvedLongDatedValuationRule | null;
+  /** Active industry-classification taxonomy named in the PPM clause (t).
+   *  Drives per-loan industry-code matching (engine consumes the holding's
+   *  Moody's code when `moodys_33`, S&P code when `sp`). `deal_specific`
+   *  resolves against `dealSpecificIndustryList` instead. Null when the deal
+   *  has no clause (t) (`industryCapPresentInPpm === false`). KI-23 closure. */
+  industryTaxonomy: "moodys_33" | "sp" | "deal_specific" | null;
+  /** Three-state presence signal driving the resolver's blocking gate
+   *  (KI-23 closure, Option D):
+   *    - `true`  + `industryCapRules: [...]`     → engine enforces caps
+   *    - `true`  + `industryCapRules: null/[]`   → resolver blocks (extraction failed)
+   *    - `false`                                  → no constraint to enforce
+   *    - `null`                                   → unknown (legacy extraction);
+   *      resolver blocks if any SDF concentration row tags `INDUSTRY` */
+  industryCapPresentInPpm: boolean | null;
+  /** PPM clause-(t) industry-cap rule schedule. Null when extraction did
+   *  not produce structured rules (resolver blocks per the gate above) or
+   *  when no clause (t) exists. Engine evaluates every rule against the
+   *  post-buy bucket distribution at each reinvestment site. */
+  industryCapRules: IndustryCapRule[] | null;
+  /** PPM clause-(t) industries excluded from rank/combined ordering
+   *  ("industries A and B do not count toward this test"). Engine filters
+   *  out matching loans before computing per-bucket par sums. Names
+   *  (canonical or alias) — engine resolves to `industryCode` via the
+   *  active taxonomy. Null when none. KI-23 closure. */
+  excludedIndustryNames: string[] | null;
+  /** PPM clause-(t) industry list when `industryTaxonomy === "deal_specific"`.
+   *  Null otherwise. Each entry is a canonical industry name as written in
+   *  the PPM schedule. KI-23 closure. */
+  dealSpecificIndustryList: string[] | null;
   preExistingDefaultedPar: number; // par of defaulted loans excluded from loan list
   preExistingDefaultRecovery: number; // market-price recovery for priced defaulted holdings
   unpricedDefaultedPar: number; // par of defaulted holdings without market price (engine applies recoveryPct)
@@ -571,6 +680,17 @@ export interface ResolvedPool {
   // can show concentration impact of a proposed trade. Null when loan data
   // lacks obligorName coverage (e.g., EMPTY_RESOLVED placeholder).
   top10ObligorsPct: number | null;
+  /** KI-23: par share (%) held by each industry bucket under the deal's
+   *  active taxonomy, sorted descending by `parPct`. Populated when 100% of
+   *  funded loans carry an `industryCode` under the active taxonomy
+   *  (parser-side blocking gate enforces this upstream); null otherwise.
+   *  Engine and switch simulator consume the same shape. Array (not Map)
+   *  for clean JSON round-trip across the engine→service→UI boundary. */
+  industryDistributionPct: Array<{ industryCode: string; industryName: string; parPct: number }> | null;
+  /** KI-23: convenience scalar — `industryDistributionPct[0].parPct` (%) or
+   *  null when `industryDistributionPct` is null. Equivalent to "largest
+   *  industry concentration" partner-facing metric. */
+  largestIndustryPct: number | null;
   /** E1: PPM provenance for the pool-summary block (source_pages from
    *  ppm.json section_8_portfolio_and_quality_tests). Null when the
    *  underlying extraction didn't carry provenance. */
@@ -758,6 +878,20 @@ export interface ResolvedLoan {
    *  (cap percentage, withinCap, postCap) over the Σ of long-dated
    *  positions at every OC numerator construction. */
   isLongDated?: boolean;
+  /** KI-23: per-position canonical industry code under the deal's active
+   *  taxonomy (`ResolvedDealData.industryTaxonomy`). Resolver populates
+   *  from `clo_holdings.moodys_industry_code` when `moodys_33`, from
+   *  `sp_industry_code` when `sp`. SDF-side parser emits a per-position
+   *  blocking warning when this column is null on a non-zero balance, so
+   *  by the time loans reach the engine, coverage is 100% (or the
+   *  projection is refused upstream). Engine consumes via
+   *  `industry-cap.ts` evaluator. Undefined for synthesised reinvestment
+   *  loans until allocation completes; the allocator sets it before push. */
+  industryCode?: string;
+  /** Display-only canonical industry name. Loaded from the active
+   *  taxonomy's seed list via `lookupByCode(industryCode, taxonomy)`.
+   *  Engine matching uses `industryCode`, NOT this field. */
+  industryName?: string;
 }
 
 export type WarningSeverity = "info" | "warn" | "error";

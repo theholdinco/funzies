@@ -174,7 +174,17 @@ export interface BuyListItem {
   profileId: string;
   obligorName: string;
   facilityName: string | null;
+  /** Free-text industry as the partner uploaded it (e.g., "Tech",
+   *  "Hotels & Restaurants"). Display-only; canonical matching against
+   *  CLO industry caps uses `industryCode` + `industryTaxonomy`. */
   sector: string | null;
+  /** KI-23: canonical industry code under the named taxonomy. Set by the
+   *  classification service at upload time (free-text → canonical) or by
+   *  the partner's manual override. Null when classification is pending —
+   *  D5 industry-cap filter skips items with null code while industry
+   *  rules are active and surfaces a UI affordance for re-classification. */
+  industryTaxonomy: "moodys_33" | "sp" | "deal_specific" | null;
+  industryCode: string | null;
   moodysRating: string | null;
   spRating: string | null;
   spreadBps: number | null;

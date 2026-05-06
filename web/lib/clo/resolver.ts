@@ -1280,6 +1280,12 @@ export function resolveWaterfallInputs(
     // `loans[].obligorName` + `parBalance`). Placeholder null here; patched
     // into the literal once the loan list is ready.
     top10ObligorsPct: null,
+    // KI-23 — populated after `loans` is constructed below + after the
+    // active taxonomy is selected. Placeholder null here; patched in
+    // alongside top10ObligorsPct once the loan list is ready and per-loan
+    // industry coverage gates have fired.
+    industryDistributionPct: null,
+    largestIndustryPct: null,
     citation: poolCitation,
   };
 
@@ -3172,8 +3178,19 @@ export function resolveWaterfallInputs(
     }
   }
 
+  // KI-23 — placeholder until PR2 wires the LLM extraction layer + PR3
+  // wires resolver consumption. With the placeholders, every existing deal
+  // resolves with `industryCapPresentInPpm: null` (treated as "unknown" by
+  // the PR3 blocking gate) and `industryCapRules: null` (no enforcement).
+  // Behavior is unchanged from pre-KI-23 state.
+  const industryTaxonomy = null;
+  const industryCapPresentInPpm = null;
+  const industryCapRules = null;
+  const excludedIndustryNames = null;
+  const dealSpecificIndustryList = null;
+
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, dealSpecificIndustryList, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
     warnings,
   };
 }

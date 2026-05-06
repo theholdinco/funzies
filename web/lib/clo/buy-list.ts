@@ -9,12 +9,15 @@ function num(v: unknown): number | null {
 }
 
 function rowToBuyListItem(row: Record<string, unknown>): BuyListItem {
+  const taxonomy = (row.industry_taxonomy as string) ?? null;
   return {
     id: row.id as string,
     profileId: row.profile_id as string,
     obligorName: row.obligor_name as string,
     facilityName: (row.facility_name as string) ?? null,
     sector: (row.sector as string) ?? null,
+    industryTaxonomy: taxonomy === "moodys_33" || taxonomy === "sp" || taxonomy === "deal_specific" ? taxonomy : null,
+    industryCode: (row.industry_code as string) ?? null,
     moodysRating: (row.moodys_rating as string) ?? null,
     spRating: (row.sp_rating as string) ?? null,
     spreadBps: num(row.spread_bps),
@@ -66,7 +69,7 @@ export async function replaceBuyList(
   for (const item of items) {
     const start = paramIndex;
     placeholders.push(
-      `($${start},$${start + 1},$${start + 2},$${start + 3},$${start + 4},$${start + 5},$${start + 6},$${start + 7},$${start + 8},$${start + 9},$${start + 10},$${start + 11},$${start + 12},$${start + 13},$${start + 14},$${start + 15},$${start + 16})`
+      `($${start},$${start + 1},$${start + 2},$${start + 3},$${start + 4},$${start + 5},$${start + 6},$${start + 7},$${start + 8},$${start + 9},$${start + 10},$${start + 11},$${start + 12},$${start + 13},$${start + 14},$${start + 15},$${start + 16},$${start + 17},$${start + 18})`
     );
     values.push(
       profileId,
@@ -85,9 +88,11 @@ export async function replaceBuyList(
       item.isCovLite,
       item.averageLifeYears,
       item.recoveryRate,
-      item.notes
+      item.notes,
+      item.industryTaxonomy,
+      item.industryCode
     );
-    paramIndex += 17;
+    paramIndex += 19;
   }
 
   const rows = await query<Record<string, unknown>>(
@@ -95,7 +100,8 @@ export async function replaceBuyList(
       profile_id, obligor_name, facility_name, sector, moodys_rating,
       sp_rating, spread_bps, reference_rate, price, maturity_date,
       facility_size, leverage, interest_coverage, is_cov_lite,
-      average_life_years, recovery_rate, notes
+      average_life_years, recovery_rate, notes,
+      industry_taxonomy, industry_code
     ) VALUES ${placeholders.join(", ")}
     RETURNING *`,
     values
