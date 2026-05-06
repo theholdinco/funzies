@@ -18,6 +18,7 @@ import {
 } from "./senior-expense-breakdown";
 import type { DayCountConvention } from "./day-count-canonicalize";
 import type { ResolvedDiscountObligationRule, ResolvedLongDatedValuationRule } from "./resolver-types";
+import { aggregateIndustryPar, allocateReinvestment } from "./industry-cap";
 import { resolveAgencyRecovery } from "./recovery-rate";
 
 export interface LoanInput {
@@ -141,6 +142,13 @@ export interface LoanInput {
    *  `longDatedValuationRule` (cap percentage, withinCap, postCap) over
    *  the Σ of long-dated positions. */
   isLongDated?: boolean;
+  /** KI-23: per-position canonical industry code under the deal's
+   *  active taxonomy. Sourced from `ResolvedLoan.industryCode`. Drives
+   *  per-bucket aggregation in the water-filling allocator at the
+   *  reinvestment synthesis site, the largestIndustryPct aggregate on
+   *  PoolQualityMetrics, and the switch-simulator's industry-delta
+   *  recompute. Undefined when the deal has no clause (t). */
+  industryCode?: string;
 }
 
 // C2 — Coarse RatingBucket → Moody's WARF factor. Imported from pool-metrics.ts
@@ -480,6 +488,24 @@ export interface ProjectionInputs {
    *  and hand-constructed test inputs — engine emits zero haircut
    *  when null (matches greenfield / no-rule semantics). */
   longDatedValuationRule?: ResolvedLongDatedValuationRule | null;
+  /** KI-23: PPM clause-(t) industry-cap rule schedule. Null when the deal
+   *  has no clause (t) (industryCapPresentInPpm:false), legacy fixture, or
+   *  hand-constructed test input — engine treats null as "no enforcement"
+   *  and the synthesis site falls back to the single-bucket path
+   *  (preserving pre-KI-23 behavior on every existing test). When non-null,
+   *  the synthesis site routes through the water-filling allocator at
+   *  projection.ts:3327, distributing reinvested par across feasible
+   *  industry buckets per the configured prior. */
+  industryCapRules?: import("./resolver-types").IndustryCapRule[] | null;
+  /** KI-23: deal's active industry taxonomy. Drives per-loan industryCode
+   *  matching at the synthesis site (so synthetic reinvestment loans are
+   *  tagged with codes from the same taxonomy as existing positions).
+   *  Null when no clause (t). */
+  industryTaxonomy?: import("./resolver-types").ResolvedDealData["industryTaxonomy"];
+  /** KI-23: PPM clause-(t) industries excluded from rank/combined ordering.
+   *  Engine drops loans matching these names before per-bucket aggregation
+   *  + before allocator runs. Null when no exclusions. */
+  excludedIndustryNames?: string[] | null;
   impliedOcAdjustment?: number; // derived residual between trustee's Adjusted CPA and identified components
   quartersSinceReport?: number; // quarters between compliance report and projection start (adjusts default recovery timing)
   ddtlDrawPercent?: number; // % of DDTL par actually funded on draw (default 100)
@@ -1570,6 +1596,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     impliedOcAdjustment = 0, quartersSinceReport = 0,
     discountObligationRule = null,
     longDatedValuationRule = null,
+    industryCapRules = null,
+    industryTaxonomy = null,
+    excludedIndustryNames = null,
     ddtlDrawPercent = 100,
     moodysWarfTriggerLevel = null,
     minWasBps: minWasBpsTrigger = null,
@@ -1849,6 +1878,13 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
      *  `longDatedValuationRule` over Σ of positions where this is true,
      *  applying within-cap and post-cap valuation independently. */
     isLongDated?: boolean;
+    /** KI-23: per-position canonical industry code under the deal's
+     *  active taxonomy. Carried from `LoanInput.industryCode` on existing
+     *  positions; set by the water-filling allocator at synthesis time
+     *  on synthetic reinvestment loans. Undefined when the deal has no
+     *  clause (t) or when the position was synthesised pre-KI-23
+     *  (legacy fixture path). */
+    industryCode?: string;
   }
 
   // Per-deal Rating Agencies subset is required. Production callers via
@@ -1917,6 +1953,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     acquisitionDate: l.acquisitionDate,
     isDiscountObligation: l.isDiscountObligation,
     isLongDated: l.isLongDated,
+    industryCode: l.industryCode,
   }));
 
   // Remove never-draw DDTL/revolver commitments (drawQuarter <= 0) — the un-
@@ -3349,6 +3386,69 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         reinvestment = allowed;
       }
     }
+    // KI-23: when industry-cap rules are active, route reinvestment through
+    // the water-filling allocator BEFORE synthesis. The allocator distributes
+    // par across feasible industry buckets respecting all rules; any par
+    // that can't be placed feasibly increments reinvestmentBlockedCompliance
+    // (additive on top of the C1 WARF/WAS/Caa/CCC gate above) and falls
+    // through to the principal waterfall for senior paydown. When rules are
+    // null, the synthesis path is unchanged (single-bucket aggregate, no
+    // industryCode tagging) — preserving pre-KI-23 behavior on every deal
+    // that doesn't carry a clause (t).
+    let industryAllocation: Map<string, number> | null = null;
+    if (reinvestment > 0 && hasLoans && industryCapRules != null && industryCapRules.length > 0) {
+      const currentPerBucket = aggregateIndustryPar(
+        loanStates
+          .filter((l) => l.survivingPar > 0)
+          .map((l) => ({
+            parBalance: l.survivingPar,
+            industryCode: l.industryCode,
+            industryName: undefined,
+          })),
+        excludedIndustryNames,
+      );
+      const initialTotalPar = Array.from(currentPerBucket.values()).reduce((s, v) => s + v, 0);
+      // Tier 2 prior — current pool composition. Each bucket weighted by
+      // its current par share. Falls back to uniform across observed
+      // buckets when the pool happens to be empty (greenfield ramp; rare
+      // path through this site since `hasLoans` gates entry).
+      const priorWeights = new Map<string, number>();
+      if (initialTotalPar > 0) {
+        for (const [code, par] of currentPerBucket) {
+          priorWeights.set(code, par / initialTotalPar);
+        }
+      }
+      // Pool state for appliesWhen evaluation. Computed on-the-fly from
+      // loanStates so the rules with `ccc_pct_above` / `defaulted_pct_above`
+      // conditions evaluate against current state. Anti-pattern #3 forbids
+      // a silent-zero fallback — if any rule's appliesWhen needs a metric
+      // we don't have, the result is wrong-direction enforcement.
+      const surviving = loanStates.filter((l) => l.survivingPar > 0);
+      const totalSurvivingPar = surviving.reduce((s, l) => s + l.survivingPar, 0);
+      const cccPar = surviving
+        .filter((l) => l.ratingBucket === "CCC")
+        .reduce((s, l) => s + l.survivingPar, 0);
+      const defaultedPar = loanStates.reduce((s, l) => s + (l.defaultedParPending ?? 0), 0);
+      const totalParForState = totalSurvivingPar + defaultedPar;
+      const cappedAllocation = allocateReinvestment({
+        parToReinvest: reinvestment,
+        rules: industryCapRules,
+        initialPerBucket: currentPerBucket,
+        initialTotalPar,
+        priorWeights,
+        poolState: {
+          pctMoodysCaa: totalSurvivingPar > 0 ? (cccPar / totalSurvivingPar) * 100 : 0,
+          pctDefaulted: totalParForState > 0 ? (defaultedPar / totalParForState) * 100 : 0,
+          inReinvestmentPeriod: inRP,
+        },
+      });
+      if (cappedAllocation.parBlocked > 0) {
+        reinvestmentBlockedCompliance += cappedAllocation.parBlocked;
+        reinvestment = cappedAllocation.parAllocated;
+      }
+      industryAllocation = cappedAllocation.allocation;
+    }
+
     if (reinvestment > 0 && hasLoans) {
       const matQ = q + reinvestmentTenorQuarters;
       // `reinvestment` is the cash amount; par bought at the assumed
@@ -3374,15 +3474,26 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         isDiscountObligation: reinvIsSubThreshold,
         isLongDated: isLongDatedSynth,
       };
-      if (avgLoanSize > 0 && reinvestment > avgLoanSize * 1.5) {
-        let remaining = reinvestment;
-        while (remaining > 0) {
-          const cashChunk = Math.min(avgLoanSize, remaining);
-          loanStates.push({ survivingPar: cashChunk * (100 / reinvestmentPricePct), ...synthCommonFields });
-          remaining -= cashChunk;
+      // Per-industry-bucket synthesis when allocator output is available;
+      // otherwise the pre-KI-23 single-bucket path.
+      const synthBuckets: Array<{ par: number; industryCode?: string }> =
+        industryAllocation != null
+          ? Array.from(industryAllocation, ([industryCode, par]) => ({ par, industryCode })).filter((e) => e.par > 0)
+          : [{ par: reinvestment }];
+      for (const bucket of synthBuckets) {
+        const bucketSynthFields = bucket.industryCode != null
+          ? { ...synthCommonFields, industryCode: bucket.industryCode }
+          : synthCommonFields;
+        if (avgLoanSize > 0 && bucket.par > avgLoanSize * 1.5) {
+          let remaining = bucket.par;
+          while (remaining > 0) {
+            const cashChunk = Math.min(avgLoanSize, remaining);
+            loanStates.push({ survivingPar: cashChunk * (100 / reinvestmentPricePct), ...bucketSynthFields });
+            remaining -= cashChunk;
+          }
+        } else {
+          loanStates.push({ survivingPar: bucket.par * (100 / reinvestmentPricePct), ...bucketSynthFields });
         }
-      } else {
-        loanStates.push({ survivingPar: reinvestment * (100 / reinvestmentPricePct), ...synthCommonFields });
       }
     }
 
