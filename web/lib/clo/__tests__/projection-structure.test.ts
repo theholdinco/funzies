@@ -632,8 +632,6 @@ describe("Fee waterfall order", () => {
       cccBucketLimitPct: CLO_DEFAULTS.cccBucketLimitPct,
       cccMarketValuePct: CLO_DEFAULTS.cccMarketValuePct,
       deferredInterestCompounds: true,
-      // D2 — legacy pin; test predates per-position WARF hazard.
-      useLegacyBucketHazard: true,
       ...feeOverrides,
     };
   }
