@@ -1548,7 +1548,7 @@ export function resolveWaterfallInputs(
   // returns null when the rule is missing OR the holding has no usable
   // purchase price (resolver has already blocked on missing rule via
   // resolveDiscountObligation; this null path covers greenfield
-  // fixtures and synthetic test inputs). See KI-29.
+  // fixtures and synthetic test inputs).
   const classifyAsDiscountObligation = (
     purchasePricePct: number | null,
     isFixedRate: boolean,
@@ -1880,14 +1880,15 @@ export function resolveWaterfallInputs(
       // present in the SDF. Resolver leaves undefined; only relevant for
       // distressed deals where the source extends to populate them.
       dayCountConvention: dccResult.convention,
-      // KI-29 per-position discount-obligation + long-dated state.
-      // Purchase price + acquisition date carry forward through the
-      // engine; classification flags are populated from the SDF row when
-      // the LLM/PDF extraction path filled them, else derived from the
-      // per-deal rule (discount) or universal rule (long-dated). The
-      // engine consumes these per-period at the OC numerator
-      // construction site rather than the static `discountObligationHaircut`
-      // scalar.
+      // Per-position discount-obligation + long-dated state. Purchase
+      // price + acquisition date carry forward through the engine;
+      // classification flags are populated from the SDF row when the
+      // LLM/PDF extraction path filled them, else derived from the
+      // per-deal rule (discount) or universal rule (long-dated:
+      // maturityDate > deal maturity). The engine consumes these
+      // per-period at the OC numerator construction site rather than
+      // the trustee `discountObligationHaircut` / `longDatedObligationHaircut`
+      // scalars (which are retained as reconciliation references).
       purchasePricePct:
         h.purchasePrice != null && h.purchasePrice > 0 ? h.purchasePrice : undefined,
       acquisitionDate: h.acquisitionDate ?? undefined,
@@ -2262,10 +2263,10 @@ export function resolveWaterfallInputs(
     .reduce((s, a) => s + Math.abs(a.netAmount!), 0);
 
   // --- T=0 reconciliation: per-position derived discount haircut vs trustee scalar ---
-  // KI-29: the engine consumes the per-position derived haircut from
-  // ResolvedLoan.purchasePricePct + isDiscountObligation at every period
-  // (commit 6 swap). The trustee scalar above is an INDEPENDENT signal
-  // from the compliance report's parValueAdjustments table — they should
+  // The engine consumes the per-position derived haircut from
+  // ResolvedLoan.purchasePricePct + isDiscountObligation at every
+  // period. The trustee scalar above is an INDEPENDENT signal from
+  // the compliance report's parValueAdjustments table — they should
   // agree at T=0 within tolerance. A drift means either (a) the SDF
   // holdings extraction missed some discount classifications that the
   // trustee carries (data-quality gap) or (b) the per-deal rule is
@@ -2287,7 +2288,53 @@ export function resolveWaterfallInputs(
           `per-position derived = ${Math.round(derivedHaircut).toLocaleString()}, ` +
           `trustee parValueAdjustments = ${Math.round(discountObligationHaircut).toLocaleString()}, ` +
           `delta ${Math.round(drift).toLocaleString()} > tolerance ${Math.round(tolerance).toLocaleString()}. ` +
-          `Most likely the SDF holdings extraction missed some discount classifications that the trustee carries — verify isDiscountObligation flags / purchasePrice values on holdings. The engine consumes per-position state forward (KI-29); this drift indicates the T=0 OC numerator may diverge from the trustee's reported number even before any forward projection.`,
+          `Most likely the SDF holdings extraction missed some discount classifications that the trustee carries — verify isDiscountObligation flags / purchasePrice values on holdings. The engine consumes per-position state forward; this drift indicates the T=0 OC numerator may diverge from the trustee's reported number even before any forward projection.`,
+        severity: "warn",
+        blocking: false,
+      });
+    }
+  }
+
+  // --- T=0 reconciliation: per-position derived long-dated haircut vs trustee scalar ---
+  // Engine consumes per-position dispatch via `longDatedValuationRule`;
+  // the trustee `LONG_DATED_HAIRCUT` parValueAdjustments rows remain
+  // an independent signal. Drift means either (a) the SDF holdings
+  // extraction missed long-dated classifications the trustee carries,
+  // or (b) the per-deal valuation rule (cap percentage / capBase /
+  // postCap) is mis-extracted from the PPM. Approximation here is a
+  // resolver-layer signal — it computes the engine's expected output
+  // for Shape A (within=par, post=zero) and Shape B Σ-bound, not the
+  // engine's exact per-period dispatch. Drift > tolerance still
+  // surfaces a real mismatch worth investigating.
+  if (loans.length > 0 && longDatedObligationHaircut > 0) {
+    const longDatedPar = loans
+      .filter(l => l.isLongDated === true && !l.isDelayedDraw)
+      .reduce((s, l) => s + l.parBalance, 0);
+    const apbApprox = loans.reduce((s, l) => s + (l.isDelayedDraw ? 0 : l.parBalance), 0);
+    let derivedHaircut = 0;
+    if (longDatedValuationRule != null && apbApprox > 0) {
+      const baseAmount = longDatedValuationRule.capBase === "APB"
+        ? apbApprox
+        : apbApprox + principalAccountCash; // CPA approx at T=0
+      const cap = baseAmount * (longDatedValuationRule.capPctOfBase / 100);
+      const excess = Math.max(0, longDatedPar - cap);
+      // Conservative under Shape A (within=par, post=zero) — drift
+      // matches engine. Under Shape B (within=tiered_mv_or_capped),
+      // this lower-bounds the derived haircut; drift > tolerance still
+      // catches gross mis-extraction.
+      derivedHaircut = excess;
+    }
+    const drift = Math.abs(derivedHaircut - longDatedObligationHaircut);
+    const tolerance = Math.max(1000, longDatedObligationHaircut * 0.10);
+    if (drift > tolerance) {
+      warnings.push({
+        field: "longDatedObligationHaircut",
+        message:
+          `T=0 reconciliation drift on long-dated haircut: ` +
+          `per-position derived (resolver-approx) = ${Math.round(derivedHaircut).toLocaleString()}, ` +
+          `trustee parValueAdjustments = ${Math.round(longDatedObligationHaircut).toLocaleString()}, ` +
+          `delta ${Math.round(drift).toLocaleString()} > tolerance ${Math.round(tolerance).toLocaleString()}. ` +
+          `Verify isLongDated flags on holdings (Σ par at maturityDate > deal maturity should match trustee long-dated par) and the per-deal long_dated_obligation rule (cap_pct_of_base / cap_base) in ppm.json.`,
         severity: "warn",
         blocking: false,
       });

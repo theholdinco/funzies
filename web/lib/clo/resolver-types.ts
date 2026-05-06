@@ -714,7 +714,7 @@ export interface ResolvedLoan {
    *  `classificationThresholdPct`. Distinct from `currentPrice` —
    *  `purchasePricePct` is locked at acquisition and never updates;
    *  `currentPrice` evolves with market and drives MV-based downstream
-   *  uses (A3 call-at-MtM, B1 EoD MV × PB, KI-29 hysteretic cure
+   *  uses (A3 call-at-MtM, B1 EoD MV × PB, hysteretic cure
    *  threshold). Conflating the two is a known footgun. Undefined when
    *  the SDF row carries no purchase_price (rare; resolver derives the
    *  classification flag from currentPrice as a fallback). */
@@ -739,9 +739,9 @@ export interface ResolvedLoan {
    *  Resolver populates from `CloHolding.isLongDated` when present, else
    *  derives from `loan.maturityDate > deal.maturityDate` (universal
    *  rule across the PPM sample we have). Static — no cure mechanic for
-   *  long-dated. KI-29 partial closure: per-position classification is
-   *  modeled; per-deal forward-period valuation rule remains static
-   *  (mechanically bound to LongDatedStaticBanner). */
+   *  long-dated. Engine dispatches the per-deal `longDatedValuationRule`
+   *  (cap percentage, withinCap, postCap) over the Σ of long-dated
+   *  positions at every OC numerator construction. */
   isLongDated?: boolean;
 }
 

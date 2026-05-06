@@ -978,6 +978,7 @@ export function buildFromResolved(
     preExistingDefaultOcValue: resolved.preExistingDefaultOcValue,
     discountObligationRule: resolved.discountObligationRule,
     longDatedObligationHaircut: resolved.longDatedObligationHaircut,
+    longDatedValuationRule: resolved.longDatedValuationRule,
     impliedOcAdjustment: resolved.impliedOcAdjustment,
     quartersSinceReport: resolved.quartersSinceReport,
     ddtlDrawPercent: userAssumptions.ddtlDrawPercent,

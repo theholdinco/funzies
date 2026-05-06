@@ -192,6 +192,18 @@
         }
       },
       "ki_29_verification_date": "2026-05-05"
+    },
+    "long_dated_obligation": {
+      "source_pages": [135, 142],
+      "source_condition": "OC Condition 1 (\"Long-Dated Collateral Obligation\" definition, p. 135) + Aggregate Principal Balance definition paragraph (e), p. 142 (\"deemed to be zero\" rule)",
+      "verbatim_quote_definition": "\"Long-Dated Collateral Obligation\" means any Collateral Obligation with a Collateral Obligation Stated Maturity which is later than the Maturity Date.",
+      "verbatim_quote_valuation": "the Principal Balance of any Long-Dated Collateral Obligation in excess of 5 per cent. of the Aggregate Principal Balance (as determined by the Collateral Manager and for which purpose, the Principal Balance of each Defaulted Obligation will be its Fitch Collateral Value) shall be deemed to be zero",
+      "cap_pct_of_base": 5.0,
+      "cap_base": "APB",
+      "within_cap": { "type": "par" },
+      "post_cap": { "type": "zero" },
+      "defaulted_obligation_basis_note": "Per the verbatim clause, the Principal Balance of each Defaulted Obligation is its Fitch Collateral Value for the long-dated computation. NOT modeled today (engine carries no per-position FCV); zero current magnitude on Ares XV (no defaulted long-dated positions). Document as portability gap; file sub-KI when material.",
+      "ki_29_verification_date": "2026-05-05"
     }
   },
 

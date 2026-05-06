@@ -19,7 +19,7 @@
 
 import { describe, expect, it } from "vitest";
 import { runProjection } from "@/lib/clo/projection";
-import type { ResolvedDealData, ResolvedDiscountObligationRule, ResolvedLoan } from "@/lib/clo/resolver-types";
+import type { ResolvedDealData, ResolvedDiscountObligationRule, ResolvedLongDatedValuationRule, ResolvedLoan } from "@/lib/clo/resolver-types";
 import {
   buildFromResolved,
   DEFAULT_ASSUMPTIONS,
@@ -186,32 +186,81 @@ describe("KI-29 — per-position discount-obligation haircut at T=0", () => {
   });
 });
 
-describe("KI-29-longDatedStatic — long-dated valuation residual rides static scalar", () => {
-  it("ki: KI-29-longDatedStatic — non-zero longDatedObligationHaircut deducts identically at T=0 and forward (no per-deal valuation rule)", () => {
-    // Synthetic input with non-zero static long-dated haircut. Engine
-    // consumes the scalar at every period unchanged — no per-deal
-    // valuation rule applied. Marker pins this behavior so when the
-    // per-deal rule lands and the scalar consumption is replaced with
-    // per-position dispatch, this assertion flips.
+describe("KI-29 — per-position long-dated haircut at T=0 (Shape A)", () => {
+  const SHAPE_A_5PCT_APB: ResolvedLongDatedValuationRule = {
+    capPctOfBase: 5,
+    capBase: "APB",
+    withinCap: { type: "par" },
+    postCap: { type: "zero" },
+  };
+
+  it("excess long-dated par over 5% APB cap is deemed zero (Ares XV verbatim)", () => {
+    // Pool: €100M total, of which €8M is long-dated (>5% APB cap).
+    // Cap = 5% × 100M = 5M. Excess = 8M − 5M = 3M deemed zero. Within-
+    // cap (5M) at par — no haircut on that slice. Total haircut = 3M.
     const inputs = makeInputs({
-      longDatedObligationHaircut: 5_000_000,
+      loans: [
+        { parBalance: 92_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 8_000_000, maturityDate: "2040-01-15", ratingBucket: "B", spreadBps: 375, isLongDated: true },
+      ],
       initialPar: 100_000_000,
+      longDatedValuationRule: SHAPE_A_5PCT_APB,
     });
     const result = runProjection(inputs);
-    // T=0 OC numerator: 100M − 5M = 95M (long-dated scalar deducts 5M)
+    // OC numerator = 100M − 3M = 97M
     const ocActualClassA = result.initialState.ocTests[0].actual;
-    expect(ocActualClassA).toBeCloseTo((95_000_000 / 65_000_000) * 100, 1);
-    // Forward q=1 should also deduct 5M (static scalar). Pool par at q=1
-    // is approximately the same (low CDR / no defaults in default test
-    // setup), so OC ratio remains close. Assert the deduction persists.
-    const ocActualClassA_q1 = result.periods[0]?.ocTests[0]?.actual ?? null;
-    expect(ocActualClassA_q1).not.toBeNull();
-    // Sanity: the q=1 ratio should be in the same neighborhood (within a
-    // few pp) of T=0 — the static scalar persists. A future fix that
-    // replaces the scalar with a per-deal valuation rule would shift this
-    // value as positions amortize / mature; flip this assertion when the
-    // residual closes.
-    expect(Math.abs(ocActualClassA_q1! - ocActualClassA)).toBeLessThan(10);
+    expect(ocActualClassA).toBeCloseTo((97_000_000 / 65_000_000) * 100, 1);
+  });
+
+  it("long-dated par within cap → no haircut", () => {
+    // Pool: €100M total, of which €3M is long-dated (<5% APB cap).
+    const inputs = makeInputs({
+      loans: [
+        { parBalance: 97_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 3_000_000, maturityDate: "2040-01-15", ratingBucket: "B", spreadBps: 375, isLongDated: true },
+      ],
+      initialPar: 100_000_000,
+      longDatedValuationRule: SHAPE_A_5PCT_APB,
+    });
+    const result = runProjection(inputs);
+    expect(result.initialState.ocTests[0].actual).toBeCloseTo((100_000_000 / 65_000_000) * 100, 1);
+  });
+
+  it("trustee scalar (longDatedObligationHaircut) is reconciliation-only — engine ignores when rule present", () => {
+    // Trustee reports 5M long-dated haircut, but pool has zero long-
+    // dated positions. Engine must ignore the trustee scalar and emit
+    // zero haircut from per-position dispatch. Locks the "scalar is
+    // reconciliation-only" invariant so a regression to scalar
+    // consumption fails immediately.
+    const inputs = makeInputs({
+      loans: [
+        { parBalance: 100_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 375 },
+      ],
+      initialPar: 100_000_000,
+      longDatedObligationHaircut: 5_000_000, // trustee-side; should NOT deduct
+      longDatedValuationRule: SHAPE_A_5PCT_APB,
+    });
+    const result = runProjection(inputs);
+    expect(result.initialState.ocTests[0].actual).toBeCloseTo((100_000_000 / 65_000_000) * 100, 1);
+  });
+
+  it("hand-constructed inputs without longDatedValuationRule see no haircut (back-compat)", () => {
+    // Legacy fixtures and synthetic test inputs that don't model the
+    // long-dated mechanic pass `longDatedObligationHaircut: 0` (default
+    // on test-helpers / EMPTY_RESOLVED) and omit `longDatedValuationRule`.
+    // Engine emits zero haircut when rule is null regardless of
+    // isLongDated flags on positions — pre-KI-29 behavior preserved.
+    const inputs = makeInputs({
+      loans: [
+        { parBalance: 92_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 8_000_000, maturityDate: "2040-01-15", ratingBucket: "B", spreadBps: 375, isLongDated: true },
+      ],
+      initialPar: 100_000_000,
+      // longDatedValuationRule omitted
+    });
+    const result = runProjection(inputs);
+    // No haircut even though 8M is flagged isLongDated
+    expect(result.initialState.ocTests[0].actual).toBeCloseTo((100_000_000 / 65_000_000) * 100, 1);
   });
 });
 

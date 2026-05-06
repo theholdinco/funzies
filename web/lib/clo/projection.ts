@@ -17,7 +17,7 @@ import {
   type SeniorExpenseBreakdown,
 } from "./senior-expense-breakdown";
 import type { DayCountConvention } from "./day-count-canonicalize";
-import type { ResolvedDiscountObligationRule } from "./resolver-types";
+import type { ResolvedDiscountObligationRule, ResolvedLongDatedValuationRule } from "./resolver-types";
 import { resolveAgencyRecovery } from "./recovery-rate";
 
 export interface LoanInput {
@@ -101,7 +101,7 @@ export interface LoanInput {
   /** Per-position purchase price as percent of par (immutable post-
    *  acquisition). Sourced from `ResolvedLoan.purchasePricePct` (in turn
    *  from the SDF row's `purchase_price` column or the LLM-extracted
-   *  holding's purchasePrice). Drives the KI-29 discount-obligation
+   *  holding's purchasePrice). Drives the discount-obligation
    *  classification at every period. Distinct from `currentPrice` —
    *  conflating them is a known footgun (purchase is locked at
    *  acquisition; current evolves with market). */
@@ -116,10 +116,10 @@ export interface LoanInput {
   isDiscountObligation?: boolean;
   /** Per-position Long-Dated Collateral Obligation classification flag.
    *  Universal classification rule (loan.maturityDate > deal.maturityDate);
-   *  static — no cure mechanic. Engine consumes for per-position
-   *  long-dated identification. KI-29 partial closure: per-deal forward-
-   *  period valuation rule remains static (mechanically bound to
-   *  LongDatedStaticBanner). */
+   *  static — no cure mechanic. Engine consumes per period at the OC
+   *  numerator construction site, dispatching the per-deal
+   *  `longDatedValuationRule` (cap percentage, withinCap, postCap) over
+   *  the Σ of long-dated positions. */
   isLongDated?: boolean;
 }
 
@@ -454,7 +454,12 @@ export interface ProjectionInputs {
   preExistingDefaultRecovery?: number; // market-price recovery for priced defaulted holdings
   unpricedDefaultedPar?: number; // par of defaulted holdings without market price (model applies recoveryPct)
   preExistingDefaultOcValue?: number; // recovery value for OC numerator (agency rate — typically higher than market)
-  longDatedObligationHaircut?: number; // net OC deduction for long-dated obligations (from trustee report). Per-position classification lives on `LoanInput.isLongDated`; per-deal forward-period valuation rule remains static — mechanically bound to LongDatedStaticBanner via the > 0 condition.
+  /** Trustee-reported long-dated haircut (`parValueAdjustments`
+   *  LONG_DATED_HAIRCUT rows). Engine no longer consumes for the OC
+   *  numerator — see `longDatedValuationRule` for the per-deal
+   *  valuation rule the engine dispatches on. Retained for the T=0
+   *  reconciliation drift warning at the resolver layer. */
+  longDatedObligationHaircut?: number;
   /** PPM Discount Obligation classification + cure rule (Condition 1).
    *  Resolver-extracted; engine consumes per-period for per-position
    *  discount-obligation classification and price-aware cure math.
@@ -462,6 +467,13 @@ export interface ProjectionInputs {
    *  the discount mechanic — engine leaves all positions classified by
    *  whatever LoanInput.isDiscountObligation arrives at. */
   discountObligationRule?: ResolvedDiscountObligationRule | null;
+  /** PPM Long-Dated Obligation valuation rule (Condition 1 + APB(e)).
+   *  Resolver-extracted; engine drives the long-dated haircut from
+   *  per-position Σ over `loanStates` filtered by `isLongDated`,
+   *  dispatching on `withinCap` × `postCap`. Null on legacy fixtures
+   *  and hand-constructed test inputs — engine emits zero haircut
+   *  when null (matches greenfield / no-rule semantics). */
+  longDatedValuationRule?: ResolvedLongDatedValuationRule | null;
   impliedOcAdjustment?: number; // derived residual between trustee's Adjusted CPA and identified components
   quartersSinceReport?: number; // quarters between compliance report and projection start (adjusts default recovery timing)
   ddtlDrawPercent?: number; // % of DDTL par actually funded on draw (default 100)
@@ -1502,6 +1514,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     preExistingDefaultedPar = 0, preExistingDefaultRecovery = 0, unpricedDefaultedPar = 0, preExistingDefaultOcValue = 0,
     longDatedObligationHaircut = 0, impliedOcAdjustment = 0, quartersSinceReport = 0,
     discountObligationRule = null,
+    longDatedValuationRule = null,
     ddtlDrawPercent = 100,
     moodysWarfTriggerLevel = null,
     minWasBps: minWasBpsTrigger = null,
@@ -1782,10 +1795,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
      *  the cure threshold; `permanent_until_paid` never flips. */
     isDiscountObligation?: boolean;
     /** Long-Dated Collateral Obligation classification flag — static
-     *  per-position (no cure). KI-29 partial closure: per-position
-     *  classification modeled here; per-deal forward-period valuation
-     *  rule continues to ride on the static `longDatedObligationHaircut`
-     *  scalar (mechanically bound to LongDatedStaticBanner). */
+     *  per-position (no cure). Engine dispatches the per-deal
+     *  `longDatedValuationRule` over Σ of positions where this is true,
+     *  applying within-cap and post-cap valuation independently. */
     isLongDated?: boolean;
   }
 
@@ -2295,15 +2307,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       : reinvestmentPeriodExtension ?? reinvestmentPeriodEnd;
   const rpEndDate = effectiveRpEnd ? new Date(effectiveRpEnd) : null;
 
-  // KI-29 — per-position discount-obligation haircut Σ. Replaces the
-  // static `discountObligationHaircut` scalar consumption pattern. Each
-  // classified position contributes `par × (1 − purchasePricePct/100)`
-  // to the OC numerator deduction, and the haircut shrinks automatically
-  // as positions amortize / prepay / default (their `survivingPar` decays
-  // in the existing loanStates mutation paths). Long-dated valuation
-  // continues to ride on the static `longDatedObligationHaircut` scalar
-  // per the KI-29 partial-closure scope; banner mechanically bound at
-  // the UI layer to the scalar > 0 condition.
+  // Per-position discount-obligation haircut Σ. Each classified position
+  // contributes `par × (1 − purchasePricePct/100)` to the OC numerator
+  // deduction; the haircut shrinks automatically as positions amortize /
+  // prepay / default (their `survivingPar` decays in the existing
+  // loanStates mutation paths).
   //
   // Skips contribution when `purchasePricePct == null` (no extracted
   // price — no signal, contribute zero), `purchasePricePct >= 100`
@@ -2311,8 +2319,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   // (unfunded commitment doesn't carry an OC haircut). Hand-constructed
   // test fixtures that don't model the discount mechanic see all loans
   // with `isDiscountObligation === undefined` and the haircut collapses
-  // to zero — same numerical output as the pre-KI-29 path on those
-  // inputs.
+  // to zero.
   const computeDiscountHaircut = (states: LoanState[]): number => {
     let total = 0;
     for (const l of states) {
@@ -2324,7 +2331,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     return total;
   };
 
-  // KI-29 — cure-mechanic dispatch. Re-evaluates `isDiscountObligation`
+  // Cure-mechanic dispatch. Re-evaluates `isDiscountObligation`
   // per period under the per-deal `discountObligationRule.cureMechanic`
   // variant. `continuous_threshold` may flip true→false when the
   // position's current MV is at or above the cure threshold and the
@@ -2370,6 +2377,101 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     }
   };
 
+  // Per-position long-dated obligation haircut Σ. Dispatches
+  // on the per-deal `longDatedValuationRule.withinCap` × `postCap`:
+  //
+  //   withinCap.par                — within-cap par valued at face (no
+  //                                  haircut on the within-cap slice).
+  //   withinCap.tiered_mv_or_capped — within-cap valued at
+  //                                  min(currentPrice, cappedPricePct);
+  //                                  beyond `cliffYearsPastStatedMaturity`
+  //                                  past stated maturity, valued at zero.
+  //   postCap.zero                  — above-cap par valued at zero
+  //                                  (Ares-family "deemed zero").
+  //   postCap.agency_cv_min         — NOT REACHABLE: resolver gates
+  //                                  selection of this variant on
+  //                                  per-position S&P/Fitch CV
+  //                                  ingestion which doesn't exist
+  //                                  today. Engine asserts.
+  //
+  // Rule is null on hand-constructed test inputs and on legacy fixtures
+  // — engine emits zero haircut on those inputs. Allocation between
+  // within-cap and above-cap par is
+  // proportional across the long-dated cohort (avoids order-dependent
+  // surprises if a future caller re-orders loanStates).
+  //
+  // Wrinkle (Ares XV verbatim): "Principal Balance of each Defaulted
+  // Obligation will be its Fitch Collateral Value" for the long-dated
+  // computation. Engine carries no per-position FCV; defaulted long-
+  // dated positions therefore contribute survivingPar (over-stating
+  // the haircut). Material only on deals with defaulted long-dated
+  // positions — Ares XV today has zero, so the gap has zero current
+  // magnitude. File a sub-KI when a deal surfaces this case.
+  const computeLongDatedHaircut = (
+    states: LoanState[],
+    asOfQuarter: number,
+    rule: ResolvedLongDatedValuationRule | null,
+    apbBase: number,
+    cpaBase: number,
+  ): number => {
+    if (rule == null) return 0;
+    const longDated = states.filter(
+      l => l.isLongDated === true && !l.isDelayedDraw && l.survivingPar > 0,
+    );
+    if (longDated.length === 0) return 0;
+    const totalLongDatedPar = longDated.reduce((s, l) => s + l.survivingPar, 0);
+    const baseAmount = rule.capBase === "APB" ? apbBase : cpaBase;
+    const capAmount = Math.max(0, baseAmount * (rule.capPctOfBase / 100));
+
+    const withinCapShare =
+      totalLongDatedPar <= capAmount ? 1 : capAmount / totalLongDatedPar;
+
+    let haircut = 0;
+    for (const l of longDated) {
+      const withinCapPar = l.survivingPar * withinCapShare;
+
+      // Within-cap valuation
+      let withinCapValue: number;
+      if (rule.withinCap.type === "par") {
+        withinCapValue = withinCapPar;
+      } else {
+        // Quarters past stated maturity = how far the as-of period is
+        // past the loan's maturityQuarter (which itself is the quarter
+        // index of the loan's stated maturity from projection start).
+        // Negative when maturity is in the future.
+        const yearsPast = (asOfQuarter - l.maturityQuarter) / 4;
+        if (yearsPast > rule.withinCap.cliffYearsPastStatedMaturity) {
+          withinCapValue = 0;
+        } else if (l.currentPrice == null) {
+          // No MV signal — conservative: floor at cappedPricePct.
+          withinCapValue = withinCapPar * (rule.withinCap.cappedPricePct / 100);
+        } else {
+          const effectivePct = Math.min(l.currentPrice, rule.withinCap.cappedPricePct);
+          withinCapValue = withinCapPar * (effectivePct / 100);
+        }
+      }
+
+      // Post-cap valuation
+      let aboveCapValue: number;
+      if (rule.postCap.type === "zero") {
+        aboveCapValue = 0;
+      } else {
+        // Unreachable: resolver-blocking gate refuses to construct
+        // ProjectionInputs when postCap.agency_cv_min is selected
+        // without per-position CV ingestion. Surface as an invariant
+        // assertion rather than silently mis-valuing.
+        throw new Error(
+          "computeLongDatedHaircut invariant: postCap.agency_cv_min reached the engine; " +
+          "resolver-blocking gate (resolveLongDatedObligation) should have refused this input. " +
+          "Likely cause: hand-constructed test bypassing buildFromResolved.",
+        );
+      }
+
+      haircut += l.survivingPar - withinCapValue - aboveCapValue;
+    }
+    return haircut;
+  };
+
   // ── T=0 snapshot for N6 harness (determination-date compliance parity) ──
   // Computed BEFORE the period loop runs. Uses initial trancheBalances (no
   // mutations), initial pool par, initial principal cash, agency default
@@ -2394,8 +2496,19 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       : 0;
     if (hasLoans) applyCureDispatch(loanStates, currentDate);
     const discountHaircutT0 = hasLoans ? computeDiscountHaircut(loanStates) : 0;
+    // Long-dated haircut sourced from per-position dispatch. APB base =
+    // Σ Principal Balance excluding undrawn DDTL commitments (per
+    // Aggregate Principal Balance definition para (a)). CPA base adds
+    // Principal Account cash (per Adjusted CPA definition para (d)).
+    // Helper returns 0 when the rule is null (legacy / hand-constructed
+    // inputs without longDatedValuationRule).
+    const apbBaseT0 = poolPar - currentDdtlUnfundedPar;
+    const cpaBaseT0 = poolPar + initialPrincipalCash - currentDdtlUnfundedPar;
+    const longDatedHaircutT0 = hasLoans
+      ? computeLongDatedHaircut(loanStates, 0, longDatedValuationRule, apbBaseT0, cpaBaseT0)
+      : 0;
     const ocNumerator = poolPar + initialPrincipalCash + pendingRecoveryValue + ocDefaultAdjustment
-      - discountHaircutT0 - longDatedObligationHaircut - impliedOcAdjustment - currentDdtlUnfundedPar;
+      - discountHaircutT0 - longDatedHaircutT0 - impliedOcAdjustment - currentDdtlUnfundedPar;
 
     const ocTests: ProjectionInitialState["ocTests"] = ocTriggersByClass.map((oc) => {
       const debtAtAndAbove = ocEligibleAtStart
@@ -3804,9 +3917,21 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     priorPeriodEndPrincipalCash = remainingPrelim;
     if (hasLoans) applyCureDispatch(loanStates, periodDate);
     const discountHaircut = hasLoans ? computeDiscountHaircut(loanStates) : 0;
+    // Long-dated haircut from per-position dispatch (forward).
+    // APB / CPA bases mirror the T=0 site; APB excludes undrawn DDTL,
+    // CPA adds the Principal Account residual cash (`remainingPrelim`).
+    // Long-dated par decays naturally through the existing loanStates
+    // mutation paths (amortization / prepayment / default), so the
+    // haircut shrinks as the original cohort runs off without needing
+    // a separate path.
+    const apbBasePeriod = endingPar - currentDdtlUnfundedPar;
+    const cpaBasePeriod = endingPar + remainingPrelim - currentDdtlUnfundedPar;
+    const longDatedHaircut = hasLoans
+      ? computeLongDatedHaircut(loanStates, q, longDatedValuationRule, apbBasePeriod, cpaBasePeriod)
+      : 0;
     let ocNumerator = endingPar + remainingPrelim - suppReserveLeftoverInRemainingPrelim
       + pendingRecoveryValue + ocDefaultAdjustment
-      - discountHaircut - longDatedObligationHaircut - impliedOcAdjustment - currentDdtlUnfundedPar;
+      - discountHaircut - longDatedHaircut - impliedOcAdjustment - currentDdtlUnfundedPar;
     if (hasLoans && cccBucketLimitPct > 0) {
       const cccPar = loanStates
         .filter((l) => !l.isDelayedDraw && l.ratingBucket === "CCC" && l.survivingPar > 0)
