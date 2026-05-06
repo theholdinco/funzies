@@ -446,91 +446,37 @@ describe("Post-accel incentive fee — IRR-gated dispatch matching normal-mode s
     expect(result.residualToSub).toBeCloseTo(4_000_000, 2);
   });
 
-  it("integration: engine threads live equityCashFlows through to executor (solver-anchored)", () => {
-    // End-to-end test of the load-bearing threading invariant: the engine's
-    // call site at the post-acceleration branch passes the LIVE
-    // `equityCashFlows` accumulator (not `[]`, not a stale snapshot) to
-    // `runPostAccelerationWaterfall`. Type system enforces the field is
-    // `number[]`, but a wrong-array regression (e.g. accidentally passing
-    // `[]`) would compile silently — only an end-to-end assertion against
-    // an INDEPENDENTLY-constructed prior series catches it.
-    //
-    // Strategy:
-    //   1. Construct projection inputs with a known explicit equity entry
-    //      price, run a stress scenario forcing acceleration.
-    //   2. Reconstruct the prior series independently from the engine's
-    //      emitted per-period equity distributions:
-    //         independentPrior = [-equityEntryPrice, ...preAccelDists]
-    //   3. Reconstruct the period's pre-fee residual from the emitted
-    //      stepTrace: `equityDistribution + incentiveFeeFromInterest`.
-    //   4. Compute `expectedFee = resolveIncentiveFee(independentPrior,
-    //      preFeeResidual, pct, hurdle, 4)`.
-    //   5. Assert the engine's emitted fee matches the solver's output on
-    //      the independently-constructed inputs. If the engine threaded
-    //      correctly, both sides agree. If the engine passed `[]` or a
-    //      stale array, the engine's fee can drift from the independent
-    //      solver result.
-    //
-    // Under the chosen stress scenario (20% default fraction — same as the
-    // existing flip-timing tests above) the cumulative IRR may not clear
-    // 12%, so `expectedFee` is often 0. Even so, the structural-equality
-    // assertion catches engine-vs-solver drift; the regime-2 unit test
-    // above is the dedicated non-zero-fee assertion.
-    const explicitEntryPrice = 20_000_000;
-    const inputs = buildFromResolved(stressedResolved(10), {
-      ...defaultsFromResolved(stressedResolved(10), fixture.raw),
-      recoveryPct: 0,
-      recoveryLagMonths: 120,
-      cprPct: 0,
-      equityEntryPriceCents: 100,
-    });
-    // Override equityEntryPrice to a known value so the independent
-    // reconstruction below is unambiguous (independent of book-value
-    // fallback at engine setup).
-    const inputsWithEntry = { ...inputs, equityEntryPrice: explicitEntryPrice };
-    const result = runProjection(inputsWithEntry, forceDefaultFraction(0.20));
-
-    // Find the first acceleration period (must be > 0 — pre-accel periods
-    // exist and contribute to the prior series).
-    const accelIdx = result.periods.findIndex((p) => p.isAccelerated);
-    expect(accelIdx).toBeGreaterThan(0);
-    const accelPeriod = result.periods[accelIdx];
-
-    // Reconstruct the prior series independently from result.periods —
-    // does NOT trust the engine's internal `equityCashFlows` directly.
-    const independentPriorSeries = [
-      -explicitEntryPrice,
-      ...result.periods
-        .slice(0, accelIdx)
-        .map((p) => p.equityDistribution),
-    ];
-
-    // Reconstruct this period's pre-fee residual from emitted stepTrace.
-    // Under acceleration the engine routes the executor's `incentiveFeePaid`
-    // into `incentiveFeeFromInterest`; `incentiveFeeFromPrincipal` is 0.
-    const preFeeResidual =
-      accelPeriod.equityDistribution +
-      accelPeriod.stepTrace.incentiveFeeFromInterest;
-
-    // Solver result on the INDEPENDENTLY-constructed inputs. If the engine
-    // threaded `priorEquityCashFlows` correctly, this equals what the
-    // engine's executor saw and computed.
-    const expectedFee = resolveIncentiveFee(
-      independentPriorSeries,
-      preFeeResidual,
-      inputsWithEntry.incentiveFeePct,
-      inputsWithEntry.incentiveFeeHurdleIrr,
-      4,
-    );
-
-    // Engine's emitted fee must match the solver's output on the
-    // reconstructed inputs. Catches `priorEquityCashFlows: []` or stale-
-    // snapshot regressions at the call site. Tolerance handles FP rounding
-    // in the bisection (regime 3) when applicable.
-    expect(accelPeriod.stepTrace.incentiveFeeFromInterest).toBeCloseTo(expectedFee, 2);
-    // Principal-bucket fee under acceleration is always 0 by engine
-    // convention (the executor emits a single combined fee that's routed
-    // into the interest bucket).
-    expect(accelPeriod.stepTrace.incentiveFeeFromPrincipal).toBe(0);
-  });
+  // Integration test omitted intentionally. A `runProjection`-based
+  // regression test for "engine threads live equityCashFlows correctly"
+  // would require a scenario producing non-zero pre-accel equity
+  // distributions AND clearing the 12% IRR hurdle at the accel period —
+  // i.e., a regime-2 outcome inside the executor reachable only through
+  // the public engine API. Under every stress scenario currently
+  // expressible against the Euro XV fixture (forceDefaultFraction at
+  // 5-90%, MV stress 10-98c, with/without RP override, with/without
+  // synthetic high triggerLevel), `equityDistribution` is 0 in every
+  // pre-accel period — Euro XV's pool is in reinvestment, principal
+  // proceeds get reinvested, and post-RP cascades are rated-tranche-
+  // dominated. preFeeResidual at the accel period is also 0. Both
+  // `solver(correctSeries, 0, ...)` and `solver([], 0, ...)` return 0;
+  // the structural-equality assertion `engine === solver(reconstructed)`
+  // cannot distinguish between correct threading and wrong-array
+  // threading. Verified via /tmp/probe_ki15_test.ts and explicit
+  // sabotage (engine call site flipped to `priorEquityCashFlows: []` —
+  // all 12 B2 tests still pass).
+  //
+  // The threading correctness is guaranteed by:
+  //   1. Type system: `priorEquityCashFlows: number[]` is required on
+  //      `PostAccelExecutorInput` — no implicit-disable path.
+  //   2. Regime-2 unit test above: pins executor's IRR-gated dispatch
+  //      against the solver on a non-empty prior series. If the executor
+  //      ignored or mis-used `priorEquityCashFlows`, this test would
+  //      fail.
+  //   3. The single production call site at projection.ts (currently
+  //      passes `priorEquityCashFlows: equityCashFlows` — the live
+  //      accumulator). One line of code, type-checked, code-reviewed.
+  //
+  // If a future scenario surfaces that DOES produce non-zero pre-accel
+  // distributions clearing the hurdle, an integration regression test
+  // with discriminating power becomes feasible — file then.
 });
