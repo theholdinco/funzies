@@ -327,3 +327,77 @@ describe("D4 — pctCovLite delta-recompute", () => {
     expect(coverageWarn!.severity).toBe("warn");
   });
 });
+
+describe("KI-23 — switch simulator industry-distribution delta", () => {
+  it("post-switch poolSummary carries industryDistributionPct + largestIndustryPct fields (null on Euro XV — coverage incomplete)", () => {
+    // Euro XV today: per-loan industryCode is unpopulated (PR3 resolver
+    // path requires the PPM clause-(t) extraction which hasn't been run
+    // on the fixture). The shared helper returns null on both fields when
+    // no loans carry industryCode. Engine + switch-sim agree.
+    const sellLoan = fixture.resolved.loans[sellIdx];
+    const buyLoan: ResolvedLoan = {
+      parBalance: sellLoan.parBalance,
+      maturityDate: sellLoan.maturityDate,
+      ratingBucket: "B",
+      spreadBps: sellLoan.spreadBps,
+      obligorName: "TestObligor",
+      warfFactor: sellLoan.warfFactor,
+    };
+    const result = applySwitch(
+      fixture.resolved,
+      { sellLoanIndex: sellIdx, sellParAmount: sellLoan.parBalance, buyLoan, sellPrice: 100, buyPrice: 100 },
+      assumptions,
+    );
+    // Field present — null when coverage incomplete; non-null shape is an
+    // Array<{industryCode, industryName, parPct}> sorted descending.
+    expect("industryDistributionPct" in result.switchedResolved.poolSummary).toBe(true);
+    expect("largestIndustryPct" in result.switchedResolved.poolSummary).toBe(true);
+  });
+
+  it("post-switch industry distribution recomputed when every loan carries industryCode", () => {
+    // Synthesize a small pool where every loan carries industryCode, swap
+    // a 1010-tagged loan for a 1020-tagged loan, and assert the
+    // distribution shifts as expected.
+    const taggedLoans: ResolvedLoan[] = [
+      { parBalance: 30_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, obligorName: "A", warfFactor: 2720, currentPrice: 99, industryCode: "1010", industryName: "Aerospace and Defense" },
+      { parBalance: 30_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, obligorName: "B", warfFactor: 2720, currentPrice: 99, industryCode: "1020", industryName: "Automotive" },
+      { parBalance: 40_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, obligorName: "C", warfFactor: 2720, currentPrice: 99, industryCode: "1030", industryName: "Banking" },
+    ];
+    const taggedResolved: ResolvedDealData = {
+      ...fixture.resolved,
+      loans: taggedLoans,
+      poolSummary: { ...fixture.resolved.poolSummary, totalPar: 100_000_000 },
+    };
+    // Sell 30M from bucket 1010; buy a 30M position in bucket 1030.
+    const result = applySwitch(
+      taggedResolved,
+      {
+        sellLoanIndex: 0,
+        sellParAmount: 30_000_000,
+        buyLoan: {
+          parBalance: 30_000_000,
+          maturityDate: "2030-01-15",
+          ratingBucket: "B",
+          spreadBps: 350,
+          obligorName: "D",
+          warfFactor: 2720,
+          industryCode: "1030",
+          industryName: "Banking",
+        },
+        sellPrice: 100,
+        buyPrice: 100,
+      },
+      assumptions,
+    );
+    const dist = result.switchedResolved.poolSummary.industryDistributionPct;
+    expect(dist).not.toBeNull();
+    // Post-swap: 1010=0, 1020=30M, 1030=70M (40M existing + 30M new).
+    // Distribution descending: 1030 (70%), 1020 (30%).
+    expect(dist!.length).toBe(2);
+    expect(dist![0].industryCode).toBe("1030");
+    expect(dist![0].parPct).toBeCloseTo(70, 0);
+    expect(dist![1].industryCode).toBe("1020");
+    expect(dist![1].parPct).toBeCloseTo(30, 0);
+    expect(result.switchedResolved.poolSummary.largestIndustryPct).toBeCloseTo(70, 0);
+  });
+});
