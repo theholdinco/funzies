@@ -2,20 +2,13 @@ import { describe, it, expect } from "vitest";
 import { runProjection, addQuarters, ProjectionInputs, LoanInput } from "../projection";
 import { RATING_BUCKETS } from "../rating-mapping";
 import { CLO_DEFAULTS } from "../defaults";
+import { noDefaultsPath } from "./test-helpers";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function uniformRates(cdr: number): Record<string, number> {
   return Object.fromEntries(RATING_BUCKETS.map((b) => [b, cdr]));
 }
-
-// Disable defaults under per-position WARF: factory keeps a non-zero baseline
-// in `defaultRatesByRating`, this path-fn returns 0 → multiplier 0/baseline = 0
-// → hazard = warfHazard × 0 = 0. Setting `defaultRatesByRating: uniformRates(0)`
-// alone does NOT disable defaults — per-position reads `warfFactor`, not the
-// rates map. baseline=0 + path>0 also wouldn't work: it hits the Infinity
-// fallback at projection.ts:2920 and routes through bucket-map.
-const noDefaultsPath = (): Record<string, number> => uniformRates(0);
 
 /** Minimal 3-tranche deal: A (senior), B (mezzanine, deferrable), Sub (equity). */
 function makeSimpleInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs {
@@ -169,6 +162,19 @@ describe("1. Partial Cure Precision", () => {
     const ocB = p1.ocTests.find((t) => t.className === "J")!;
     expect(ocB.passing).toBe(false);
 
+    // Cure-fired pin: ocCureDiversions[rank=2].amount > 0. Closes the
+    // zero-cure coverage gap that the equity-only check leaves open
+    // (engine considers OC failing but computes diversion as 0).
+    const cureDiv = p1.stepTrace.ocCureDiversions.find((d) => d.rank === 2);
+    expect(cureDiv).toBeDefined();
+    expect(cureDiv!.amount).toBeGreaterThan(0);
+
+    // Partial-cure pin: equityFromInterest > 0. PPM step (DD) — the
+    // residual after the entire interest waterfall including the cure.
+    // If cure consumed all interest at the J-rank boundary, this is 0
+    // even if equityDistribution > 0 from a principal-waterfall residual.
+    expect(p1.stepTrace.equityFromInterest).toBeGreaterThan(0);
+
     // Cure amount to satisfy 110% on 90M denom:
     // Need: denom - numerator/trigger = 90M - 98.5M/1.10 = 90M - 89.545M = 0.454M
     // Interest collected ≈ 98.5M * 7.5% / 4 ≈ 1.847M, but A+B interest ≈ 1.18M first
@@ -201,6 +207,19 @@ describe("1. Partial Cure Precision", () => {
 
     const ocB = p1.ocTests.find((t) => t.className === "J")!;
     expect(ocB.passing).toBe(false);
+
+    // Cure-fired pin: ocCureDiversions[rank=2].amount > 0. During RP the
+    // cure buys collateral (mode === "reinvest") rather than paying down
+    // notes, but the diversion amount is still recorded on stepTrace.
+    const cureDiv = p1.stepTrace.ocCureDiversions.find((d) => d.rank === 2);
+    expect(cureDiv).toBeDefined();
+    expect(cureDiv!.amount).toBeGreaterThan(0);
+    expect(cureDiv!.mode).toBe("reinvest");
+
+    // Partial-cure pin: equityFromInterest > 0. The cure draws from
+    // available interest at the rank-2 boundary; if it consumed all of
+    // it, this would be 0 even if equityDistribution > 0 from elsewhere.
+    expect(p1.stepTrace.equityFromInterest).toBeGreaterThan(0);
 
     // During RP, cure buys collateral: need trigger*denom - numerator
     // = 1.10 * 90M - 98.5M = 99M - 98.5M = 0.5M

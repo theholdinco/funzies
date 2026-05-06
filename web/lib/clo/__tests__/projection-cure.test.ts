@@ -2,20 +2,13 @@ import { describe, it, expect } from "vitest";
 import { runProjection, addQuarters, ProjectionInputs, LoanInput } from "../projection";
 import { RATING_BUCKETS, DEFAULT_RATES_BY_RATING } from "../rating-mapping";
 import { CLO_DEFAULTS } from "../defaults";
+import { noDefaultsPath } from "./test-helpers";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function uniformRates(cdr: number): Record<string, number> {
   return Object.fromEntries(RATING_BUCKETS.map((b) => [b, cdr]));
 }
-
-// Disable defaults under per-position WARF: factory keeps a non-zero baseline
-// in `defaultRatesByRating` (DEFAULT_RATES_BY_RATING), this path-fn returns 0
-// → multiplier 0/baseline = 0 → hazard = warfHazard × 0 = 0. Setting
-// `defaultRatesByRating: uniformRates(0)` alone does NOT disable defaults —
-// per-position reads `warfFactor`, not the rates map. baseline=0 + path>0 also
-// wouldn't work: it hits the Infinity fallback at projection.ts:2920.
-const noDefaultsPath = (): Record<string, number> => uniformRates(0);
 
 /**
  * 9-tranche realistic CLO: Class X (amortising), A, B-1, B-2, C, D, E, F, Sub.
@@ -909,12 +902,23 @@ describe("OC cure exactly at boundary", () => {
     const result = runProjection(inputs);
     const p1 = result.periods[0];
     const ocF = p1.ocTests.find((t) => t.className === "F")!;
+    const fCureDiv = p1.stepTrace.ocCureDiversions.find((d) => d.rank === 6);
 
     if (!ocF.passing) {
-      // A tiny cure was needed — equity should still be positive (cure < available interest)
+      // OC failing → cure must have fired with non-zero amount, AND
+      // partial-cure pin: equityFromInterest > 0 confirms the residual
+      // at the F-rank boundary survived the cure (cure didn't consume
+      // all available interest).
+      expect(fCureDiv).toBeDefined();
+      expect(fCureDiv!.amount).toBeGreaterThan(0);
+      expect(p1.stepTrace.equityFromInterest).toBeGreaterThan(0);
       expect(p1.equityDistribution).toBeGreaterThan(0);
     } else {
-      // Passes cleanly — equity is fully distributed
+      // OC passing → no cure must have fired at the F-rank boundary
+      // (no diversion entry, OR an entry with amount === 0). The
+      // equity-distribution assertion alone is too weak (a cure-fired
+      // bug under a passing OC test would slip through).
+      expect(fCureDiv === undefined || fCureDiv.amount === 0).toBe(true);
       expect(p1.equityDistribution).toBeGreaterThan(0);
     }
   });

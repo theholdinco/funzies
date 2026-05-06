@@ -181,3 +181,87 @@ describe("UI does not re-derive engine values", () => {
     expect(violations).toEqual([]);
   });
 });
+
+describe("LoanState.warfFactor invariant has only sanctioned construction paths", () => {
+  // Per the LoanState.warfFactor docstring at projection.ts:1747+, the field
+  // is post-conditioned to "always finite > 0" because the downstream
+  // consumer warfFactorToQuarterlyHazard silently returns 0 on <=0 / NaN /
+  // Infinity. The two sanctioned paths are:
+  //   (a) resolveWarfFactor(l.warfFactor, l.ratingBucket) — guards LoanInput→LoanState
+  //   (b) BUCKET_WARF_FALLBACK[<key>] ?? BUCKET_WARF_FALLBACK.NR — the precomputed
+  //       reinvestmentWarfFactor chain at projection.ts:~1943
+  // Plus passthrough reads from already-validated LoanState (e.g., the
+  // `warfFactor: l.warfFactor` sites at projection.ts:2015/2166 where l: LoanState).
+  //
+  // This test scans projection.ts AND switch-simulator.ts for every
+  // `warfFactor:` property assignment in object literals and asserts the
+  // initializer matches one of the allowed shapes. A new construction site
+  // (e.g., `warfFactor: someUnvalidatedNumber`) fails this test loud rather
+  // than silently zero-hazarding the position via the downstream guard.
+  //
+  // Allowed initializer shapes:
+  //   - resolveWarfFactor(...)                   — the LoanInput-boundary guard
+  //   - <ident>                                  — passthrough (e.g., reinvestmentWarfFactor)
+  //   - <ident>.warfFactor                       — passthrough from LoanState/ResolvedLoan
+  //   - <expr> ?? <expr> ?? ...                  — the BUCKET_WARF_FALLBACK chain
+  // Disallowed:
+  //   - NumericLiteral (warfFactor: 0, etc.)
+  //   - arbitrary call expression (warfFactor: someOtherFn(...))
+  //   - arithmetic (warfFactor: x * y)
+  it("every warfFactor: write site in projection.ts/switch-simulator.ts uses a sanctioned shape", () => {
+    const project = new Project({ tsConfigFilePath: TSCONFIG_PATH });
+    const targetFiles = project.getSourceFiles().filter((f) =>
+      /web\/lib\/clo\/(projection|switch-simulator)\.ts$/.test(f.getFilePath()),
+    );
+    expect(targetFiles.length).toBeGreaterThan(0); // sanity — files exist
+
+    const isAllowedInitializer = (init: Node): boolean => {
+      // Shape (a): resolveWarfFactor(...) call
+      if (Node.isCallExpression(init)) {
+        const callee = init.getExpression();
+        if (Node.isIdentifier(callee) && callee.getText() === "resolveWarfFactor") return true;
+        return false;
+      }
+      // Passthrough: identifier or property-access (e.g., l.warfFactor,
+      // reinvestmentWarfFactor). The post-condition is enforced upstream
+      // either at LoanState construction or by the BUCKET_WARF_FALLBACK
+      // chain that produced the precomputed value.
+      if (Node.isIdentifier(init)) return true;
+      if (Node.isPropertyAccessExpression(init)) return true;
+      // Shape (b): BUCKET_WARF_FALLBACK[X] ?? BUCKET_WARF_FALLBACK.NR (or
+      // any chain involving BUCKET_WARF_FALLBACK as an operand).
+      if (Node.isBinaryExpression(init)) {
+        if (init.getOperatorToken().getKind() !== SyntaxKind.QuestionQuestionToken) return false;
+        let touchesBucketFallback = false;
+        init.forEachDescendant((d) => {
+          if (Node.isIdentifier(d) && d.getText() === "BUCKET_WARF_FALLBACK") {
+            touchesBucketFallback = true;
+          }
+        });
+        return touchesBucketFallback;
+      }
+      return false;
+    };
+
+    const violations: string[] = [];
+    for (const file of targetFiles) {
+      file.forEachDescendant((node) => {
+        if (!Node.isPropertyAssignment(node)) return;
+        const nameNode = node.getNameNode();
+        if (!Node.isIdentifier(nameNode) || nameNode.getText() !== "warfFactor") return;
+        const init = node.getInitializer();
+        if (init == null) return;
+        if (!isAllowedInitializer(init)) {
+          violations.push(
+            `${file.getFilePath()}:${node.getStartLineNumber()} ` +
+            `[loanstate-warffactor-invariant] disallowed shape: \`${init.getText()}\`. ` +
+            `Use resolveWarfFactor(input, bucket), or the BUCKET_WARF_FALLBACK[...] ?? .NR ` +
+            `chain, or a passthrough from an already-validated source. See ` +
+            `LoanState.warfFactor docstring at projection.ts.`,
+          );
+        }
+      });
+    }
+    expect(violations).toEqual([]);
+  });
+});

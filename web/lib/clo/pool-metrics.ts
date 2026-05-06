@@ -282,6 +282,13 @@ export function deriveQualityMetrics(
   aggregates: QualityMetricsAggregates,
   opts: PoolQualityMetricsOpts = {},
 ): PoolQualityMetrics {
+  // `?? 4.0` is the Excess WAC reference fallback. Production-unreachable
+  // by construction: the resolver at resolver.ts:3155-3163 blocks when
+  // referenceWeightedAverageFixedCoupon is missing AND the deal has any
+  // fixed-rate loan; the all-floating-only case has fixedPar = 0 so the
+  // Excess WAC term `(wafc - referenceWAFC) × fixedPar` is zero regardless
+  // of the fallback value. Keep the fallback only for hand-constructed
+  // test fixtures that bypass the resolver gate.
   const referenceWAFC = opts.referenceWAFC ?? 4.0;
   const {
     totalPar,

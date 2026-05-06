@@ -7,6 +7,7 @@ import {
 } from "../projection";
 import { RATING_BUCKETS, DEFAULT_RATES_BY_RATING } from "../rating-mapping";
 import { CLO_DEFAULTS } from "../defaults";
+import { noDefaults } from "./test-helpers";
 
 // Helper: zero out all CDRs
 function zeroCdrs(): Record<string, number> {
@@ -16,19 +17,6 @@ function zeroCdrs(): Record<string, number> {
 function uniformRates(cdr: number): Record<string, number> {
   return Object.fromEntries(RATING_BUCKETS.map((b) => [b, cdr]));
 }
-
-// Disable defaults under per-position WARF: per-position reads warfHazard
-// from loan.warfFactor and ignores defaultRatesByRating unless cdrMultiplierPathFn
-// is set. To genuinely disable defaults, pair (a) a non-zero baseline
-// (uniformRates(1) override) with (b) this path-fn returning 0 → multiplier
-// 0/1 = 0 → hazard = warfHazard × 0 = 0. Pair via `noDefaults` spread:
-// `makeXxxInputs({ ...noDefaults, ... })`. Don't use the path-fn alone:
-// baseline=0 + path=0 hits the Infinity-fallback edge case at
-// projection.ts:2920 (multiplier=1, defaults active at warfHazard).
-const noDefaults = {
-  defaultRatesByRating: uniformRates(1),
-  cdrMultiplierPathFn: () => zeroCdrs(),
-} as const;
 
 // Full 9-tranche deal: X, A, B-1, B-2, C, D, E, F, Sub
 // Realistic EUR CLO with tight OC/IC triggers

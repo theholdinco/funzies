@@ -2078,6 +2078,19 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // function of fixedPar / fixedCoupon) is invariant to X, the denominator
     // floatingPar grows with X.
     if (minWasBpsTrigger != null && minWasBpsTrigger > 0 && floatingPar > 0) {
+      // The `?? 4.0` fallback looks like a silent Euro-XV-specific default
+      // but is unreachable in production by construction:
+      //   (a) When fixedPar > 0 (deal has any fixed-rate loan), the
+      //       resolver at resolver.ts:3155-3163 emits `severity: "error",
+      //       blocking: true` when referenceWeightedAverageFixedCoupon is
+      //       missing — buildFromResolved throws IncompleteDataError, the
+      //       projection never runs, and the partner sees the DATA
+      //       INCOMPLETE banner. So referenceWafcPct is non-null here.
+      //   (b) When fixedPar = 0 (all-floating deal), excessNumerator =
+      //       (wafc - refWAFC) × 100 × 0 = 0 regardless of refWAFC. The
+      //       fallback value doesn't affect any computed number.
+      // The `?? 4.0` therefore exists only for hand-constructed test
+      // fixtures that bypass the resolver gate; production cannot use it.
       const refWAFC = referenceWafcPct ?? 4.0;
       const wafc = fixedPar > 0 ? fixedCouponSum / fixedPar : 0;
       const excessNumerator = (wafc - refWAFC) * 100 * fixedPar;
@@ -3052,6 +3065,16 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
             }
           }
         }
+        // Clamp hazard to [0, 1]. Without it, `cdrMultiplierPathFn` can
+        // scale a high-warfFactor loan's hazard above 1 (e.g., warfFactor=
+        // 10000 → warfHazard=1 × multiplier=2 → baseHazard=2 → loanDefaults=
+        // 2×par → survivingPar -= 2×par → negative → silent OC/WARF/interest
+        // aggregation poisoning every subsequent period). Per CLAUDE.md
+        // anti-pattern #5 (boundaries assert sign and scale): the per-loan
+        // hazard must be in [0, 1] before being applied to survivingPar;
+        // the clamp is the runtime invariant since the type system can only
+        // guarantee `number`.
+        baseHazard = Math.min(baseHazard, 1);
         const hazard = prorate(baseHazard);
         const loanDefaults = draw(loan.survivingPar, hazard);
         loan.survivingPar -= loanDefaults;

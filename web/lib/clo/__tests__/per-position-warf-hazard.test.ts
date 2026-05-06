@@ -207,3 +207,46 @@ describe("reinvested loans carry bucket-fallback factor into per-position path",
     }
   });
 });
+
+describe("hazard upper-bound clamp (per-position × cdrMultiplierPathFn stress)", () => {
+  // Pre-KI-20 the legacy bucket-hazard branch implicitly clamped via
+  // cdrToHazard's [0, 99.99] annual CDR range → quarterly hazard < 1.
+  // Per-position never had its own clamp; legacy was the safety valve.
+  // Now legacy is gone, the per-position branch needs its own clamp at
+  // projection.ts's default loop. Without it, warfFactor=10000 (Ca/C →
+  // hazard=1) combined with cdrMultiplierPathFn returning multiplier > 1
+  // produces hazard > 1 → loanDefaults > par → negative survivingPar.
+  // Pinning the clamp here so a future refactor that drops it fails loud.
+  it("warfFactor=10000 with multiplier=2 produces ≤100% defaults, not negative survivingPar", () => {
+    const baseInputs = buildFromResolved(fixture.resolved, defaultsFromResolved(fixture.resolved, fixture.raw));
+    const ultraDefault: LoanInput = {
+      parBalance: 10_000_000,
+      maturityDate: "2030-01-15",
+      ratingBucket: "CCC",
+      spreadBps: 400,
+      warfFactor: 10000, // hazard=1.0 from per-position formula alone
+    };
+    const result = runProjection({
+      ...baseInputs,
+      loans: [ultraDefault],
+      cprPct: 0,
+      reinvestmentPeriodEnd: null,
+      // Baseline non-zero so multiplier formula is defined; path returns
+      // 2× baseline → multiplier = 2 → without clamp: hazard = 1 × 2 = 2.
+      defaultRatesByRating: { AAA: 1, AA: 1, A: 1, BBB: 1, BB: 1, B: 1, CCC: 1, NR: 1 },
+      cdrMultiplierPathFn: () => ({ AAA: 2, AA: 2, A: 2, BBB: 2, BB: 2, B: 2, CCC: 2, NR: 2 }),
+    }, expectationDraw);
+
+    // Q1 defaults at most equal beginningPar (clamped hazard cannot
+    // produce > 100% defaults in a single period).
+    const q1 = result.periods[0];
+    expect(q1.defaults).toBeLessThanOrEqual(q1.beginningPar + 0.01);
+    // Pool ending par non-negative (the load-bearing invariant —
+    // negative survivingPar silently poisons OC / WARF / interest in
+    // every subsequent period).
+    expect(q1.endingPar).toBeGreaterThanOrEqual(0);
+    // For warfFactor=10000 + any positive multiplier, hazard clamps to 1
+    // → Q1 defaults exactly = beginningPar; ending par exactly = 0.
+    expect(q1.endingPar).toBeCloseTo(0, 0);
+  });
+});
