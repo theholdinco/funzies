@@ -248,12 +248,22 @@ export function maxAdditionPerBucket(
 
       switch (rule.kind) {
         case "single_rank_max": {
-          // The bucket's rank under the post-fill state isn't known a priori;
-          // be conservative — assume the addition could promote the bucket
-          // to rank-N. The strictest rank-N rule binds.
+          // For rank=N, a bucket constrains the rule only if it could BE
+          // rank-N after fill. A bucket strictly above rank-N par stays
+          // above rank-N (allocation only adds par; rank can only rise),
+          // so its growth doesn't affect rank-N par at all — rank-N is
+          // determined by OTHER buckets. Cap is unconstrained under this
+          // rule for "above rank-N" buckets. Without this carve-out, a
+          // dominant rank-1 bucket whose currentPar exceeds the rank-N
+          // trigger reports per-bucket headroom = 0 (clamped from
+          // `trigger - currentPar < 0`) and the allocator blocks any
+          // growth into it — distorting the prior even when no rule is
+          // actually breached. The constraint on rank-N is captured by
+          // the rank-N bucket's own cap (and any below-rank-N candidate
+          // that could promote into rank-N).
           const triggerPar = (rule.triggerPct / 100) * totalParAfter;
-          // Worst-case: bucket becomes rank-`rule.rank` after fill. Headroom
-          // for this rule alone:
+          const rankNPar = ranked[rule.rank - 1]?.par ?? 0;
+          if (currentPar > rankNPar + 1e-6) break;
           const ruleHeadroom = triggerPar - currentPar;
           if (ruleHeadroom < minHeadroom) minHeadroom = ruleHeadroom;
           break;

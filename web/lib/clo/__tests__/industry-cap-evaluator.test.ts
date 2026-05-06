@@ -312,6 +312,40 @@ describe("allocateReinvestment — water-filling", () => {
     expect(top3Sum).toBeLessThanOrEqual(0.7 * totalParAfter + 1);
   });
 
+  it("single_rank_max(rank>1): bucket strictly above rank-N par is unconstrained (regression)", () => {
+    // Pool: A=30M (rank-1, dominantly larger), B=C=D=10M (tied for rank-2/3/4).
+    // Total=60M. Rule: single_rank_max(rank=2, triggerPct=20). totalAfter=65M
+    // (reinvest 5M). triggerPar=13M. Currently rank-2=10M ≤ 13M → cap has 3M
+    // headroom. A is rank-1 at 30M, well above rank-2 par; A growing keeps A
+    // at rank-1 (rank-2 par unchanged). So A should be free to receive its
+    // prior share. Pre-fix: A's per-bucket cap = trigger - currentPar = 13 -
+    // 30 = -17 → clamped 0 → A blocked entirely. The 5M flowed to B/C/D.
+    // Post-fix: A unconstrained under rank-2 cap (since A is strictly above
+    // rank-N par, A's growth doesn't affect rank-N par at all — that's
+    // determined by other buckets). A's prior share is honored.
+    const result = allocateReinvestment({
+      parToReinvest: 5_000_000,
+      rules: [{ kind: "single_rank_max", rank: 2, triggerPct: 20 }],
+      initialPerBucket: new Map([["A", 30_000_000], ["B", 10_000_000], ["C", 10_000_000], ["D", 10_000_000]]),
+      initialTotalPar: 60_000_000,
+      priorWeights: new Map([["A", 0.5], ["B", 0.2], ["C", 0.2], ["D", 0.1]]),
+      poolState: NEUTRAL_POOL_STATE,
+    });
+    expect(result.parAllocated).toBeCloseTo(5_000_000, -3);
+    expect(result.parBlocked).toBeCloseTo(0, -3);
+    // A should receive its prior share (~50% of 5M = 2.5M), not zero.
+    const aAlloc = result.allocation.get("A") ?? 0;
+    expect(aAlloc).toBeGreaterThan(2_000_000);
+    // Verify rank-2 cap held post-allocation.
+    const finalState = new Map<string, number>([
+      ["A", 30_000_000], ["B", 10_000_000], ["C", 10_000_000], ["D", 10_000_000],
+    ]);
+    for (const [k, v] of result.allocation) finalState.set(k, (finalState.get(k) ?? 0) + v);
+    const sortedPar = Array.from(finalState.values()).sort((a, b) => b - a);
+    const totalParAfter = 65_000_000;
+    expect(sortedPar[1]).toBeLessThanOrEqual(0.2 * totalParAfter + 1);
+  });
+
   it("count_above_threshold with multiple below-threshold crossers: count cap held (regression)", () => {
     // 5 buckets at 5M each = 25M. Reinvest 5M → totalAfter=30M.
     // Rule: count_above_threshold(thresholdPct=18, maxCount=2). thresholdPar=5.4M.
