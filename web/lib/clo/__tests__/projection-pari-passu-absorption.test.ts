@@ -77,7 +77,6 @@ function makeSplitBInputs(overrides: Partial<ProjectionInputs> = {}): Projection
     cccBucketLimitPct: CLO_DEFAULTS.cccBucketLimitPct,
     cccMarketValuePct: CLO_DEFAULTS.cccMarketValuePct,
     deferredInterestCompounds: true,
-    useLegacyBucketHazard: true,
     ...overrides,
   };
 }
@@ -220,11 +219,17 @@ describe("engine pari-passu absorption — principal waterfall", () => {
       currentDate: "2026-03-09",
       loans,
       defaultRatesByRating: uniformRates(20),
+      // Per-position branch otherwise produces ~0.79%/q B-bucket warfHazard
+      // (~3.1%/y) regardless of the rates map. Path multiplier 140/20 = 7
+      // scales warfHazard to ~5.5%/q matching the legacy uniformRates(20)
+      // ≈ 5.4%/q intent → ~30M defaults over 4 quarters → pool 270M < 280M
+      // total junior debt → both J-1/J-2 partially paid pari-passu.
+      cdrMultiplierPathFn: () => uniformRates(140),
       cprPct: 0, recoveryPct: 0, recoveryLagMonths: 6,
       ratingAgencies: ["moodys", "sp", "fitch"],
       reinvestmentSpreadBps: 0, reinvestmentTenorQuarters: 8,
       reinvestmentRating: null, cccBucketLimitPct: 100, cccMarketValuePct: 100,
-      deferredInterestCompounds: true, useLegacyBucketHazard: true,
+      deferredInterestCompounds: true,
     };
 
     const result = runProjection(inputs);
@@ -298,7 +303,7 @@ describe("engine cure paydown — Class X exclusion", () => {
       ratingAgencies: ["moodys", "sp", "fitch"],
       reinvestmentSpreadBps: 0, reinvestmentTenorQuarters: 8,
       reinvestmentRating: null, cccBucketLimitPct: 100, cccMarketValuePct: 100,
-      deferredInterestCompounds: true, useLegacyBucketHazard: true,
+      deferredInterestCompounds: true,
     };
 
     const result = runProjection(inputs);
@@ -370,7 +375,7 @@ describe("engine Step G — X amort fold-in atomicity on split senior", () => {
       ratingAgencies: ["moodys", "sp", "fitch"],
       reinvestmentSpreadBps: 0, reinvestmentTenorQuarters: 8,
       reinvestmentRating: null, cccBucketLimitPct: 100, cccMarketValuePct: 100,
-      deferredInterestCompounds: true, useLegacyBucketHazard: true,
+      deferredInterestCompounds: true,
     };
 
     const result = runProjection(inputs);

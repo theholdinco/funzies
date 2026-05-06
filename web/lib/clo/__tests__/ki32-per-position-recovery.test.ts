@@ -38,14 +38,17 @@ import type { LoanInput, ProjectionInputs } from "@/lib/clo/projection";
 import { CLO_DEFAULTS } from "@/lib/clo/defaults";
 
 function buildKi32Inputs(): ProjectionInputs {
-  // Both loans CCC bucket so the bucket-hazard branch fires; recovery
-  // rates differ to expose the per-loan dispatch.
+  // Both loans carry warfFactor=10000 (Moody's Ca/C) → quarterly hazard = 1.0
+  // → instant default in Q1. Both share the same hazard so the only varying
+  // input is the per-loan recovery rate. Recovery rates differ to expose
+  // the per-loan dispatch.
   const loans: LoanInput[] = [
     {
       parBalance: 1_000_000,
       maturityDate: "2030-01-01",
       ratingBucket: "CCC",
       spreadBps: 500,
+      warfFactor: 10000,
       recoveryRateMoodys: 70, // → 0.70 fraction
     },
     {
@@ -53,13 +56,15 @@ function buildKi32Inputs(): ProjectionInputs {
       maturityDate: "2030-01-01",
       ratingBucket: "CCC",
       spreadBps: 500,
+      warfFactor: 10000,
       recoveryRateMoodys: 30, // → 0.30 fraction
     },
   ];
 
-  // Hazard ~100% on CCC so both loans default in period 1.
+  // Defaults rate map kept zero — per-position branch ignores it; warfFactor
+  // governs hazard.
   const defaultRatesByRating: Record<string, number> = {
-    AAA: 0, AA: 0, A: 0, BBB: 0, BB: 0, B: 0, CCC: 99.99, NR: 0,
+    AAA: 0, AA: 0, A: 0, BBB: 0, BB: 0, B: 0, CCC: 0, NR: 0,
   };
 
   return {
@@ -112,11 +117,6 @@ function buildKi32Inputs(): ProjectionInputs {
     ddtlDrawPercent: 100,
     eventOfDefaultTest: null,
     nonCallPeriodEnd: null,
-    useLegacyBucketHazard: true, // bucket-hazard branch — the WARF branch
-                                  // would derive hazard from each loan's
-                                  // own warfFactor; we want both loans on
-                                  // identical hazard so the only varying
-                                  // input is the recovery rate.
   };
 }
 

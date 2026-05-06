@@ -96,7 +96,6 @@ function makeStressInputs(seniorFeePct: number, overrides: Partial<ProjectionInp
     impliedOcAdjustment: 0,
     quartersSinceReport: 0,
     ddtlDrawPercent: 100,
-    useLegacyBucketHazard: true,
     interestNonPaymentGracePeriods: 0,
     ...overrides,
   };

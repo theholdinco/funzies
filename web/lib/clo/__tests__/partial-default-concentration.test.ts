@@ -128,11 +128,6 @@ function buildPartialDefaultInputs(): ProjectionInputs {
     impliedOcAdjustment: 0,
     quartersSinceReport: 0,
     ddtlDrawPercent: 100,
-    // Pin to the legacy bucket-hazard branch so `defaultRatesByRating[CCC]`
-    // governs the CCC loan's hazard directly. The per-position WARF branch
-    // would use `warfFactor` instead, which the synthetic LoanInput doesn't
-    // populate.
-    useLegacyBucketHazard: true,
   };
 }
 
@@ -164,14 +159,19 @@ describe("KI-61 closure — partial-default Caa/CCC concentration exclusion", ()
   });
 
   it("control: clean (non-defaulted) CCC loan IS counted in pctMoodysCaa", () => {
-    // Same shape but zero CDR everywhere — no defaults, no partial-default
-    // state. The CCC loan must now appear in the concentration. Confirms the
-    // closure filter is gated on `defaultedParPending > 0`, not blanket-
-    // excluding all CCC positions.
+    // Same shape but defaults genuinely disabled (per-position requires the
+    // multiplier-pair pattern: non-zero baseline + zero-returning path-fn,
+    // because a zero rates map alone leaves warfHazard active under per-
+    // position WARF). With no defaults, no partial-default state — the CCC
+    // loan must appear in the concentration. Confirms the closure filter is
+    // gated on `defaultedParPending > 0`, not blanket-excluding all CCC.
     const inputs = buildPartialDefaultInputs();
     inputs.defaultRatesByRating = {
-      AAA: 0, AA: 0, A: 0, BBB: 0, BB: 0, B: 0, CCC: 0, NR: 0,
+      AAA: 1, AA: 1, A: 1, BBB: 1, BB: 1, B: 1, CCC: 1, NR: 1,
     };
+    inputs.cdrMultiplierPathFn = () => ({
+      AAA: 0, AA: 0, A: 0, BBB: 0, BB: 0, B: 0, CCC: 0, NR: 0,
+    });
     const result = runProjection(inputs);
 
     // Period 1: both loans clean, equal par. pctMoodysCaa ≈ 50% (CCC half
