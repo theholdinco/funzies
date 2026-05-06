@@ -345,17 +345,15 @@ describe("DDTL projection", () => {
       ratingBucket: "B",
       spreadBps: 375,
     };
-    // Convention shift (KI-35 closure): un-drawn notional lives on
-    // `undrawnCommitment`, not on `parBalance`. Pre-KI-35 the test used
-    // `parBalance: 10_000_000, isDelayedDraw: true` and relied on the
-    // engine's `!isDelayedDraw` filter to exclude the loan from
-    // `beginningPar` while counting its `survivingPar` toward
-    // `currentDdtlUnfundedPar`. Post-KI-35 those two semantics are
-    // separated: `parBalance` is the drawn balance, `undrawnCommitment`
-    // is the un-drawn notional. The bug magnitude (frozen
-    // `impliedOcAdjustment` + bucket-move drift across the draw event)
-    // is identical under both conventions; only the LoanInput shape
-    // changes.
+    // Convention: un-drawn notional lives on `undrawnCommitment`, not
+    // on `parBalance`. `parBalance` is the currently-drawn balance;
+    // `undrawnCommitment` is the un-drawn notional. The engine
+    // excludes un-drawn portions from `beginningPar` (their
+    // parBalance=0 → already excluded) but counts them via the
+    // OC-numerator subtractor (Σ undrawnCommitment). The bug
+    // magnitude pinned below (frozen `impliedOcAdjustment` +
+    // bucket-move drift across the draw event) is convention-
+    // independent — it depends only on the OC-numerator dynamics.
     const ddtl = {
       parBalance: 0,
       undrawnCommitment: drawnPar,
