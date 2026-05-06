@@ -2262,33 +2262,62 @@ export function resolveWaterfallInputs(
     .filter(a => a.adjustmentType === "LONG_DATED_HAIRCUT" && a.netAmount != null)
     .reduce((s, a) => s + Math.abs(a.netAmount!), 0);
 
+  // --- T=0 engine-equivalent derivations of discount + long-dated haircuts ---
+  // These are the values the engine subtracts from the OC numerator at
+  // T=0 (computeDiscountHaircut / computeLongDatedHaircut on initial
+  // loanStates produce these exact numbers). Computed once here and
+  // consumed by both (a) the drift warnings below and (b) the
+  // `impliedOcAdjustment` formula. Calibrating impliedOcAdjustment to
+  // engine-derived values (rather than to trustee scalars) keeps the
+  // engine's T=0 OC numerator consistent with the trustee's Adjusted
+  // CPA representation: engine subtracts (engine_derived + impliedOc),
+  // so impliedOc must encode the residual that's left AFTER the engine
+  // identifies its own components. Otherwise (engine_derived !=
+  // trustee_scalar), the engine's OC drifts silently from trustee by
+  // exactly that delta.
+  const derivedDiscountHaircut = loans.length > 0
+    ? loans
+        .filter(l => l.isDiscountObligation === true && l.purchasePricePct != null && l.purchasePricePct! < 100 && !l.isDelayedDraw)
+        .reduce((s, l) => s + l.parBalance * (1 - l.purchasePricePct! / 100), 0)
+    : 0;
+  const derivedLongDatedHaircut = (() => {
+    if (loans.length === 0 || longDatedValuationRule == null) return 0;
+    // Shape A (within=par, post=zero) — exact: max(0, longDatedPar - cap).
+    // Shape B (within=tiered_mv_or_capped) — lower bound: ignores within-cap
+    // MV-vs-capped valuation. agency_cv_min is gated upstream by
+    // resolveLongDatedObligation; this helper never sees it.
+    const longDatedPar = loans
+      .filter(l => l.isLongDated === true && !l.isDelayedDraw)
+      .reduce((s, l) => s + l.parBalance, 0);
+    if (longDatedPar === 0) return 0;
+    const apbApprox = loans.reduce((s, l) => s + (l.isDelayedDraw ? 0 : l.parBalance), 0);
+    if (apbApprox === 0) return 0;
+    const baseAmount = longDatedValuationRule.capBase === "APB"
+      ? apbApprox
+      : apbApprox + principalAccountCash;
+    const cap = baseAmount * (longDatedValuationRule.capPctOfBase / 100);
+    return Math.max(0, longDatedPar - cap);
+  })();
+
   // --- T=0 reconciliation: per-position derived discount haircut vs trustee scalar ---
-  // The engine consumes the per-position derived haircut from
-  // ResolvedLoan.purchasePricePct + isDiscountObligation at every
-  // period. The trustee scalar above is an INDEPENDENT signal from
-  // the compliance report's parValueAdjustments table — they should
-  // agree at T=0 within tolerance. A drift means either (a) the SDF
-  // holdings extraction missed some discount classifications that the
-  // trustee carries (data-quality gap) or (b) the per-deal rule is
-  // mis-extracted. Either way the partner needs to know — non-blocking
-  // warning surfaces the drift without refusing the projection (the
-  // scalar still rides forward as the long-dated haircut, and the
-  // discount haircut comes from per-position state in commit 6).
+  // Drift means either the SDF holdings extraction missed some
+  // discount classifications that the trustee carries, or purchase
+  // prices on flagged holdings disagree with the trustee's haircut
+  // computation. Engine subtracts the per-position derived value
+  // forward; drift > tolerance indicates the T=0 OC numerator diverges
+  // from the trustee's reported number.
   if (loans.length > 0 && discountObligationHaircut > 0) {
-    const derivedHaircut = loans
-      .filter(l => l.isDiscountObligation === true && l.purchasePricePct != null)
-      .reduce((s, l) => s + l.parBalance * (1 - l.purchasePricePct! / 100), 0);
-    const drift = Math.abs(derivedHaircut - discountObligationHaircut);
+    const drift = Math.abs(derivedDiscountHaircut - discountObligationHaircut);
     const tolerance = Math.max(1000, discountObligationHaircut * 0.05);
     if (drift > tolerance) {
       warnings.push({
         field: "discountObligationHaircut",
         message:
           `T=0 reconciliation drift on discount-obligation haircut: ` +
-          `per-position derived = ${Math.round(derivedHaircut).toLocaleString()}, ` +
+          `per-position derived = ${Math.round(derivedDiscountHaircut).toLocaleString()}, ` +
           `trustee parValueAdjustments = ${Math.round(discountObligationHaircut).toLocaleString()}, ` +
           `delta ${Math.round(drift).toLocaleString()} > tolerance ${Math.round(tolerance).toLocaleString()}. ` +
-          `Most likely the SDF holdings extraction missed some discount classifications that the trustee carries — verify isDiscountObligation flags / purchasePrice values on holdings. The engine consumes per-position state forward; this drift indicates the T=0 OC numerator may diverge from the trustee's reported number even before any forward projection.`,
+          `Verify isDiscountObligation flags / purchasePrice values on holdings.`,
         severity: "warn",
         blocking: false,
       });
@@ -2296,42 +2325,23 @@ export function resolveWaterfallInputs(
   }
 
   // --- T=0 reconciliation: per-position derived long-dated haircut vs trustee scalar ---
-  // Engine consumes per-position dispatch via `longDatedValuationRule`;
-  // the trustee `LONG_DATED_HAIRCUT` parValueAdjustments rows remain
-  // an independent signal. Drift means either (a) the SDF holdings
-  // extraction missed long-dated classifications the trustee carries,
-  // or (b) the per-deal valuation rule (cap percentage / capBase /
-  // postCap) is mis-extracted from the PPM. Approximation here is a
-  // resolver-layer signal — it computes the engine's expected output
-  // for Shape A (within=par, post=zero) and Shape B Σ-bound, not the
-  // engine's exact per-period dispatch. Drift > tolerance still
-  // surfaces a real mismatch worth investigating.
-  if (loans.length > 0 && longDatedObligationHaircut > 0) {
-    const longDatedPar = loans
-      .filter(l => l.isLongDated === true && !l.isDelayedDraw)
-      .reduce((s, l) => s + l.parBalance, 0);
-    const apbApprox = loans.reduce((s, l) => s + (l.isDelayedDraw ? 0 : l.parBalance), 0);
-    let derivedHaircut = 0;
-    if (longDatedValuationRule != null && apbApprox > 0) {
-      const baseAmount = longDatedValuationRule.capBase === "APB"
-        ? apbApprox
-        : apbApprox + principalAccountCash; // CPA approx at T=0
-      const cap = baseAmount * (longDatedValuationRule.capPctOfBase / 100);
-      const excess = Math.max(0, longDatedPar - cap);
-      // Conservative under Shape A (within=par, post=zero) — drift
-      // matches engine. Under Shape B (within=tiered_mv_or_capped),
-      // this lower-bounds the derived haircut; drift > tolerance still
-      // catches gross mis-extraction.
-      derivedHaircut = excess;
-    }
-    const drift = Math.abs(derivedHaircut - longDatedObligationHaircut);
-    const tolerance = Math.max(1000, longDatedObligationHaircut * 0.10);
+  // Gate fires when EITHER trustee scalar > 0 OR engine derives > 0 —
+  // covers the silent-extraction-gap case where holdings carry
+  // isLongDated flags but the trustee's parValueAdjustments row is
+  // missing or zero. The resolver-approx derivation matches the engine
+  // exactly under Shape A (par/zero) and is a lower bound under Shape
+  // B (tiered_mv_or_capped). Drift > tolerance still surfaces a real
+  // mismatch worth investigating.
+  if (loans.length > 0 && (longDatedObligationHaircut > 0 || derivedLongDatedHaircut > 0)) {
+    const drift = Math.abs(derivedLongDatedHaircut - longDatedObligationHaircut);
+    const denom = Math.max(longDatedObligationHaircut, derivedLongDatedHaircut);
+    const tolerance = Math.max(1000, denom * 0.10);
     if (drift > tolerance) {
       warnings.push({
         field: "longDatedObligationHaircut",
         message:
           `T=0 reconciliation drift on long-dated haircut: ` +
-          `per-position derived (resolver-approx) = ${Math.round(derivedHaircut).toLocaleString()}, ` +
+          `per-position derived (resolver-approx) = ${Math.round(derivedLongDatedHaircut).toLocaleString()}, ` +
           `trustee parValueAdjustments = ${Math.round(longDatedObligationHaircut).toLocaleString()}, ` +
           `delta ${Math.round(drift).toLocaleString()} > tolerance ${Math.round(tolerance).toLocaleString()}. ` +
           `Verify isLongDated flags on holdings (Σ par at maturityDate > deal maturity should match trustee long-dated par) and the per-deal long_dated_obligation rule (cap_pct_of_base / cap_base) in ppm.json.`,
@@ -2342,16 +2352,21 @@ export function resolveWaterfallInputs(
   }
 
   // --- Implied OC Adjustment ---
-  // Residual between the trustee's Adjusted CPA and the components we can now identify
-  // (principal balance + cash - defaulted haircut - discount haircut - long-dated haircut).
-  // Captures any remaining trustee adjustments we haven't explicitly modeled.
+  // Residual between the trustee's Adjusted CPA and the components we
+  // can now identify (principal balance + cash - defaulted haircut -
+  // discount haircut - long-dated haircut). Captures any remaining
+  // trustee adjustments we haven't explicitly modeled. Uses the
+  // engine-equivalent derived haircuts (not the trustee scalars) so the
+  // engine's runtime subtraction `(engine_derived + impliedOcAdjustment)`
+  // reproduces the trustee's Adjusted CPA. Drift between engine-derived
+  // and trustee scalar is captured by the reconciliation warnings above.
   // Sanity-checked: if implausibly large (>5% of par) or negative, discard and warn.
   const totalPar = pool?.totalPar ?? 0;
   const totalPrincipalBalance = pool?.totalPrincipalBalance ?? 0;
   let impliedOcAdjustment = 0;
   if (totalPar > 0 && totalPrincipalBalance > 0) {
     const defaultedHaircut = preExistingDefaultedPar - preExistingDefaultOcValue;
-    const implied = totalPrincipalBalance + principalAccountCash - defaultedHaircut - discountObligationHaircut - longDatedObligationHaircut - totalPar;
+    const implied = totalPrincipalBalance + principalAccountCash - defaultedHaircut - derivedDiscountHaircut - derivedLongDatedHaircut - totalPar;
     if (implied < -100) {
       // Only warn if the residual is meaningfully negative (not just floating point noise)
       warnings.push({ field: "impliedOcAdjustment", message: `Adjusted CPA reconciliation has negative residual (${Math.round(implied).toLocaleString()}). Unmodeled trustee adjustments may be inflating the Adjusted CPA. OC adjustment set to 0.`, severity: "info", blocking: false });

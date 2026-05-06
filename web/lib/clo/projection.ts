@@ -2396,17 +2396,13 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   //
   // Rule is null on hand-constructed test inputs and on legacy fixtures
   // — engine emits zero haircut on those inputs. Allocation between
-  // within-cap and above-cap par is
-  // proportional across the long-dated cohort (avoids order-dependent
-  // surprises if a future caller re-orders loanStates).
+  // within-cap and above-cap par is proportional across the long-dated
+  // cohort (avoids order-dependent surprises if a future caller re-
+  // orders loanStates).
   //
-  // Wrinkle (Ares XV verbatim): "Principal Balance of each Defaulted
-  // Obligation will be its Fitch Collateral Value" for the long-dated
-  // computation. Engine carries no per-position FCV; defaulted long-
-  // dated positions therefore contribute survivingPar (over-stating
-  // the haircut). Material only on deals with defaulted long-dated
-  // positions — Ares XV today has zero, so the gap has zero current
-  // magnitude. File a sub-KI when a deal surfaces this case.
+  // Portability gap: defaulted long-dated positions use survivingPar
+  // rather than Fitch Collateral Value — see ResolvedLongDatedValuationRule
+  // JSDoc for the verbatim PPM clause and rationale.
   const computeLongDatedHaircut = (
     states: LoanState[],
     asOfQuarter: number,
@@ -2451,23 +2447,18 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         }
       }
 
-      // Post-cap valuation
-      let aboveCapValue: number;
-      if (rule.postCap.type === "zero") {
-        aboveCapValue = 0;
-      } else {
-        // Unreachable: resolver-blocking gate refuses to construct
-        // ProjectionInputs when postCap.agency_cv_min is selected
-        // without per-position CV ingestion. Surface as an invariant
-        // assertion rather than silently mis-valuing.
+      // Post-cap is "zero" for every reachable code path.
+      // `agency_cv_min` is gated upstream by resolveLongDatedObligation
+      // (resolver-blocking warning when selected without per-position CV
+      // ingestion); the engine asserts here as a defense-in-depth
+      // invariant for hand-constructed inputs that bypass buildFromResolved.
+      if (rule.postCap.type !== "zero") {
         throw new Error(
           "computeLongDatedHaircut invariant: postCap.agency_cv_min reached the engine; " +
-          "resolver-blocking gate (resolveLongDatedObligation) should have refused this input. " +
-          "Likely cause: hand-constructed test bypassing buildFromResolved.",
+          "resolver-blocking gate (resolveLongDatedObligation) should have refused this input.",
         );
       }
-
-      haircut += l.survivingPar - withinCapValue - aboveCapValue;
+      haircut += l.survivingPar - withinCapValue;
     }
     return haircut;
   };

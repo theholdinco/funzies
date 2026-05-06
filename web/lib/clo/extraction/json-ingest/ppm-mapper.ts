@@ -335,19 +335,36 @@ function mapLongDatedObligation(ppm: PpmJson): unknown {
     return null;
   }
 
-  const withinCap =
-    block.within_cap.type === "par"
-      ? { type: "par" }
-      : {
-          type: "tiered_mv_or_capped",
-          cliffYearsPastStatedMaturity:
-            block.within_cap.cliff_years_past_stated_maturity,
-          cappedPricePct: block.within_cap.capped_price_pct,
-        };
-  const postCap =
-    block.post_cap.type === "zero"
-      ? { type: "zero" }
-      : { type: "agency_cv_min" };
+  let withinCap: unknown;
+  if (block.within_cap.type === "par") {
+    withinCap = { type: "par" };
+  } else if (block.within_cap.type === "tiered_mv_or_capped") {
+    // Validate the variant's required numeric fields. Untyped passthrough
+    // would surface as NaN haircuts in the engine (silent — every OC test
+    // appears failing with no warning); resolver handles null with a
+    // blocking warning instead.
+    if (
+      typeof block.within_cap.cliff_years_past_stated_maturity !== "number" ||
+      typeof block.within_cap.capped_price_pct !== "number"
+    ) {
+      return null;
+    }
+    withinCap = {
+      type: "tiered_mv_or_capped",
+      cliffYearsPastStatedMaturity: block.within_cap.cliff_years_past_stated_maturity,
+      cappedPricePct: block.within_cap.capped_price_pct,
+    };
+  } else {
+    return null;
+  }
+  let postCap: unknown;
+  if (block.post_cap.type === "zero") {
+    postCap = { type: "zero" };
+  } else if (block.post_cap.type === "agency_cv_min") {
+    postCap = { type: "agency_cv_min" };
+  } else {
+    return null;
+  }
 
   return {
     capPctOfBase: block.cap_pct_of_base,

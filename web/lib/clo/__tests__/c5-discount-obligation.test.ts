@@ -1,5 +1,4 @@
-/** KI-29 marker tests — discount-obligation per-position dynamics +
- *  long-dated static residual.
+/** Per-position dispatch tests — discount-obligation + long-dated.
  *
  *  Synthetic non-Euro-XV inputs (10-loan minimal pool, 3-tranche structure)
  *  exercising the engine paths the production fixture (Euro XV) collapses
@@ -8,14 +7,15 @@
  *  directly in `a2-reinv-oc-diversion.test.ts`; this file covers the
  *  integration paths.
  *
- *  Markers:
- *    - KI-29-discountObligationDynamic — per-position haircut at T=0 +
- *      forward, cure dispatch flips classification, reinvestment synthesis
- *      sets per-position fields.
- *    - KI-29-longDatedStatic — residual: long-dated valuation rides static
- *      scalar at every period (banner-bound). Marker pins the static
- *      behavior so when the per-deal valuation rule lands the assertion
- *      flips. */
+ *  Coverage:
+ *    - Discount-obligation per-position haircut at T=0 + forward, cure
+ *      dispatch flipping classification, reinvestment synthesis setting
+ *      per-position fields.
+ *    - Long-dated per-position dispatch (Shape A: 5% APB cap, within=par,
+ *      post=zero — Ares XV verbatim from full OC pp. 135 + 142): excess-
+ *      deemed-zero, within-cap no haircut, trustee scalar ignored when
+ *      rule present (locks the reconciliation-only invariant), back-compat
+ *      no-rule → zero haircut. */
 
 import { describe, expect, it } from "vitest";
 import { runProjection } from "@/lib/clo/projection";
@@ -37,7 +37,7 @@ const ARES_FAMILY_RULE: ResolvedDiscountObligationRule = {
   },
 };
 
-describe("KI-29 — per-position discount-obligation haircut at T=0", () => {
+describe("Per-position discount-obligation haircut at T=0", () => {
   it("classified position contributes par × (1 − purchasePricePct/100) to haircut Σ", () => {
     // Single loan of €10M acquired at 75c (sub-threshold floating). Expected
     // haircut at T=0: €10M × (1 − 0.75) = €2.5M. OC numerator subtracts
@@ -58,7 +58,8 @@ describe("KI-29 — per-position discount-obligation haircut at T=0", () => {
     });
     const result = runProjection(inputs);
     // T=0 OC test should reflect the haircut. Pre-fix model would have
-    // OC numerator = 100M / debt; with KI-29 it's (100M − 25M) = 75M / debt.
+    // Pre-fix model: OC numerator = 100M / debt. With per-position
+    // dispatch: OC numerator = (100M − 25M) = 75M / debt.
     const ocActualClassA = result.initialState.ocTests[0].actual;
     const ocActualNoHaircut = (100_000_000 / 65_000_000) * 100;
     expect(ocActualClassA).toBeLessThan(ocActualNoHaircut);
@@ -186,7 +187,7 @@ describe("KI-29 — per-position discount-obligation haircut at T=0", () => {
   });
 });
 
-describe("KI-29 — per-position long-dated haircut at T=0 (Shape A)", () => {
+describe("Per-position long-dated haircut at T=0 (Shape A: Ares XV verbatim)", () => {
   const SHAPE_A_5PCT_APB: ResolvedLongDatedValuationRule = {
     capPctOfBase: 5,
     capBase: "APB",
@@ -213,7 +214,9 @@ describe("KI-29 — per-position long-dated haircut at T=0 (Shape A)", () => {
   });
 
   it("long-dated par within cap → no haircut", () => {
-    // Pool: €100M total, of which €3M is long-dated (<5% APB cap).
+    // Pool: €100M total, of which €3M is long-dated. Cap = 5% × 100M =
+    // 5M; long-dated par 3M ≤ cap → entire 3M valued at par (within-cap
+    // par treatment), no haircut. OC numerator = 100M.
     const inputs = makeInputs({
       loans: [
         { parBalance: 97_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 375 },
@@ -249,7 +252,7 @@ describe("KI-29 — per-position long-dated haircut at T=0 (Shape A)", () => {
     // long-dated mechanic pass `longDatedObligationHaircut: 0` (default
     // on test-helpers / EMPTY_RESOLVED) and omit `longDatedValuationRule`.
     // Engine emits zero haircut when rule is null regardless of
-    // isLongDated flags on positions — pre-KI-29 behavior preserved.
+    // isLongDated flags on positions — no rule → no haircut invariant.
     const inputs = makeInputs({
       loans: [
         { parBalance: 92_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 375 },

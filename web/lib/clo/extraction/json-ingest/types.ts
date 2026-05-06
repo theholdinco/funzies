@@ -166,7 +166,15 @@ export interface PpmJson {
     long_dated_obligation?: {
       source_pages?: number[];
       source_condition?: string;
-      verbatim_quote_short?: string;
+      /** Verbatim quote of the per-deal classification clause (typically
+       *  "Long-Dated Collateral Obligation" definition naming the test
+       *  on stated maturity vs deal maturity). */
+      verbatim_quote_definition?: string;
+      /** Verbatim quote of the valuation rule (typically the "Aggregate
+       *  Principal Balance" definition's "deemed to be zero" paragraph
+       *  or equivalent — physically separate from the definition in the
+       *  PPM, hence the two-quote split). */
+      verbatim_quote_valuation?: string;
       cap_pct_of_base?: number;
       cap_base?: "APB" | "CPA";
       within_cap?:

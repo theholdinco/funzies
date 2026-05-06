@@ -303,7 +303,7 @@ describe("Pattern A (silent fallback to common default)", () => {
     // PPM Condition 1 Discount Obligation classification + cure rule. The
     // classification threshold (e.g. floating < 80%, fixed < 75% of par
     // for the Ares family) drives the per-position OC numerator haircut at
-    // every period plus the price-aware reinvestment cure math (KI-33).
+    // every period plus the price-aware reinvestment cure math.
     // Falling back to a hardcoded threshold silently neutralizes the
     // discount-obligation mechanic on the next deal whose threshold
     // differs. Carve-out: greenfield fixtures (no holdings rows) skip the
@@ -315,6 +315,47 @@ describe("Pattern A (silent fallback to common default)", () => {
     const { resolved, warnings } = runResolver(raw);
     const w = warnings.find((w) => w.field === "discountObligationRule");
     expectBlockingError(w, "discountObligationRule (non-greenfield deal missing block)");
+    expectGateThrows(resolved, warnings);
+  });
+
+  it("longDatedValuationRule — block missing on a non-greenfield deal → blocking", () => {
+    // PPM Condition 1 "Long-Dated Collateral Obligation" + Aggregate
+    // Principal Balance "deemed zero" valuation rule. The cap percentage
+    // (Ares XV: 5% APB) and capBase drive the per-position long-dated
+    // haircut Σ at every period; without the rule the engine emits zero
+    // long-dated haircut which silently understates the OC numerator
+    // deduction on any deal with positions whose stated maturity exceeds
+    // deal life. Carve-out: greenfield fixtures (no active holdings) skip
+    // the gate — nothing to classify.
+    const raw = loadRaw();
+    raw.constraints.longDatedObligation = null;
+    expect(raw.holdings.length).toBeGreaterThan(0);
+    const { resolved, warnings } = runResolver(raw);
+    const w = warnings.find((w) => w.field === "longDatedValuationRule");
+    expectBlockingError(w, "longDatedValuationRule (non-greenfield deal missing block)");
+    expectGateThrows(resolved, warnings);
+  });
+
+  it("longDatedValuationRule.postCap.agency_cv_min — selected without per-position S&P/Fitch CV ingestion → blocking", () => {
+    // postCap.agency_cv_min requires per-position S&P + Fitch CV to value
+    // above-cap par as min(spCV, fitchCV). ResolvedLoan carries no
+    // CV fields today, so a deal selecting this variant cannot be valued
+    // by the engine. Resolver refuses to construct the rule and emits a
+    // blocking warning naming the missing per-position fields, gating the
+    // projection rather than running with a silent fallback.
+    const raw = loadRaw();
+    raw.constraints.longDatedObligation = {
+      capPctOfBase: 2.5,
+      capBase: "CPA",
+      withinCap: { type: "tiered_mv_or_capped", cliffYearsPastStatedMaturity: 2, cappedPricePct: 70 },
+      postCap: { type: "agency_cv_min" },
+      sourcePages: null,
+      sourceCondition: null,
+    };
+    expect(raw.holdings.length).toBeGreaterThan(0);
+    const { resolved, warnings } = runResolver(raw);
+    const w = warnings.find((w) => w.field === "longDatedValuationRule.postCap");
+    expectBlockingError(w, "longDatedValuationRule.postCap.agency_cv_min (missing per-position CV)");
     expectGateThrows(resolved, warnings);
   });
 });
