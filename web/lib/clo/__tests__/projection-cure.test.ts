@@ -442,6 +442,16 @@ describe("OC cure during RP buys collateral", () => {
     );
     expect(failingPeriod).toBeDefined();
 
+    // Cure actually fired with a non-zero diversion (closes the coverage gap
+    // that the equity > 0 check alone leaves open: a zero-cure bug would
+    // also pass the equity assertion). The diversion lives on stepTrace
+    // keyed by failing-tranche rank; F is rank 6 in this fixture.
+    const fCureDiversion = failingPeriod!.stepTrace.ocCureDiversions.find(
+      (d) => d.rank === 6,
+    );
+    expect(fCureDiversion).toBeDefined();
+    expect(fCureDiversion!.amount).toBeGreaterThan(0);
+
     // Partial cure leaves a remainder for equity: cure < available interest
     // at the F-rank boundary, so equityDistribution > 0 in the failing period.
     expect(failingPeriod!.equityDistribution).toBeGreaterThan(0);

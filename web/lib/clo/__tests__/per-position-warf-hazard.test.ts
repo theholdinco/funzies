@@ -105,6 +105,57 @@ describe("per-position hazard differentiates within a bucket", () => {
   });
 });
 
+describe("LoanInput.warfFactor boundary guard", () => {
+  // Per-position WARF is the only hazard branch; the legacy `warfFactor <= 0`
+  // bucket-branch fallback was removed in the KI-20 closure as unreachable
+  // under the prevailing fallback chain. The construction-site guard at
+  // `resolveLoanWarfFactor` exists to keep that "unreachable" status from
+  // becoming a silent silent-zero-hazard hole if a future caller passes
+  // `warfFactor: 0` explicitly. Pinning the boundary throw here so a future
+  // engine refactor that softens the guard fails this test loudly.
+  it("explicit warfFactor: 0 throws at construction (no silent zero-hazard)", () => {
+    const baseInputs = buildFromResolved(fixture.resolved, defaultsFromResolved(fixture.resolved, fixture.raw));
+    const malformed: LoanInput = {
+      parBalance: 1_000_000,
+      maturityDate: "2030-01-15",
+      ratingBucket: "B",
+      spreadBps: 400,
+      warfFactor: 0,
+    };
+    expect(() =>
+      runProjection({ ...baseInputs, loans: [malformed] }, expectationDraw),
+    ).toThrow(/warfFactor/);
+  });
+
+  it("explicit warfFactor: -1 throws at construction (no silent zero-hazard)", () => {
+    const baseInputs = buildFromResolved(fixture.resolved, defaultsFromResolved(fixture.resolved, fixture.raw));
+    const malformed: LoanInput = {
+      parBalance: 1_000_000,
+      maturityDate: "2030-01-15",
+      ratingBucket: "B",
+      spreadBps: 400,
+      warfFactor: -1,
+    };
+    expect(() =>
+      runProjection({ ...baseInputs, loans: [malformed] }, expectationDraw),
+    ).toThrow(/warfFactor/);
+  });
+
+  it("warfFactor: null falls back to BUCKET_WARF_FALLBACK (no throw)", () => {
+    const baseInputs = buildFromResolved(fixture.resolved, defaultsFromResolved(fixture.resolved, fixture.raw));
+    const wellFormed: LoanInput = {
+      parBalance: 1_000_000,
+      maturityDate: "2030-01-15",
+      ratingBucket: "B",
+      spreadBps: 400,
+      warfFactor: null,
+    };
+    expect(() =>
+      runProjection({ ...baseInputs, loans: [wellFormed] }, expectationDraw),
+    ).not.toThrow();
+  });
+});
+
 describe("reinvested loans carry bucket-fallback factor into per-position path", () => {
   it("reinvested synthetic loans default at their BUCKET_WARF_FALLBACK rate (no NaN, no silent zero)", () => {
     const inputs = {
