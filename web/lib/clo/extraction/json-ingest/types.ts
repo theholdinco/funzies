@@ -156,6 +156,31 @@ export interface PpmJson {
         | { type: "permanent_until_paid" };
       [k: string]: unknown;
     } | null;
+    /** PPM Condition 1 "Long-Dated Collateral Obligation" + Aggregate
+     *  Principal Balance "deemed zero" paragraph valuation rule. Lives
+     *  in section_5 alongside discount_obligation because both are
+     *  Condition-1 economic rules deducting from the OC numerator.
+     *  Resolver maps to ResolvedLongDatedValuationRule via ppm-mapper;
+     *  blocks when null on a deal whose pool composition could carry
+     *  long-dated positions. */
+    long_dated_obligation?: {
+      source_pages?: number[];
+      source_condition?: string;
+      verbatim_quote_short?: string;
+      cap_pct_of_base?: number;
+      cap_base?: "APB" | "CPA";
+      within_cap?:
+        | { type: "par" }
+        | {
+            type: "tiered_mv_or_capped";
+            cliff_years_past_stated_maturity: number;
+            capped_price_pct: number;
+          };
+      post_cap?:
+        | { type: "zero" }
+        | { type: "agency_cv_min" };
+      [k: string]: unknown;
+    } | null;
     [k: string]: unknown;
   };
   section_6_waterfall: {

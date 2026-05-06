@@ -1,5 +1,5 @@
 import type { ExtractedConstraints, CloPoolSummary, CloComplianceTest, CloTranche, CloTrancheSnapshot, CloHolding, CloAccountBalance, CloParValueAdjustment } from "./types";
-import type { Citation, ComplianceTestType, ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolvedComplianceTest, ResolvedEodTest, ResolvedMetadata, ResolvedSeniorExpensesCap, ResolvedDiscountObligationRule, ResolutionWarning } from "./resolver-types";
+import type { Citation, ComplianceTestType, ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolvedComplianceTest, ResolvedEodTest, ResolvedMetadata, ResolvedSeniorExpensesCap, ResolvedDiscountObligationRule, ResolvedLongDatedValuationRule, ResolutionWarning } from "./resolver-types";
 import { parseSpreadToBps, normalizeWacSpread } from "./ingestion-gate";
 import { isHigherBetter } from "./test-direction";
 import { mapToRatingBucket, moodysWarfFactor } from "./rating-mapping";
@@ -854,6 +854,73 @@ function resolveDiscountObligation(
   };
 }
 
+/** Resolve PPM Condition 1 ("Long-Dated Collateral Obligation") + APB
+ *  "deemed zero" valuation rule from `constraints.longDatedObligation`
+ *  (populated by `mapFeesAndExpenses` from
+ *  `ppm.json:section_5_fees_and_hurdle.long_dated_obligation`).
+ *
+ *  Per project rule (silent fallbacks on missing computational
+ *  extraction are bugs), this emits `severity: "error", blocking: true`
+ *  when the deal has loan rows but the rule is missing — the engine
+ *  cannot compute the long-dated haircut Σ without it. Greenfield
+ *  fixtures (no loans extracted) are exempt.
+ *
+ *  Additional gate: when `postCap.agency_cv_min` is selected, refuses
+ *  to resolve unless per-position S&P + Fitch CV is ingested (NOT
+ *  TODAY — `ResolvedLoan` carries no `spCalculationValue` /
+ *  `fitchCalculationValue`). The variant is encoded in the type system
+ *  to document the design space; selection forces the implementer to
+ *  extend per-position ingestion alongside the rule. */
+function resolveLongDatedObligation(
+  constraints: ExtractedConstraints,
+  warnings: ResolutionWarning[],
+  hasLoans: boolean,
+): ResolvedLongDatedValuationRule | null {
+  const block = constraints.longDatedObligation;
+  if (!block) {
+    if (hasLoans) {
+      warnings.push({
+        field: "longDatedValuationRule",
+        message:
+          "PPM Long-Dated Obligation rule (Condition 1 + APB \"deemed zero\" paragraph, " +
+          "ppm.json:section_5_fees_and_hurdle.long_dated_obligation) is not extracted. " +
+          "Rule is deal-specific (cap percentage, capBase, within-cap valuation, " +
+          "post-cap treatment) and drives the OC numerator's long-dated haircut at " +
+          "every period. Add the long_dated_obligation block to ppm.json with " +
+          "cap_pct_of_base, cap_base, within_cap, and post_cap, then re-ingest.",
+        severity: "error",
+        blocking: true,
+      });
+    }
+    return null;
+  }
+  if (block.postCap.type === "agency_cv_min") {
+    warnings.push({
+      field: "longDatedValuationRule.postCap",
+      message:
+        "PPM long-dated rule selects postCap.agency_cv_min (above-cap valuation = " +
+        "min(S&P CV, Fitch CV)), but per-position S&P/Fitch Calculation Value is not " +
+        "ingested today. Engine cannot dispatch this variant without " +
+        "ResolvedLoan.spCalculationValue + fitchCalculationValue (and corresponding " +
+        "SDF / Intex extraction). Extend ingestion before resolving this deal, or " +
+        "verify the deal's PPM truly specifies agency_cv_min.",
+      severity: "error",
+      blocking: true,
+    });
+    return null;
+  }
+  return {
+    capPctOfBase: block.capPctOfBase,
+    capBase: block.capBase,
+    withinCap: block.withinCap,
+    postCap: block.postCap,
+    citation:
+      block.sourcePages != null || block.sourceCondition != null
+        ? { sourcePages: block.sourcePages, sourceCondition: block.sourceCondition }
+        : null,
+  };
+}
+
 function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarning[]): ResolvedFees {
   let seniorFeePct: number = CLO_DEFAULTS.seniorFeePct;
   let subFeePct: number = CLO_DEFAULTS.subFeePct;
@@ -1359,6 +1426,11 @@ export function resolveWaterfallInputs(
   // otherwise falsely block.
   const hasActiveHoldings = holdings.some(h => holdingPar(h) > 0 && !h.isDefaulted);
   const discountObligationRule = resolveDiscountObligation(
+    constraints,
+    warnings,
+    hasActiveHoldings,
+  );
+  const longDatedValuationRule = resolveLongDatedObligation(
     constraints,
     warnings,
     hasActiveHoldings,
@@ -2863,7 +2935,7 @@ export function resolveWaterfallInputs(
   }
 
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
     warnings,
   };
 }

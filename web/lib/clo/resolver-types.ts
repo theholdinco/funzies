@@ -230,6 +230,65 @@ export interface ResolvedDiscountObligationRule {
   citation?: Citation | null;
 }
 
+/** Per-deal Long-Dated Collateral Obligation valuation rule extracted
+ *  from PPM Condition 1 ("Long-Dated Collateral Obligation") + the
+ *  Aggregate Principal Balance definition's "deemed zero" paragraph
+ *  (Ares XV: paragraph (e)). Per-deal because cap percentage, capBase,
+ *  within-cap valuation, and post-cap treatment vary across managers
+ *  (S&P "Par Wars" series Sep 2022 + Feb 2020; SEC EDGAR-filed CLO
+ *  indentures from Carlyle, Owl Rock et al.).
+ *
+ *  Resolver emits `severity: "error", blocking: true` when missing on
+ *  a deal with loan rows (Anti-pattern #3). When `postCap.agency_cv_min`
+ *  is selected, the resolver also blocks if per-position S&P / Fitch
+ *  CV is not ingested — the engine refuses to silently mis-value.
+ *
+ *  Ares CLO XV (verbatim, OC p. 135 definition + OC p. 142 APB(e)):
+ *    "Long-Dated Collateral Obligation" = stated maturity > Maturity Date.
+ *    Principal Balance "in excess of 5 per cent. of the Aggregate
+ *    Principal Balance ... shall be deemed to be zero" → binary,
+ *    capPctOfBase: 5, capBase: APB, withinCap: par, postCap: zero.
+ *
+ *  Ares CLO XVIII (illustrative — not yet ingested): tiered
+ *    `min(MV × par, 70% × par)` within-cap up to 2-year cliff past
+ *    Stated Maturity, agency_cv_min above-cap.
+ *
+ *  Note on defaulted long-dated positions (Ares XV PPM): "the Principal
+ *  Balance of each Defaulted Obligation will be its Fitch Collateral
+ *  Value" for the long-dated computation. NOT modeled today — Ares XV
+ *  has zero defaulted long-dated positions and the engine carries no
+ *  per-position FCV. Portability gap: a defaulted long-dated position
+ *  would have its survivingPar (rather than FCV) Σ'd into the cap
+ *  comparison, slightly overstating the deduction. */
+export interface ResolvedLongDatedValuationRule {
+  /** Cap on long-dated Principal Balance as percent of base. Ares XV: 5. */
+  capPctOfBase: number;
+  /** Base for the cap. Ares XV: "APB". CPA variants observed in some
+   *  US BSL CLOs. Engine reuses the existing OC-numerator base
+   *  computation (poolPar +/- DDTL/cash) per the deal's selection. */
+  capBase: "APB" | "CPA";
+  /** How within-cap long-dated par is valued. Shape A: par at face.
+   *  Shape B: tiered MV-or-capped, with a cliff past stated maturity
+   *  beyond which the position is valued at zero even within-cap. */
+  withinCap:
+    | { type: "par" }
+    | {
+        type: "tiered_mv_or_capped";
+        cliffYearsPastStatedMaturity: number;
+        cappedPricePct: number;
+      };
+  /** How above-cap long-dated par is valued. "zero" is the conservative
+   *  Ares-family treatment ("deemed to be zero"). "agency_cv_min" is
+   *  manager-friendly variant — `min(spCV, fitchCV)` per position.
+   *  Engine does NOT implement agency_cv_min math; resolver blocks if
+   *  selected on a deal lacking per-position S&P/Fitch CV ingestion. */
+  postCap:
+    | { type: "zero" }
+    | { type: "agency_cv_min" };
+  /** PPM provenance (Ares XV: OC pp. 135 + 142). */
+  citation?: Citation | null;
+}
+
 export interface ResolvedDealData {
   tranches: ResolvedTranche[];
   poolSummary: ResolvedPool;
@@ -298,15 +357,29 @@ export interface ResolvedDealData {
    *  Null on legacy fixtures or extraction-miss; resolver emits a blocking
    *  warning in that case. Engine consumes via per-position classification
    *  (`purchasePrice/par < classificationThresholdPct`) at every period,
-   *  with cure dispatched per the `cureMechanic` variant. KI-29 closure
-   *  marker. */
+   *  with cure dispatched per the `cureMechanic` variant. */
   discountObligationRule: ResolvedDiscountObligationRule | null;
+  /** PPM Long-Dated Obligation valuation rule (Condition 1 definition +
+   *  APB "deemed zero" paragraph; Ares XV: paragraph (e)). Null on legacy
+   *  fixtures or extraction-miss; resolver emits a blocking warning in
+   *  that case. Engine drives the long-dated haircut from per-position Σ
+   *  over `loanStates` filtered by `isLongDated`, dispatching on the
+   *  rule's `withinCap` + `postCap` variants. Replaces consumption of
+   *  the static `longDatedObligationHaircut` scalar in the OC numerator. */
+  longDatedValuationRule: ResolvedLongDatedValuationRule | null;
   preExistingDefaultedPar: number; // par of defaulted loans excluded from loan list
   preExistingDefaultRecovery: number; // market-price recovery for priced defaulted holdings
   unpricedDefaultedPar: number; // par of defaulted holdings without market price (engine applies recoveryPct)
   preExistingDefaultOcValue: number; // recovery value for OC numerator (agency rate — typically higher than market)
   discountObligationHaircut: number; // net OC deduction for loans purchased below threshold (from par value adjustments)
-  longDatedObligationHaircut: number; // net OC deduction for loans maturing after CLO (from par value adjustments)
+  /** Trustee-reported long-dated haircut from `parValueAdjustments`
+   *  (LONG_DATED_HAIRCUT rows). Engine no longer consumes this for the
+   *  OC numerator — see `longDatedValuationRule` for the per-deal
+   *  valuation rule the engine dispatches on. Retained as the trustee
+   *  leg of the T=0 reconciliation drift warning + as an input to
+   *  `impliedOcAdjustment` (which captures trustee-residual relative
+   *  to trustee-side components). */
+  longDatedObligationHaircut: number;
   cccBucketLimitPct: number | null; // PPM Excess CCC Adjustment threshold (% of par); null = extraction missed (blocking)
   cccMarketValuePct: number | null; // PPM market-value floor (% of par) credited to CCC excess; null = extraction missed (blocking)
   /** PPM Target Par Amount (€). Sourced from PPM

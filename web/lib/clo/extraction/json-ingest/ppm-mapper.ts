@@ -220,6 +220,7 @@ function mapFeesAndExpenses(ppm: PpmJson): Record<string, unknown> {
     accounts: [],
     seniorExpensesCap: mapSeniorExpensesCap(ppm),
     discountObligation: mapDiscountObligation(ppm),
+    longDatedObligation: mapLongDatedObligation(ppm),
     _feesProvenance: feesProvenance ?? undefined,
   };
 }
@@ -308,6 +309,51 @@ function mapDiscountObligation(ppm: PpmJson): unknown {
   return {
     classificationThresholdPct: mapThreshold(classification),
     cureMechanic: cureMechanicMapped,
+    sourcePages: Array.isArray(block.source_pages)
+      ? block.source_pages.filter((p): p is number => typeof p === "number")
+      : null,
+    sourceCondition:
+      typeof block.source_condition === "string" ? block.source_condition : null,
+  };
+}
+
+/** Read the Conditions 1 + APB(e) "Long-Dated Collateral Obligation"
+ *  valuation rule from ppm.json into a typed shape consumed by the
+ *  resolver. Mirrors the ResolvedLongDatedValuationRule discriminated
+ *  union shape (snake_case → camelCase). Returns null if any
+ *  structurally-required field is absent — resolver then emits a
+ *  blocking warning on the missing rule. */
+function mapLongDatedObligation(ppm: PpmJson): unknown {
+  const block = ppm.section_5_fees_and_hurdle.long_dated_obligation;
+  if (!block) return null;
+  if (
+    typeof block.cap_pct_of_base !== "number" ||
+    (block.cap_base !== "APB" && block.cap_base !== "CPA") ||
+    !block.within_cap ||
+    !block.post_cap
+  ) {
+    return null;
+  }
+
+  const withinCap =
+    block.within_cap.type === "par"
+      ? { type: "par" }
+      : {
+          type: "tiered_mv_or_capped",
+          cliffYearsPastStatedMaturity:
+            block.within_cap.cliff_years_past_stated_maturity,
+          cappedPricePct: block.within_cap.capped_price_pct,
+        };
+  const postCap =
+    block.post_cap.type === "zero"
+      ? { type: "zero" }
+      : { type: "agency_cv_min" };
+
+  return {
+    capPctOfBase: block.cap_pct_of_base,
+    capBase: block.cap_base,
+    withinCap,
+    postCap,
     sourcePages: Array.isArray(block.source_pages)
       ? block.source_pages.filter((p): p is number => typeof p === "number")
       : null,

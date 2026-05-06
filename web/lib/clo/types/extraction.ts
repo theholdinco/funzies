@@ -230,6 +230,30 @@ export interface ExtractedConstraints {
     sourcePages: number[] | null;
     sourceCondition: string | null;
   } | null;
+  /** PPM Condition 1 "Long-Dated Collateral Obligation" + APB "deemed
+   *  zero" valuation rule. Sourced from
+   *  `ppm.json:section_5_fees_and_hurdle.long_dated_obligation` via
+   *  `mapFeesAndExpenses`. Resolver consumes via
+   *  `resolveLongDatedObligation` and emits `severity: "error",
+   *  blocking: true` when missing on a deal with loan rows. The shape
+   *  mirrors `ResolvedLongDatedValuationRule` (resolver-types.ts) for
+   *  direct passthrough. */
+  longDatedObligation?: {
+    capPctOfBase: number;
+    capBase: "APB" | "CPA";
+    withinCap:
+      | { type: "par" }
+      | {
+          type: "tiered_mv_or_capped";
+          cliffYearsPastStatedMaturity: number;
+          cappedPricePct: number;
+        };
+    postCap:
+      | { type: "zero" }
+      | { type: "agency_cv_min" };
+    sourcePages: number[] | null;
+    sourceCondition: string | null;
+  } | null;
   // Section 12: Accounts
   accounts?: { name: string; purpose: string }[];
   // Section 13: Key Parties

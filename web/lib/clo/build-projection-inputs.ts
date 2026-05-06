@@ -36,6 +36,7 @@ export const EMPTY_RESOLVED: ResolvedDealData = {
   hedgeCostBps: 0,
   seniorExpensesCap: null,
   discountObligationRule: null,
+  longDatedValuationRule: null,
   preExistingDefaultedPar: 0,
   preExistingDefaultRecovery: 0,
   unpricedDefaultedPar: 0,
