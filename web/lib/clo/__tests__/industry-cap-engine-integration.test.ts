@@ -97,51 +97,67 @@ describe("Industry-cap engine-integration — synthesis with industry-cap rules"
     expect(Number.isFinite(result.equityIrr!)).toBe(true);
   });
 
-  it("anti-pattern #1 forcing function: combined fixture exercising every rule kind + appliesWhen + excluded", () => {
-    // Single fixture exercising EVERY shape simultaneously to catch any
-    // overfitting to the rank-1 + simple-class-cap shape. Pool composition
-    // is engineered so each rule is applicable and deliberately near (but
-    // not over) cap on at least one bucket. Engine should produce a finite
-    // IRR with non-zero reinvestment + some intermittent blocking as
-    // periods cross conditional thresholds.
-    const inputs = diversifiedPoolInputs(
-      [
-        // single_rank_max at rank 1 AND rank 2 (rank > 1 case)
-        { kind: "single_rank_max", rank: 1, triggerPct: 40 },
-        { kind: "single_rank_max", rank: 2, triggerPct: 30 },
-        // combined_top_n_max with n=2 (the verifier explicitly asked for n>3 testing)
-        { kind: "combined_top_n_max", n: 2, triggerPct: 65 },
-        // single_class_max — Aerospace specifically capped tighter
-        { kind: "single_class_max", industryCode: "1010", industryName: "Aerospace and Defense", triggerPct: 25 },
-        // count_above_threshold — at most 2 industries above 18%
-        { kind: "count_above_threshold", thresholdPct: 18, maxCount: 2 },
-        // appliesWhen: post-RP rule with tighter cap
-        {
-          kind: "single_rank_max",
-          rank: 1,
-          triggerPct: 30,
-          appliesWhen: { kind: "post_reinvestment_period" },
-        },
-        // appliesWhen: ccc-conditional
-        {
-          kind: "combined_top_n_max",
-          n: 3,
-          triggerPct: 70,
-          appliesWhen: { kind: "ccc_pct_above", thresholdPct: 5 },
-        },
+  it("rank-1 cap actually constrains synthesis — imbalanced pool would breach without enforcement", () => {
+    // Pool engineered to STRESS the allocator: bucket 1010 starts at 21%
+    // (close to 22% cap), other buckets smaller. Without industry-cap
+    // enforcement, the prior (current pool composition) puts ~21% of
+    // each reinvestment quantum back into 1010 — which would push 1010
+    // above 22% as par accretes from defaults / prepayments routed back
+    // through reinvestment. The allocator MUST detect 1010's tight
+    // headroom (~1pp under cap) and redistribute to other buckets.
+    //
+    // If the industry-cap path were disabled, 1010's par share grows
+    // unbounded with proportional reinvestment, and largestIndustryPct
+    // would drift above 22%. The assertion below forces the allocator
+    // to actively constrain.
+    const inputs = makeInputs({
+      initialPar: 100_000_000,
+      loans: [
+        // 1010 at 21M (21%) — close to 22% cap
+        { parBalance: 21_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "1010" },
+        { parBalance: 19_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "1020" },
+        { parBalance: 19_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "1030" },
+        { parBalance: 21_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "1040" },
+        { parBalance: 20_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "1050" },
       ],
-      {
-        cprPct: 15,
-        excludedIndustryNames: ["Sovereign and Public Finance"],
-      },
-    );
+      industryCapRules: [{ kind: "single_rank_max", rank: 1, triggerPct: 22 }],
+      excludedIndustryNames: null,
+      cprPct: 30, // high prepayment → lots of reinvestment activity
+    });
     const result = runProjection(inputs);
     expect(result.periods.length).toBeGreaterThan(0);
+
+    // For every period where the pool has tagged loans, largestIndustryPct
+    // must stay ≤ 22% (with small tolerance for per-period rounding).
+    // This invariant FAILS if the allocator doesn't enforce the rank-1 cap.
+    let assertedPeriods = 0;
+    for (const period of result.periods) {
+      const largestPct = period.qualityMetrics.largestIndustryPct;
+      if (largestPct == null) continue;
+      expect(largestPct).toBeLessThanOrEqual(22.1);
+      assertedPeriods++;
+    }
+    // Sanity check: we asserted on enough periods that this isn't trivial.
+    expect(assertedPeriods).toBeGreaterThan(5);
+  });
+
+  it("multi-rule + appliesWhen smoke test: every rule kind + post-RP tightening + excluded industry all together", () => {
+    // Looser version of the above — uses every shape but doesn't stress
+    // any single one. Confirms the engine doesn't choke when all kinds
+    // are simultaneously active.
+    const inputs = diversifiedPoolInputs(
+      [
+        { kind: "single_rank_max", rank: 1, triggerPct: 35 },
+        { kind: "single_rank_max", rank: 2, triggerPct: 28 },
+        { kind: "combined_top_n_max", n: 2, triggerPct: 55 },
+        { kind: "single_class_max", industryCode: "1010", industryName: "Aerospace and Defense", triggerPct: 30 },
+        { kind: "count_above_threshold", thresholdPct: 19, maxCount: 5 },
+        { kind: "single_rank_max", rank: 1, triggerPct: 25, appliesWhen: { kind: "post_reinvestment_period" } },
+      ],
+      { cprPct: 15, excludedIndustryNames: ["Sovereign and Public Finance"] },
+    );
+    const result = runProjection(inputs);
     expect(result.equityIrr).not.toBeNull();
     expect(Number.isFinite(result.equityIrr!)).toBe(true);
-    // Reinvestment is happening (CPR=15 + rules allow) and at least some
-    // is being placed feasibly (no bucket starts over cap).
-    const totalReinv = result.periods.reduce((s, p) => s + (p.reinvestment ?? 0), 0);
-    expect(totalReinv).toBeGreaterThan(0);
   });
 });

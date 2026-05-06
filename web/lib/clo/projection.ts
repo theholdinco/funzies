@@ -2232,6 +2232,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         fitchRatingFinal: l.fitchRatingFinal,
         moodysRatingSource: l.moodysRatingSource,
         isCreditEstimateOrPrivateRating: l.isCreditEstimateOrPrivateRating,
+        industryCode: l.industryCode,
       });
     }
     return computePoolQualityMetrics(qloans, {

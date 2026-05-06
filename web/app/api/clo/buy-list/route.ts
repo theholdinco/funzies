@@ -23,6 +23,17 @@ const COLUMN_MAP: Record<string, string> = {
   facility_name: "facilityName",
   sector: "sector",
   industry: "sector",
+  // Industry-cap closure: partner-provided canonical industry classification.
+  // The D5 buy-list filter's `excludeIndustryCodes` matches on these codes.
+  // Free-text `sector` stays for display; auto-classification of free-text
+  // to canonical codes is NOT wired (would require upload-time access to the
+  // active deal's taxonomy). Partners who want industry-cap-aware filtering
+  // include `industry_taxonomy` + `industry_code` columns explicitly.
+  industry_taxonomy: "industryTaxonomy",
+  taxonomy: "industryTaxonomy",
+  industry_code: "industryCode",
+  moodys_industry_code: "industryCode",
+  sp_industry_code: "industryCode",
   moodys: "moodysRating",
   moodys_rating: "moodysRating",
   moody_s: "moodysRating",
@@ -132,6 +143,8 @@ function parseCsv(text: string): ParsedItem[] {
       obligorName: "",
       facilityName: null,
       sector: null,
+      industryTaxonomy: null,
+      industryCode: null,
       moodysRating: null,
       spRating: null,
       spreadBps: null,
@@ -157,6 +170,11 @@ function parseCsv(text: string): ParsedItem[] {
         item[field] = parseNumber(val);
       } else if (field === "isCovLite") {
         item[field] = parseBoolean(val);
+      } else if (field === "industryTaxonomy") {
+        // Validate enum at the boundary — invalid values become null
+        // rather than silently propagating ill-formed taxonomy strings
+        // that the D5 filter's lookup helpers would reject downstream.
+        item[field] = val === "moodys_33" || val === "sp" || val === "deal_specific" ? val : null;
       } else {
         item[field] = val;
       }
