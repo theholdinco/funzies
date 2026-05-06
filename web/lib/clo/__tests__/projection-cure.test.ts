@@ -9,6 +9,14 @@ function uniformRates(cdr: number): Record<string, number> {
   return Object.fromEntries(RATING_BUCKETS.map((b) => [b, cdr]));
 }
 
+// Disable defaults under per-position WARF: factory keeps a non-zero baseline
+// in `defaultRatesByRating` (DEFAULT_RATES_BY_RATING), this path-fn returns 0
+// → multiplier 0/baseline = 0 → hazard = warfHazard × 0 = 0. Setting
+// `defaultRatesByRating: uniformRates(0)` alone does NOT disable defaults —
+// per-position reads `warfFactor`, not the rates map. baseline=0 + path>0 also
+// wouldn't work: it hits the Infinity fallback at projection.ts:2920.
+const noDefaultsPath = (): Record<string, number> => uniformRates(0);
+
 /**
  * 9-tranche realistic CLO: Class X (amortising), A, B-1, B-2, C, D, E, F, Sub.
  * Total par $500M, rated notes $470M, equity $30M.
@@ -224,8 +232,6 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
     cccBucketLimitPct: CLO_DEFAULTS.cccBucketLimitPct,
     cccMarketValuePct: CLO_DEFAULTS.cccMarketValuePct,
     deferredInterestCompounds: true,
-    // D2 — legacy pin; test predates per-position WARF hazard. See test-helpers.ts for context.
-    useLegacyBucketHazard: true,
     ...overrides,
   };
 }
@@ -236,11 +242,12 @@ describe("OC partial cure outside RP", () => {
   it("Class F OC fails, partial cure happens, equity still receives a remainder", () => {
     // Outside RP: cure pays down notes (reduces denominator).
     // F OC denominator = A+B-1+B-2+C+D+E+F = 438M, initial par = 490M.
-    // With 10% uniform CDR, Q1 ending par ≈ 477M → natural F OC ratio ≈ 108.97%.
-    // Trigger at 109% → cure needed = 438M - 477M/1.09 ≈ 0.7M < 8.2M interest → partial cure.
+    // With zero defaults, Q1 ending par = 490M → natural F OC ratio = 111.87%.
+    // Trigger at 111.95% → fails by 0.08% → cure ≈ 0.35M < ~8.2M available interest
+    // → partial cure → equity > 0.
     const inputs = makeRealisticInputs({
       reinvestmentPeriodEnd: "2026-04-01", // outside RP immediately
-      defaultRatesByRating: uniformRates(10),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 
@@ -250,8 +257,7 @@ describe("OC partial cure outside RP", () => {
         { className: "C",   triggerLevel: 114.0, rank: 3 },
         { className: "D",   triggerLevel: 108.5, rank: 4 },
         { className: "E",   triggerLevel: 105.5, rank: 5 },
-        // 109% trigger: fails (natural ratio ~108.97%) but cure < available interest → partial
-        { className: "F",   triggerLevel: 109.0, rank: 6 },
+        { className: "F",   triggerLevel: 111.95, rank: 6 },
       ],
       icTriggers: [],
     });
@@ -264,30 +270,32 @@ describe("OC partial cure outside RP", () => {
     expect(ocF).toBeDefined();
     expect(ocF.passing).toBe(false);
 
-    // Partial cure: cure amount (~0.7M) < available interest (~8.2M), so equity > 0
+    // Partial cure (small cure amount < available interest) → equity > 0
     expect(p1.equityDistribution).toBeGreaterThan(0);
   });
 
   it("cure diversion reduces equity vs no-failure baseline", () => {
-    // Baseline: 0% CDR, trigger 109% → OC passes (natural ratio ~111.87%), no diversion
+    // Both runs zero defaults; differ in F trigger only. The intent (cure
+    // diversion reduces equity) is preserved by the trigger differential.
+    // Baseline trigger 109% → natural ratio 111.87% passes → no diversion.
     const baseline = makeRealisticInputs({
       reinvestmentPeriodEnd: "2026-04-01",
-      defaultRatesByRating: uniformRates(0),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 
     ratingAgencies: ["moodys", "sp", "fitch"],      icTriggers: [],
       ocTriggers: [{ className: "F", triggerLevel: 109.0, rank: 6 }],
     });
-    // Failure case: 10% CDR, trigger 109% → OC fails (actual ~108.97%), small cure applied
+    // Failure case: trigger 113% → fails by 1.13% → cure ≈ 5M → diverts substantially.
     const withFailure = makeRealisticInputs({
       reinvestmentPeriodEnd: "2026-04-01",
-      defaultRatesByRating: uniformRates(10),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 
     ratingAgencies: ["moodys", "sp", "fitch"],      icTriggers: [],
-      ocTriggers: [{ className: "F", triggerLevel: 109.0, rank: 6 }],
+      ocTriggers: [{ className: "F", triggerLevel: 113.0, rank: 6 }],
     });
 
     const baseResult = runProjection(baseline);
@@ -401,48 +409,42 @@ describe("OC cure during RP buys collateral", () => {
   });
 
   it("equity gets remainder after partial RP cure", () => {
-    // OC failure during RP: cure buys collateral, remaining interest goes to equity
+    // OC failure during RP: cure buys collateral, remaining interest goes to
+    // equity (the "partial cure leaves equity remainder" property). Pre-closure
+    // this test compared totals between a 15%-CDR run and a 0%-CDR baseline;
+    // that comparison conflated cure-mechanic effects with default-driven
+    // dilution, and under per-position WARF (rates map ignored) the dilution
+    // signal disappears, leaving only the during-RP cure-buys-collateral
+    // accretion — which actually INCREASES total equity vs no-cure. The
+    // restructured assertion tests the cure-remainder property directly:
+    // in the failing period, equity > 0 because cure < available interest.
     const inputs = makeRealisticInputs({
       currentDate: "2026-03-09",
       reinvestmentPeriodEnd: "2030-06-15",
-      defaultRatesByRating: uniformRates(15),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 
     ratingAgencies: ["moodys", "sp", "fitch"],      icTriggers: [],
+      // Trigger 112% → natural ratio 111.87% fails by 0.13% → cure ≈ 0.6M
+      // (well below available interest at F-rank boundary) → partial cure
+      // → equity remainder > 0.
       ocTriggers: [
-        { className: "F", triggerLevel: 103.0, rank: 6 },
-      ],
-    });
-
-    const noFailInputs = makeRealisticInputs({
-      currentDate: "2026-03-09",
-      reinvestmentPeriodEnd: "2030-06-15",
-      defaultRatesByRating: uniformRates(0),
-      cprPct: 0,
-      recoveryPct: 0,
-
-    ratingAgencies: ["moodys", "sp", "fitch"],      icTriggers: [],
-      ocTriggers: [
-        { className: "F", triggerLevel: 103.0, rank: 6 },
+        { className: "F", triggerLevel: 112.0, rank: 6 },
       ],
     });
 
     const failResult = runProjection(inputs);
-    const noFailResult = runProjection(noFailInputs);
 
-    // When OC fails: cure diverts some interest. Equity should be lower but possibly > 0
-    // (partial cure). Total equity distributions should be less than no-failure case.
-    expect(failResult.totalEquityDistributions).toBeLessThan(noFailResult.totalEquityDistributions);
-
-    // In Q1 with some cure, if not fully consumed, equity > 0
-    const failingPeriodIdx = failResult.periods.findIndex((p) =>
-      p.ocTests.find((t) => t.className === "F" && !t.passing)
+    // Find a period where F OC actually fails.
+    const failingPeriod = failResult.periods.find((p) =>
+      p.ocTests.find((t) => t.className === "F" && !t.passing),
     );
-    if (failingPeriodIdx >= 0) {
-      // There's a failing period — test passes even if equity is 0 in worst case
-      expect(failingPeriodIdx).toBeGreaterThanOrEqual(0);
-    }
+    expect(failingPeriod).toBeDefined();
+
+    // Partial cure leaves a remainder for equity: cure < available interest
+    // at the F-rank boundary, so equityDistribution > 0 in the failing period.
+    expect(failingPeriod!.equityDistribution).toBeGreaterThan(0);
   });
 });
 
@@ -848,7 +850,7 @@ describe("OC cure exactly at boundary", () => {
     const inputs = makeRealisticInputs({
       currentDate: "2026-03-09",
       reinvestmentPeriodEnd: "2030-06-15",
-      defaultRatesByRating: uniformRates(0),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 

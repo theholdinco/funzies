@@ -1329,7 +1329,7 @@ export function runPostAccelerationWaterfall(input: PostAccelExecutorInput): Pos
       Math.max(0, remaining),
       input.incentiveFeePct,
       input.incentiveFeeHurdleIrr,
-      input.periodsPerYear, // KI-04 — third literal-4 call site (alongside the two normal-mode sites); deal-cadence-derive when Frequency Switch lands.
+      input.periodsPerYear, // KI-04 routes through `input.periodsPerYear`; the literal-4 lives at the engine call site at projection.ts:~3757.
     );
     incentiveFeePaid = pay(fee);
   }
