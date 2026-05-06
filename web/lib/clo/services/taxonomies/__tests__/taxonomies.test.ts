@@ -17,9 +17,14 @@ import { MOODYS_33, SP_INDUSTRIES, selectTaxonomy, lookupByCode, lookupByText } 
 import type { IndustryClassification, IndustryTaxonomy } from "..";
 
 function assertNoCollisions(name: string, list: IndustryClassification[]) {
+  // Two-pass: build the full canonical-name + alias sets first, then check
+  // each alias against every canonical (including LATER entries). The
+  // single-pass approach only checked aliases against PRIOR-listed
+  // canonicals, missing the alias-of-X-vs-canonical-of-Y (X<Y) shape that
+  // would also silently merge two industries via lookupByText.
   const codes = new Set<string>();
-  const aliases = new Set<string>();
-  const canonicalNames = new Set<string>();
+  const allCanonicals = new Set<string>();
+  const allAliases = new Set<string>();
 
   for (const entry of list) {
     if (codes.has(entry.code)) {
@@ -28,20 +33,23 @@ function assertNoCollisions(name: string, list: IndustryClassification[]) {
     codes.add(entry.code);
 
     const canonical = entry.canonicalName.toLowerCase();
-    if (canonicalNames.has(canonical)) {
+    if (allCanonicals.has(canonical)) {
       throw new Error(`${name}: duplicate canonicalName "${entry.canonicalName}"`);
     }
-    canonicalNames.add(canonical);
+    allCanonicals.add(canonical);
+  }
 
+  for (const entry of list) {
+    const ownCanonical = entry.canonicalName.toLowerCase();
     for (const alias of entry.aliases) {
       const normalized = alias.toLowerCase();
-      if (aliases.has(normalized)) {
+      if (allAliases.has(normalized)) {
         throw new Error(`${name}: duplicate alias "${alias}" (would silently merge industries)`);
       }
-      if (canonicalNames.has(normalized) && canonical !== normalized) {
-        throw new Error(`${name}: alias "${alias}" collides with another industry's canonicalName`);
+      if (allCanonicals.has(normalized) && normalized !== ownCanonical) {
+        throw new Error(`${name}: alias "${alias}" of "${entry.canonicalName}" collides with another industry's canonicalName`);
       }
-      aliases.add(normalized);
+      allAliases.add(normalized);
     }
   }
 }
