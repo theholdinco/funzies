@@ -109,6 +109,7 @@ export function applySwitch(
   const switchedQuality = computePoolQualityMetrics(qloans, {
     referenceWAFC: resolved.referenceWeightedAverageFixedCoupon ?? undefined,
     dealCurrency: resolved.currency,
+    excludedIndustryCodes: resolved.excludedIndustryCodes,
   });
   const switchedTop10 = computeTopNObligorsPct(fundedSwitched, 10);
   const switchedTotalPar = switchedLoans.reduce((s, l) => s + l.parBalance, 0);

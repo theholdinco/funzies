@@ -942,6 +942,42 @@ function resolveLongDatedObligation(
  *  structural extraction error (LLM rank confusion); blocking because
  *  the rule schedule is internally inconsistent.
  */
+/** Convert PPM-extracted excluded industry NAMES to canonical codes via the
+ *  active taxonomy. Single conversion site so every consumer (engine
+ *  allocator, switch simulator, resolver pool-aggregate) reads identical
+ *  codes — preventing name-vs-code drift. Names that don't resolve emit
+ *  a non-blocking warning (under-restrictive but safer than blocking on
+ *  an LLM alias mismatch; the per-loan resolution gate catches harder
+ *  failure modes). */
+function resolveExcludedIndustryCodesFromNames(
+  excludedIndustryNames: string[] | null,
+  taxonomy: ResolvedDealData["industryTaxonomy"],
+  warnings: ResolutionWarning[],
+): string[] | null {
+  if (!excludedIndustryNames || excludedIndustryNames.length === 0) return null;
+  if (taxonomy == null || taxonomy === "deal_specific") return null;
+  const codes: string[] = [];
+  const unresolved: string[] = [];
+  for (const name of excludedIndustryNames) {
+    const entry = lookupIndustryByText(name, taxonomy);
+    if (entry) codes.push(entry.code);
+    else unresolved.push(name);
+  }
+  if (unresolved.length > 0) {
+    warnings.push({
+      field: "excludedIndustryNames",
+      message:
+        `${unresolved.length} excluded industry name(s) did not resolve under taxonomy ` +
+        `${taxonomy}: ${unresolved.join(", ")}. Engine treats these as non-excluded — ` +
+        `the industry stays in cap denominators, under-restricting the rule. Extend ` +
+        `taxonomy aliases or correct the PPM extraction.`,
+      severity: "warn",
+      blocking: false,
+    });
+  }
+  return codes.length > 0 ? codes : null;
+}
+
 function resolveIndustryConcentrationTest(
   constraints: ExtractedConstraints,
   concentrationTests: ResolvedComplianceTest[],
@@ -951,6 +987,7 @@ function resolveIndustryConcentrationTest(
   industryCapPresentInPpm: ResolvedDealData["industryCapPresentInPpm"];
   industryCapRules: ResolvedDealData["industryCapRules"];
   excludedIndustryNames: ResolvedDealData["excludedIndustryNames"];
+  excludedIndustryCodes: ResolvedDealData["excludedIndustryCodes"];
 } {
   const block = constraints.industryConcentrationTest;
   const hasSdfIndustryEvidence = concentrationTests.some(
@@ -976,6 +1013,7 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: null,
       industryCapRules: null,
       excludedIndustryNames: null,
+      excludedIndustryCodes: null,
     };
   }
 
@@ -985,6 +1023,7 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: false,
       industryCapRules: null,
       excludedIndustryNames: null,
+      excludedIndustryCodes: null,
     };
   }
 
@@ -1007,6 +1046,7 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: true,
       industryCapRules: null,
       excludedIndustryNames: null,
+      excludedIndustryCodes: null,
     };
   }
 
@@ -1025,6 +1065,7 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: true,
       industryCapRules: null,
       excludedIndustryNames: block.excludedIndustryNames,
+      excludedIndustryCodes: null, // taxonomy unknown → cannot resolve
     };
   }
 
@@ -1051,6 +1092,7 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: true,
       industryCapRules: null,
       excludedIndustryNames: block.excludedIndustryNames,
+      excludedIndustryCodes: null, // deal_specific has no canonical seed
     };
   }
 
@@ -1071,6 +1113,11 @@ function resolveIndustryConcentrationTest(
       industryCapPresentInPpm: true,
       industryCapRules: null,
       excludedIndustryNames: block.excludedIndustryNames,
+      excludedIndustryCodes: resolveExcludedIndustryCodesFromNames(
+        block.excludedIndustryNames,
+        block.taxonomy,
+        warnings,
+      ),
     };
   }
 
@@ -1111,6 +1158,11 @@ function resolveIndustryConcentrationTest(
       return { ...r };
     }) as ResolvedDealData["industryCapRules"],
     excludedIndustryNames: block.excludedIndustryNames,
+    excludedIndustryCodes: resolveExcludedIndustryCodesFromNames(
+      block.excludedIndustryNames,
+      block.taxonomy,
+      warnings,
+    ),
   };
 }
 
@@ -3377,27 +3429,44 @@ export function resolveWaterfallInputs(
   // reflects only identifiable-obligor concentration.
   poolSummary.top10ObligorsPct = loans.length > 0 ? computeTopNObligorsPct(loans, 10) : null;
 
+  // industry-cap: hoist concentration-test resolution here so its
+  // `excludedIndustryCodes` can flow into the pool-aggregate below
+  // (single denominator with the engine's allocator). The destructure
+  // is duplicated downstream where it's also used for the resolved
+  // payload — both reference the same in-place result via the const
+  // binding.
+  const industryConcentrationResolved = resolveIndustryConcentrationTest(
+    constraints, concentrationTests, warnings,
+  );
+
   // industry-cap: industry distribution under the deal's active taxonomy.
   // Populated only when the per-loan coverage gate above didn't fire (the
   // gate is upstream blocking, so reaching here with non-empty
   // industryCoverageGapObligors is impossible — the projection refuses).
   // For greenfield / no-loans / no-taxonomy paths the field stays null
   // and the engine treats the deal as industry-cap-unconstrained
-  // (industryCapPresentInPpm guides whether that's correct).
+  // (industryCapPresentInPpm guides whether that's correct). PPM-extracted
+  // excluded industry codes drop from BOTH numerator (per-bucket par) and
+  // denominator (totalPar) so the displayed top-industry % matches what
+  // the engine's allocator tests against — otherwise the UI's largest-%
+  // would diverge from what binds the rule.
   if (activeIndustryTaxonomy != null && industryCoverageGapObligors.length === 0 && loans.length > 0) {
-    const totalPar = loans.reduce((s, l) => s + (l.parBalance > 0 ? l.parBalance : 0), 0);
-    if (totalPar > 0) {
-      const perBucket = new Map<string, { name: string; par: number }>();
-      for (const loan of loans) {
-        if (loan.parBalance <= 0) continue;
-        if (!loan.industryCode || !loan.industryName) continue;
-        const existing = perBucket.get(loan.industryCode);
-        if (existing) {
-          existing.par += loan.parBalance;
-        } else {
-          perBucket.set(loan.industryCode, { name: loan.industryName, par: loan.parBalance });
-        }
+    const excludedCodes = new Set(industryConcentrationResolved.excludedIndustryCodes ?? []);
+    let totalPar = 0;
+    const perBucket = new Map<string, { name: string; par: number }>();
+    for (const loan of loans) {
+      if (loan.parBalance <= 0) continue;
+      if (!loan.industryCode || !loan.industryName) continue;
+      if (excludedCodes.has(loan.industryCode)) continue;
+      totalPar += loan.parBalance;
+      const existing = perBucket.get(loan.industryCode);
+      if (existing) {
+        existing.par += loan.parBalance;
+      } else {
+        perBucket.set(loan.industryCode, { name: loan.industryName, par: loan.parBalance });
       }
+    }
+    if (totalPar > 0) {
       const distribution = Array.from(perBucket, ([industryCode, v]) => ({
         industryCode,
         industryName: v.name,
@@ -3515,15 +3584,19 @@ export function resolveWaterfallInputs(
   // three-state failure modes (extraction missing on a deal with SDF
   // INDUSTRY rows; rules empty on present:true; taxonomy missing on
   // present:true; rank-monotonicity violation; non-empty unmapped rules).
+  // Hoisted above the pool-aggregate site so excludedIndustryCodes flows
+  // into both the resolver-side aggregate and the resolved payload from
+  // a single source.
   const {
     industryTaxonomy,
     industryCapPresentInPpm,
     industryCapRules,
     excludedIndustryNames,
-  } = resolveIndustryConcentrationTest(constraints, concentrationTests, warnings);
+    excludedIndustryCodes,
+  } = industryConcentrationResolved;
 
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, excludedIndustryCodes, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
     warnings,
   };
 }

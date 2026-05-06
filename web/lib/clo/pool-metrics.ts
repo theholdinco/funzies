@@ -147,6 +147,16 @@ export interface PoolQualityMetricsOpts {
    *  When omitted, no currency filter applies (all loans assumed in deal
    *  currency). */
   dealCurrency?: string | null;
+  /** Industry codes excluded from the industry-cap denominator + bucket
+   *  ordering. PPM clause-(t) names a list of industries that don't count
+   *  toward the test ("Sovereign and Public Finance" being the canonical
+   *  case). Resolver converts names to codes via the active taxonomy. The
+   *  engine's allocator filters by this list at the synthesis site, and
+   *  this helper's `largestIndustryPct` / `industryDistributionPct`
+   *  outputs MUST share the same denominator — otherwise the UI's
+   *  largest-industry % would diverge from what the rule actually tests
+   *  against. */
+  excludedIndustryCodes?: ReadonlyArray<string> | null;
 }
 
 /** Partial sums extracted from one pass over the loan list. Sole source of
@@ -388,12 +398,18 @@ export function computePoolQualityMetrics(
   const base = deriveQualityMetrics(aggregateQualityMetrics(loans, opts), opts);
   // industry-cap: industry distribution + largestIndustryPct. Patched onto `base`
   // here because the aggregation map can't round-trip through the partial
-  // sums shape (which is JSON-serializable primitives only).
+  // sums shape (which is JSON-serializable primitives only). Excluded codes
+  // are dropped from BOTH numerator (per-bucket par) and denominator
+  // (totalParWithIndustry) so the displayed largestIndustryPct matches the
+  // denominator the engine's allocator uses internally — otherwise the UI's
+  // top-industry % would diverge from what the rule actually tests against.
+  const excluded = new Set(opts.excludedIndustryCodes ?? []);
   const industryParByCode = new Map<string, number>();
   let totalParWithIndustry = 0;
   for (const l of loans) {
     if (l.parBalance <= 0) continue;
     if (!l.industryCode) continue;
+    if (excluded.has(l.industryCode)) continue;
     industryParByCode.set(l.industryCode, (industryParByCode.get(l.industryCode) ?? 0) + l.parBalance);
     totalParWithIndustry += l.parBalance;
   }

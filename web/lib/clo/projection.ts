@@ -2240,6 +2240,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     return computePoolQualityMetrics(qloans, {
       referenceWAFC: referenceWafcPct ?? undefined,
       dealCurrency,
+      excludedIndustryCodes,
     });
   };
 

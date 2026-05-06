@@ -9262,6 +9262,7 @@
     "industryCapPresentInPpm": null,
     "industryCapRules": null,
     "excludedIndustryNames": null,
+    "excludedIndustryCodes": null,
     "dealSpecificIndustryList": null
   },
   "warnings": [

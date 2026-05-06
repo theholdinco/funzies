@@ -170,6 +170,11 @@ describe("Industry-cap — resolver-side industry-cap blocking gate", () => {
     expect(resolved.industryTaxonomy).toBe("moodys_33");
     expect(resolved.industryCapRules).toHaveLength(2);
     expect(resolved.excludedIndustryNames).toEqual(["Sovereign and Public Finance"]);
+    // Resolver converts names → codes once via the active taxonomy. Engine,
+    // pool-metrics, and switch-simulator all read the codes from here —
+    // single source of truth, no per-consumer name-vs-code drift.
+    expect(resolved.excludedIndustryCodes).not.toBeNull();
+    expect(resolved.excludedIndustryCodes!.length).toBeGreaterThan(0);
   });
 
   it("populates poolSummary.largestIndustryPct + industryDistributionPct when coverage is complete", () => {

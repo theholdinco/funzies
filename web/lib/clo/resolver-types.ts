@@ -469,11 +469,19 @@ export interface ResolvedDealData {
    *  post-buy bucket distribution at each reinvestment site. */
   industryCapRules: IndustryCapRule[] | null;
   /** PPM clause-(t) industries excluded from rank/combined ordering
-   *  ("industries A and B do not count toward this test"). Engine filters
-   *  out matching loans before computing per-bucket par sums. Names
-   *  (canonical or alias) — engine resolves to `industryCode` via the
-   *  active taxonomy. Null when none. */
+   *  ("industries A and B do not count toward this test"), as PPM-extracted
+   *  partner-facing names. Display-only — the engine consumes
+   *  `excludedIndustryCodes` (resolved at resolver time via the active
+   *  taxonomy). Null when none. */
   excludedIndustryNames: string[] | null;
+  /** Canonical industry CODES corresponding to `excludedIndustryNames`,
+   *  resolved against the deal's `industryTaxonomy` at resolver time via
+   *  `lookupByText`. The engine's allocator + pool-metrics + switch
+   *  simulator all filter by code; computing here once means a single
+   *  conversion site (no name-vs-code drift between consumers). Names
+   *  that don't resolve emit a non-blocking warning. Null when no
+   *  exclusions OR when the taxonomy is unsupported (deal_specific). */
+  excludedIndustryCodes: string[] | null;
   preExistingDefaultedPar: number; // par of defaulted loans excluded from loan list
   preExistingDefaultRecovery: number; // market-price recovery for priced defaulted holdings
   unpricedDefaultedPar: number; // par of defaulted holdings without market price (engine applies recoveryPct)
