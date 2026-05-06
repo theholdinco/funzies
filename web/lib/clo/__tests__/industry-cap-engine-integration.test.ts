@@ -154,10 +154,10 @@ describe("Industry-cap engine-integration — synthesis with industry-cap rules"
         { kind: "count_above_threshold", thresholdPct: 19, maxCount: 5 },
         { kind: "single_rank_max", rank: 1, triggerPct: 25, appliesWhen: { kind: "post_reinvestment_period" } },
       ],
-      // Sovereign and Public Finance: code "1330" under moodys_33 — pre-resolved
+      // Sovereign and Public Finance: code "1250" under moodys_33 — pre-resolved
       // (the engine consumes codes; the resolver does name→code conversion via
       // the active taxonomy at buildFromResolved time).
-      { cprPct: 15, excludedIndustryCodes: ["1330"] },
+      { cprPct: 15, excludedIndustryCodes: ["1250"] },
     );
     const result = runProjection(inputs);
     expect(result.equityIrr).not.toBeNull();
