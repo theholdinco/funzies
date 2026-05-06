@@ -2315,7 +2315,17 @@ export function resolveWaterfallInputs(
         // deal maturity) at T=0, yearsPast is strongly negative; the
         // cliff branch never fires here. Forward-period dispatch
         // exercises the cliff via the engine helper.
-        const matQ = l.maturityDate != null ? quartersBetween(currentDate, l.maturityDate) : Infinity;
+        // Mirrors engine's `maturityQuarter` floor at projection.ts:1834
+        // (`Math.max(1, quartersBetween(currentDate, maturityDate))`). The
+        // floor is inert for correctly-classified long-dated positions
+        // (maturity > deal maturity > currentDate ⇒ matQ ≥ 1) but matters
+        // when isLongDated is set on a misclassified position (e.g.,
+        // direct DB flag override) whose maturity is at-or-before the
+        // current date — without the floor, engine and resolver compute
+        // different `yearsPast` and diverge on cliff branches.
+        const matQ = l.maturityDate != null
+          ? Math.max(1, quartersBetween(currentDate, l.maturityDate))
+          : Infinity;
         const yearsPast = (0 - matQ) / 4;
         if (yearsPast > longDatedValuationRule.withinCap.cliffYearsPastStatedMaturity) {
           withinCapValue = 0;
@@ -2422,6 +2432,22 @@ export function resolveWaterfallInputs(
   if (ddtlUnfundedPar > 0 && impliedOcAdjustment > 0) {
     impliedOcAdjustment = Math.max(0, impliedOcAdjustment - ddtlUnfundedPar);
   }
+  // Open issue: this strip calibrates `impliedOcAdjustment` against the
+  // T=0 unfunded DDTL par. The engine's forward OC numerator subtracts
+  // `currentDdtlUnfundedPar` (which evolves as DDTLs draw) AND
+  // `impliedOcAdjustment` (frozen at T=0). When a DDTL draws of `D`
+  // mid-projection — `survivingPar` reclassifies from unfunded → funded
+  // (projection.ts ~1396-1401) — the engine's OC numerator changes by
+  // `+endingPar(+D) + (-currentDdtlUnfundedPar)(+D) = +2D` net, but the
+  // economic change should be `+D` if AdjCPA excludes unfunded (engine
+  // convention) or `0` if AdjCPA includes unfunded (PPM convention).
+  // Either way the engine over-reports forward OC by ~D per period
+  // post-draw when `impliedOcAdjustment > 0`. Zero magnitude on Ares XV
+  // (no scheduled draws despite `ddtlUnfundedPar = €581K`); landing a
+  // fix requires (a) verifying which AdjCPA convention the SDF
+  // populates against trustee data on a deal with active draws, and
+  // (b) a synthetic fixture exercising post-draw OC with non-zero
+  // `impliedOcAdjustment`.
 
   // --- Base Rate Floor ---
   // Extracted from interest mechanics section. null = not extracted (use default from CLO_DEFAULTS).

@@ -1512,7 +1512,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     supplementalReserveDisposition = "principalCash",
     seniorExpensesCapCarryforwardSeed,
     preExistingDefaultedPar = 0, preExistingDefaultRecovery = 0, unpricedDefaultedPar = 0, preExistingDefaultOcValue = 0,
-    longDatedObligationHaircut = 0, impliedOcAdjustment = 0, quartersSinceReport = 0,
+    impliedOcAdjustment = 0, quartersSinceReport = 0,
     discountObligationRule = null,
     longDatedValuationRule = null,
     ddtlDrawPercent = 100,
