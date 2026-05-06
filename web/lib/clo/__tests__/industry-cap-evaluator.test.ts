@@ -34,21 +34,21 @@ const NEUTRAL_POOL_STATE: IndustryCapPoolState = {
   inReinvestmentPeriod: true,
 };
 
-function loan(industryCode: string, par: number, industryName?: string): IndustryAggregationLoan {
-  return { parBalance: par, industryCode, industryName: industryName ?? industryCode };
+function loan(industryCode: string, par: number): IndustryAggregationLoan {
+  return { parBalance: par, industryCode };
 }
 
 describe("aggregateIndustryPar + rankedIndustryPar", () => {
-  it("Σ par per industryCode, dropping excluded names + missing codes", () => {
+  it("Σ par per industryCode, dropping excluded codes + missing codes", () => {
     const loans: IndustryAggregationLoan[] = [
-      loan("1010", 10_000_000, "Aerospace"),
-      loan("1010", 5_000_000, "Aerospace"),
-      loan("1020", 8_000_000, "Automotive"),
-      loan("1250", 3_000_000, "Sovereign and Public Finance"),
-      { parBalance: 1_000_000, industryName: "Tech" }, // no code → dropped
+      loan("1010", 10_000_000),
+      loan("1010", 5_000_000),
+      loan("1020", 8_000_000),
+      loan("1250", 3_000_000), // excluded by code below
+      { parBalance: 1_000_000 }, // no code → dropped
       { parBalance: 2_000_000, industryCode: "1030" }, // counted
     ];
-    const out = aggregateIndustryPar(loans, ["Sovereign and Public Finance"]);
+    const out = aggregateIndustryPar(loans, ["1250"]);
     expect(out.get("1010")).toBe(15_000_000);
     expect(out.get("1020")).toBe(8_000_000);
     expect(out.get("1030")).toBe(2_000_000);

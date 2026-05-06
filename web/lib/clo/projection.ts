@@ -497,10 +497,12 @@ export interface ProjectionInputs {
    *  projection.ts:3327, distributing reinvested par across feasible
    *  industry buckets per the configured prior. */
   industryCapRules?: import("./resolver-types").IndustryCapRule[] | null;
-  /** industry-cap: PPM clause-(t) industries excluded from rank/combined ordering.
-   *  Engine drops loans matching these names before per-bucket aggregation
-   *  + before allocator runs. Null when no exclusions. */
-  excludedIndustryNames?: string[] | null;
+  /** industry-cap: PPM clause-(t) industry CODES excluded from rank/combined
+   *  ordering. The resolver converts PPM-extracted excluded industry NAMES
+   *  to canonical codes at resolution time via the active taxonomy; the
+   *  engine consumes only codes because `LoanState.industryCode` is the
+   *  per-position field threaded through synthesis. Null when no exclusions. */
+  excludedIndustryCodes?: string[] | null;
   impliedOcAdjustment?: number; // derived residual between trustee's Adjusted CPA and identified components
   quartersSinceReport?: number; // quarters between compliance report and projection start (adjusts default recovery timing)
   ddtlDrawPercent?: number; // % of DDTL par actually funded on draw (default 100)
@@ -1592,7 +1594,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     discountObligationRule = null,
     longDatedValuationRule = null,
     industryCapRules = null,
-    excludedIndustryNames = null,
+    excludedIndustryCodes = null,
     ddtlDrawPercent = 100,
     moodysWarfTriggerLevel = null,
     minWasBps: minWasBpsTrigger = null,
@@ -3416,9 +3418,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           .map((l) => ({
             parBalance: l.survivingPar,
             industryCode: l.industryCode,
-            industryName: undefined,
           })),
-        excludedIndustryNames,
+        excludedIndustryCodes,
       );
       const initialTotalPar = Array.from(currentPerBucket.values()).reduce((s, v) => s + v, 0);
       // Allocator prior: current pool composition (each bucket weighted by

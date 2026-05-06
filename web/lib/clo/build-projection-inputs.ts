@@ -3,6 +3,43 @@ import type { ProjectionInputs } from "./projection";
 import type { IntexAssumptions } from "./intex/parse-past-cashflows";
 import { CLO_DEFAULTS } from "./defaults";
 import { DEFAULT_RATES_BY_RATING } from "./rating-mapping";
+import { lookupByText } from "./services/taxonomies";
+
+/** Convert PPM-extracted excluded industry NAMES to canonical codes via the
+ *  active taxonomy. The engine consumes only codes (per-position
+ *  `LoanState.industryCode`); resolving here at the boundary means the
+ *  synthesis-site filter operates against the same canonical key as the
+ *  per-loan industry resolver. Names that don't resolve are silently
+ *  dropped with a warning — under-restrictive but safer than blocking
+ *  on an LLM-extracted alias mismatch. */
+function resolveExcludedIndustryCodes(
+  excludedIndustryNames: string[] | null,
+  industryTaxonomy: ResolvedDealData["industryTaxonomy"],
+  warnings: ResolutionWarning[],
+): string[] | null {
+  if (excludedIndustryNames == null || excludedIndustryNames.length === 0) return null;
+  if (industryTaxonomy == null || industryTaxonomy === "deal_specific") return null;
+  const codes: string[] = [];
+  const unresolved: string[] = [];
+  for (const name of excludedIndustryNames) {
+    const entry = lookupByText(name, industryTaxonomy);
+    if (entry) codes.push(entry.code);
+    else unresolved.push(name);
+  }
+  if (unresolved.length > 0) {
+    warnings.push({
+      field: "excludedIndustryNames",
+      message:
+        `${unresolved.length} excluded industry name(s) did not resolve under taxonomy ` +
+        `${industryTaxonomy}: ${unresolved.join(", ")}. The engine will treat these as ` +
+        `non-excluded (industries stay in cap denominator), under-restricting the rule. ` +
+        `Extend the taxonomy alias list or correct the PPM extraction.`,
+      severity: "warn",
+      blocking: false,
+    });
+  }
+  return codes.length > 0 ? codes : null;
+}
 
 // Empty resolved data — used when no deal data has been loaded yet.
 // Produces a ProjectionInputs that will fail validation (initialPar = 0)
@@ -999,7 +1036,11 @@ export function buildFromResolved(
     longDatedObligationHaircut: resolved.longDatedObligationHaircut,
     longDatedValuationRule: resolved.longDatedValuationRule,
     industryCapRules: resolved.industryCapRules,
-    excludedIndustryNames: resolved.excludedIndustryNames,
+    excludedIndustryCodes: resolveExcludedIndustryCodes(
+      resolved.excludedIndustryNames,
+      resolved.industryTaxonomy,
+      composedWarnings,
+    ),
     impliedOcAdjustment: resolved.impliedOcAdjustment,
     quartersSinceReport: resolved.quartersSinceReport,
     ddtlDrawPercent: userAssumptions.ddtlDrawPercent,

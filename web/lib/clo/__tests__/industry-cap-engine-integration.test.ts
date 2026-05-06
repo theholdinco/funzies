@@ -31,7 +31,7 @@ function diversifiedPoolInputs(industryCapRules: IndustryCapRule[] | null = null
       { parBalance: 20_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "1050" },
     ],
     industryCapRules,
-    excludedIndustryNames: null,
+    excludedIndustryCodes: null,
     ...overrides,
   });
 }
@@ -121,7 +121,7 @@ describe("Industry-cap engine-integration — synthesis with industry-cap rules"
         { parBalance: 20_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "1050" },
       ],
       industryCapRules: [{ kind: "single_rank_max", rank: 1, triggerPct: 22 }],
-      excludedIndustryNames: null,
+      excludedIndustryCodes: null,
       cprPct: 30, // high prepayment → lots of reinvestment activity
     });
     const result = runProjection(inputs);
@@ -154,10 +154,44 @@ describe("Industry-cap engine-integration — synthesis with industry-cap rules"
         { kind: "count_above_threshold", thresholdPct: 19, maxCount: 5 },
         { kind: "single_rank_max", rank: 1, triggerPct: 25, appliesWhen: { kind: "post_reinvestment_period" } },
       ],
-      { cprPct: 15, excludedIndustryNames: ["Sovereign and Public Finance"] },
+      // Sovereign and Public Finance: code "1330" under moodys_33 — pre-resolved
+      // (the engine consumes codes; the resolver does name→code conversion via
+      // the active taxonomy at buildFromResolved time).
+      { cprPct: 15, excludedIndustryCodes: ["1330"] },
     );
     const result = runProjection(inputs);
     expect(result.equityIrr).not.toBeNull();
     expect(Number.isFinite(result.equityIrr!)).toBe(true);
+  });
+
+  it("excludedIndustryCodes are honored at synthesis: excluded code drops out of cap denominator (regression)", () => {
+    // Pool: 4 buckets at 25M each (100M total). One of them ("9999") is the
+    // excluded industry. Rule: rank-1 cap of 30%. Without exclusion, all
+    // buckets are 25% = below cap → no constraint. With exclusion, the
+    // denominator drops to 75M (the three non-excluded), each bucket is
+    // 25/75 = 33% > 30% cap → all buckets at-cap → ALL reinvestment blocked.
+    // Pre-fix: aggregateIndustryPar received industryName: undefined and
+    // never applied the exclusion → caps lenient → reinvestment placed.
+    // Post-fix: codes flow through ProjectionInputs.excludedIndustryCodes.
+    const inputs = makeInputs({
+      initialPar: 100_000_000,
+      loans: [
+        { parBalance: 25_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "1010" },
+        { parBalance: 25_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "1020" },
+        { parBalance: 25_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "1030" },
+        { parBalance: 25_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, industryCode: "9999" },
+      ],
+      industryCapRules: [{ kind: "single_rank_max", rank: 1, triggerPct: 30 }],
+      excludedIndustryCodes: ["9999"],
+      cprPct: 20,
+    });
+    const result = runProjection(inputs);
+    // With "9999" excluded from the cap denominator, the three remaining
+    // buckets are each 33% — over the 30% cap. Allocator must block ALL
+    // reinvestment since no feasible bucket has positive headroom (and
+    // industry "9999" isn't a candidate for additional par because it has
+    // zero prior weight when its bucket is excluded from the per-bucket map).
+    const totalBlocked = result.periods.reduce((s, p) => s + (p.stepTrace.reinvestmentBlockedCompliance ?? 0), 0);
+    expect(totalBlocked).toBeGreaterThan(0);
   });
 });

@@ -31,7 +31,6 @@ import type { IndustryCapRule, IndustryCapAppliesWhen } from "./resolver-types";
 export interface IndustryAggregationLoan {
   parBalance: number;
   industryCode?: string;
-  industryName?: string;
 }
 
 /** State of the pool that conditional rules (`appliesWhen`) evaluate
@@ -50,21 +49,23 @@ export interface IndustryCapPoolState {
 // ─────────────────────────────────────────────────────────────────────
 
 /** Σ par per `industryCode` over a loan list, dropping loans whose
- *  industryName matches any entry in `excludedIndustryNames`
- *  (case-insensitive). Loans with no `industryCode` are silently
- *  dropped — coverage is enforced upstream by the resolver's
- *  blocking gate (PR3). Internal map only; converters return
- *  serialization-clean shapes at the boundary. */
+ *  `industryCode` matches any entry in `excludedIndustryCodes`. Loans
+ *  with no `industryCode` are silently dropped — coverage is enforced
+ *  upstream by the resolver's blocking gate (PR3). Filtering by code
+ *  (not name) so the engine works against `LoanState.industryCode`
+ *  directly without carrying redundant industryName through the
+ *  projection. The resolver converts PPM-extracted excludedIndustryNames
+ *  to canonical codes at resolution time via the active taxonomy. */
 export function aggregateIndustryPar(
   loans: ReadonlyArray<IndustryAggregationLoan>,
-  excludedIndustryNames?: ReadonlyArray<string> | null,
+  excludedIndustryCodes?: ReadonlyArray<string> | null,
 ): Map<string, number> {
-  const excluded = new Set((excludedIndustryNames ?? []).map((s) => s.toLowerCase().trim()));
+  const excluded = new Set(excludedIndustryCodes ?? []);
   const out = new Map<string, number>();
   for (const l of loans) {
     if (l.parBalance <= 0) continue;
     if (!l.industryCode) continue;
-    if (l.industryName != null && excluded.has(l.industryName.toLowerCase().trim())) continue;
+    if (excluded.has(l.industryCode)) continue;
     out.set(l.industryCode, (out.get(l.industryCode) ?? 0) + l.parBalance);
   }
   return out;
