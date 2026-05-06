@@ -867,6 +867,10 @@ CREATE TABLE IF NOT EXISTS clo_buy_list_items (
   average_life_years NUMERIC,
   recovery_rate NUMERIC,
   notes TEXT,
+  -- Industry-cap: canonical industry classification (free-text `sector` retained for display).
+  industry_taxonomy TEXT
+    CHECK (industry_taxonomy IS NULL OR industry_taxonomy IN ('moodys_33', 'sp', 'deal_specific')),
+  industry_code TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_clo_buy_list_items_profile ON clo_buy_list_items(profile_id);

@@ -25,7 +25,6 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 ### Open — currently wrong, path to close documented
 - [KI-08 — `trusteeFeesPaid` bundled steps B+C (PARTIAL: pre-fill D3 + cap mechanics C3 + 2026-05-04 PPM verifications cleared; day-count residuals remain blocked on KI-12a)](#ki-08)
 - [KI-12a — Senior / sub management fee base discrepancy](#ki-12a) — **BLOCKED ON DATA ACQUISITION** (Q4 2025 historical SDF + trustee-report bundles)
-- [KI-23 — Industry taxonomy missing on BuyListItem + ResolvedLoan blocks industry-cap filtering](#ki-23)
 
 ### Latent — currently inactive on Euro XV; emerges on portability or stress
 *Distinct from "Deferred" (those are intentional design choices about mechanics that exist in the indenture but the model elects not to simulate). "Latent" entries are unmodeled or hardcoded paths whose current Euro XV magnitude happens to be zero, but which will produce wrong numbers the moment a deal hits the triggering condition (different deal structure, different PPM, non-zero balance, FX exposure, etc.). Treat each as a real bug whose materiality is data-dependent, not a deliberate scope decision.*
@@ -365,34 +364,6 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 **Important — test input path correctness (fixed Sprint 3):** The prior test setup spread `DEFAULT_ASSUMPTIONS` with `taxesBps: 0, adminFeeBps: 0, trusteeFeeBps: 0`, meaning the markers could not move when KI-08 admin or KI-09 taxes closed (the input path zeroed the very fields those closures would add to the numerator). Swapped to `defaultsFromResolved(fixture.resolved, fixture.raw)` — the production path used by `ProjectionModel.tsx` — so the cascade actually cascades. Closure of admin/taxes then shifted the observed drift by the expected ~2-3 pp per class, confirming both the fix and the cascade wiring.
 **Path to close:** Closes progressively as KI-01 / KI-12a close. No standalone work.
 **Test:** `backtest-harness.test.ts > "N6 harness" > Class A/B|C|D IC compositional parity at T=0` — three `failsWithMagnitude` markers (`KI-IC-AB`, `KI-IC-C`, `KI-IC-D`), tolerance 0.05pp. Every PR closing an upstream KI must re-run the harness and update these three `expectedDrift` values.
-
----
-
-<a id="ki-23"></a>
-### [KI-23] Industry taxonomy missing on BuyListItem + ResolvedLoan blocks industry-cap enforcement
-
-**Context:** CLO indentures typically cap single-industry concentration (e.g., "largest industry ≤ 15% of par"). Enforcing this requires per-loan industry classification under a standardized taxonomy (Moody's 35-industry list, S&P 35-industry list, or PPM-specific mapping).
-
-**Current engine behavior:** Two affected surfaces — neither can compute industry concentration:
-
-1. **`ResolvedLoan`** has no industry field. The switch-simulator's D4 pool-metric recomputation explicitly skips `largestIndustryPct` for this reason (see D4 code comment).
-2. **`BuyListItem`** has a `sector: string | null` field, but it's **free-text** (partner-entered "Technology" / "Retail & Restaurants" / etc.). Without taxonomy normalization, an "exclude largest industry" filter would group near-duplicates ("Tech", "Technology", "Software & Tech") as distinct industries and under-enforce.
-
-The D5 buy-list filter therefore ships 4 enforceable filters (WARF / WAS / excludeCaa / excludeCovLite) and defers industry. Partner demo story: "4 of 5 PPM filter categories fully enforced (WARF, Min WAS, excludeCaa, excludeCovLite); industry filter deferred pending taxonomy normalization, documented as KI-23."
-
-**PPM-correct behavior:** Per-loan industry tagged against the deal's canonical taxonomy (Moody's or S&P depending on PPM). Industry concentration computed as `max_per_industry(Σ par) / total par × 100`. Cap enforced at reinvestment (C1) + filter (D5) + forward projection (C2).
-
-**Quantitative magnitude:** Unknown without data. On Euro XV, `pool?.largestIndustryPct` is not populated and no concentration test row tracks it; resolver emits nothing for industry.
-
-**Path to close (tiered):**
-
-- **Tier 1 (buy-list filter, D5 extension):** Normalize `BuyListItem.sector` via a lookup table (or add a `sectorKey` canonicalized column). Add `maxIndustryPct` + `excludeLargestIndustry` filters.
-- **Tier 2 (ResolvedLoan extension, D4 + C2 extension):** Add `industry: string | null` + `industryKey: string | null` to `ResolvedLoan`. Populate from holdings data (resolver extracts from SDF if present, else null). Extend `computePoolQualityMetrics` + switch simulator with `largestIndustryPct`. Extend C1 reinvestment compliance to enforce industry cap.
-- **Tier 3 (C2 concentration test coverage):** Add industry concentration test to `resolved.concentrationTests` + compliance enforcement during forward projection.
-
-Partner-demo gap but not blocking for Euro XV where industry concentration is likely within caps.
-
-**Test:** None standalone until Tier 1 ships. When it does, a `d5-industry-filter.test.ts` pinned to synthetic buy-list items would cover the normalization + filter logic.
 
 ---
 

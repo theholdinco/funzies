@@ -79,6 +79,17 @@ export interface PoolQualityMetrics {
    *  confidentiality redacts the rating itself in the BNY trustee PDF as
    *  `***`; only Intex carries the value). Denominator: WARF totalPar. */
   pctOnCreditEstimateOrPrivateRating: number;
+  /** industry-cap: par share (%) held by the largest industry under the deal's
+   *  active taxonomy, or null when no loans carry an industry tag.
+   *  Computed as `max(industryPar) / totalPar × 100`. Denominator excludes
+   *  loans with no `industryCode` (silent — coverage is enforced by the
+   *  resolver-side blocking gate, so reaching here with partial coverage
+   *  means the projection was permitted to run anyway). */
+  largestIndustryPct: number | null;
+  /** industry-cap: full descending-par-share industry distribution under the
+   *  active taxonomy. Null when no loans carry industryCode. Array (NOT
+   *  Map) for clean RSC boundary serialization. */
+  industryDistributionPct: Array<{ industryCode: string; parPct: number }> | null;
 }
 
 /** Minimum per-loan shape required for quality-metric computation. Both
@@ -117,6 +128,12 @@ export interface QualityMetricLoan {
   /** True when Intex tags this position as a credit estimate or private
    *  letter rating. Drives `pctOnCreditEstimateOrPrivateRating`. */
   isCreditEstimateOrPrivateRating?: boolean;
+  /** industry-cap: per-position canonical industry code under the deal's active
+   *  taxonomy. Drives `largestIndustryPct` + `industryDistributionPct`.
+   *  Undefined when the deal has no clause (t) or when the position is
+   *  a synthetic reinvestment that hasn't been tagged by the allocator
+   *  yet. */
+  industryCode?: string;
 }
 
 /** Optional knobs for `computePoolQualityMetrics`. */
@@ -130,6 +147,16 @@ export interface PoolQualityMetricsOpts {
    *  When omitted, no currency filter applies (all loans assumed in deal
    *  currency). */
   dealCurrency?: string | null;
+  /** Industry codes excluded from the industry-cap denominator + bucket
+   *  ordering. PPM clause-(t) names a list of industries that don't count
+   *  toward the test ("Sovereign and Public Finance" being the canonical
+   *  case). Resolver converts names to codes via the active taxonomy. The
+   *  engine's allocator filters by this list at the synthesis site, and
+   *  this helper's `largestIndustryPct` / `industryDistributionPct`
+   *  outputs MUST share the same denominator — otherwise the UI's
+   *  largest-industry % would diverge from what the rule actually tests
+   *  against. */
+  excludedIndustryCodes?: ReadonlyArray<string> | null;
 }
 
 /** Partial sums extracted from one pass over the loan list. Sole source of
@@ -317,6 +344,8 @@ export function deriveQualityMetrics(
       pctCccAndBelow: 0,
       pctMoodysRatingDerivedFromSp: 0,
       pctOnCreditEstimateOrPrivateRating: 0,
+      largestIndustryPct: null,
+      industryDistributionPct: null,
     };
   }
 
@@ -347,6 +376,13 @@ export function deriveQualityMetrics(
     pctCccAndBelow,
     pctMoodysRatingDerivedFromSp,
     pctOnCreditEstimateOrPrivateRating,
+    // Industry-cap — populated by `computePoolQualityMetrics` after deriveQualityMetrics
+    // returns. The aggregate alone can't compute this (needs the per-loan
+    // industryCode list), so we patch into the result rather than carrying
+    // a Map through `QualityMetricsAggregates` (clean serialization at the
+    // engine→service→UI boundary).
+    largestIndustryPct: null,
+    industryDistributionPct: null,
   };
 }
 
@@ -366,7 +402,33 @@ export function computePoolQualityMetrics(
   loans: QualityMetricLoan[],
   opts: PoolQualityMetricsOpts = {},
 ): PoolQualityMetrics {
-  return deriveQualityMetrics(aggregateQualityMetrics(loans, opts), opts);
+  const base = deriveQualityMetrics(aggregateQualityMetrics(loans, opts), opts);
+  // industry-cap: industry distribution + largestIndustryPct. Patched onto `base`
+  // here because the aggregation map can't round-trip through the partial
+  // sums shape (which is JSON-serializable primitives only). Excluded codes
+  // are dropped from BOTH numerator (per-bucket par) and denominator
+  // (totalParWithIndustry) so the displayed largestIndustryPct matches the
+  // denominator the engine's allocator uses internally — otherwise the UI's
+  // top-industry % would diverge from what the rule actually tests against.
+  const excluded = new Set(opts.excludedIndustryCodes ?? []);
+  const industryParByCode = new Map<string, number>();
+  let totalParWithIndustry = 0;
+  for (const l of loans) {
+    if (l.parBalance <= 0) continue;
+    if (!l.industryCode) continue;
+    if (excluded.has(l.industryCode)) continue;
+    industryParByCode.set(l.industryCode, (industryParByCode.get(l.industryCode) ?? 0) + l.parBalance);
+    totalParWithIndustry += l.parBalance;
+  }
+  if (totalParWithIndustry > 0) {
+    const distribution = Array.from(industryParByCode, ([industryCode, par]) => ({
+      industryCode,
+      parPct: (par / totalParWithIndustry) * 100,
+    })).sort((a, b) => b.parPct - a.parPct);
+    base.industryDistributionPct = distribution;
+    base.largestIndustryPct = distribution[0]?.parPct ?? null;
+  }
+  return base;
 }
 
 /** Concentration-test metric: par share held by the top N obligors.

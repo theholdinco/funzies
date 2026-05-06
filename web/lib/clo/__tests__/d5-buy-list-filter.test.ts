@@ -4,7 +4,7 @@
  * Tests the four enforceable filters (WARF, min spread, excludeCaa,
  * excludeCovLite), the pre-fill from resolved quality tests, and the
  * passed-vs-dropped accounting. Industry cap is explicitly out of scope
- * (see KI-23).
+ * (see ledger).
  */
 
 import { describe, it, expect } from "vitest";
@@ -30,6 +30,8 @@ function makeItem(overrides: Partial<BuyListItem>): BuyListItem {
     obligorName: "Test Obligor",
     facilityName: null,
     sector: null,
+    industryTaxonomy: null,
+    industryCode: null,
     moodysRating: null,
     spRating: null,
     spreadBps: null,
@@ -190,5 +192,108 @@ describe("D5 — Euro XV integration: pre-fill × filter pipeline", () => {
     const result = filterBuyList(items, filters);
     expect(result.passed.map((i) => i.obligorName)).toEqual(["pass"]);
     expect(result.dropped).toHaveLength(3);
+  });
+});
+
+describe("Industry-cap — industry filter (excludeIndustryCodes)", () => {
+  it("drops items whose industryCode matches the blacklist", () => {
+    const items = [
+      makeItem({ obligorName: "tech-a", industryCode: "1160", industryTaxonomy: "moodys_33" }),
+      makeItem({ obligorName: "auto-a", industryCode: "1020", industryTaxonomy: "moodys_33" }),
+      makeItem({ obligorName: "untagged", industryCode: null, industryTaxonomy: null }),
+    ];
+    const result = filterBuyList(items, { excludeIndustryCodes: ["1160"] });
+    expect(result.passed.map((i) => i.obligorName)).toEqual(["auto-a", "untagged"]);
+    expect(result.dropped).toHaveLength(1);
+    expect(result.dropped[0].item.obligorName).toBe("tech-a");
+  });
+
+  it("untagged items pass even when excludeIndustryCodes is non-empty (D5 doesn't classify)", () => {
+    const items = [
+      makeItem({ obligorName: "untagged", industryCode: null, industryTaxonomy: null }),
+    ];
+    const result = filterBuyList(items, { excludeIndustryCodes: ["anything", "even-this"] });
+    expect(result.passed).toHaveLength(1);
+  });
+
+  it("buyListFiltersFromResolved pre-fills excludeIndustryCodes from at-or-over-cap industries", () => {
+    const taggedResolved: typeof fixture.resolved = {
+      ...fixture.resolved,
+      industryCapRules: [{ kind: "single_rank_max", rank: 1, triggerPct: 15 }],
+      industryCapPresentInPpm: true,
+      industryTaxonomy: "moodys_33",
+      poolSummary: {
+        ...fixture.resolved.poolSummary,
+        industryDistributionPct: [
+          { industryCode: "1160", industryName: "High Tech", parPct: 15.2 }, // at-or-over cap
+          { industryCode: "1020", industryName: "Automotive", parPct: 8 },
+        ],
+        largestIndustryPct: 15.2,
+      },
+    };
+    const filters = buyListFiltersFromResolved(taggedResolved);
+    expect(filters.excludeIndustryCodes).toEqual(["1160"]);
+  });
+
+  it("buyListFiltersFromResolved does NOT flag buckets under cap (no fabricated cushion)", () => {
+    const taggedResolved: typeof fixture.resolved = {
+      ...fixture.resolved,
+      industryCapRules: [{ kind: "single_rank_max", rank: 1, triggerPct: 15 }],
+      industryCapPresentInPpm: true,
+      industryTaxonomy: "moodys_33",
+      poolSummary: {
+        ...fixture.resolved.poolSummary,
+        industryDistributionPct: [
+          { industryCode: "1160", industryName: "High Tech", parPct: 14.5 }, // close but under
+          { industryCode: "1020", industryName: "Automotive", parPct: 8 },
+        ],
+        largestIndustryPct: 14.5,
+      },
+    };
+    const filters = buyListFiltersFromResolved(taggedResolved);
+    expect(filters.excludeIndustryCodes).toEqual([]);
+  });
+
+  it("buyListFiltersFromResolved returns empty excludeIndustryCodes when no rules / no distribution", () => {
+    const filters = buyListFiltersFromResolved(fixture.resolved);
+    expect(filters.excludeIndustryCodes).toEqual([]);
+  });
+
+  it("buyListFiltersFromResolved skips post-RP rules during the reinvestment period (regression)", () => {
+    // Pre-fix: identifyAtCapIndustries ignored appliesWhen — a post-RP rule
+    // was treated as binding even while the deal was still in RP, dropping
+    // viable buy candidates from the recommendation list. Post-fix: the
+    // rule's appliesWhen={kind:"post_reinvestment_period"} is skipped when
+    // currentDate ≤ reinvestmentPeriodEnd.
+    const taggedResolved: typeof fixture.resolved = {
+      ...fixture.resolved,
+      industryCapRules: [
+        {
+          kind: "single_rank_max",
+          rank: 1,
+          triggerPct: 15,
+          appliesWhen: { kind: "post_reinvestment_period" },
+        },
+      ],
+      industryCapPresentInPpm: true,
+      industryTaxonomy: "moodys_33",
+      poolSummary: {
+        ...fixture.resolved.poolSummary,
+        industryDistributionPct: [
+          { industryCode: "1160", industryName: "High Tech", parPct: 15.2 }, // would be at-cap if rule applied
+          { industryCode: "1020", industryName: "Automotive", parPct: 8 },
+        ],
+        largestIndustryPct: 15.2,
+      },
+      // Force inRP=true: currentDate before reinvestmentPeriodEnd.
+      dates: {
+        ...fixture.resolved.dates,
+        currentDate: "2025-01-01",
+        reinvestmentPeriodEnd: "2027-01-01",
+      },
+    };
+    const filters = buyListFiltersFromResolved(taggedResolved);
+    // Post-RP rule doesn't apply during RP → industry not flagged.
+    expect(filters.excludeIndustryCodes).toEqual([]);
   });
 });

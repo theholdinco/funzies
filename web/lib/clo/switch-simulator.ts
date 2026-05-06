@@ -62,6 +62,7 @@ function toQualityMetricLoan(l: ResolvedLoan, currentDate: string) {
     fitchRatingFinal: l.fitchRatingFinal,
     moodysRatingSource: l.moodysRatingSource,
     isCreditEstimateOrPrivateRating: l.isCreditEstimateOrPrivateRating,
+    industryCode: l.industryCode,
   };
 }
 
@@ -112,6 +113,7 @@ export function applySwitch(
   const switchedQuality = computePoolQualityMetrics(qloans, {
     referenceWAFC: resolved.referenceWeightedAverageFixedCoupon ?? undefined,
     dealCurrency: resolved.currency,
+    excludedIndustryCodes: resolved.excludedIndustryCodes,
   });
   const switchedTop10 = computeTopNObligorsPct(fundedSwitched, 10);
   const switchedTotalPar = switchedLoans.reduce((s, l) => s + l.parBalance, 0);
@@ -173,6 +175,35 @@ export function applySwitch(
     (l) => (l.pikSpreadBps == null ? undefined : l.pikSpreadBps > 0),
   );
 
+  // industry-cap: post-trade industry distribution. The shared
+  // `computePoolQualityMetrics` helper populates `largestIndustryPct` +
+  // `industryDistributionPct` on `switchedQuality` automatically when
+  // every loan carries an `industryCode`. The shape on `ResolvedPool`
+  // also tracks an `industryName` field for display — looked up via the
+  // taxonomy seed when available, else falls back to the code as the
+  // display string. When industry coverage is incomplete (any single
+  // funded loan lacks `industryCode`), the helper returns null on both
+  // fields and the partner-facing UI shows "industry: incomplete data"
+  // (consistent with the resolver-side coverage gate which would have
+  // already fired).
+  let switchedIndustryDistribution: Array<{ industryCode: string; industryName: string; parPct: number }> | null = null;
+  let switchedLargestIndustryPct: number | null = null;
+  if (switchedQuality.industryDistributionPct != null) {
+    // Patch industryName from the existing distribution lookup or the
+    // post-switch loans (taxonomy seed lookup would also work but
+    // sourcing from loans avoids a circular dep into services/).
+    const nameByCode = new Map<string, string>();
+    for (const l of switchedLoans) {
+      if (l.industryCode && l.industryName) nameByCode.set(l.industryCode, l.industryName);
+    }
+    switchedIndustryDistribution = switchedQuality.industryDistributionPct.map((entry) => ({
+      industryCode: entry.industryCode,
+      industryName: nameByCode.get(entry.industryCode) ?? entry.industryCode,
+      parPct: entry.parPct,
+    }));
+    switchedLargestIndustryPct = switchedQuality.largestIndustryPct;
+  }
+
   const switchedResolved: ResolvedDealData = {
     ...resolved,
     loans: switchedLoans,
@@ -188,6 +219,8 @@ export function applySwitch(
       pctPik: switchedPctPik,
       numberOfObligors: switchedObligors,
       top10ObligorsPct: switchedTop10,
+      industryDistributionPct: switchedIndustryDistribution,
+      largestIndustryPct: switchedLargestIndustryPct,
       // Other composition fields (pctFixedRate, pctBonds, pctSeniorSecured,
       // pctSecondLien, pctCurrentPay, diversityScore, waRecoveryRate,
       // totalMarketValue, numberOfAssets) are inherited from the base pool
