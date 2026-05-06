@@ -342,38 +342,24 @@ export interface ProjectionInputs {
   /** §7.5 — Optional time-varying CDR path. When present, called once per
    *  quarter (1-indexed) to obtain that period's `defaultRatesByRating`
    *  map. When absent, the engine uses the constant `defaultRatesByRating`
-   *  for every quarter (current behavior).
+   *  for every quarter.
    *
-   *  Semantics under each hazard branch:
-   *
-   *  1. **Legacy bucket-hazard branch** (`useLegacyBucketHazard: true`,
-   *     used in tests and legacy callers): the returned map *replaces*
-   *     `defaultRatesByRating` for that quarter outright. A bucket
-   *     reading 5% means "this quarter's annualized CDR for that bucket
-   *     is 5%."
-   *
-   *  2. **Per-position WARF branch** (`useLegacyBucketHazard: false`,
-   *     production default): the returned map is converted to a per-
-   *     bucket *multiplier* against `defaultRatesByRating`. If the
-   *     returned bucket is `5%` and the constant baseline is `2%`, the
-   *     multiplier is `5/2 = 2.5×`, which scales each loan's WARF-
-   *     derived hazard by 2.5× for that quarter. When the constant
-   *     baseline for a bucket is zero, the multiplier is undefined and
-   *     the engine falls back to the bucket-map hazard for that loan
-   *     (matches the legacy branch's semantic for the zero-baseline
-   *     edge case). See `cdr-path-fn.test.ts` "production-config" suite
-   *     and decision R for why both branches must be exercised.
+   *  Semantics under per-position WARF (the only hazard branch): the
+   *  returned map is converted to a per-bucket *multiplier* against
+   *  `defaultRatesByRating`. If the returned bucket is `5%` and the
+   *  constant baseline is `2%`, the multiplier is `5/2 = 2.5×`, which
+   *  scales each loan's WARF-derived hazard by 2.5× for that quarter.
+   *  When the constant baseline for a bucket is zero, the multiplier is
+   *  undefined and the engine falls back to the bucket-map hazard for
+   *  that loan — callers wanting "no defaults" should pair a non-zero
+   *  baseline with a zero-returning path-fn (multiplier 0/baseline = 0
+   *  → hazard = warfHazard × 0 = 0).
    *
    *  The function form is the breakage-free alternative to the original
    *  `Record<bucket, pct[]>` proposal — same modeling power, no fixture
    *  migration cost. Monte Carlo callers supply a path that draws each
    *  quarter from a calibrated distribution; deterministic callers can
-   *  hard-code a stress curve.
-   *
-   *  Naming note: previously `cdrPathFn`. The `Multiplier` infix in the
-   *  current name signals the production-branch semantics — the dominant
-   *  use site (per-position WARF) treats the path values as a scaling
-   *  factor, not an absolute override. */
+   *  hard-code a stress curve. */
   cdrMultiplierPathFn?: (q: number) => Record<string, number>;
   cprPct: number;
   recoveryPct: number;
@@ -536,24 +522,6 @@ export interface ProjectionInputs {
    *  excluded from the Floating Par denominator as Non-Euro Obligations.
    *  When null/omitted, no currency filter applies. */
   dealCurrency?: string | null;
-  /** D2 — Legacy escape-hatch: when true, defaults fall back to the coarse
-   *  `defaultRatesByRating[bucket]` hazard path (the pre-D2 approximation).
-   *
-   *  **Default: false** (per-position WARF hazard is active — the
-   *  institutionally-correct behavior matching Moody's CLO methodology).
-   *  Caa1 (factor 4770 ≈ 6.3% annual) and Caa3 (8070 ≈ 15.2% annual) get
-   *  distinct hazards instead of both averaging to the CCC bucket's 10.28%.
-   *
-   *  Flag exists for (a) legacy test pinning that predates D2 and hasn't
-   *  been re-baselined yet (six test factories in `__tests__/`, see
-   *  `test-helpers.ts`), (b) A/B validation when rolling forward, (c)
-   *  deterministic regressions against known pre-D2 fixtures.
-   *
-   *  Tracked for deprecation under **KI-20**. When set to true, the engine
-   *  emits a one-shot `console.warn` in dev builds so stale legacy pins
-   *  surface during test output rather than silently. The flag is expected
-   *  to be removed entirely once all legacy-pinned tests re-baseline. */
-  useLegacyBucketHazard?: boolean;
   /** D2b — Per-bucket override hook. When a rating bucket appears in this
    *  list, the engine uses the user's `defaultRatesByRating[bucket]` hazard
    *  for every loan in that bucket, overriding the per-position WARF hazard.
@@ -1584,7 +1552,6 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     fitchCccLimitPct: fitchCccLimitPctTrigger = null,
     referenceWafcPct = null,
     dealCurrency = null,
-    useLegacyBucketHazard = false,
     overriddenBuckets,
     interestNonPaymentGracePeriods,
   } = inputs;
@@ -1596,19 +1563,6 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   const overriddenBucketSet = overriddenBuckets && overriddenBuckets.length > 0
     ? new Set<string>(overriddenBuckets)
     : null;
-
-  // D2 — Warn when the legacy escape-hatch is active so stale pins in test
-  // output don't silently perpetuate. Forces deprecation awareness per KI-20.
-  // Fires once per runProjection call; tests pinning the flag see this in
-  // their stderr as a reminder to re-baseline. Gated on `typeof console` so
-  // non-browser environments without console don't throw.
-  if (useLegacyBucketHazard && typeof console !== "undefined" && typeof console.warn === "function") {
-    console.warn(
-      "[D2] Legacy bucket-hazard path active (useLegacyBucketHazard=true). " +
-      "This test or caller is pinned to the pre-D2 default-hazard computation. " +
-      "Re-baseline to per-position WARF hazard and remove the flag. See KI-20.",
-    );
-  }
 
   // D1: the two most-senior debt tranches (structurally Class A and Class B,
   // regardless of label) are non-deferrable per PPM — if they don't receive
@@ -1755,10 +1709,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   const totalQuarters = callQuarters ? Math.min(callQuarters, maturityQuarters) : maturityQuarters;
   const recoveryLagQ = Math.max(0, Math.round(recoveryLagMonths / 3));
 
-  // Pre-compute quarterly hazard rates per rating bucket. Used as a legacy
-  // fallback when the D2 per-position path is explicitly opted out via
-  // `useLegacyBucketHazard`, and for positions without a per-position
-  // `warfFactor` when the flag is absent. See the default-draw loop below.
+  // Pre-compute quarterly hazard rates per rating bucket. Used by the
+  // `overriddenBuckets` UI-slider override path and by the cdrMultiplierPathFn
+  // Infinity-fallback edge case. See the default-draw loop below.
   // §7.5: when `cdrMultiplierPathFn` is supplied the engine recomputes
   // hazard per quarter from the path; the constant-path (`quarterlyHazard`)
   // is the q=undefined / fallback case used everywhere
@@ -3055,20 +3008,16 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         // DDTL/revolver commitments (notional on undrawnCommitment, no
         // funded leg to suffer a default).
         if (loan.survivingPar <= 0) continue;
-        // D2 — Per-position hazard is the default behavior (Moody's CLO
-        // methodology). `useLegacyBucketHazard` escapes to the pre-D2
-        // bucket-averaged path when legacy tests need their pinning
-        // preserved. Per-position distinguishes Caa1 (factor 4770 ≈ 6.3%
-        // annual) from Caa3 (8070 ≈ 15.2% annual) which the bucket map
-        // averages together as "CCC" at 10.28%. Positions without a
-        // `warfFactor` (shouldn't happen post-D2 since construction always
-        // populates from LoanInput or BUCKET_WARF_FALLBACK) fall back to
-        // the bucket map as a defensive path.
+        // Per-position hazard is the only path (Moody's CLO methodology).
+        // Distinguishes Caa1 (factor 4770 ≈ 6.3% annual) from Caa3 (8070
+        // ≈ 15.2% annual) which the bucket map averaged together as "CCC"
+        // at 10.28%. UI bucket-CDR sliders that the user touches activate
+        // `overriddenBuckets` to route those buckets through the bucket-map
+        // branch so the slider value is consumed; un-touched buckets stay
+        // on per-position WARF.
         const isBucketOverridden = overriddenBucketSet?.has(loan.ratingBucket) ?? false;
-        const usingBucketBranch =
-          useLegacyBucketHazard || isBucketOverridden || loan.warfFactor <= 0;
         let baseHazard: number;
-        if (usingBucketBranch) {
+        if (isBucketOverridden) {
           // Bucket-map branch — already path-aware via `quarterlyHazard`
           // recompute above.
           baseHazard = quarterlyHazard[loan.ratingBucket] ?? 0;

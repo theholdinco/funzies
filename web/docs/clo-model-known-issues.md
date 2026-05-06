@@ -25,7 +25,6 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 ### Open — currently wrong, path to close documented
 - [KI-08 — `trusteeFeesPaid` bundled steps B+C (PARTIAL: pre-fill D3 + cap mechanics C3 + 2026-05-04 PPM verifications cleared; day-count residuals remain blocked on KI-12a)](#ki-08)
 - [KI-12a — Senior / sub management fee base discrepancy](#ki-12a) — **BLOCKED ON DATA ACQUISITION** (Q4 2025 historical SDF + trustee-report bundles)
-- [KI-20 — D2 legacy escape-hatch on 6 test-factory sites](#ki-20)
 - [KI-23 — Industry taxonomy missing on BuyListItem + ResolvedLoan blocks industry-cap filtering](#ki-23)
 
 ### Latent — currently inactive on Euro XV; emerges on portability or stress
@@ -394,31 +393,6 @@ The D5 buy-list filter therefore ships 4 enforceable filters (WARF / WAS / exclu
 Partner-demo gap but not blocking for Euro XV where industry concentration is likely within caps.
 
 **Test:** None standalone until Tier 1 ships. When it does, a `d5-industry-filter.test.ts` pinned to synthetic buy-list items would cover the normalization + filter logic.
-
----
-
-<a id="ki-20"></a>
-### [KI-20] D2 legacy escape-hatch on 6 test-factory sites (Sprint 4)
-
-**Context:** Sprint 4 shipped D2 (per-position WARF hazard) as the engine's production default. Legacy test factories that predate D2 compute expected defaults from `defaultRatesByRating[ratingBucket]` hand-math — under the new default they would fail (bucket rate ≠ WARF-derived per-position rate). Rather than re-baselining ~30 hand-computed expected values in one PR, the factories were pinned to `useLegacyBucketHazard: true` as a bridge.
-
-**Current engine behavior:** Production default = per-position WARF hazard. Six test-factory sites explicitly opt into legacy bucket behavior:
-1. `lib/clo/__tests__/test-helpers.ts:makeInputs` (shared factory, ~5 test files consume)
-2. `lib/clo/__tests__/projection-edge-cases.test.ts:makeSimpleInputs`
-3. `lib/clo/__tests__/projection-edge-cases.test.ts:makeMultiTrancheInputs`
-4. `lib/clo/__tests__/projection-cure.test.ts:makeRealisticInputs`
-5. `lib/clo/__tests__/projection-structure.test.ts:makeFullDealInputs`
-6. `lib/clo/__tests__/projection-structure.test.ts:makeFeeTestInputs` (local to one describe block)
-
-**Partner-visible impact:** None on production behavior — Euro XV runs through `buildFromResolved`/`defaultsFromResolved` which is NOT pinned to legacy. N1 / N6 / B1 / B2 / C1 / C2 / C3 tests all run on per-position hazard already and pass (D2's precision benefit is materially visible only in stress scenarios with concentrated sub-bucket exposure, not in Euro XV base case).
-
-**Path to close:** For each of the 6 test factories, (a) determine which tests it serves actually depend on hand-computed default-hazard math (as opposed to just wanting plausible defaults for other mechanics), (b) for math-dependent tests, re-baseline expected values to the per-position formula, (c) remove the legacy pin from the factory once all its tests re-baseline, (d) delete `useLegacyBucketHazard` entirely once no pin sites remain.
-
-**Forcing function:** Engine emits `console.warn` when `useLegacyBucketHazard: true` is passed (`projection.ts`, one-shot per `runProjection` call). Test output surfaces the deprecation so a future developer sees it in CI. Without the warn, flag becomes permanent tech debt framed as temporary.
-
-**Sequencing:** Each factory is independent of the others; can be re-baselined one at a time. Not a Sprint 4 blocker.
-
-**Test:** No standalone marker. Closure signal is: all six pin sites deleted, `useLegacyBucketHazard` field removed from `ProjectionInputs`, full suite green.
 
 ---
 
