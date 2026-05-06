@@ -1,5 +1,5 @@
 /**
- * KI-23 — engine-side industry-cap evaluator + water-filling allocator.
+ * Industry-cap — engine-side industry-cap evaluator + water-filling allocator.
  *
  * Pure helpers consumed by:
  *   - `pool-metrics.ts` — `largestIndustryPct` aggregate on PoolQualityMetrics

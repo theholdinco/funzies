@@ -1,5 +1,5 @@
 /**
- * KI-23 — `mapIndustryConcentrationTest` unit tests. Locks in the
+ * Industry-cap — `mapIndustryConcentrationTest` unit tests. Locks in the
  * failure-closed discipline:
  *
  *   - present:false → no constraint
@@ -36,7 +36,7 @@ function getIndustryBlock(
   return mapIndustryConcentrationTest(makePpm(block)) as Record<string, unknown> | null;
 }
 
-describe("mapIndustryConcentrationTest — KI-23", () => {
+describe("mapIndustryConcentrationTest — industry-cap", () => {
   it("whole block missing → null (legacy extraction)", () => {
     const result = getIndustryBlock(undefined);
     expect(result).toBeNull();

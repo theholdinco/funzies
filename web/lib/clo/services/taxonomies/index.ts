@@ -1,5 +1,5 @@
 /**
- * Taxonomy module barrel — KI-23 closure.
+ * Taxonomy module barrel — industry-cap closure.
  *
  * Re-exports the canonical industry classification lists + the
  * `selectTaxonomy` helper that resolves a `IndustryTaxonomy` enum value to

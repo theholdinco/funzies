@@ -415,7 +415,7 @@ function mapPortfolioConstraints(ppm: PpmJson): Record<string, unknown> {
 }
 
 /** Map clause (t) — industry concentration cap — from ppm.json into a typed
- *  shape consumed by the resolver. KI-23 closure.
+ *  shape consumed by the resolver. industry-cap closure.
  *
  *  Failure-closed discipline (anti-pattern #3):
  *   - Whole block missing/null → present:null (resolver decides whether to

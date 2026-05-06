@@ -867,7 +867,7 @@ CREATE TABLE IF NOT EXISTS clo_buy_list_items (
   average_life_years NUMERIC,
   recovery_rate NUMERIC,
   notes TEXT,
-  -- KI-23: canonical industry classification (free-text `sector` retained for display).
+  -- Industry-cap: canonical industry classification (free-text `sector` retained for display).
   industry_taxonomy TEXT
     CHECK (industry_taxonomy IS NULL OR industry_taxonomy IN ('moodys_33', 'sp', 'deal_specific')),
   industry_code TEXT,
@@ -875,7 +875,7 @@ CREATE TABLE IF NOT EXISTS clo_buy_list_items (
 );
 CREATE INDEX IF NOT EXISTS idx_clo_buy_list_items_profile ON clo_buy_list_items(profile_id);
 
--- KI-23: per-user free-text → canonical industry alias overrides.
+-- Industry-cap: per-user free-text → canonical industry alias overrides.
 CREATE TABLE IF NOT EXISTS clo_industry_alias_overrides (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

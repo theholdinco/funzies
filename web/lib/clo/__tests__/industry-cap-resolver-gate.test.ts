@@ -1,5 +1,5 @@
 /**
- * KI-23 — resolver-side industry-cap blocking gate. Locks in Option D's
+ * Industry-cap — resolver-side industry-cap blocking gate. Locks in Option D's
  * three-state behavior:
  *
  *   - PPM block missing/null + SDF has INDUSTRY rows  → block
@@ -52,7 +52,7 @@ function blockingWarnings(warnings: ReturnType<typeof runResolver>["warnings"]):
   return warnings.filter((w) => w.severity === "error" && w.blocking).map((w) => w.field);
 }
 
-describe("KI-23 — resolver-side industry-cap blocking gate", () => {
+describe("Industry-cap — resolver-side industry-cap blocking gate", () => {
   it("PPM block missing + no SDF INDUSTRY rows → no industryCapRules warning", () => {
     const { warnings } = runResolver({ industryConcentrationTest: undefined }, []);
     expect(blockingWarnings(warnings)).not.toContain("industryCapRules");

@@ -170,7 +170,7 @@ export function applySwitch(
     (l) => (l.pikSpreadBps == null ? undefined : l.pikSpreadBps > 0),
   );
 
-  // KI-23: post-trade industry distribution. The shared
+  // industry-cap: post-trade industry distribution. The shared
   // `computePoolQualityMetrics` helper populates `largestIndustryPct` +
   // `industryDistributionPct` on `switchedQuality` automatically when
   // every loan carries an `industryCode`. The shape on `ResolvedPool`

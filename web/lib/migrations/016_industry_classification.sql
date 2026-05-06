@@ -1,4 +1,4 @@
--- KI-23 closure (PR1): canonical industry classification on the buy list +
+-- Industry-cap closure (PR1): canonical industry classification on the buy list +
 -- per-user alias overrides for free-text → canonical mapping.
 --
 -- Existing `clo_industry_classifications` table (schema.sql:808) carries the

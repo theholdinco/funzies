@@ -4,7 +4,7 @@
  * Tests the four enforceable filters (WARF, min spread, excludeCaa,
  * excludeCovLite), the pre-fill from resolved quality tests, and the
  * passed-vs-dropped accounting. Industry cap is explicitly out of scope
- * (see KI-23).
+ * (see ledger).
  */
 
 import { describe, it, expect } from "vitest";
@@ -192,5 +192,52 @@ describe("D5 — Euro XV integration: pre-fill × filter pipeline", () => {
     const result = filterBuyList(items, filters);
     expect(result.passed.map((i) => i.obligorName)).toEqual(["pass"]);
     expect(result.dropped).toHaveLength(3);
+  });
+});
+
+describe("Industry-cap — industry filter (excludeIndustryCodes)", () => {
+  it("drops items whose industryCode matches the blacklist", () => {
+    const items = [
+      makeItem({ obligorName: "tech-a", industryCode: "1160", industryTaxonomy: "moodys_33" }),
+      makeItem({ obligorName: "auto-a", industryCode: "1020", industryTaxonomy: "moodys_33" }),
+      makeItem({ obligorName: "untagged", industryCode: null, industryTaxonomy: null }),
+    ];
+    const result = filterBuyList(items, { excludeIndustryCodes: ["1160"] });
+    expect(result.passed.map((i) => i.obligorName)).toEqual(["auto-a", "untagged"]);
+    expect(result.dropped).toHaveLength(1);
+    expect(result.dropped[0].item.obligorName).toBe("tech-a");
+  });
+
+  it("untagged items pass even when excludeIndustryCodes is non-empty (D5 doesn't classify)", () => {
+    const items = [
+      makeItem({ obligorName: "untagged", industryCode: null, industryTaxonomy: null }),
+    ];
+    const result = filterBuyList(items, { excludeIndustryCodes: ["anything", "even-this"] });
+    expect(result.passed).toHaveLength(1);
+  });
+
+  it("buyListFiltersFromResolved pre-fills excludeIndustryCodes from at-or-near-cap industries", () => {
+    // Synthetic resolved with a tight rank-1 cap that one bucket is hitting.
+    const taggedResolved: typeof fixture.resolved = {
+      ...fixture.resolved,
+      industryCapRules: [{ kind: "single_rank_max", rank: 1, triggerPct: 15 }],
+      industryCapPresentInPpm: true,
+      industryTaxonomy: "moodys_33",
+      poolSummary: {
+        ...fixture.resolved.poolSummary,
+        industryDistributionPct: [
+          { industryCode: "1160", industryName: "High Tech", parPct: 14.5 }, // 14.5/15 = 96.7% of cap → at-or-near
+          { industryCode: "1020", industryName: "Automotive", parPct: 8 },   // far from cap
+        ],
+        largestIndustryPct: 14.5,
+      },
+    };
+    const filters = buyListFiltersFromResolved(taggedResolved);
+    expect(filters.excludeIndustryCodes).toEqual(["1160"]);
+  });
+
+  it("buyListFiltersFromResolved returns empty excludeIndustryCodes when no rules / no distribution", () => {
+    const filters = buyListFiltersFromResolved(fixture.resolved);
+    expect(filters.excludeIndustryCodes).toEqual([]);
   });
 });

@@ -1,11 +1,11 @@
 /**
- * KI-23 — taxonomy seed-data integrity. Locks in the load-bearing
+ * Industry-cap — taxonomy seed-data integrity. Locks in the load-bearing
  * invariants the rest of the closure relies on:
  *
  *   1. Codes are unique within a taxonomy.
  *   2. Aliases (lowercase) are unique within a taxonomy. An alias collision
  *      would silently bucket two industries together — exactly the
- *      free-text-conflation failure shape KI-23 exists to prevent.
+ *      free-text-conflation failure shape industry-cap exists to prevent.
  *   3. Aliases never collide with another industry's canonicalName.
  *   4. lookupByCode + lookupByText round-trip canonical names.
  *   5. selectTaxonomy("deal_specific") returns null (caller routes to

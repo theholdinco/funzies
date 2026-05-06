@@ -254,7 +254,7 @@ export interface ExtractedConstraints {
     sourcePages: number[] | null;
     sourceCondition: string | null;
   } | null;
-  /** PPM Condition 1 clause (t) "Industry Classification" — KI-23 closure.
+  /** PPM Condition 1 clause (t) "Industry Classification" — industry-cap closure.
    *  Sourced from `ppm.json:section_8_portfolio_and_quality_tests
    *  .industry_concentration_test` via `mapIndustryConcentrationTest`.
    *  Resolver consumes and emits blocking warnings per the three-state

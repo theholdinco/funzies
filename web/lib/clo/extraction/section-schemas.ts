@@ -463,7 +463,7 @@ export const ppmEligibilityCriteriaSchema = z.object({
 
 export type PpmEligibilityCriteria = z.infer<typeof ppmEligibilityCriteriaSchema>;
 
-/** KI-23: industry-cap rule schema fragment. Validated explicitly so a
+/** industry-cap: industry-cap rule schema fragment. Validated explicitly so a
  *  malformed PPM extraction surfaces at the schema layer rather than the
  *  resolver. `.passthrough()` on the parent allows extension if new
  *  shapes need adding without breaking existing extractions. */
@@ -513,7 +513,7 @@ export const ppmPortfolioConstraintsSchema = z.object({
     max: z.union([z.string(), z.null()]).optional(),
     notes: z.string().optional(),
   }).passthrough()).optional(),
-  /** KI-23: PPM clause (t) industry-cap rule schedule. */
+  /** industry-cap: PPM clause (t) industry-cap rule schedule. */
   industryConcentrationTest: z.object({
     present: z.boolean(),
     taxonomy: z.union([z.literal("moodys_33"), z.literal("sp"), z.literal("deal_specific"), z.null()]),

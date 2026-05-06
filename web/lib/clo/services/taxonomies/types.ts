@@ -1,5 +1,5 @@
 /**
- * Canonical industry taxonomy reference data — KI-23 closure.
+ * Canonical industry taxonomy reference data — industry-cap closure.
  *
  * The CLO indenture's clause (t) (industry concentration cap) is anchored on
  * a per-deal canonical taxonomy named in the PPM — typically Moody's 33-industry

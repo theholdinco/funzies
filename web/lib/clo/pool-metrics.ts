@@ -79,14 +79,14 @@ export interface PoolQualityMetrics {
    *  confidentiality redacts the rating itself in the BNY trustee PDF as
    *  `***`; only Intex carries the value). Denominator: WARF totalPar. */
   pctOnCreditEstimateOrPrivateRating: number;
-  /** KI-23: par share (%) held by the largest industry under the deal's
+  /** industry-cap: par share (%) held by the largest industry under the deal's
    *  active taxonomy, or null when no loans carry an industry tag.
    *  Computed as `max(industryPar) / totalPar × 100`. Denominator excludes
    *  loans with no `industryCode` (silent — coverage is enforced by the
    *  resolver-side blocking gate, so reaching here with partial coverage
    *  means the projection was permitted to run anyway). */
   largestIndustryPct: number | null;
-  /** KI-23: full descending-par-share industry distribution under the
+  /** industry-cap: full descending-par-share industry distribution under the
    *  active taxonomy. Null when no loans carry industryCode. Array (NOT
    *  Map) for clean RSC boundary serialization. */
   industryDistributionPct: Array<{ industryCode: string; parPct: number }> | null;
@@ -128,7 +128,7 @@ export interface QualityMetricLoan {
   /** True when Intex tags this position as a credit estimate or private
    *  letter rating. Drives `pctOnCreditEstimateOrPrivateRating`. */
   isCreditEstimateOrPrivateRating?: boolean;
-  /** KI-23: per-position canonical industry code under the deal's active
+  /** industry-cap: per-position canonical industry code under the deal's active
    *  taxonomy. Drives `largestIndustryPct` + `industryDistributionPct`.
    *  Undefined when the deal has no clause (t) or when the position is
    *  a synthetic reinvestment that hasn't been tagged by the allocator
@@ -359,7 +359,7 @@ export function deriveQualityMetrics(
     pctCccAndBelow,
     pctMoodysRatingDerivedFromSp,
     pctOnCreditEstimateOrPrivateRating,
-    // KI-23 — populated by `computePoolQualityMetrics` after deriveQualityMetrics
+    // Industry-cap — populated by `computePoolQualityMetrics` after deriveQualityMetrics
     // returns. The aggregate alone can't compute this (needs the per-loan
     // industryCode list), so we patch into the result rather than carrying
     // a Map through `QualityMetricsAggregates` (clean serialization at the
@@ -386,7 +386,7 @@ export function computePoolQualityMetrics(
   opts: PoolQualityMetricsOpts = {},
 ): PoolQualityMetrics {
   const base = deriveQualityMetrics(aggregateQualityMetrics(loans, opts), opts);
-  // KI-23: industry distribution + largestIndustryPct. Patched onto `base`
+  // industry-cap: industry distribution + largestIndustryPct. Patched onto `base`
   // here because the aggregation map can't round-trip through the partial
   // sums shape (which is JSON-serializable primitives only).
   const industryParByCode = new Map<string, number>();

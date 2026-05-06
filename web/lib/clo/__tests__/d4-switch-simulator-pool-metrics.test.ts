@@ -328,7 +328,7 @@ describe("D4 — pctCovLite delta-recompute", () => {
   });
 });
 
-describe("KI-23 — switch simulator industry-distribution delta", () => {
+describe("Industry-cap — switch simulator industry-distribution delta", () => {
   it("post-switch poolSummary carries industryDistributionPct + largestIndustryPct fields (null on Euro XV — coverage incomplete)", () => {
     // Euro XV today: per-loan industryCode is unpopulated (PR3 resolver
     // path requires the PPM clause-(t) extraction which hasn't been run

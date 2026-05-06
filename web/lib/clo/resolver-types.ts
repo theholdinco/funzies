@@ -319,7 +319,7 @@ export interface ResolvedLongDatedValuationRule {
 /** PPM industry-cap rule conditional applicability. When undefined the rule
  *  applies unconditionally; otherwise the engine evaluates the predicate
  *  against current pool/period state and skips the rule when the predicate
- *  is false. KI-23 closure — anti-pattern #3 honest treatment of
+ *  is false. industry-cap closure — anti-pattern #3 honest treatment of
  *  conditional clauses ("during RP: 15%; after: 12%", "if CCC > 5%, …").
  *  Unrecognized condition kinds at extraction time fall through to
  *  `unmapped_rule_descriptions`; resolver blocks rather than silently
@@ -451,10 +451,10 @@ export interface ResolvedDealData {
    *  Drives per-loan industry-code matching (engine consumes the holding's
    *  Moody's code when `moodys_33`, S&P code when `sp`). `deal_specific`
    *  resolves against `dealSpecificIndustryList` instead. Null when the deal
-   *  has no clause (t) (`industryCapPresentInPpm === false`). KI-23 closure. */
+   *  has no clause (t) (`industryCapPresentInPpm === false`). industry-cap closure. */
   industryTaxonomy: "moodys_33" | "sp" | "deal_specific" | null;
   /** Three-state presence signal driving the resolver's blocking gate
-   *  (KI-23 closure, Option D):
+   *  (industry-cap closure, Option D):
    *    - `true`  + `industryCapRules: [...]`     → engine enforces caps
    *    - `true`  + `industryCapRules: null/[]`   → resolver blocks (extraction failed)
    *    - `false`                                  → no constraint to enforce
@@ -470,11 +470,11 @@ export interface ResolvedDealData {
    *  ("industries A and B do not count toward this test"). Engine filters
    *  out matching loans before computing per-bucket par sums. Names
    *  (canonical or alias) — engine resolves to `industryCode` via the
-   *  active taxonomy. Null when none. KI-23 closure. */
+   *  active taxonomy. Null when none. industry-cap closure. */
   excludedIndustryNames: string[] | null;
   /** PPM clause-(t) industry list when `industryTaxonomy === "deal_specific"`.
    *  Null otherwise. Each entry is a canonical industry name as written in
-   *  the PPM schedule. KI-23 closure. */
+   *  the PPM schedule. industry-cap closure. */
   dealSpecificIndustryList: string[] | null;
   preExistingDefaultedPar: number; // par of defaulted loans excluded from loan list
   preExistingDefaultRecovery: number; // market-price recovery for priced defaulted holdings
@@ -680,14 +680,14 @@ export interface ResolvedPool {
   // can show concentration impact of a proposed trade. Null when loan data
   // lacks obligorName coverage (e.g., EMPTY_RESOLVED placeholder).
   top10ObligorsPct: number | null;
-  /** KI-23: par share (%) held by each industry bucket under the deal's
+  /** industry-cap: par share (%) held by each industry bucket under the deal's
    *  active taxonomy, sorted descending by `parPct`. Populated when 100% of
    *  funded loans carry an `industryCode` under the active taxonomy
    *  (parser-side blocking gate enforces this upstream); null otherwise.
    *  Engine and switch simulator consume the same shape. Array (not Map)
    *  for clean JSON round-trip across the engine→service→UI boundary. */
   industryDistributionPct: Array<{ industryCode: string; industryName: string; parPct: number }> | null;
-  /** KI-23: convenience scalar — `industryDistributionPct[0].parPct` (%) or
+  /** industry-cap: convenience scalar — `industryDistributionPct[0].parPct` (%) or
    *  null when `industryDistributionPct` is null. Equivalent to "largest
    *  industry concentration" partner-facing metric. */
   largestIndustryPct: number | null;
@@ -878,7 +878,7 @@ export interface ResolvedLoan {
    *  (cap percentage, withinCap, postCap) over the Σ of long-dated
    *  positions at every OC numerator construction. */
   isLongDated?: boolean;
-  /** KI-23: per-position canonical industry code under the deal's active
+  /** industry-cap: per-position canonical industry code under the deal's active
    *  taxonomy (`ResolvedDealData.industryTaxonomy`). Resolver populates
    *  from `clo_holdings.moodys_industry_code` when `moodys_33`, from
    *  `sp_industry_code` when `sp`. SDF-side parser emits a per-position

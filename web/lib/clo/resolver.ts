@@ -923,7 +923,7 @@ function resolveLongDatedObligation(
   };
 }
 
-/** KI-23: Resolve PPM Condition 1 clause (t) "Industry Concentration" rule
+/** industry-cap: Resolve PPM Condition 1 clause (t) "Industry Concentration" rule
  *  schedule from `constraints.industryConcentrationTest` (populated by
  *  `mapIndustryConcentrationTest` from
  *  `ppm.json:section_8_portfolio_and_quality_tests.industry_concentration_test`).
@@ -1453,7 +1453,7 @@ export function resolveWaterfallInputs(
     // `loans[].obligorName` + `parBalance`). Placeholder null here; patched
     // into the literal once the loan list is ready.
     top10ObligorsPct: null,
-    // KI-23 — populated after `loans` is constructed below + after the
+    // Industry-cap — populated after `loans` is constructed below + after the
     // active taxonomy is selected. Placeholder null here; patched in
     // alongside top10ObligorsPct once the loan list is ready and per-loan
     // industry coverage gates have fired.
@@ -1766,7 +1766,7 @@ export function resolveWaterfallInputs(
     return hasUnfundedCommitment && !hasPikSignal;
   };
 
-  /** KI-23: per-position industry under the deal's active taxonomy.
+  /** industry-cap: per-position industry under the deal's active taxonomy.
    *
    *  Selection ladder per holding:
    *    1. SDF code field for the active taxonomy (`moodys_industry_code`
@@ -1861,7 +1861,7 @@ export function resolveWaterfallInputs(
   // (anti-pattern #3). Active holdings only (defaulted are filtered above).
   const moodysAbsentObligors: string[] = [];
   const fitchAbsentObligors: string[] = [];
-  // KI-23: per-loan industry coverage gate. Active taxonomy is read from
+  // industry-cap: per-loan industry coverage gate. Active taxonomy is read from
   // the PPM clause-(t) block when present. When the deal carries clause (t)
   // (industryCapPresentInPpm === true) every funded non-defaulted holding
   // MUST have an industryCode under the active taxonomy — without it the
@@ -2260,7 +2260,7 @@ export function resolveWaterfallInputs(
         (h.maturityDate != null && fallbackMaturity != null
           ? new Date(h.maturityDate).getTime() > new Date(fallbackMaturity).getTime()
           : undefined),
-      // KI-23: per-position industry under the deal's active taxonomy.
+      // industry-cap: per-position industry under the deal's active taxonomy.
       // Selection: moodys_industry_code for moodys_33, sp_industry_code
       // for sp. Fall back to the *_industry name field if the code is
       // missing — partner uploads sometimes carry name-only data and
@@ -2308,7 +2308,7 @@ export function resolveWaterfallInputs(
       blocking: true,
     });
   }
-  // KI-23: per-position industry coverage gate. Same shape as the
+  // industry-cap: per-position industry coverage gate. Same shape as the
   // moodysAbsentObligors / fitchAbsentObligors aggregation above — one
   // blocking warning listing every funded non-defaulted holding whose
   // industry code didn't resolve under the active taxonomy. The engine
@@ -2941,7 +2941,7 @@ export function resolveWaterfallInputs(
   const concentrationTests: ResolvedComplianceTest[] = concentrationsRaw.map(c => {
     const bucketName = (c.bucketName ?? c.concentrationType ?? "") as string;
     const concType = (c.concentrationType ?? "") as string;
-    // KI-23: lift the SDF concentration tag into a structured field so
+    // industry-cap: lift the SDF concentration tag into a structured field so
     // downstream consumers (industry-cap evidence gate, validator) don't
     // regex testName. Map unknown SDF tags to "OTHER" rather than null
     // so the field is non-null on every concentration row.
@@ -3358,7 +3358,7 @@ export function resolveWaterfallInputs(
   // reflects only identifiable-obligor concentration.
   poolSummary.top10ObligorsPct = loans.length > 0 ? computeTopNObligorsPct(loans, 10) : null;
 
-  // KI-23: industry distribution under the deal's active taxonomy.
+  // industry-cap: industry distribution under the deal's active taxonomy.
   // Populated only when the per-loan coverage gate above didn't fire (the
   // gate is upstream blocking, so reaching here with non-empty
   // industryCoverageGapObligors is impossible — the projection refuses).
@@ -3491,7 +3491,7 @@ export function resolveWaterfallInputs(
     }
   }
 
-  // KI-23: resolve PPM clause (t) industry-cap rule schedule + cross-check
+  // industry-cap: resolve PPM clause (t) industry-cap rule schedule + cross-check
   // against SDF concentration evidence. Emits blocking warnings on the
   // three-state failure modes (extraction missing on a deal with SDF
   // INDUSTRY rows; rules empty on present:true; taxonomy missing on

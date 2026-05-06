@@ -142,7 +142,7 @@ export interface LoanInput {
    *  `longDatedValuationRule` (cap percentage, withinCap, postCap) over
    *  the Σ of long-dated positions. */
   isLongDated?: boolean;
-  /** KI-23: per-position canonical industry code under the deal's
+  /** industry-cap: per-position canonical industry code under the deal's
    *  active taxonomy. Sourced from `ResolvedLoan.industryCode`. Drives
    *  per-bucket aggregation in the water-filling allocator at the
    *  reinvestment synthesis site, the largestIndustryPct aggregate on
@@ -488,21 +488,21 @@ export interface ProjectionInputs {
    *  and hand-constructed test inputs — engine emits zero haircut
    *  when null (matches greenfield / no-rule semantics). */
   longDatedValuationRule?: ResolvedLongDatedValuationRule | null;
-  /** KI-23: PPM clause-(t) industry-cap rule schedule. Null when the deal
+  /** industry-cap: PPM clause-(t) industry-cap rule schedule. Null when the deal
    *  has no clause (t) (industryCapPresentInPpm:false), legacy fixture, or
    *  hand-constructed test input — engine treats null as "no enforcement"
    *  and the synthesis site falls back to the single-bucket path
-   *  (preserving pre-KI-23 behavior on every existing test). When non-null,
+   *  (preserving pre-industry-cap behavior on every existing test). When non-null,
    *  the synthesis site routes through the water-filling allocator at
    *  projection.ts:3327, distributing reinvested par across feasible
    *  industry buckets per the configured prior. */
   industryCapRules?: import("./resolver-types").IndustryCapRule[] | null;
-  /** KI-23: deal's active industry taxonomy. Drives per-loan industryCode
+  /** industry-cap: deal's active industry taxonomy. Drives per-loan industryCode
    *  matching at the synthesis site (so synthetic reinvestment loans are
    *  tagged with codes from the same taxonomy as existing positions).
    *  Null when no clause (t). */
   industryTaxonomy?: import("./resolver-types").ResolvedDealData["industryTaxonomy"];
-  /** KI-23: PPM clause-(t) industries excluded from rank/combined ordering.
+  /** industry-cap: PPM clause-(t) industries excluded from rank/combined ordering.
    *  Engine drops loans matching these names before per-bucket aggregation
    *  + before allocator runs. Null when no exclusions. */
   excludedIndustryNames?: string[] | null;
@@ -1878,11 +1878,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
      *  `longDatedValuationRule` over Σ of positions where this is true,
      *  applying within-cap and post-cap valuation independently. */
     isLongDated?: boolean;
-    /** KI-23: per-position canonical industry code under the deal's
+    /** industry-cap: per-position canonical industry code under the deal's
      *  active taxonomy. Carried from `LoanInput.industryCode` on existing
      *  positions; set by the water-filling allocator at synthesis time
      *  on synthetic reinvestment loans. Undefined when the deal has no
-     *  clause (t) or when the position was synthesised pre-KI-23
+     *  clause (t) or when the position was synthesised pre-industry-cap
      *  (legacy fixture path). */
     industryCode?: string;
   }
@@ -3386,14 +3386,14 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         reinvestment = allowed;
       }
     }
-    // KI-23: when industry-cap rules are active, route reinvestment through
+    // industry-cap: when industry-cap rules are active, route reinvestment through
     // the water-filling allocator BEFORE synthesis. The allocator distributes
     // par across feasible industry buckets respecting all rules; any par
     // that can't be placed feasibly increments reinvestmentBlockedCompliance
     // (additive on top of the C1 WARF/WAS/Caa/CCC gate above) and falls
     // through to the principal waterfall for senior paydown. When rules are
     // null, the synthesis path is unchanged (single-bucket aggregate, no
-    // industryCode tagging) — preserving pre-KI-23 behavior on every deal
+    // industryCode tagging) — preserving pre-industry-cap behavior on every deal
     // that doesn't carry a clause (t).
     let industryAllocation: Map<string, number> | null = null;
     if (reinvestment > 0 && hasLoans && industryCapRules != null && industryCapRules.length > 0) {
@@ -3475,7 +3475,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         isLongDated: isLongDatedSynth,
       };
       // Per-industry-bucket synthesis when allocator output is available;
-      // otherwise the pre-KI-23 single-bucket path.
+      // otherwise the pre-industry-cap single-bucket path.
       const synthBuckets: Array<{ par: number; industryCode?: string }> =
         industryAllocation != null
           ? Array.from(industryAllocation, ([industryCode, par]) => ({ par, industryCode })).filter((e) => e.par > 0)

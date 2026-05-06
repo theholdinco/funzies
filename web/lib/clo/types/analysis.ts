@@ -178,7 +178,7 @@ export interface BuyListItem {
    *  "Hotels & Restaurants"). Display-only; canonical matching against
    *  CLO industry caps uses `industryCode` + `industryTaxonomy`. */
   sector: string | null;
-  /** KI-23: canonical industry code under the named taxonomy. Set by the
+  /** industry-cap: canonical industry code under the named taxonomy. Set by the
    *  classification service at upload time (free-text → canonical) or by
    *  the partner's manual override. Null when classification is pending —
    *  D5 industry-cap filter skips items with null code while industry

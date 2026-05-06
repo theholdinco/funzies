@@ -1,10 +1,10 @@
 /**
- * KI-23 — engine-side integration test for industry-cap enforcement at
+ * Industry-cap — engine-side integration test for industry-cap enforcement at
  * the reinvestment synthesis site. Exercises the water-filling allocator
  * via ProjectionInputs.industryCapRules.
  *
  * Coverage:
- *   - Rules absent: synthesis behaves as pre-KI-23 (single-bucket aggregate,
+ *   - Rules absent: synthesis behaves as pre-industry-cap (single-bucket aggregate,
  *     no industryCode on synthetics, no extra reinvestmentBlockedCompliance).
  *   - Rules present + headroom available: synthetic loans inherit industryCode
  *     from allocator output; total reinvestment cleanly placed.
@@ -37,7 +37,7 @@ function diversifiedPoolInputs(industryCapRules: IndustryCapRule[] | null = null
   });
 }
 
-describe("KI-23 engine-integration — synthesis with industry-cap rules", () => {
+describe("Industry-cap engine-integration — synthesis with industry-cap rules", () => {
   it("rules:null → synthesis path unchanged (no industryCode on synthetic loans, no extra blocking)", () => {
     const inputs = diversifiedPoolInputs(null);
     const result = runProjection(inputs);

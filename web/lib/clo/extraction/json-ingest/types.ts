@@ -1,7 +1,7 @@
 // web/lib/clo/extraction/json-ingest/types.ts
 
 /** PPM industry-cap rule conditional applicability — JSON shape (snake_case).
- *  Mapped to camelCase `IndustryCapAppliesWhen` by ppm-mapper. KI-23 closure. */
+ *  Mapped to camelCase `IndustryCapAppliesWhen` by ppm-mapper. industry-cap closure. */
 export type IndustryCapAppliesWhenJson =
   | { kind: "during_reinvestment_period" }
   | { kind: "post_reinvestment_period" }

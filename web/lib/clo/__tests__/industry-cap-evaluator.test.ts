@@ -1,5 +1,5 @@
 /**
- * KI-23 — industry-cap evaluator + allocator marker tests.
+ * Industry-cap — industry-cap evaluator + allocator marker tests.
  *
  * The evaluator is consumed at every reinvestment site for compliance
  * verification + by the switch simulator for post-trade verification.
