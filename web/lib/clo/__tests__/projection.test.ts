@@ -6,7 +6,7 @@ import {
   addQuarters,
   computeSensitivity,
 } from "../projection";
-import { uniformRates, makeInputs } from "./test-helpers";
+import { uniformRates, makeInputs, noDefaults } from "./test-helpers";
 
 // ─── validateInputs ──────────────────────────────────────────────────────────
 
@@ -55,7 +55,7 @@ describe("runProjection baseline", () => {
 
   it("zero defaults and CPR keeps par stable during RP", () => {
     const result = runProjection(makeInputs({
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       // Override loans to mature well after RP so no maturities during RP
       loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 }],
@@ -125,7 +125,7 @@ describe("per-loan model — maturity correctness", () => {
     ];
     const result = runProjection(makeInputs({
       loans,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: null,
     }));
@@ -257,7 +257,7 @@ describe("per-loan model — loan maturities", () => {
         { parBalance: 3_000_000, maturityDate: matDate, ratingBucket: "BB", spreadBps: 375 },
         { parBalance: 92_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: null,
     }));

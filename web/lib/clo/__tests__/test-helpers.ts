@@ -6,6 +6,26 @@ export function uniformRates(cdr: number): Record<string, number> {
   return Object.fromEntries(RATING_BUCKETS.map((b) => [b, cdr]));
 }
 
+// Disable defaults under per-position WARF: the factory's baseline
+// `defaultRatesByRating` is non-zero (DEFAULT_RATES_BY_RATING), so a zero-
+// returning path-fn yields multiplier = 0/baseline = 0 → hazard = warfHazard
+// × 0 = 0. Use as `cdrMultiplierPathFn: noDefaultsPath` in test overrides.
+//
+// CAUTION: do NOT also override `defaultRatesByRating` to zero — baseline=0
+// + path=0 hits the Infinity-fallback edge case at projection.ts:2920
+// (multiplier=1, defaults at warfHazard remain active).
+export const noDefaultsPath = (): Record<string, number> =>
+  Object.fromEntries(RATING_BUCKETS.map((b) => [b, 0]));
+
+// Convenience pair for tests that previously overrode `defaultRatesByRating`
+// to zero alongside other inputs. Spread via `...noDefaults`. Pairs a non-zero
+// baseline with the zero-returning path-fn so the multiplier 0/1 = 0 path is
+// taken (avoiding the Infinity-fallback edge case described above).
+export const noDefaults = {
+  defaultRatesByRating: uniformRates(1),
+  cdrMultiplierPathFn: noDefaultsPath,
+} as const;
+
 export function makeInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs {
   const defaultLoans: LoanInput[] = Array.from({ length: 10 }, (_, i) => ({
     parBalance: 10_000_000,
@@ -72,14 +92,6 @@ export function makeInputs(overrides: Partial<ProjectionInputs> = {}): Projectio
     impliedOcAdjustment: 0,
     quartersSinceReport: 0,
     ddtlDrawPercent: 100,
-    // D2 (Sprint 4): tests predating per-position WARF hazard compute
-    // expected defaults from `defaultRatesByRating[bucket]`. Pin them to
-    // the legacy bucket-map path so their hand-computed values remain
-    // correct. D2-aware tests (see `d2-per-position-warf-hazard.test.ts`)
-    // exercise the per-position default path explicitly. This pin is an
-    // escape-hatch; the intended long-term state is re-baselining these
-    // legacy tests to per-position expected values.
-    useLegacyBucketHazard: true,
     ...overrides,
   };
 }

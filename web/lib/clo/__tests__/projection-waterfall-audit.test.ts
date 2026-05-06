@@ -4,7 +4,9 @@ import {
   addQuarters,
   dayCountFraction,
 } from "../projection";
-import { uniformRates, makeInputs } from "./test-helpers";
+import { warfFactorToQuarterlyHazard } from "../rating-mapping";
+import { BUCKET_WARF_FALLBACK } from "../pool-metrics";
+import { uniformRates, makeInputs, noDefaults } from "./test-helpers";
 
 // B3: makeInputs uses currentDate=2026-03-09 → period 1 window is 92 days.
 // Legacy /4-based expected values need the actual day fraction. Fixed-rate
@@ -140,7 +142,7 @@ describe("Incentive fee three-regime behavior", () => {
       ...oldDefaults,
       incentiveFeePct: 20,
       incentiveFeeHurdleIrr: 0.001,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: "2026-01-01",
       ocTriggers: [],
@@ -150,7 +152,7 @@ describe("Incentive fee three-regime behavior", () => {
     const noFee = runProjection(makeInputs({
       ...oldDefaults,
       incentiveFeePct: 0,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: "2026-01-01",
       ocTriggers: [],
@@ -215,7 +217,7 @@ describe("Principal paydown is sequential (senior-first), not pro-rata", () => {
   it("Class A fully paid before any principal goes to Class B", () => {
     const inputs = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       loans: [
@@ -658,29 +660,31 @@ describe("Absolute-value verification (hand-computed)", () => {
     expect(result.periods[0].equityDistribution).toBeCloseTo(interest - aCoupon - bCoupon, -2);
   });
 
-  it("Q1 defaults with 2% CDR: par × quarterlyHazard", () => {
-    // Quarterly hazard = 1 - (1 - 0.02)^0.25 = 0.005038
-    // Defaults = 100M × 0.005038 = 503,778
+  it("Q1 defaults: par × per-position warfHazard for the loan's rating", () => {
+    // Per-position WARF formula: hazard = warfFactorToQuarterlyHazard(loan.warfFactor).
+    // For a B-rated loan with no explicit warfFactor, the engine uses
+    // BUCKET_WARF_FALLBACK.B = 2720 → cumDef = 0.272 → quarterly hazard ≈ 0.00794.
+    // Defaults Q1 = 100M × 0.00794 ≈ 794K.
     const result = runProjection(makeInputs({
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-03-09", 20), ratingBucket: "B", spreadBps: 400 }],
-      defaultRatesByRating: uniformRates(2),
       cprPct: 0,
       reinvestmentPeriodEnd: null,
       ocTriggers: [],
       icTriggers: [],
     }));
 
-    const quarterlyHazard = 1 - Math.pow(1 - 0.02, 0.25);
-    const expectedDefaults = 100_000_000 * quarterlyHazard;
+    const expectedHazard = warfFactorToQuarterlyHazard(BUCKET_WARF_FALLBACK.B);
+    const expectedDefaults = 100_000_000 * expectedHazard;
     expect(result.periods[0].defaults).toBeCloseTo(expectedDefaults, -2);
   });
 
   it("Q1 prepayments with 15% CPR: par × quarterlyPrepayRate", () => {
     // Quarterly rate = 1 - (1 - 0.15)^0.25 = 0.03991
-    // Prepayments = 100M × 0.03991 = 3,991,210
+    // Prepayments = 100M × 0.03991 = 3,991,210. Defaults disabled via
+    // noDefaults so the prepay step sees the full pre-default par.
     const result = runProjection(makeInputs({
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-03-09", 20), ratingBucket: "B", spreadBps: 400 }],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 15,
       reinvestmentPeriodEnd: null,
       ocTriggers: [],
@@ -702,7 +706,7 @@ describe("Absolute-value verification (hand-computed)", () => {
         { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false},
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: null,
       ocTriggers: [

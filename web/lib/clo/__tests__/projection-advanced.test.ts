@@ -5,7 +5,7 @@ import {
   addQuarters,
 } from "../projection";
 import { DEFAULT_RATES_BY_RATING } from "../rating-mapping";
-import { uniformRates, makeInputs } from "./test-helpers";
+import { uniformRates, makeInputs, noDefaults } from "./test-helpers";
 
 // ─── OC numerator includes principal cash ────────────────────────────────────
 
@@ -250,7 +250,7 @@ describe("CCC haircut in OC numerator", () => {
         { parBalance: 40_000_000, maturityDate: "2034-06-15", ratingBucket: "CCC", spreadBps: 375 },
         { parBalance: 60_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       cccBucketLimitPct: 7.5,
@@ -290,7 +290,7 @@ describe("CCC haircut in OC numerator", () => {
     ];
     const baseOpts = {
       loans: baseLoans,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       reinvestmentPeriodEnd: null,
@@ -332,7 +332,7 @@ describe("CCC haircut in OC numerator", () => {
         { parBalance: 5_000_000, maturityDate: "2034-06-15", ratingBucket: "CCC", spreadBps: 375 },
         { parBalance: 95_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       cccBucketLimitPct: 7.5,
@@ -345,7 +345,7 @@ describe("CCC haircut in OC numerator", () => {
       loans: [
         { parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       cccBucketLimitPct: 7.5,
@@ -598,7 +598,7 @@ describe("computeSensitivity edge cases", () => {
   });
 
   it("base CDR = 0 → CDR down scenario is also 0% (floored)", () => {
-    const inputs = makeInputs({ defaultRatesByRating: uniformRates(0) });
+    const inputs = makeInputs({ ...noDefaults });
     const baseResult = runProjection(inputs);
     const rows = computeSensitivity(inputs, baseResult.equityIrr!);
 

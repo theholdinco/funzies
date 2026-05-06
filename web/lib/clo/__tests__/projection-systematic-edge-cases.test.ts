@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from "vitest";
 import { runProjection, addQuarters, dayCountFraction } from "../projection";
-import { uniformRates, makeInputs } from "./test-helpers";
+import { uniformRates, makeInputs, noDefaults } from "./test-helpers";
 
 // B3: makeInputs uses currentDate=2026-03-09 → period 1 window is 92 days
 // under Actual/360. Legacy /4-based expected values need updating.
@@ -146,7 +146,7 @@ describe("B. Call date × loan maturity interactions", () => {
     // 50M matures at Q2 (before call at Q4) → par proceeds
     // 50M matures at Q20 (after call) → liquidated at 95% at Q4
     const inputs = makeInputs({
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       reinvestmentPeriodEnd: "2026-01-01",
@@ -182,7 +182,7 @@ describe("B. Call date × loan maturity interactions", () => {
   it("B2: callPricePct > 100 (premium) — extra proceeds flow to equity", () => {
     // Some deals liquidate at a premium (e.g. make-whole provisions)
     const atPar = makeInputs({
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       reinvestmentPeriodEnd: "2026-01-01",
@@ -580,7 +580,7 @@ describe("E. PIK interactions", () => {
     // it instead of letting it PIK.
     const inputs = makeInputs({
       reinvestmentPeriodEnd: addQuarters("2026-01-15", 20),
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       deferredInterestCompounds: true,
@@ -844,10 +844,14 @@ describe("H. Fee interactions", () => {
       baseRateFloorPct: 0,
       seniorFeePct: 0,
       subFeePct: 0,
+      // CCC rating gives per-position warfHazard ≈ 2.59%/q (~10%/y annualized),
+      // matching the original test's intended `uniformRates(5)` stress level
+      // under per-position semantics (per-position branch ignores the rates
+      // map; default magnitude is driven by warfFactor).
       loans: Array.from({ length: 10 }, (_, i) => ({
         parBalance: 10_000_000,
         maturityDate: addQuarters("2026-01-15", 12 + i),
-        ratingBucket: "B" as const,
+        ratingBucket: "CCC" as const,
         spreadBps: 400,
       })),
       tranches: [
@@ -856,7 +860,6 @@ describe("H. Fee interactions", () => {
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(5),
       cprPct: 0,
       recoveryPct: 0,
       incentiveFeePct: 20,
@@ -967,11 +970,17 @@ describe("I. Early termination", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("J. Loan rating & spread edge cases", () => {
-  it("J1: loan with rating not in defaultRatesByRating — defaults to 0 hazard", () => {
-    // Branch: line 274: `quarterlyHazard[loan.ratingBucket] ?? 0`
+  it("J1: loan with unmapped rating falls back to NR warfFactor (per-position; KI-19)", () => {
+    // Per-position WARF reads warfFactor from loan, falling back through
+    // BUCKET_WARF_FALLBACK[ratingBucket] → BUCKET_WARF_FALLBACK.NR (6500)
+    // when the bucket is unrecognized. So an "unrecognized" rating defaults
+    // at NR (Caa2 conservative) hazard, NOT zero. Pre-closure this test
+    // asserted "unmapped rating → 0 hazard" which was a property of the
+    // legacy bucket-hazard branch; under per-position the rates map is
+    // ignored and the warfFactor fallback chain governs. Verify the loan
+    // with unmapped rating defaults at the NR rate (higher than B).
     const inputs = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: { "B": 5 }, // only B defined, not "CUSTOM"
       cprPct: 0,
       recoveryPct: 0,
       loans: [
@@ -985,12 +994,10 @@ describe("J. Loan rating & spread edge cases", () => {
     const result = runProjection(inputs);
     const p1 = result.periods[0];
 
-    // "CUSTOM" loan should have 0 defaults (missing rating → hazard = 0)
-    // "B" loan should have defaults (5% CDR)
-    // Total defaults should be ~half of what uniform 5% would produce
-    const uniformResult = runProjection(makeInputs({
+    // Compare to a B-only baseline. The CUSTOM loan should produce MORE
+    // defaults than B (NR fallback warfFactor 6500 > B fallback 2720).
+    const bOnlyResult = runProjection(makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(5),
       cprPct: 0,
       recoveryPct: 0,
       loans: [
@@ -999,8 +1006,8 @@ describe("J. Loan rating & spread edge cases", () => {
       ],
     }));
 
-    expect(p1.defaults).toBeLessThan(uniformResult.periods[0].defaults);
-    expect(p1.defaults).toBeGreaterThan(0); // B loan still defaults
+    expect(p1.defaults).toBeGreaterThan(bOnlyResult.periods[0].defaults);
+    expect(p1.defaults).toBeGreaterThan(0);
   });
 
   it("J2: mixed ratings produce different per-rating default amounts", () => {
@@ -1389,7 +1396,7 @@ describe("N. Initial principal cash and pre-existing defaults", () => {
   it("N3: preExistingDefaultedPar generates recovery after lag", () => {
     const inputs = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 60,
       recoveryLagMonths: 12, // 4 quarters
@@ -1426,7 +1433,7 @@ describe("N. Initial principal cash and pre-existing defaults", () => {
   it("N5: both features together — cash boosts Q1, recovery arrives later", () => {
     const inputs = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 60,
       recoveryLagMonths: 6, // 2 quarters
@@ -1437,7 +1444,7 @@ describe("N. Initial principal cash and pre-existing defaults", () => {
 
     const baseline = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 60,
       recoveryLagMonths: 6,
@@ -1463,7 +1470,7 @@ describe("N. Initial principal cash and pre-existing defaults", () => {
     // 2M total defaulted: 1M priced at 30% (recovery = 300K), 1M unpriced (model rate 60% = 600K)
     const inputs = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 60,
       recoveryLagMonths: 6, // 2 quarters
@@ -1483,7 +1490,7 @@ describe("N. Initial principal cash and pre-existing defaults", () => {
     // Adjusted arrival = max(1, 1 + 4 - 2) = Q3 instead of Q5.
     const staleReport = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 60,
       recoveryLagMonths: 12, // 4 quarters
@@ -1494,7 +1501,7 @@ describe("N. Initial principal cash and pre-existing defaults", () => {
 
     const freshReport = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 60,
       recoveryLagMonths: 12,

@@ -23,7 +23,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { runProjection, addQuarters, dayCountFraction, LoanInput } from "../projection";
-import { makeInputs, uniformRates } from "./test-helpers";
+import { makeInputs, uniformRates, noDefaults } from "./test-helpers";
 
 const PERIOD_START = "2026-03-09";
 const PERIOD_END = "2026-06-09";
@@ -46,7 +46,7 @@ describe("asset-side additive PIK accretion", () => {
         initialPar: 100_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -82,7 +82,7 @@ describe("asset-side additive PIK accretion", () => {
         initialPar: 50_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -109,7 +109,7 @@ describe("asset-side additive PIK accretion", () => {
         initialPar: 50_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -168,18 +168,19 @@ describe("asset-side additive PIK accretion", () => {
       spreadBps: 500,
       pikSpreadBps: 200,  // 2% per annum
     };
-    // Annual hazard h gives quarterly hazard ≈ 1 - (1-h)^0.25. To produce
-    // ~50% partial default per quarter, set h ≈ 1 - (1-0.5)^4 ≈ 0.9375.
-    // Use 100% CDR for simplicity — the engine's prorate produces some
-    // quarterly default fraction; we just verify the PIK accretion is
-    // visible on whatever survives.
+    // Per-position WARF B-bucket warfHazard = 0.0079/q (~3.13%/y). To produce
+    // a substantial partial default in Q1, scale via cdrMultiplierPathFn:
+    // baseline B = 1 (set via override), path B = 70 → multiplier = 70 →
+    // hazard = 0.0079 × 70 ≈ 0.55/q (≈ 55% Q1 default). Surviving ~45M leaves
+    // both partial-default observability AND visible PIK accretion (~514K).
     const result = runProjection(
       makeInputs({
         loans: [partialDefaultingPik],
         initialPar: 100_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: { ...uniformRates(0), B: 100 },
+        defaultRatesByRating: { ...uniformRates(0), B: 1 },
+        cdrMultiplierPathFn: () => ({ ...uniformRates(0), B: 70 }),
         cprPct: 0,
         // Long recovery lag so defaulted par stays "pending" (not recovered
         // back into pool) — keeps the surviving-par observable cleanly.

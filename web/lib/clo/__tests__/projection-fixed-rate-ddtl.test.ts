@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { runProjection, addQuarters, dayCountFraction } from "../projection";
-import { makeInputs, uniformRates } from "./test-helpers";
+import { makeInputs, uniformRates, noDefaults } from "./test-helpers";
 
 // B3: makeInputs uses currentDate=2026-03-09 → period 1 ends 2026-06-09.
 // That window is 92 days under Actual/360. Interest/fee formulas that used to
@@ -464,7 +464,7 @@ describe("DDTL convention: facility tag vs. unfunded state", () => {
         initialPar: 500_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
         ddtlDrawPercent: 60,
       })
@@ -570,7 +570,7 @@ describe("DDTL convention: facility tag vs. unfunded state", () => {
         initialPar: 500_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
         ddtlDrawPercent: 100,
       })
