@@ -463,6 +463,45 @@ export const ppmEligibilityCriteriaSchema = z.object({
 
 export type PpmEligibilityCriteria = z.infer<typeof ppmEligibilityCriteriaSchema>;
 
+/** KI-23: industry-cap rule schema fragment. Validated explicitly so a
+ *  malformed PPM extraction surfaces at the schema layer rather than the
+ *  resolver. `.passthrough()` on the parent allows extension if new
+ *  shapes need adding without breaking existing extractions. */
+const industryCapAppliesWhenSchema = z.union([
+  z.object({ kind: z.literal("during_reinvestment_period") }),
+  z.object({ kind: z.literal("post_reinvestment_period") }),
+  z.object({ kind: z.literal("ccc_pct_above"), thresholdPct: z.number() }),
+  z.object({ kind: z.literal("defaulted_pct_above"), thresholdPct: z.number() }),
+]);
+
+const industryCapRuleSchema = z.union([
+  z.object({
+    kind: z.literal("single_rank_max"),
+    rank: z.number(),
+    triggerPct: z.number(),
+    appliesWhen: industryCapAppliesWhenSchema.optional(),
+  }),
+  z.object({
+    kind: z.literal("combined_top_n_max"),
+    n: z.number(),
+    triggerPct: z.number(),
+    appliesWhen: industryCapAppliesWhenSchema.optional(),
+  }),
+  z.object({
+    kind: z.literal("single_class_max"),
+    industryName: z.string(),
+    industryCode: z.string(),
+    triggerPct: z.number(),
+    appliesWhen: industryCapAppliesWhenSchema.optional(),
+  }),
+  z.object({
+    kind: z.literal("count_above_threshold"),
+    thresholdPct: z.number(),
+    maxCount: z.number(),
+    appliesWhen: industryCapAppliesWhenSchema.optional(),
+  }),
+]);
+
 export const ppmPortfolioConstraintsSchema = z.object({
   collateralQualityTests: z.array(z.object({
     name: z.string().optional(),
@@ -474,6 +513,18 @@ export const ppmPortfolioConstraintsSchema = z.object({
     max: z.union([z.string(), z.null()]).optional(),
     notes: z.string().optional(),
   }).passthrough()).optional(),
+  /** KI-23: PPM clause (t) industry-cap rule schedule. */
+  industryConcentrationTest: z.object({
+    present: z.boolean(),
+    taxonomy: z.union([z.literal("moodys_33"), z.literal("sp"), z.literal("deal_specific"), z.null()]),
+    rules: z.union([z.array(industryCapRuleSchema), z.null()]),
+    excludedIndustryNames: z.union([z.array(z.string()), z.null()]),
+    dealSpecificIndustryList: z.union([z.array(z.string()), z.null()]),
+    unmappedRuleDescriptions: z.array(z.string()).optional(),
+    sourcePages: z.union([z.array(z.number()), z.null()]),
+    sourceCondition: z.union([z.string(), z.null()]),
+    verbatimQuote: z.union([z.string(), z.null()]),
+  }).nullable().optional(),
 }).passthrough();
 
 export type PpmPortfolioConstraints = z.infer<typeof ppmPortfolioConstraintsSchema>;

@@ -486,7 +486,90 @@ PPM CONSTRAINT FORMAT:
 
 Extract ALL collateral quality tests: WARF, WAS, WAL, diversity score, WA recovery rate, etc. Each with name, agency, value.
 
-Extract ALL portfolio profile tests (typically 25-35 tests with min/max limits). Include conditional/tiered limits. Each test is a record with min, max, and optional notes.
+Extract ALL portfolio profile tests (typically 25-35 tests with min/max limits) into 'portfolio_profile_limits_selected' as flat min/max records.
+
+INDUSTRY CONCENTRATION (clause (t)) — STRUCTURED EXTRACTION:
+Clause (t) of Condition 1 (or its analog) carries rank-aware industry caps and CANNOT be
+represented as a flat min/max limit. Extract it as a separate structured block:
+'industry_concentration_test'. DO NOT also include clause (t) sub-rows in
+'portfolio_profile_limits_selected' — industry-cap rules live exclusively in
+'industry_concentration_test'.
+
+Step 1 — presence. Search for clause (t) under "Industry Classification" /
+"Industry Concentration" / similar headers within the Portfolio Profile Test definition.
+Set 'present: true' iff such a clause exists. If the PPM has no industry-cap clause at
+all, set 'present: false' and stop (no rules, no taxonomy).
+
+Step 2 — taxonomy (when present:true). The clause typically reads "as classified by
+Moody's pursuant to its industry classification" or "S&P Industry Classification" or
+"the industry classifications set forth in Schedule X". Map to:
+  - "moodys_33"     → Moody's CLO industry classification
+  - "sp"            → S&P CLO industry classification
+  - "deal_specific" → PPM names a custom list inline or via schedule reference
+For "deal_specific", populate 'deal_specific_industry_list' with the named industries.
+
+Step 3 — verbatim quote (when present:true). Capture the clause sub-paragraph
+verbatim into 'verbatim_quote'. Required for downstream review.
+
+Step 4 — excluded industries (when present:true). If the clause says "industries A
+and B do not count toward this test", populate 'excluded_industry_names' with the
+named industries. Empty array (or omit) when no exclusions.
+
+Step 5 — rules (when present:true). Clause (t) typically expresses 1–5 sub-rules.
+Each sub-rule maps to ONE of FOUR 'kind' shapes:
+
+  (a) "no industry exceeds N per cent." OR "the largest industry shall not exceed N per cent."
+      → { kind: "single_rank_max", rank: 1, trigger_pct: N }
+
+  (b) "the second largest industry shall not exceed M per cent."
+      → { kind: "single_rank_max", rank: 2, trigger_pct: M }
+      (similarly rank: 3, 4, ...)
+
+  (c) "the three largest industries combined shall not exceed P per cent."
+      OR "no more than P per cent. in the largest three industries"
+      → { kind: "combined_top_n_max", n: 3, trigger_pct: P }
+      (similarly n: 2, 4, 5, ...)
+
+  (d) "no more than Q per cent. in [specific named industry]"
+      e.g. "no more than 10 per cent. in Oil and Gas obligors"
+      → { kind: "single_class_max", industry_name: "Oil and Gas", trigger_pct: Q }
+      Populate 'industry_code' if the PPM references a code (e.g. Moody's "1010").
+
+  (e) "no more than N industries above K per cent."
+      → { kind: "count_above_threshold", threshold_pct: K, max_count: N }
+
+CONDITIONAL APPLICABILITY ('applies_when'):
+Some sub-rules apply only conditionally. Express the condition via the optional
+'applies_when' field on the rule. Recognized condition kinds:
+  - { kind: "during_reinvestment_period" }    — rule applies only during the RP
+  - { kind: "post_reinvestment_period" }       — rule applies only after RP end
+  - { kind: "ccc_pct_above", threshold_pct: 5 } — rule fires only when total CCC exceeds 5%
+  - { kind: "defaulted_pct_above", threshold_pct: 3 } — fires only when defaulted % exceeds threshold
+
+Examples:
+- "during the Reinvestment Period: 15%; thereafter: 12%"
+  → TWO rules: one with applies_when:{kind:"during_reinvestment_period"} and trigger 15;
+    one with applies_when:{kind:"post_reinvestment_period"} and trigger 12.
+- "if total CCC > 5%, top-3 cap drops from 30% to 28%"
+  → TWO rules: { kind:"combined_top_n_max", n:3, trigger_pct:30 } unconditional;
+    { kind:"combined_top_n_max", n:3, trigger_pct:28, applies_when:{kind:"ccc_pct_above", threshold_pct:5}}.
+
+UNMAPPED RULES:
+If you encounter a sub-rule that does NOT fit any of the four 'kind' shapes above
+(and where 'applies_when' cannot capture the variation), DO NOT skip it silently.
+Add the verbatim text to 'unmapped_rule_descriptions: string[]'. The downstream
+resolver will refuse to project rather than enforce a partial rule set.
+
+CRITICAL RULES:
+- If clause (t) is present but you cannot map ANY sub-rule to one of the four kinds,
+  emit 'rules: []' and 'present: true'. The resolver will block the projection — this is
+  the correct outcome (surfaces the extraction gap rather than silently producing wrong
+  cap enforcement).
+- NEVER guess. If the PPM doesn't say a rank, don't invent one. If the PPM cites
+  a named industry not in any standard taxonomy, set 'industry_code' to null
+  rather than guess at the code.
+- Source attribution: populate 'source_pages' (PDF page numbers where clause (t)
+  appears) and 'source_condition' (e.g. "Condition 1, paragraph (t)").
 
 ${COMMON_RULES}`,
     user: `Extract all portfolio constraints from the following markdown text.`,

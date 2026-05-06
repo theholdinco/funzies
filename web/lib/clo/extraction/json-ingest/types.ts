@@ -1,5 +1,13 @@
 // web/lib/clo/extraction/json-ingest/types.ts
 
+/** PPM industry-cap rule conditional applicability — JSON shape (snake_case).
+ *  Mapped to camelCase `IndustryCapAppliesWhen` by ppm-mapper. KI-23 closure. */
+export type IndustryCapAppliesWhenJson =
+  | { kind: "during_reinvestment_period" }
+  | { kind: "post_reinvestment_period" }
+  | { kind: "ccc_pct_above"; threshold_pct: number }
+  | { kind: "defaulted_pct_above"; threshold_pct: number };
+
 export interface PpmJsonTranche {
   class: string;                    // "Class A" ... "Subordinated Notes"
   principal: number;
@@ -208,6 +216,81 @@ export interface PpmJson {
     collateral_quality_tests?: Array<{ test: string; description?: string }>;
     moodys_test_matrix_sample?: Record<string, unknown>;
     fitch_test_matrix?: Record<string, unknown>;
+    /** PPM Condition 1 clause (t) "Industry Classification" structured rule.
+     *  Distinct shape from `portfolio_profile_limits_selected` because clause (t)
+     *  carries rank-aware semantics (largest, top-N, per-class, count-of-buckets)
+     *  that a flat bucket/direction/limit row cannot represent. Resolver maps to
+     *  `industryCapRules` via ppm-mapper; blocks via severity:"error" when
+     *  `present: true` and rules are empty/missing on a deal whose pool
+     *  composition is industry-cap enforced.
+     *
+     *  Two explicit absence signals:
+     *    - The whole block null/missing  → extraction did not look for it (legacy PPMs)
+     *    - `present: false`              → reviewer or extractor confirms PPM has no clause (t)
+     *  The first is treated as "unknown — block on any deal that has industry
+     *  concentrations". The second is treated as "no constraint to enforce". */
+    industry_concentration_test?: {
+      source_pages?: number[];
+      source_condition?: string;
+      /** Verbatim quote of the clause-(t) sub-paragraph. Required when
+       *  `present: true` so a reviewer can verify the structured rules
+       *  against the PPM text without re-opening the PDF. */
+      verbatim_quote?: string;
+      /** Did the PPM carry clause (t)? When false, no rules are extracted
+       *  and the engine treats the deal as industry-cap-unconstrained. The
+       *  resolver still cross-checks this against the SDF concentration
+       *  table — a mismatch (PPM says no, SDF emits INDUSTRY rows) emits
+       *  a non-blocking warning. */
+      present: boolean;
+      /** Taxonomy named in the PPM clause. PPM text typically reads
+       *  "as classified by Moody's [or S&P] under its industry classification".
+       *  Required when `present: true`. */
+      taxonomy?: "moodys_33" | "sp" | "deal_specific";
+      /** When taxonomy === "deal_specific", the per-deal industry list
+       *  spelled out in the PPM (rare). */
+      deal_specific_industry_list?: string[];
+      /** Industries explicitly excluded from the test ("industries A, B do
+       *  not count toward this test"). Engine filters out matching loans
+       *  from rank/combined ordering before computing per-bucket par sums.
+       *  Names — engine resolves to `industryCode` via the active taxonomy. */
+      excluded_industry_names?: string[];
+      /** The set of cap rules. Required when `present: true`. Order is
+       *  not load-bearing (engine evaluates all rules). */
+      rules?: Array<
+        | {
+            kind: "single_rank_max";
+            rank: number;
+            trigger_pct: number;
+            applies_when?: IndustryCapAppliesWhenJson;
+          }
+        | {
+            kind: "combined_top_n_max";
+            n: number;
+            trigger_pct: number;
+            applies_when?: IndustryCapAppliesWhenJson;
+          }
+        | {
+            kind: "single_class_max";
+            industry_name: string;
+            industry_code?: string;
+            trigger_pct: number;
+            applies_when?: IndustryCapAppliesWhenJson;
+          }
+        | {
+            kind: "count_above_threshold";
+            threshold_pct: number;
+            max_count: number;
+            applies_when?: IndustryCapAppliesWhenJson;
+          }
+      >;
+      /** Verbatim quotes of clause-(t) sub-paragraphs the LLM identified
+       *  but COULD NOT map to any of the four structured `kind`s. Resolver
+       *  blocks when this array is non-empty. Failure-closed treatment
+       *  per anti-pattern #3: a sub-rule that reaches the resolver in
+       *  free-text form is a constraint silently lost on the engine side. */
+      unmapped_rule_descriptions?: string[];
+      [k: string]: unknown;
+    } | null;
     [k: string]: unknown;
   };
   [k: string]: unknown;

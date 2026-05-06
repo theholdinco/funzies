@@ -4,6 +4,7 @@ import type {
   PpmJson,
   PpmJsonTranche,
   PpmJsonTransactionParty,
+  IndustryCapAppliesWhenJson,
 } from "./types";
 import { pctToBps, decimalSpreadToBps, parseFlexibleDate } from "./utils";
 
@@ -408,8 +409,163 @@ function mapPortfolioConstraints(ppm: PpmJson): Record<string, unknown> {
       value: q.description ?? null,
     })),
     portfolioProfileTests,
+    industryConcentrationTest: mapIndustryConcentrationTest(ppm),
     _poolProvenance: portfolioProvenance ?? undefined,
   };
+}
+
+/** Map clause (t) — industry concentration cap — from ppm.json into a typed
+ *  shape consumed by the resolver. KI-23 closure.
+ *
+ *  Failure-closed discipline (anti-pattern #3):
+ *   - Whole block missing/null → present:null (resolver decides whether to
+ *     block based on SDF evidence).
+ *   - present:false → no constraint.
+ *   - present:true with no taxonomy → present:true, rules:null (resolver blocks).
+ *   - present:true with one unrecognized rule kind → present:true, rules:null
+ *     (resolver blocks). NOT a silent drop — any unmapped kind taints the
+ *     entire extraction.
+ *   - present:true with non-empty unmapped_rule_descriptions → present:true,
+ *     rules:null (resolver blocks).
+ *
+ *  Snake_case → camelCase translation; structurally invalid rules drop the
+ *  entire rule set.
+ *
+ *  Exported for direct unit testing — `mapPpm` invokes this via
+ *  `mapPortfolioConstraints`; tests can also call it with a fixture
+ *  block without constructing a full PpmJson. */
+export function mapIndustryConcentrationTest(ppm: PpmJson): unknown {
+  const block = ppm.section_8_portfolio_and_quality_tests.industry_concentration_test;
+  if (!block) return null;
+
+  const sourcePages = Array.isArray(block.source_pages)
+    ? block.source_pages.filter((p): p is number => typeof p === "number")
+    : null;
+  const sourceCondition = typeof block.source_condition === "string" ? block.source_condition : null;
+  const verbatimQuote = typeof block.verbatim_quote === "string" ? block.verbatim_quote : null;
+
+  if (block.present === false) {
+    return {
+      present: false,
+      taxonomy: null,
+      rules: null,
+      excludedIndustryNames: null,
+      dealSpecificIndustryList: null,
+      sourcePages,
+      sourceCondition,
+      verbatimQuote,
+    };
+  }
+
+  const taxonomy =
+    block.taxonomy === "moodys_33" || block.taxonomy === "sp" || block.taxonomy === "deal_specific"
+      ? block.taxonomy
+      : null;
+
+  const unmapped = Array.isArray(block.unmapped_rule_descriptions)
+    ? block.unmapped_rule_descriptions.filter((s): s is string => typeof s === "string" && s.length > 0)
+    : [];
+
+  // Any unmapped sub-rule taints the extraction — resolver must block rather
+  // than enforce a partial rule set. Returning rules:null fires the gate.
+  if (unmapped.length > 0) {
+    return {
+      present: true,
+      taxonomy,
+      rules: null,
+      excludedIndustryNames: Array.isArray(block.excluded_industry_names)
+        ? block.excluded_industry_names.filter((s): s is string => typeof s === "string")
+        : null,
+      dealSpecificIndustryList: Array.isArray(block.deal_specific_industry_list)
+        ? block.deal_specific_industry_list.filter((s): s is string => typeof s === "string")
+        : null,
+      unmappedRuleDescriptions: unmapped,
+      sourcePages,
+      sourceCondition,
+      verbatimQuote,
+    };
+  }
+
+  if (!taxonomy) {
+    return {
+      present: true,
+      taxonomy: null,
+      rules: null,
+      excludedIndustryNames: null,
+      dealSpecificIndustryList: null,
+      sourcePages,
+      sourceCondition,
+      verbatimQuote,
+    };
+  }
+
+  const rulesRaw = Array.isArray(block.rules) ? block.rules : [];
+  const rules: unknown[] = [];
+  let anyRejected = false;
+  for (const r of rulesRaw) {
+    const appliesWhen = mapAppliesWhen(r.applies_when);
+    if (r.kind === "single_rank_max" && typeof r.rank === "number" && typeof r.trigger_pct === "number") {
+      rules.push({ kind: "single_rank_max", rank: r.rank, triggerPct: r.trigger_pct, ...(appliesWhen ? { appliesWhen } : {}) });
+    } else if (r.kind === "combined_top_n_max" && typeof r.n === "number" && typeof r.trigger_pct === "number") {
+      rules.push({ kind: "combined_top_n_max", n: r.n, triggerPct: r.trigger_pct, ...(appliesWhen ? { appliesWhen } : {}) });
+    } else if (
+      r.kind === "single_class_max" &&
+      typeof r.industry_name === "string" &&
+      typeof r.trigger_pct === "number"
+    ) {
+      rules.push({
+        kind: "single_class_max",
+        industryName: r.industry_name,
+        industryCode: typeof r.industry_code === "string" ? r.industry_code : "",
+        triggerPct: r.trigger_pct,
+        ...(appliesWhen ? { appliesWhen } : {}),
+      });
+    } else if (
+      r.kind === "count_above_threshold" &&
+      typeof r.threshold_pct === "number" &&
+      typeof r.max_count === "number"
+    ) {
+      rules.push({
+        kind: "count_above_threshold",
+        thresholdPct: r.threshold_pct,
+        maxCount: r.max_count,
+        ...(appliesWhen ? { appliesWhen } : {}),
+      });
+    } else {
+      // Unknown kind OR known kind with malformed numerics — taint the
+      // whole extraction so the resolver blocks rather than silently
+      // applying the partial rule set.
+      anyRejected = true;
+    }
+  }
+
+  return {
+    present: true,
+    taxonomy,
+    rules: anyRejected ? null : rules,
+    excludedIndustryNames: Array.isArray(block.excluded_industry_names)
+      ? block.excluded_industry_names.filter((s): s is string => typeof s === "string")
+      : null,
+    dealSpecificIndustryList: Array.isArray(block.deal_specific_industry_list)
+      ? block.deal_specific_industry_list.filter((s): s is string => typeof s === "string")
+      : null,
+    sourcePages,
+    sourceCondition,
+    verbatimQuote,
+  };
+}
+
+function mapAppliesWhen(j: IndustryCapAppliesWhenJson | undefined): unknown {
+  if (!j) return null;
+  switch (j.kind) {
+    case "during_reinvestment_period":
+    case "post_reinvestment_period":
+      return { kind: j.kind };
+    case "ccc_pct_above":
+    case "defaulted_pct_above":
+      if (typeof j.threshold_pct !== "number") return null;
+      return { kind: j.kind, thresholdPct: j.threshold_pct };
+  }
 }
 
 function mapWaterfallRules(ppm: PpmJson): Record<string, unknown> {
