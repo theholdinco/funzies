@@ -346,6 +346,41 @@ describe("allocateReinvestment — water-filling", () => {
     expect(sortedPar[1]).toBeLessThanOrEqual(0.2 * totalParAfter + 1);
   });
 
+  it("combined_top_n_max non-top-N promotion: bucket entering top-N via heavy prior is constrained (regression)", () => {
+    // Pool: A=B=C=20M (rank-1/2/3 tied), D=10M (rank-4). Total=70M.
+    // Reinvest 25M with prior heavy on D (0.7) and 0.1 each on A,B,C.
+    // Rule: combined_top_n_max(n=3, triggerPct=70). totalAfter=95M.
+    // triggerPar=66.5M. currentSum top-3 (A,B,C) = 60M. sharedBudget=6.5M.
+    //
+    // Pre-fix: round-3 in-top-N collective scaling identified {A,B,C} (sum
+    // wants = 7.5M, sharedBudget = 6.5M, scale slightly down). D (non-top-N)
+    // received `freeAddition + postReplace = 10 + 6.5 = 16.5M` headroom and
+    // its full 17.5M want was placed (up to cap). After: D=27.5M now rank-1,
+    // top-3 = D + 2 of {A,B,C} ≈ 72.5M > 66.5M cap. BREACH.
+    //
+    // Post-fix: generalized collective scaling simulates post-want top-N
+    // (which after scaling includes D), iteratively scales D + the displaced
+    // top-N members, converges to top-3 sum exactly at trigger.
+    const result = allocateReinvestment({
+      parToReinvest: 25_000_000,
+      rules: [{ kind: "combined_top_n_max", n: 3, triggerPct: 70 }],
+      initialPerBucket: new Map([
+        ["A", 20_000_000], ["B", 20_000_000], ["C", 20_000_000], ["D", 10_000_000],
+      ]),
+      initialTotalPar: 70_000_000,
+      priorWeights: new Map([["A", 0.1], ["B", 0.1], ["C", 0.1], ["D", 0.7]]),
+      poolState: NEUTRAL_POOL_STATE,
+    });
+    // Verify post-allocation cap held.
+    const finalState = new Map<string, number>([
+      ["A", 20_000_000], ["B", 20_000_000], ["C", 20_000_000], ["D", 10_000_000],
+    ]);
+    for (const [k, v] of result.allocation) finalState.set(k, (finalState.get(k) ?? 0) + v);
+    const totalParAfter = 95_000_000;
+    const top3Sum = Array.from(finalState.values()).sort((a, b) => b - a).slice(0, 3).reduce((s, v) => s + v, 0);
+    expect(top3Sum).toBeLessThanOrEqual(0.7 * totalParAfter + 1);
+  });
+
   it("count_above_threshold with multiple below-threshold crossers: count cap held (regression)", () => {
     // 5 buckets at 5M each = 25M. Reinvest 5M → totalAfter=30M.
     // Rule: count_above_threshold(thresholdPct=18, maxCount=2). thresholdPar=5.4M.

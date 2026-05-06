@@ -420,33 +420,49 @@ export function allocateReinvestment(inputs: AllocationInputs): AllocationResult
     }
 
     // Step 2: collective constraints. `combined_top_n_max` binds Σ par over
-    // its top-N buckets, not each bucket individually — so the per-bucket
-    // headroom from `maxAdditionPerBucket` is a per-bucket maximum (assuming
-    // nothing else grows), not a cap on simultaneous fills. When the sum of
-    // wants over in-top-N buckets exceeds the rule's shared budget, scale
-    // those wants down proportionally; the residual redistributes via the
-    // outer iteration. Without this, two or three in-top-N buckets each
-    // claim the full shared budget and the post-fill top-N sum overshoots
-    // the cap.
+    // its top-N buckets, not each bucket individually. Round-3 added scaling
+    // for in-top-N collective; round-8 generalizes to handle non-top-N
+    // promotion: a bucket below rank-N (or tied with rank-N) can receive
+    // "non-top-N" allocation under the per-bucket headroom formula
+    // `freeAddition + postReplace`, but if its want pushes it INTO post-
+    // allocation top-N, it now contributes to the top-N sum. Multiple such
+    // buckets promoting simultaneously can blow past the trigger even when
+    // the in-top-N collective scaling held. The general fix: simulate
+    // post-want state, find post-want top-N, scale down wants of buckets
+    // that contribute to post-want top-N proportionally if their summed
+    // contribution would exceed the trigger.
     let collectivelyConstrained = false;
     for (const rule of rules) {
       if (rule.kind !== "combined_top_n_max") continue;
       if (!ruleApplies(rule.appliesWhen, poolState)) continue;
-      const ranked = rankedIndustryPar(workingPerBucket);
-      const topNCodes = new Set(ranked.slice(0, rule.n).map((b) => b.industryCode));
       const triggerPar = (rule.triggerPct / 100) * totalParAfter;
-      const currentSum = ranked.slice(0, rule.n).reduce((s, b) => s + b.par, 0);
-      const sharedBudget = Math.max(0, triggerPar - currentSum);
-      let sumWantsInTopN = 0;
-      for (const bucket of feasible) {
-        if (topNCodes.has(bucket)) sumWantsInTopN += wants.get(bucket) ?? 0;
-      }
-      if (sumWantsInTopN > sharedBudget + TOL) {
-        const scale = sharedBudget / sumWantsInTopN;
+      // Inner fixed-point loop: scaling can shift rank composition (a bucket
+      // not in pre-scale top-N may overtake a scaled-down top-N bucket and
+      // join post-scale top-N). Re-evaluate after each scale and re-scale
+      // until the post-want top-N sum is within trigger or no further
+      // scaling helps. Bounded iterations so a degenerate input cannot
+      // hang the allocator.
+      for (let inner = 0; inner < rule.n + 2; inner++) {
+        const postWantPar = new Map<string, number>();
+        for (const [k, v] of workingPerBucket) postWantPar.set(k, v);
         for (const bucket of feasible) {
-          if (topNCodes.has(bucket)) {
-            wants.set(bucket, (wants.get(bucket) ?? 0) * scale);
-          }
+          postWantPar.set(bucket, (postWantPar.get(bucket) ?? 0) + (wants.get(bucket) ?? 0));
+        }
+        const ranked2 = Array.from(postWantPar, ([code, par]) => ({ code, par }))
+          .sort((a, b) => b.par - a.par);
+        const topNCodesAfter = new Set(ranked2.slice(0, rule.n).map((b) => b.code));
+        const topNSumAfter = ranked2.slice(0, rule.n).reduce((s, b) => s + b.par, 0);
+        if (topNSumAfter <= triggerPar + TOL) break;
+        // Scale = 1 − (overshoot / sumWantsScalable). Reductions apply to
+        // wants of feasible buckets whose post-want par lands in top-N.
+        const scalableBuckets = feasible.filter((b) => topNCodesAfter.has(b));
+        let sumWantsScalable = 0;
+        for (const b of scalableBuckets) sumWantsScalable += wants.get(b) ?? 0;
+        if (sumWantsScalable <= TOL) break;
+        const reductionNeeded = topNSumAfter - triggerPar;
+        const scale = Math.max(0, 1 - reductionNeeded / sumWantsScalable);
+        for (const b of scalableBuckets) {
+          wants.set(b, (wants.get(b) ?? 0) * scale);
         }
         collectivelyConstrained = true;
       }
