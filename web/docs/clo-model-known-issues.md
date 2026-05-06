@@ -43,7 +43,6 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-05 — Supplemental Reserve Account (step BB)](#ki-05)
 - [KI-06 — Defaulted Hedge Termination (step AA)](#ki-06)
 - [KI-07 — Class C/D/E/F current + deferred interest bundled in step map](#ki-07)
-- [KI-15 — B2 accelerated-mode incentive fee hardcoded inactive](#ki-15)
 
 ### Cascades — residuals that close as upstream closes
 
@@ -98,13 +97,13 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 **Cadence-coupled hardcodings that MUST be touched together when this lands** — independent enumerations of "periods per year = 4" sites that are correct under quarterly cadence and silently wrong under semi-annual:
 
 - **T=0 IC test** (`projection.ts:1259-1276`): scheduled-interest base divided by literal `/ 4` instead of `dayCountFraction(...)`. Each of the seven IC numerator and denominator constructions in the T=0 block uses `/ 4` directly. Under semi-annual cadence the numerator is overstated by 2× and the IC ratio is correspondingly wrong.
-- **Incentive-fee circular solver** (`projection.ts:2368, 2401`): two call sites pass `periodsPerYear = 4` literal to `resolveIncentiveFee(equityCashFlows, ..., 4)`. Under semi-annual cadence the IRR annualization is wrong; the hurdle test then fires at the wrong threshold.
+- **Incentive-fee circular solver** (`projection.ts` — three call sites: two normal-mode at the in-loop interest+principal-path emit, one post-acceleration inside `runPostAccelerationWaterfall`'s step (V) dispatch): all three pass `periodsPerYear = 4` literal to `resolveIncentiveFee(equityCashFlows, ..., 4)`. The post-accel site routes `periodsPerYear` through `PostAccelExecutorInput.periodsPerYear` so the call site at the executor invocation is the load-bearing literal-4 location. Under semi-annual cadence the IRR annualization is wrong at all three sites; the hurdle test then fires at the wrong threshold.
 
 These were originally tracked as "A10" and "A11" in the 2026-04-30 audit. They are sub-items of KI-04, not separate KIs — but they must be enumerated explicitly because closing KI-04 by only fixing the trigger detection without touching these sites leaves silent residual bugs that would not be caught by the trigger-detection test alone.
 
 **Path to close:** Trigger: a deal where the trigger actually fires, or a partner request. The fix sequence is (a) replace literal `/ 4` and `4`-as-periods-per-year throughout the engine with day-count-fraction or `periodsPerYear` derived from the active cadence, (b) carry a per-projection `cadence: "quarterly" | "semiAnnual"` value as input, (c) implement automatic switch detection on (b) concentration + (c) interest-shortfall conditions, (d) re-run the N1 harness on a pre-switch fixture and a post-switch synthetic to confirm.
 
-**Test:** No active marker — trigger does not fire on Euro XV (0% Frequency-Switch-Obligation concentration). Future deals that trip the trigger would surface as a cadence mismatch in the N1 harness period-count row. When the fix lands, also add (i) a synthetic T=0 IC test under semi-annual cadence asserting the correct day-count fraction is applied (catching the line 1259-1276 site), and (ii) a synthetic incentive-fee scenario under semi-annual cadence asserting `resolveIncentiveFee` annualizes correctly (catching the 2368/2401 sites).
+**Test:** No active marker — trigger does not fire on Euro XV (0% Frequency-Switch-Obligation concentration). Future deals that trip the trigger would surface as a cadence mismatch in the N1 harness period-count row. When the fix lands, also add (i) a synthetic T=0 IC test under semi-annual cadence asserting the correct day-count fraction is applied (catching the line 1259-1276 site), and (ii) a synthetic incentive-fee scenario under semi-annual cadence asserting `resolveIncentiveFee` annualizes correctly (catching all three solver call sites — two normal-mode + one post-accel via `PostAccelExecutorInput.periodsPerYear`).
 
 ---
 
@@ -367,19 +366,6 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 **Important — test input path correctness (fixed Sprint 3):** The prior test setup spread `DEFAULT_ASSUMPTIONS` with `taxesBps: 0, adminFeeBps: 0, trusteeFeeBps: 0`, meaning the markers could not move when KI-08 admin or KI-09 taxes closed (the input path zeroed the very fields those closures would add to the numerator). Swapped to `defaultsFromResolved(fixture.resolved, fixture.raw)` — the production path used by `ProjectionModel.tsx` — so the cascade actually cascades. Closure of admin/taxes then shifted the observed drift by the expected ~2-3 pp per class, confirming both the fix and the cascade wiring.
 **Path to close:** Closes progressively as KI-01 / KI-12a close. No standalone work.
 **Test:** `backtest-harness.test.ts > "N6 harness" > Class A/B|C|D IC compositional parity at T=0` — three `failsWithMagnitude` markers (`KI-IC-AB`, `KI-IC-C`, `KI-IC-D`), tolerance 0.05pp. Every PR closing an upstream KI must re-run the harness and update these three `expectedDrift` values.
-
----
-
-<a id="ki-15"></a>
-### [KI-15] B2 accelerated-mode incentive fee hardcoded inactive
-
-**PPM reference:** Post-acceleration Priority of Payments step (V) — "Incentive Collateral Management Fee (if Incentive Fee IRR Threshold met)." Same IRR-threshold mechanics as the normal-mode step (CC) / (U).
-**Current engine behavior:** B2's accelerated executor is called with `incentiveFeeActive: false` hardcoded at `projection.ts:1797` (in the accel branch's call into `runPostAccelerationWaterfall`; the field is declared on the executor input at `projection.ts:624`, consumed at `:737` to gate the `pay(input.incentiveFee)` call). Deliberate simplification. Under acceleration the incentive fee is emitted as zero regardless of whether equity cash-flow history would satisfy the IRR hurdle.
-**PPM-correct behavior:** Run the same IRR-threshold test used in normal-mode step (CC), on the combined pre-breach + accelerated-mode equity cash-flow series. If the hurdle is met, incentive fee fires at the configured percentage; else zero.
-**Quantitative magnitude:** Scenario-dependent. Under most distressed paths the hurdle is NOT met (equity cash flows collapse under acceleration — if the deal is accelerating, it's usually because upstream losses have swamped distributions), so the hardcoded behavior matches PPM intent within tolerance. BUT in scenarios where pre-breach equity distributions were large (e.g., a previously well-performing deal that trips EoD late in the reinvestment period due to a single large default cluster), the accumulated equity IRR may still clear the hurdle. In those scenarios, the hardcoded `false` under-reports incentive fee owed and over-reports residual to Sub Notes.
-**Deferral rationale:** Restoring the IRR solver under acceleration requires carrying equity-cash-flow state across the normal → accelerated mode transition and wiring the same `resolveIncentiveFee` circular solver used in normal mode. Not structural; tedious. Low priority relative to the Sprint 2 B1+B2 scope.
-**Path to close:** Add `incentiveFeeActive` computation in the engine's accel branch: call `resolveIncentiveFee` with the current equity-cash-flow series and hurdle, pass the resulting active flag + computed fee to the executor. Carry the equity-cash-flow series across the normal → accelerated mode transition rather than re-initializing.
-**Test:** No active marker — requires a synthetic scenario where pre-breach equity distributions accumulate above the hurdle, then EoD triggers. Not covered by current B2 stress tests (which use low-MV + high-default scenarios that have near-zero pre-breach distributions). When the fix lands, add a test that constructs such a scenario and verifies incentive fee fires correctly under acceleration.
 
 ---
 

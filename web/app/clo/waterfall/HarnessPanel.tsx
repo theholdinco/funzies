@@ -59,7 +59,6 @@ const BUCKET_TO_KI: Partial<Record<EngineBucket, { ids: string[]; blurb: string 
   effectiveDateRating: { ids: ["KI-03"], blurb: "Effective Date Rating Event (V). Deferred — inactive post-ramp." },
   defaultedHedgeTermination: { ids: ["KI-06"], blurb: "Defaulted hedge termination (AA). Deferred — hedge-default-only." },
   supplementalReserve: { ids: ["KI-05"], blurb: "Supplemental Reserve (BB). Deferred — CM-discretionary." },
-  incentiveFeePaid: { ids: ["KI-15"], blurb: "Incentive fee. Hardcoded inactive under acceleration (B2); normal-mode ties via resolveIncentiveFee solver." },
   reinvestmentBlockedCompliance: { ids: [], blurb: "C1 audit metric — amount of reinvestment the engine blocked due to WARF trigger enforcement. No PPM step / no trustee analogue." },
 };
 

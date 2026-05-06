@@ -1177,9 +1177,23 @@ export interface PostAccelExecutorInput {
   /** Sub-ordinated fees — paid only if rated notes are fully retired and
    *  cash remains. */
   subMgmtFee: number;
-  /** Whether the incentive-fee IRR hurdle is currently met. Simplified flag;
-   *  caller can pass false to disable under distress. */
-  incentiveFeeActive: boolean;
+  /** Sub Note cash-flow series prior to this accel period's residual.
+   *  Index 0 is the equity investment (negative); subsequent entries are
+   *  per-period distributions (positive). Threaded across the normal→accel
+   *  mode transition — the live accumulator already contains pre-breach
+   *  distributions plus any earlier accel-mode residuals. Used by
+   *  `resolveIncentiveFee` to test whether cumulative IRR clears
+   *  `incentiveFeeHurdleIrr`. Same convention as the normal-mode
+   *  `equityCashFlows` accumulator. Empty array disables the fee. */
+  priorEquityCashFlows: number[];
+  /** Annualized IRR hurdle for PPM Acceleration POP step (V) (decimal —
+   *  e.g. 0.12 for 12%). Same hurdle as normal-mode steps (CC) / (U) per
+   *  PPM Condition 11. Zero or negative disables the fee. */
+  incentiveFeeHurdleIrr: number;
+  /** Periods per year for IRR annualization. Quarterly cadence = 4. KI-04
+   *  will replace literal-4 sites with deal-cadence-derived values when
+   *  Frequency Switch lands. */
+  periodsPerYear: number;
   incentiveFeePct: number;
 }
 
@@ -1293,14 +1307,32 @@ export function runPostAccelerationWaterfall(input: PostAccelExecutorInput): Pos
     if (remaining <= 0) break;
   }
 
-  // ── 3. Sub-ordinated steps (Q, T, V). Only if rated notes exhausted. ──
+  // ── 3. Sub-ordinated steps (Q, V). Only if rated notes exhausted. Step
+  //      (T) Defaulted Hedge Termination is unmodeled — see KI-06. ──
   const subMgmtFeePaid = pay(input.subMgmtFee);
-  // Incentive fee: only if hurdle met AND cash remains. Flat percentage of
-  // remaining cash before residual (simplified — proper model would use IRR
-  // threshold waterfall). Under distress, hurdle rarely met.
-  const incentiveFeePaid = input.incentiveFeeActive
-    ? pay(Math.max(0, remaining) * (input.incentiveFeePct / 100))
-    : 0;
+  // PPM Acceleration POP step (V) — Incentive Collateral Management Fee.
+  // Same IRR-threshold mechanic as normal-mode steps (CC) / (U): three
+  // regimes inside `resolveIncentiveFee` — pre-fee IRR < hurdle → 0; full
+  // pct fee post-fee IRR ≥ hurdle → full fee; otherwise bisect to keep
+  // post-fee IRR at the hurdle. The cumulative Sub Note cashflow series
+  // (`priorEquityCashFlows`) carries pre-breach + earlier accel-mode
+  // distributions; this period's pre-fee residual is the next inflow the
+  // solver tests against.
+  let incentiveFeePaid = 0;
+  if (
+    input.incentiveFeePct > 0 &&
+    input.incentiveFeeHurdleIrr > 0 &&
+    remaining > 0
+  ) {
+    const fee = resolveIncentiveFee(
+      input.priorEquityCashFlows,
+      Math.max(0, remaining),
+      input.incentiveFeePct,
+      input.incentiveFeeHurdleIrr,
+      input.periodsPerYear, // KI-04 — third literal-4 call site (alongside the two normal-mode sites); deal-cadence-derive when Frequency Switch lands.
+    );
+    incentiveFeePaid = pay(fee);
+  }
 
   // ── 4. Residual to Sub Noteholders. ──
   const residualToSub = Math.max(0, remaining);
@@ -3715,12 +3747,14 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         },
         interestDueByTranche,
         subMgmtFee: subFeeAmountUnderAccel,
-        // KI-15: incentive fee under acceleration hardcoded inactive. Correct
-        // under most distressed paths (hurdle not met) but wrong for edge
-        // scenarios with accumulated pre-breach equity distributions. Fix
-        // plan: carry equityCashFlows into accel branch and run
-        // resolveIncentiveFee here — ~0.5 day per KI-15 ledger.
-        incentiveFeeActive: false,
+        // PPM Acceleration POP step (V): incentive fee gated on cumulative
+        // Sub Note IRR. Pass the live `equityCashFlows` accumulator —
+        // already contains pre-breach distributions + earlier accel-mode
+        // residuals; does NOT yet contain this period's residual (the
+        // executor adds it as the next inflow before running the IRR test).
+        priorEquityCashFlows: equityCashFlows,
+        incentiveFeeHurdleIrr,
+        periodsPerYear: 4, // KI-04 — third literal-4 call site (alongside the two normal-mode sites at the incentive-fee solver calls); deal-cadence-derive when Frequency Switch lands.
         incentiveFeePct,
       });
 
@@ -4817,7 +4851,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
  *   2. Full fee AND post-fee IRR > hurdle → F = available × feePct/100
  *   3. Full fee pushes IRR below hurdle → bisect to find F where post-fee IRR ≈ hurdle
  */
-function resolveIncentiveFee(
+export function resolveIncentiveFee(
   priorCashFlows: number[],
   availableAmount: number,
   feePct: number,
