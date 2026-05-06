@@ -8,6 +8,7 @@ import { CLO_DEFAULTS } from "./defaults";
 import { computeTopNObligorsPct } from "./pool-metrics";
 import { assignDenseSeniorityRanks, classOrderBucket } from "./seniority-rank";
 import { canonicalizeDayCount, type DayCountConvention } from "./day-count-canonicalize";
+import { quartersBetween } from "./projection";
 import { resolveAgencyRecovery } from "./recovery-rate";
 import { normalizeClassName as normClass } from "./normalize-class-name";
 import { resolveMoodysRating, resolveFitchRating, type IntexPositionRow } from "./resolve-rating";
@@ -2282,21 +2283,57 @@ export function resolveWaterfallInputs(
     : 0;
   const derivedLongDatedHaircut = (() => {
     if (loans.length === 0 || longDatedValuationRule == null) return 0;
-    // Shape A (within=par, post=zero) — exact: max(0, longDatedPar - cap).
-    // Shape B (within=tiered_mv_or_capped) — lower bound: ignores within-cap
-    // MV-vs-capped valuation. agency_cv_min is gated upstream by
-    // resolveLongDatedObligation; this helper never sees it.
-    const longDatedPar = loans
-      .filter(l => l.isLongDated === true && !l.isDelayedDraw)
-      .reduce((s, l) => s + l.parBalance, 0);
-    if (longDatedPar === 0) return 0;
+    // Mirrors `computeLongDatedHaircut` in projection.ts at T=0
+    // (asOfQuarter = 0). Must match per-position dispatch exactly,
+    // because this value feeds `impliedOcAdjustment` and any drift
+    // from the engine's runtime computation produces a silent OC
+    // numerator double-deduction (engine subtracts engine-derived,
+    // impliedOcAdjustment was calibrated to a different number).
+    // agency_cv_min is gated upstream by resolveLongDatedObligation;
+    // this helper never sees it.
+    const longDated = loans.filter(l => l.isLongDated === true && !l.isDelayedDraw && l.parBalance > 0);
+    if (longDated.length === 0) return 0;
+    const totalLongDatedPar = longDated.reduce((s, l) => s + l.parBalance, 0);
     const apbApprox = loans.reduce((s, l) => s + (l.isDelayedDraw ? 0 : l.parBalance), 0);
     if (apbApprox === 0) return 0;
     const baseAmount = longDatedValuationRule.capBase === "APB"
       ? apbApprox
       : apbApprox + principalAccountCash;
-    const cap = baseAmount * (longDatedValuationRule.capPctOfBase / 100);
-    return Math.max(0, longDatedPar - cap);
+    const capAmount = Math.max(0, baseAmount * (longDatedValuationRule.capPctOfBase / 100));
+    const withinCapShare =
+      totalLongDatedPar <= capAmount ? 1 : capAmount / totalLongDatedPar;
+
+    let haircut = 0;
+    for (const l of longDated) {
+      const withinCapPar = l.parBalance * withinCapShare;
+      let withinCapValue: number;
+      if (longDatedValuationRule.withinCap.type === "par") {
+        withinCapValue = withinCapPar;
+      } else if (longDatedValuationRule.withinCap.type === "tiered_mv_or_capped") {
+        // tiered_mv_or_capped — at T=0 (asOfQuarter = 0), yearsPast =
+        // -maturityQuarter / 4. For long-dated positions (maturity >
+        // deal maturity) at T=0, yearsPast is strongly negative; the
+        // cliff branch never fires here. Forward-period dispatch
+        // exercises the cliff via the engine helper.
+        const matQ = l.maturityDate != null ? quartersBetween(currentDate, l.maturityDate) : Infinity;
+        const yearsPast = (0 - matQ) / 4;
+        if (yearsPast > longDatedValuationRule.withinCap.cliffYearsPastStatedMaturity) {
+          withinCapValue = 0;
+        } else if (l.currentPrice == null) {
+          withinCapValue = withinCapPar * (longDatedValuationRule.withinCap.cappedPricePct / 100);
+        } else {
+          const effectivePct = Math.min(l.currentPrice, longDatedValuationRule.withinCap.cappedPricePct);
+          withinCapValue = withinCapPar * (effectivePct / 100);
+        }
+      } else {
+        // Exhaustiveness guard — must match engine's computeLongDatedHaircut.
+        const _exhaustive: never = longDatedValuationRule.withinCap;
+        throw new Error(`derivedLongDatedHaircut: unhandled withinCap variant ${JSON.stringify(_exhaustive)}`);
+      }
+      // postCap.zero: above-cap valued at zero. agency_cv_min unreachable here.
+      haircut += l.parBalance - withinCapValue;
+    }
+    return haircut;
   })();
 
   // --- T=0 reconciliation: per-position derived discount haircut vs trustee scalar ---

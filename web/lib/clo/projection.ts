@@ -2426,11 +2426,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     for (const l of longDated) {
       const withinCapPar = l.survivingPar * withinCapShare;
 
-      // Within-cap valuation
+      // Within-cap valuation — exhaustive on rule.withinCap.type.
       let withinCapValue: number;
       if (rule.withinCap.type === "par") {
         withinCapValue = withinCapPar;
-      } else {
+      } else if (rule.withinCap.type === "tiered_mv_or_capped") {
         // Quarters past stated maturity = how far the as-of period is
         // past the loan's maturityQuarter (which itself is the quarter
         // index of the loan's stated maturity from projection start).
@@ -2445,6 +2445,12 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           const effectivePct = Math.min(l.currentPrice, rule.withinCap.cappedPricePct);
           withinCapValue = withinCapPar * (effectivePct / 100);
         }
+      } else {
+        // Exhaustiveness guard — adding a new `withinCap.type` variant
+        // without a matching engine branch must be a compile error here,
+        // not a silent NaN haircut at runtime.
+        const _exhaustive: never = rule.withinCap;
+        throw new Error(`computeLongDatedHaircut: unhandled withinCap variant ${JSON.stringify(_exhaustive)}`);
       }
 
       // Post-cap is "zero" for every reachable code path.
@@ -2489,12 +2495,13 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     const discountHaircutT0 = hasLoans ? computeDiscountHaircut(loanStates) : 0;
     // Long-dated haircut sourced from per-position dispatch. APB base =
     // Σ Principal Balance excluding undrawn DDTL commitments (per
-    // Aggregate Principal Balance definition para (a)). CPA base adds
-    // Principal Account cash (per Adjusted CPA definition para (d)).
-    // Helper returns 0 when the rule is null (legacy / hand-constructed
-    // inputs without longDatedValuationRule).
-    const apbBaseT0 = poolPar - currentDdtlUnfundedPar;
-    const cpaBaseT0 = poolPar + initialPrincipalCash - currentDdtlUnfundedPar;
+    // Aggregate Principal Balance definition para (a)) — `poolPar`
+    // already excludes DDTLs (loanTotal is built from
+    // `loanStates.filter(!isDelayedDraw)`). CPA base adds Principal
+    // Account cash (per Adjusted CPA definition para (d)). Helper
+    // returns 0 when the rule is null.
+    const apbBaseT0 = poolPar;
+    const cpaBaseT0 = poolPar + initialPrincipalCash;
     const longDatedHaircutT0 = hasLoans
       ? computeLongDatedHaircut(loanStates, 0, longDatedValuationRule, apbBaseT0, cpaBaseT0)
       : 0;
@@ -3909,14 +3916,13 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     if (hasLoans) applyCureDispatch(loanStates, periodDate);
     const discountHaircut = hasLoans ? computeDiscountHaircut(loanStates) : 0;
     // Long-dated haircut from per-position dispatch (forward).
-    // APB / CPA bases mirror the T=0 site; APB excludes undrawn DDTL,
-    // CPA adds the Principal Account residual cash (`remainingPrelim`).
-    // Long-dated par decays naturally through the existing loanStates
-    // mutation paths (amortization / prepayment / default), so the
-    // haircut shrinks as the original cohort runs off without needing
-    // a separate path.
-    const apbBasePeriod = endingPar - currentDdtlUnfundedPar;
-    const cpaBasePeriod = endingPar + remainingPrelim - currentDdtlUnfundedPar;
+    // APB base is `endingPar` (already excludes DDTLs via the
+    // `filter(!isDelayedDraw)` in its definition). CPA base adds the
+    // Principal Account residual cash. Long-dated par decays naturally
+    // through the existing loanStates mutation paths (amortization /
+    // prepayment / default).
+    const apbBasePeriod = endingPar;
+    const cpaBasePeriod = endingPar + remainingPrelim;
     const longDatedHaircut = hasLoans
       ? computeLongDatedHaircut(loanStates, q, longDatedValuationRule, apbBasePeriod, cpaBasePeriod)
       : 0;

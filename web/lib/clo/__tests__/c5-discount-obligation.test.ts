@@ -265,6 +265,97 @@ describe("Per-position long-dated haircut at T=0 (Shape A: Ares XV verbatim)", (
     // No haircut even though 8M is flagged isLongDated
     expect(result.initialState.ocTests[0].actual).toBeCloseTo((100_000_000 / 65_000_000) * 100, 1);
   });
+
+  it("forward-period dispatch: long-dated cohort survives into q=1; haircut decays as cohort amortizes", () => {
+    // Pool with 8M long-dated par at T=0 (above 5% cap, 3M excess).
+    // Asserts the forward-period site at projection.ts:~3925 also
+    // dispatches the haircut (separate from the T=0 site at ~2499).
+    // The cliff arithmetic uses the period's quarter index `q`, which
+    // is exercised here for q=1.
+    const inputs = makeInputs({
+      loans: [
+        { parBalance: 92_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 8_000_000, maturityDate: "2040-01-15", ratingBucket: "B", spreadBps: 375, isLongDated: true },
+      ],
+      initialPar: 100_000_000,
+      longDatedValuationRule: SHAPE_A_5PCT_APB,
+    });
+    const result = runProjection(inputs);
+    const ocT0 = result.initialState.ocTests[0].actual;
+    const ocQ1 = result.periods[0]?.ocTests[0]?.actual;
+    expect(ocQ1).not.toBeUndefined();
+    // T=0 OC = (100M − 3M) / 65M ≈ 149.23%. Q1 ratio is in the same
+    // neighborhood — the cohort hasn't amortized materially with default
+    // CDR and no prepay. Asserting both sides emit the haircut (vs the
+    // T=0 site emitting and the forward site silently dropping it).
+    expect(ocT0).toBeCloseTo((97_000_000 / 65_000_000) * 100, 1);
+    expect(Math.abs(ocQ1! - ocT0)).toBeLessThan(5);
+  });
+});
+
+describe("Per-position long-dated haircut — Shape B (tiered_mv_or_capped)", () => {
+  // Hypothetical Ares XVIII-shape rule: 2.5% APB cap, within-cap valued
+  // at min(MV × par, 70% × par), beyond 2-year cliff valued at zero,
+  // post-cap zero (agency_cv_min variant is gated by the resolver).
+  const SHAPE_B_TIERED: ResolvedLongDatedValuationRule = {
+    capPctOfBase: 2.5,
+    capBase: "APB",
+    withinCap: { type: "tiered_mv_or_capped", cliffYearsPastStatedMaturity: 2, cappedPricePct: 70 },
+    postCap: { type: "zero" },
+  };
+
+  it("within-cap loan with MV below capped → withinCapValue = MV × par; haircut = par × (1 − MV/100)", () => {
+    // Pool: 99M + 1M long-dated. Cap = 2.5% × 100M = 2.5M; long-dated par
+    // 1M ≤ cap, all within. currentPrice 60 < cappedPricePct 70 → effective
+    // = 60. withinCapValue = 1M × 0.6 = 0.6M. Haircut = 1M − 0.6M = 0.4M.
+    const inputs = makeInputs({
+      loans: [
+        { parBalance: 99_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 1_000_000, maturityDate: "2040-01-15", ratingBucket: "B", spreadBps: 375, isLongDated: true, currentPrice: 60 },
+      ],
+      initialPar: 100_000_000,
+      longDatedValuationRule: SHAPE_B_TIERED,
+    });
+    const result = runProjection(inputs);
+    const ocActual = result.initialState.ocTests[0].actual;
+    expect(ocActual).toBeCloseTo((99_600_000 / 65_000_000) * 100, 1);
+  });
+
+  it("within-cap loan with MV above capped → withinCapValue clipped to cappedPricePct × par", () => {
+    // Pool: 99M + 1M long-dated. Cap = 2.5M; within-cap. currentPrice 85 >
+    // cappedPricePct 70 → effective clipped to 70. withinCapValue = 1M × 0.7
+    // = 0.7M. Haircut = 1M − 0.7M = 0.3M.
+    const inputs = makeInputs({
+      loans: [
+        { parBalance: 99_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 1_000_000, maturityDate: "2040-01-15", ratingBucket: "B", spreadBps: 375, isLongDated: true, currentPrice: 85 },
+      ],
+      initialPar: 100_000_000,
+      longDatedValuationRule: SHAPE_B_TIERED,
+    });
+    const result = runProjection(inputs);
+    const ocActual = result.initialState.ocTests[0].actual;
+    expect(ocActual).toBeCloseTo((99_700_000 / 65_000_000) * 100, 1);
+  });
+
+  it("above-cap par valued at zero (postCap.zero), within-cap valued by tiered rule", () => {
+    // Pool: 95M + 5M long-dated. Cap = 2.5M; 2.5M within-cap, 2.5M above-cap.
+    // Within-cap: split proportionally — each long-dated loan contributes
+    // its share. currentPrice 80 → effective 70 (clipped). Σ within-cap
+    // value = 2.5M × 0.7 = 1.75M. Above-cap value = 0. Haircut = 5M − 1.75M
+    // = 3.25M.
+    const inputs = makeInputs({
+      loans: [
+        { parBalance: 95_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 5_000_000, maturityDate: "2040-01-15", ratingBucket: "B", spreadBps: 375, isLongDated: true, currentPrice: 80 },
+      ],
+      initialPar: 100_000_000,
+      longDatedValuationRule: SHAPE_B_TIERED,
+    });
+    const result = runProjection(inputs);
+    const ocActual = result.initialState.ocTests[0].actual;
+    expect(ocActual).toBeCloseTo((96_750_000 / 65_000_000) * 100, 1);
+  });
 });
 
 describe("reinvestmentPricePct provenance — engine emits pricing source for transparency", () => {
