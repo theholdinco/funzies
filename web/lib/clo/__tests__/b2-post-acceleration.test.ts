@@ -446,57 +446,91 @@ describe("Post-accel incentive fee — IRR-gated dispatch matching normal-mode s
     expect(result.residualToSub).toBeCloseTo(4_000_000, 2);
   });
 
-  it("integration: post-accel period in runProjection charges fee when prior series clears hurdle", () => {
-    // End-to-end: confirm the engine threads `equityCashFlows` into
-    // `runPostAccelerationWaterfall` and the fee fires across the
-    // normal→accel transition. Constructed scenario:
-    //   - Healthy MV (98c): no rated-note collapse pre-EoD.
-    //   - 90% default fraction at q=2 onward: forces OC failure → EoD →
-    //     acceleration suffix.
-    //   - The pre-q=2 normal periods accumulate Sub Note distributions on
-    //     the live `equityCashFlows` accumulator.
-    //   - Post-acceleration, the executor reads `priorEquityCashFlows =
-    //     equityCashFlows` and the IRR check fires.
+  it("integration: engine threads live equityCashFlows through to executor (solver-anchored)", () => {
+    // End-to-end test of the load-bearing threading invariant: the engine's
+    // call site at the post-acceleration branch passes the LIVE
+    // `equityCashFlows` accumulator (not `[]`, not a stale snapshot) to
+    // `runPostAccelerationWaterfall`. Type system enforces the field is
+    // `number[]`, but a wrong-array regression (e.g. accidentally passing
+    // `[]`) would compile silently — only an end-to-end assertion against
+    // an INDEPENDENTLY-constructed prior series catches it.
     //
-    // We don't pin a specific fee magnitude (depends on the synthetic
-    // scenario's cash dynamics) — the load-bearing assertion is "the
-    // executor saw the threaded series and computed a fee using it",
-    // verified by checking the fee equals the solver's output on the
-    // observed pre-fee residual.
-    const inputs = buildFromResolved(
-      stressedResolved(98),
-      {
-        ...defaultsFromResolved(stressedResolved(98), fixture.raw),
-        // Force a high incentive-fee rate so the solver's regime-2 output
-        // is unambiguously non-zero when the hurdle clears.
-        incentiveFeePct: 20,
-      },
-    );
-    // 90% default fraction collapses OC: trustee cushion is large but the
-    // forced default rate dwarfs it.
-    const result = runProjection(inputs, forceDefaultFraction(0.90));
+    // Strategy:
+    //   1. Construct projection inputs with a known explicit equity entry
+    //      price, run a stress scenario forcing acceleration.
+    //   2. Reconstruct the prior series independently from the engine's
+    //      emitted per-period equity distributions:
+    //         independentPrior = [-equityEntryPrice, ...preAccelDists]
+    //   3. Reconstruct the period's pre-fee residual from the emitted
+    //      stepTrace: `equityDistribution + incentiveFeeFromInterest`.
+    //   4. Compute `expectedFee = resolveIncentiveFee(independentPrior,
+    //      preFeeResidual, pct, hurdle, 4)`.
+    //   5. Assert the engine's emitted fee matches the solver's output on
+    //      the independently-constructed inputs. If the engine threaded
+    //      correctly, both sides agree. If the engine passed `[]` or a
+    //      stale array, the engine's fee can drift from the independent
+    //      solver result.
+    //
+    // Under the chosen stress scenario (20% default fraction — same as the
+    // existing flip-timing tests above) the cumulative IRR may not clear
+    // 12%, so `expectedFee` is often 0. Even so, the structural-equality
+    // assertion catches engine-vs-solver drift; the regime-2 unit test
+    // above is the dedicated non-zero-fee assertion.
+    const explicitEntryPrice = 20_000_000;
+    const inputs = buildFromResolved(stressedResolved(10), {
+      ...defaultsFromResolved(stressedResolved(10), fixture.raw),
+      recoveryPct: 0,
+      recoveryLagMonths: 120,
+      cprPct: 0,
+      equityEntryPriceCents: 100,
+    });
+    // Override equityEntryPrice to a known value so the independent
+    // reconstruction below is unambiguous (independent of book-value
+    // fallback at engine setup).
+    const inputsWithEntry = { ...inputs, equityEntryPrice: explicitEntryPrice };
+    const result = runProjection(inputsWithEntry, forceDefaultFraction(0.20));
 
-    // Find the first acceleration period.
+    // Find the first acceleration period (must be > 0 — pre-accel periods
+    // exist and contribute to the prior series).
     const accelIdx = result.periods.findIndex((p) => p.isAccelerated);
-    expect(accelIdx).toBeGreaterThan(0); // must have at least one normal period before
+    expect(accelIdx).toBeGreaterThan(0);
     const accelPeriod = result.periods[accelIdx];
 
-    // The post-accel fee surfaces on `stepTrace.incentiveFeeFromInterest`
-    // (the engine routes the executor's `incentiveFeePaid` into the
-    // interest-bucket field; principal-bucket field is 0 under acceleration).
-    // We don't pin a specific magnitude — the load-bearing assertion is that
-    // the executor saw the threaded series and emitted a fee that's
-    // structurally consistent with the IRR-gated path.
-    const totalIncentive =
-      accelPeriod.stepTrace.incentiveFeeFromInterest +
-      accelPeriod.stepTrace.incentiveFeeFromPrincipal;
-    expect(totalIncentive).toBeGreaterThanOrEqual(0);
-    // Sanity: under stress the cumulative IRR is unlikely to clear 12%, so
-    // most realistic scenarios produce a zero fee. The integration test's
-    // load-bearing role is "does the threading run end-to-end without
-    // throwing," not "does the fee fire on this synthetic stress." A fee
-    // value of 0 is consistent with regime 1 (correct under stress); a
-    // non-zero value is consistent with regimes 2/3. Either is valid here.
-    expect(Number.isFinite(totalIncentive)).toBe(true);
+    // Reconstruct the prior series independently from result.periods —
+    // does NOT trust the engine's internal `equityCashFlows` directly.
+    const independentPriorSeries = [
+      -explicitEntryPrice,
+      ...result.periods
+        .slice(0, accelIdx)
+        .map((p) => p.equityDistribution),
+    ];
+
+    // Reconstruct this period's pre-fee residual from emitted stepTrace.
+    // Under acceleration the engine routes the executor's `incentiveFeePaid`
+    // into `incentiveFeeFromInterest`; `incentiveFeeFromPrincipal` is 0.
+    const preFeeResidual =
+      accelPeriod.equityDistribution +
+      accelPeriod.stepTrace.incentiveFeeFromInterest;
+
+    // Solver result on the INDEPENDENTLY-constructed inputs. If the engine
+    // threaded `priorEquityCashFlows` correctly, this equals what the
+    // engine's executor saw and computed.
+    const expectedFee = resolveIncentiveFee(
+      independentPriorSeries,
+      preFeeResidual,
+      inputsWithEntry.incentiveFeePct,
+      inputsWithEntry.incentiveFeeHurdleIrr,
+      4,
+    );
+
+    // Engine's emitted fee must match the solver's output on the
+    // reconstructed inputs. Catches `priorEquityCashFlows: []` or stale-
+    // snapshot regressions at the call site. Tolerance handles FP rounding
+    // in the bisection (regime 3) when applicable.
+    expect(accelPeriod.stepTrace.incentiveFeeFromInterest).toBeCloseTo(expectedFee, 2);
+    // Principal-bucket fee under acceleration is always 0 by engine
+    // convention (the executor emits a single combined fee that's routed
+    // into the interest bucket).
+    expect(accelPeriod.stepTrace.incentiveFeeFromPrincipal).toBe(0);
   });
 });
