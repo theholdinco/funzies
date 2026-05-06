@@ -2428,10 +2428,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   // price — no signal, contribute zero), `purchasePricePct >= 100`
   // (premium-purchase has no haircut by definition). Hand-constructed test
   // fixtures that don't model the discount mechanic see all loans with
-  // `isDiscountObligation === undefined` and the haircut collapses to zero
-  // — same numerical output as the pre-KI-29 path on those inputs. Un-drawn
-  // DDTL/revolver commitments contribute zero implicitly via survivingPar=0;
-  // their un-drawn notional is captured separately on the OC subtractor.
+  // `isDiscountObligation === undefined` and the haircut collapses to zero.
+  // Un-drawn DDTL/revolver commitments contribute zero implicitly via
+  // survivingPar=0; their un-drawn notional is captured separately on the
+  // OC subtractor.
   const computeDiscountHaircut = (states: LoanState[]): number => {
     let total = 0;
     for (const l of states) {

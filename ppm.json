@@ -190,8 +190,7 @@
           "type": "days",
           "n": 30
         }
-      },
-      "ki_29_verification_date": "2026-05-05"
+      }
     },
     "long_dated_obligation": {
       "source_pages": [135, 142],
@@ -202,8 +201,7 @@
       "cap_base": "APB",
       "within_cap": { "type": "par" },
       "post_cap": { "type": "zero" },
-      "defaulted_obligation_basis_note": "Per the verbatim clause, the Principal Balance of each Defaulted Obligation is its Fitch Collateral Value for the long-dated computation. NOT modeled today (engine carries no per-position FCV); zero current magnitude on Ares XV (no defaulted long-dated positions). Document as portability gap; file sub-KI when material.",
-      "ki_29_verification_date": "2026-05-05"
+      "defaulted_obligation_basis_note": "Per the verbatim clause, the Principal Balance of each Defaulted Obligation is its Fitch Collateral Value for the long-dated computation. NOT modeled today (engine carries no per-position FCV); zero current magnitude on Ares XV (no defaulted long-dated positions). Document as portability gap; file sub-KI when material."
     }
   },
 

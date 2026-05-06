@@ -9226,7 +9226,16 @@
     "preExistingDefaultRecovery": 0,
     "unpricedDefaultedPar": 0,
     "preExistingDefaultOcValue": 0,
-    "longDatedValuationRule": null,
+    "longDatedValuationRule": {
+      "capPctOfBase": 5,
+      "capBase": "APB",
+      "withinCap": { "type": "par" },
+      "postCap": { "type": "zero" },
+      "citation": {
+        "sourcePages": [135, 142],
+        "sourceCondition": "OC Condition 1 (\"Long-Dated Collateral Obligation\" definition, p. 135) + Aggregate Principal Balance definition paragraph (e), p. 142 (\"deemed to be zero\" rule)"
+      }
+    },
     "discountObligationHaircut": 0,
     "longDatedObligationHaircut": 0,
     "cccBucketLimitPct": 7.5,
@@ -9290,6 +9299,14 @@
   ],
   "raw": {
     "constraints": {
+      "longDatedObligation": {
+        "capPctOfBase": 5,
+        "capBase": "APB",
+        "withinCap": { "type": "par" },
+        "postCap": { "type": "zero" },
+        "sourcePages": [135, 142],
+        "sourceCondition": "OC Condition 1 (\"Long-Dated Collateral Obligation\" definition, p. 135) + Aggregate Principal Balance definition paragraph (e), p. 142 (\"deemed to be zero\" rule)"
+      },
       "fees": [
         {
           "name": "Senior Collateral Management Fee",
