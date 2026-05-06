@@ -312,6 +312,38 @@ describe("allocateReinvestment — water-filling", () => {
     expect(top3Sum).toBeLessThanOrEqual(0.7 * totalParAfter + 1);
   });
 
+  it("count_above_threshold with multiple below-threshold crossers: count cap held (regression)", () => {
+    // 5 buckets at 5M each = 25M. Reinvest 5M → totalAfter=30M.
+    // Rule: count_above_threshold(thresholdPct=18, maxCount=2). thresholdPar=5.4M.
+    // Currently each bucket at 5M < 5.4M → aboveCount=0 → 2 slots free.
+    // Pre-fix: each below-threshold bucket reported unconstrained headroom under
+    // this rule (only when aboveCount >= maxCount did the per-bucket cap kick
+    // in). Uniform allocation 1M each → all five at 6M → aboveCount=5 > 2.
+    // Post-fix: collective scaling caps the number of crossers at `slots=2`.
+    // Under uniform priors, the top 2 cross; the remaining 3 are capped at
+    // `thresholdPar - currentPar` so they stay at threshold (not strictly above).
+    const result = allocateReinvestment({
+      parToReinvest: 5_000_000,
+      rules: [{ kind: "count_above_threshold", thresholdPct: 18, maxCount: 2 }],
+      initialPerBucket: new Map([
+        ["A", 5_000_000], ["B", 5_000_000], ["C", 5_000_000], ["D", 5_000_000], ["E", 5_000_000],
+      ]),
+      initialTotalPar: 25_000_000,
+      priorWeights: new Map([["A", 0.2], ["B", 0.2], ["C", 0.2], ["D", 0.2], ["E", 0.2]]),
+      poolState: NEUTRAL_POOL_STATE,
+    });
+    expect(result.parAllocated).toBeCloseTo(5_000_000, -3);
+    // Verify post-allocation count cap holds.
+    const finalState = new Map<string, number>([
+      ["A", 5_000_000], ["B", 5_000_000], ["C", 5_000_000], ["D", 5_000_000], ["E", 5_000_000],
+    ]);
+    for (const [k, v] of result.allocation) finalState.set(k, (finalState.get(k) ?? 0) + v);
+    const totalParAfter = 25_000_000 + result.parAllocated;
+    const thresholdPar = 0.18 * totalParAfter;
+    const aboveCount = Array.from(finalState.values()).filter((v) => v > thresholdPar + 1).length;
+    expect(aboveCount).toBeLessThanOrEqual(2);
+  });
+
   it("combined_top_n_max with non-top-N buckets accepting allocation: cap held (regression)", () => {
     // 5 buckets [10, 10, 10, 5, 5] = 40M. Top-3 = 30M. Rule: combined_top_n_max
     // (n=3, triggerPct=70). Reinvest 10M → totalAfter=50M → trigger=35M.

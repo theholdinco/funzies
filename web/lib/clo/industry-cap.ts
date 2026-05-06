@@ -442,6 +442,48 @@ export function allocateReinvestment(inputs: AllocationInputs): AllocationResult
       }
     }
 
+    // Step 2b: `count_above_threshold` is also a collective constraint. The
+    // per-bucket headroom in `maxAdditionPerBucket` only fires when the
+    // aboveCount is already at maxCount; if aboveCount < maxCount, each
+    // below-threshold bucket reports unconstrained headroom — but ALL of
+    // them crossing simultaneously can drive the count past maxCount.
+    // Concrete: 5 buckets at 5M (currently below an 18%-of-pool threshold);
+    // rule maxCount=2; uniform want of 1M each → all five cross threshold
+    // → count=5 > maxCount=2 → BREACH. Fix: identify below-threshold
+    // crossers ranked by prior, allow at most `maxCount - currentlyAbove`
+    // to cross; cap the rest at threshold (post = thresholdPar so they
+    // stay below the strict-> predicate).
+    for (const rule of rules) {
+      if (rule.kind !== "count_above_threshold") continue;
+      if (!ruleApplies(rule.appliesWhen, poolState)) continue;
+      const thresholdPar = (rule.thresholdPct / 100) * totalParAfter;
+      let currentlyAbove = 0;
+      for (const par of workingPerBucket.values()) if (par > thresholdPar + TOL) currentlyAbove++;
+      const slots = Math.max(0, rule.maxCount - currentlyAbove);
+      const crossers: { bucket: string; weight: number }[] = [];
+      for (const bucket of feasible) {
+        const currentPar = workingPerBucket.get(bucket) ?? 0;
+        if (currentPar > thresholdPar + TOL) continue; // already counted
+        const want = wants.get(bucket) ?? 0;
+        if (currentPar + want > thresholdPar + TOL) {
+          crossers.push({ bucket, weight: priorWeights.get(bucket) ?? 0 });
+        }
+      }
+      if (crossers.length > slots) {
+        // Sort by prior weight descending; first `slots` cross fully,
+        // rest capped at `thresholdPar - currentPar` (stay just at/below
+        // threshold so the strict-> count predicate doesn't include them).
+        crossers.sort((a, b) => b.weight - a.weight);
+        for (let i = slots; i < crossers.length; i++) {
+          const bucket = crossers[i].bucket;
+          const currentPar = workingPerBucket.get(bucket) ?? 0;
+          const cap = Math.max(0, thresholdPar - currentPar);
+          wants.set(bucket, Math.min(wants.get(bucket) ?? 0, cap));
+        }
+        collectivelyConstrained = true;
+      }
+    }
+
     let placedThisRound = 0;
     let anyCapped = false;
 
