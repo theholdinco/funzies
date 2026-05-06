@@ -3392,6 +3392,24 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // that doesn't carry a clause (t).
     let industryAllocation: Map<string, number> | null = null;
     if (reinvestment > 0 && hasLoans && industryCapRules != null && industryCapRules.length > 0) {
+      // Boundary assertion (anti-pattern #5): when industry-cap rules are
+      // active, every funded position MUST carry industryCode. The resolver's
+      // blocking gate enforces this on the production buildFromResolved path,
+      // but the engine accepts test inputs via makeInputs that bypass that
+      // gate. Without this assertion, an untagged loan would be silently
+      // dropped by aggregateIndustryPar — understating the rule's denominator
+      // (tagged-only par) and producing a tighter cap than the PPM specifies.
+      // Fail loud so any code path constructing ProjectionInputs with
+      // industryCapRules is forced to also tag every survivingPar loan.
+      const untagged = loanStates.filter((l) => l.survivingPar > 0 && !l.industryCode);
+      if (untagged.length > 0) {
+        throw new Error(
+          `ProjectionInputs has industryCapRules set but ${untagged.length} surviving loan(s) ` +
+          `lack industryCode. Industry-cap enforcement requires 100% per-position coverage. ` +
+          `If running tests, tag every loan with industryCode in test-helpers; if running ` +
+          `production, this should have been caught by the resolver's blocking gate.`,
+        );
+      }
       const currentPerBucket = aggregateIndustryPar(
         loanStates
           .filter((l) => l.survivingPar > 0)

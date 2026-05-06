@@ -401,15 +401,56 @@ export function allocateReinvestment(inputs: AllocationInputs): AllocationResult
     const feasibleWeightSum = feasible.reduce((s, k) => s + (priorWeights.get(k) ?? 0), 0);
     if (feasibleWeightSum <= 0) break;
 
+    // Step 1: per-bucket proportional want.
+    const wants = new Map<string, number>();
+    for (const bucket of feasible) {
+      const w = priorWeights.get(bucket) ?? 0;
+      wants.set(bucket, (w / feasibleWeightSum) * remaining);
+    }
+
+    // Step 2: collective constraints. `combined_top_n_max` binds Σ par over
+    // its top-N buckets, not each bucket individually — so the per-bucket
+    // headroom from `maxAdditionPerBucket` is a per-bucket maximum (assuming
+    // nothing else grows), not a cap on simultaneous fills. When the sum of
+    // wants over in-top-N buckets exceeds the rule's shared budget, scale
+    // those wants down proportionally; the residual redistributes via the
+    // outer iteration. Without this, two or three in-top-N buckets each
+    // claim the full shared budget and the post-fill top-N sum overshoots
+    // the cap.
+    let collectivelyConstrained = false;
+    for (const rule of rules) {
+      if (rule.kind !== "combined_top_n_max") continue;
+      if (!ruleApplies(rule.appliesWhen, poolState)) continue;
+      const ranked = rankedIndustryPar(workingPerBucket);
+      const topNCodes = new Set(ranked.slice(0, rule.n).map((b) => b.industryCode));
+      const triggerPar = (rule.triggerPct / 100) * totalParAfter;
+      const currentSum = ranked.slice(0, rule.n).reduce((s, b) => s + b.par, 0);
+      const sharedBudget = Math.max(0, triggerPar - currentSum);
+      let sumWantsInTopN = 0;
+      for (const bucket of feasible) {
+        if (topNCodes.has(bucket)) sumWantsInTopN += wants.get(bucket) ?? 0;
+      }
+      if (sumWantsInTopN > sharedBudget + TOL) {
+        const scale = sharedBudget / sumWantsInTopN;
+        for (const bucket of feasible) {
+          if (topNCodes.has(bucket)) {
+            wants.set(bucket, (wants.get(bucket) ?? 0) * scale);
+          }
+        }
+        collectivelyConstrained = true;
+      }
+    }
+
     let placedThisRound = 0;
     let anyCapped = false;
 
     for (const bucket of feasible) {
       const w = priorWeights.get(bucket) ?? 0;
-      const want = (w / feasibleWeightSum) * remaining;
+      const proportionalShare = (w / feasibleWeightSum) * remaining;
+      const want = wants.get(bucket) ?? 0;
       const cap = headroom.get(bucket) ?? 0;
       const place = Math.min(want, cap);
-      if (place < want - TOL) anyCapped = true;
+      if (place < proportionalShare - TOL) anyCapped = true;
       if (place <= 0) continue;
 
       allocation.set(bucket, (allocation.get(bucket) ?? 0) + place);
@@ -419,7 +460,7 @@ export function allocateReinvestment(inputs: AllocationInputs): AllocationResult
 
     remaining -= placedThisRound;
     if (placedThisRound < TOL) break;
-    if (!anyCapped) break;
+    if (!anyCapped && !collectivelyConstrained) break;
   }
 
   // Identify binding rules: those for which the post-allocation state has

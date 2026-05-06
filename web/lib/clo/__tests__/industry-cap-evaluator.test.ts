@@ -285,4 +285,61 @@ describe("allocateReinvestment — water-filling", () => {
     expect(result.allocation.get("A")).toBeLessThanOrEqual(5_000_000);
     expect(result.allocation.get("B")! + result.allocation.get("C")!).toBeGreaterThan(14_000_000);
   });
+
+  it("combined_top_n_max with multiple in-top-N buckets: enforces shared headroom (regression)", () => {
+    // Three buckets currently at 5M each (top-3 sum = 15M of 15M total pool).
+    // Rule: combined_top_n_max(n=3, triggerPct=70). Reinvest 30M → totalAfter=45M
+    // → triggerPar=31.5M. Combined headroom = 31.5 - 15 = 16.5M shared across
+    // ALL in-top-3 buckets. Pre-fix: each bucket reported headroom of 16.5M
+    // independently and the allocator placed 10M each = 30M, driving top-3 to
+    // 45M (cap breached by 13.5M). Post-fix: collective scaling caps total
+    // in-top-N allocation at 16.5M; remaining 13.5M is blocked.
+    const result = allocateReinvestment({
+      parToReinvest: 30_000_000,
+      rules: [{ kind: "combined_top_n_max", n: 3, triggerPct: 70 }],
+      initialPerBucket: new Map([["A", 5_000_000], ["B", 5_000_000], ["C", 5_000_000]]),
+      initialTotalPar: 15_000_000,
+      priorWeights: new Map([["A", 1/3], ["B", 1/3], ["C", 1/3]]),
+      poolState: NEUTRAL_POOL_STATE,
+    });
+    expect(result.parAllocated).toBeCloseTo(16_500_000, -3);
+    expect(result.parBlocked).toBeCloseTo(13_500_000, -3);
+    // Verify post-allocation cap held: top-3 sum ≤ trigger.
+    const finalState = new Map<string, number>([["A", 5_000_000], ["B", 5_000_000], ["C", 5_000_000]]);
+    for (const [k, v] of result.allocation) finalState.set(k, (finalState.get(k) ?? 0) + v);
+    const totalParAfter = 15_000_000 + 30_000_000;
+    const top3Sum = Array.from(finalState.values()).sort((a, b) => b - a).slice(0, 3).reduce((s, v) => s + v, 0);
+    expect(top3Sum).toBeLessThanOrEqual(0.7 * totalParAfter + 1);
+  });
+
+  it("combined_top_n_max with non-top-N buckets accepting allocation: cap held (regression)", () => {
+    // 5 buckets [10, 10, 10, 5, 5] = 40M. Top-3 = 30M. Rule: combined_top_n_max
+    // (n=3, triggerPct=70). Reinvest 10M → totalAfter=50M → trigger=35M.
+    // Shared budget = 5M. Pre-fix: each in-top-3 bucket reported 5M headroom;
+    // uniform allocation placed 2M each across all 5 → top-3 grew to 36M (cap
+    // breached by 1M). Post-fix: in-top-3 wants scale down (collectively
+    // capped at 5M); residual flows to non-top-3 buckets.
+    const result = allocateReinvestment({
+      parToReinvest: 10_000_000,
+      rules: [{ kind: "combined_top_n_max", n: 3, triggerPct: 70 }],
+      initialPerBucket: new Map([
+        ["A", 10_000_000], ["B", 10_000_000], ["C", 10_000_000],
+        ["D", 5_000_000], ["E", 5_000_000],
+      ]),
+      initialTotalPar: 40_000_000,
+      priorWeights: new Map([["A", 0.2], ["B", 0.2], ["C", 0.2], ["D", 0.2], ["E", 0.2]]),
+      poolState: NEUTRAL_POOL_STATE,
+    });
+    expect(result.parAllocated).toBeCloseTo(10_000_000, -3);
+    expect(result.parBlocked).toBeCloseTo(0, -3);
+    // Verify post-allocation cap held.
+    const finalState = new Map<string, number>([
+      ["A", 10_000_000], ["B", 10_000_000], ["C", 10_000_000],
+      ["D", 5_000_000], ["E", 5_000_000],
+    ]);
+    for (const [k, v] of result.allocation) finalState.set(k, (finalState.get(k) ?? 0) + v);
+    const totalParAfter = 50_000_000;
+    const top3Sum = Array.from(finalState.values()).sort((a, b) => b - a).slice(0, 3).reduce((s, v) => s + v, 0);
+    expect(top3Sum).toBeLessThanOrEqual(0.7 * totalParAfter + 1);
+  });
 });
