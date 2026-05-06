@@ -305,4 +305,65 @@ describe("DDTL projection", () => {
     const ocWithout = withoutDdtl.periods[0].ocTests[0]?.actual;
     expect(Math.abs(ocWithDdtl - ocWithout)).toBeLessThan(2);
   });
+
+  it("ki: KI-46-ddtlPostDrawOcInflation — DDTL draw mid-projection inflates forward OC numerator (frozen impliedOcAdjustment + bucket-move drift)", () => {
+    // Marker test pinning the current (wrong) behavior: when a DDTL
+    // draws mid-projection AND `impliedOcAdjustment > 0` (calibrated at
+    // T=0 with the unfunded DDTL strip), the engine's forward OC
+    // numerator over-states because (a) endingPar grows by drawn par,
+    // (b) currentDdtlUnfundedPar shrinks by drawn par (so the explicit
+    // OC-numerator subtraction shrinks by the same amount), and (c)
+    // impliedOcAdjustment is frozen at T=0 calibration so doesn't
+    // re-absorb the bucket move. Net inflation: ~2× drawn par per
+    // period from the draw quarter forward (the upper-bound case where
+    // AdjCPA is invariant under DDTL bucket moves; lower-bound is 1×
+    // drawn par if AdjCPA grows with funded par per the engine's "OC
+    // excludes unfunded" convention). Closure of KI-46 flips the
+    // assertion to the corrected post-draw OC.
+    // Pool scaled above the default tranches' aggregate debt (€80M) so
+    // OC tests stay live forward (a 13% OC ratio trips an early
+    // Event-of-Default state where ocTests are no longer emitted).
+    const drawnPar = 10_000_000;
+    const normalLoan = {
+      parBalance: 200_000_000,
+      maturityDate: addQuarters("2026-03-09", 20),
+      ratingBucket: "B",
+      spreadBps: 375,
+    };
+    const ddtl = {
+      parBalance: drawnPar,
+      maturityDate: addQuarters("2026-03-09", 20),
+      ratingBucket: "B",
+      spreadBps: 0,
+      isDelayedDraw: true,
+      ddtlSpreadBps: 350,
+      drawQuarter: 4,
+    };
+    const result = runProjection(
+      makeInputs({
+        loans: [normalLoan, ddtl],
+        initialPar: 210_000_000,
+        impliedOcAdjustment: 1_000_000,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        defaultRatesByRating: uniformRates(0),
+        cprPct: 0,
+      })
+    );
+    // Pre-draw (q=3, index 2): DDTL still unfunded (drawQuarter is 4).
+    // Post-draw (q=5, index 4): DDTL is funded, currentDdtlUnfundedPar = 0.
+    const ocPreDraw = result.periods[2].ocTests[0]?.actual;
+    const ocPostDraw = result.periods[4].ocTests[0]?.actual;
+    expect(ocPreDraw).toBeDefined();
+    expect(ocPostDraw).toBeDefined();
+    // The bucket-move drift inflates the forward OC numerator by ~2× drawn par
+    // when AdjCPA is invariant under DDTL bucket moves (PPM convention)
+    // or by ~1× drawn par if the engine's "OC excludes unfunded" convention
+    // is the intended invariant. Either way the jump at the draw quarter is
+    // material and pins the bug magnitude until KI-46 closes. With Class A
+    // debt = €65M, a 10M numerator over-statement = ~15 OC points; a 20M
+    // = ~30 points. Asserting > 10 captures the lower bound.
+    const ocJump = ocPostDraw! - ocPreDraw!;
+    expect(ocJump).toBeGreaterThan(10);
+  });
 });

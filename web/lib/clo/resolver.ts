@@ -2432,22 +2432,15 @@ export function resolveWaterfallInputs(
   if (ddtlUnfundedPar > 0 && impliedOcAdjustment > 0) {
     impliedOcAdjustment = Math.max(0, impliedOcAdjustment - ddtlUnfundedPar);
   }
-  // Open issue: this strip calibrates `impliedOcAdjustment` against the
-  // T=0 unfunded DDTL par. The engine's forward OC numerator subtracts
-  // `currentDdtlUnfundedPar` (which evolves as DDTLs draw) AND
-  // `impliedOcAdjustment` (frozen at T=0). When a DDTL draws of `D`
-  // mid-projection — `survivingPar` reclassifies from unfunded → funded
-  // (projection.ts ~1396-1401) — the engine's OC numerator changes by
-  // `+endingPar(+D) + (-currentDdtlUnfundedPar)(+D) = +2D` net, but the
-  // economic change should be `+D` if AdjCPA excludes unfunded (engine
-  // convention) or `0` if AdjCPA includes unfunded (PPM convention).
-  // Either way the engine over-reports forward OC by ~D per period
-  // post-draw when `impliedOcAdjustment > 0`. Zero magnitude on Ares XV
-  // (no scheduled draws despite `ddtlUnfundedPar = €581K`); landing a
-  // fix requires (a) verifying which AdjCPA convention the SDF
-  // populates against trustee data on a deal with active draws, and
-  // (b) a synthetic fixture exercising post-draw OC with non-zero
-  // `impliedOcAdjustment`.
+  // KI-46 — the strip calibrates `impliedOcAdjustment` against T=0
+  // unfunded DDTL par; the engine's forward OC numerator subtracts
+  // `currentDdtlUnfundedPar` (evolves as DDTLs draw) AND
+  // `impliedOcAdjustment` (frozen at T=0). Post-draw the engine
+  // over-reports forward OC by ~D per period when
+  // `impliedOcAdjustment > 0`. Zero magnitude on Ares XV (no
+  // scheduled draws). See `web/docs/clo-model-known-issues.md` § KI-46
+  // for the algebra, the convention question that blocks closure, and
+  // the data-acquisition path required to verify the fix.
 
   // --- Base Rate Floor ---
   // Extracted from interest mechanics section. null = not extracted (use default from CLO_DEFAULTS).

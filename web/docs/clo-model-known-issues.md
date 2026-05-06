@@ -35,6 +35,7 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-36 — Per-tranche `payment_frequency` extracted but not consumed (uniform quarterly cadence)](#ki-36)
 - [KI-38 — FX / multi-currency unmodeled; `native_currency` parsed and discarded](#ki-38)
 - [KI-45 — Senior Expenses Cap carryforward seed not populated; mid-life projections start with empty buffer](#ki-45)
+- [KI-46 — DDTL draw event inflates forward OC numerator; impliedOcAdjustment frozen at T=0 calibration](#ki-46) — **BLOCKED ON DATA ACQUISITION** (deal with active DDTL draws + non-zero `impliedOcAdjustment`)
 
 ### Deferred — intentionally not modeled, magnitude known
 - [KI-02 — Step (D) Expense Reserve top-up](#ki-02)
@@ -566,5 +567,46 @@ No FX rate is ingested. The engine does not consume `currency` anywhere — `web
 5. Flip the existing marker (described below) from `=== 0` to the computed magnitude.
 
 **Test:** `web/lib/clo/__tests__/c3-senior-expenses-cap.test.ts` — marker pinning `result.periods[0].stepTrace.seniorExpensesCapCarryforwardSum === 0` on a mid-life Euro XV projection with `seniorExpensesCapCarryforwardPeriods=3`. The empty-buffer behavior is exactly the silent under-count the KI describes; closing the KI flips the assertion to the computed seed magnitude.
+
+---
+
+<a id="ki-46"></a>
+### [KI-46] DDTL draw event inflates forward OC numerator; `impliedOcAdjustment` frozen at T=0 calibration — **BLOCKED ON DATA ACQUISITION**
+
+**PPM reference:** Aggregate Principal Balance definition paragraph (a) (OC p. 142): "outstanding principal amount of such Revolving Obligation or Delayed Drawdown Collateral Obligation, plus any undrawn commitments that have not been irrevocably cancelled". Adjusted Collateral Principal Amount definition (OC p. 101) paragraph (a) (APB) and paragraph (d) (Principal Account cash). Per PPM, AdjCPA carries APB which by definition INCLUDES unfunded DDTL commitments — a DDTL draw moves par from "outstanding amount" to "drawn balance" within paragraph (a), no net change to APB, and decrements paragraph (d) cash by the drawn amount.
+
+**Current engine behavior:**
+- Resolver at `web/lib/clo/resolver.ts:2419-2423` strips `ddtlUnfundedPar` (T=0 unfunded DDTL par) from `impliedOcAdjustment` so the engine's T=0 OC numerator reproduces the trustee's reported number under the engine convention "OC numerator excludes unfunded DDTL commitments".
+- `impliedOcAdjustment` is then frozen as a scalar passed via `ProjectionInputs.impliedOcAdjustment`. The forward-period OC numerator at `web/lib/clo/projection.ts:3925-3927` subtracts both `(impliedOcAdjustment + currentDdtlUnfundedPar)`. When a DDTL with `survivingPar = D` draws at quarter `q` (engine flips `isDelayedDraw = false`, par moves from unfunded → funded bucket via `web/lib/clo/projection.ts:1396-1401`), `endingPar` grows by `D` and `currentDdtlUnfundedPar` shrinks by `D`. Net forward OC numerator change is `+2D`. Trustee AdjCPA target change is at most `+D` (engine convention) or `0` (PPM convention — bucket-only move). Engine over-states forward OC numerator by `D` (engine convention) or `2D` (PPM convention) per period from `q` forward.
+
+**PPM-correct behavior:** The fix shape is documented inline at `web/lib/clo/resolver.ts:2424-2440`. Track `cumulativeDdtlDrawnPar` in the engine, increment at the DDTL draw event, and either (a) subtract from forward OC numerator alongside `impliedOcAdjustment + currentDdtlUnfundedPar`, or (b) re-calibrate `impliedOcAdjustment` per period using the engine's running pool state. Option (a) is smaller; option (b) generalizes to other forward dynamics that may surface analogous frozen-scalar drift.
+
+**Quantitative magnitude (Euro XV today):** Zero. Euro XV's compliance report at the latest payment date (Apr 15 2026) carries `ddtlUnfundedPar ≈ €581K` but no DDTL draw events scheduled within the projection horizon (the harness's fixture-regeneration test confirms `impliedOcAdjustment ≈ €0` on Euro XV — close-enough to zero that the bucket-move drift produces no observable wrong number). The bug is dormant on the only ingested deal; activates immediately on any deal where (i) a DDTL has `drawQuarter` within the projection horizon AND (ii) `impliedOcAdjustment > 0`.
+
+**Quantitative magnitude (synthetic test fixture):** With pool €210M, €10M DDTL drawing fully at q=4, `impliedOcAdjustment = €1M`, default tranches at €65M Class A debt: forward OC ratio jumps by >10 percentage points at the draw quarter (from `~3 OC points pre-draw` to `~14 OC points post-draw` in the marker test's units). Pinned by the marker.
+
+**Deferral rationale (data constraint, not implementation difficulty):**
+
+The fix shape is straightforward. What's blocked is *verifying* the fix produces the right number. Two unknowns require external data:
+
+1. **Trustee `totalPar` convention.** The SDF's `totalPar` field (which feeds `pool.totalPar` in the resolver) may carry the PPM-literal AdjCPA (which includes unfunded DDTL via APB(a)) or a derived figure that excludes unfunded DDTL. The convention varies by trustee (BNY's report on Euro XV vs another trustee on a different deal). Without checking against an actual report on a deal with non-zero DDTL draws, a fix that assumes one convention may be silently wrong under the other. A wrong fix would flip the over-statement direction (engine under-states by `D` per period instead of over-stating).
+
+2. **DDTL draw event in the SDF transactions table.** The current ingestion pipeline (`web/lib/clo/sdf/parse-transactions.ts`) reads transaction rows, but the engine's `drawQuarter` field on `LoanInput` is not populated from this — it's a user assumption (`UserAssumptions.ddtlDrawQuarter`). To validate the fix's forward dynamics against trustee reality, we need a deal whose trustee reports a draw event at a specific quarter AND whose post-draw OC ratio is known to the cent. Euro XV's BNY report has no such event in the historical period covered.
+
+**Path to close:**
+
+1. **Acquire** a quarterly trustee bundle (SDF + BNY note valuation PDF + Intex past cashflows) for a deal with at least one DDTL draw event within the recent reporting period AND a non-trivial `impliedOcAdjustment` (residual between trustee Adjusted CPA and components the engine identifies). The deal needs: (a) DDTL positions classified `is_delayed_draw = true` at one period, then funded at a later period in the trustee's holdings table; (b) the trustee-reported Adjusted CPA at both periods; (c) ideally `impliedOcAdjustment > 0` at T=0 (so the strip at `resolver.ts:2422` actually fires and the bug surfaces).
+
+2. **Verify** the trustee's `totalPar` convention by comparing PPM AdjCPA(a)+(d) computation against the trustee-reported number. If they match within €1k, trustee uses PPM-literal convention. If trustee = PPM AdjCPA - unfunded, trustee uses the engine's "exclude unfunded" convention. Document the result.
+
+3. **Implement** the chosen variant of the fix:
+   - **Variant A** (engine-convention target): track `cumulativeDdtlDrawnPar`; subtract from forward OC numerator alongside `impliedOcAdjustment` and `currentDdtlUnfundedPar`. Engine forward OC = AdjCPA - currentDdtlUnfundedPar (matches trustee under engine convention).
+   - **Variant B** (PPM-convention target): track `cumulativeDdtlDrawnPar`; subtract from forward OC numerator AND remove the `currentDdtlUnfundedPar` subtraction entirely. Engine forward OC = AdjCPA (matches trustee under PPM convention).
+
+4. **Test:** flip the marker assertion below from `> 10` (current bug magnitude) to `< 0.5` (corrected — bucket-move produces only the natural per-period OC drift from interest accrual / cash redistribution, not the +D or +2D inflation).
+
+5. Update the inline comment at `resolver.ts:2422-2440` to describe the closure rather than the open question.
+
+**Test:** `web/lib/clo/__tests__/projection-fixed-rate-ddtl.test.ts > KI-46-ddtlPostDrawOcInflation`. Synthetic fixture (€210M pool, €10M DDTL drawing fully at q=4, `impliedOcAdjustment = €1M`, default tranches) pinning the OC ratio jump > 10 points at the draw quarter. Marker flips when the fix lands.
 
 ---
