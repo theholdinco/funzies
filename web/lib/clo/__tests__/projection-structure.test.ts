@@ -13,6 +13,23 @@ function zeroCdrs(): Record<string, number> {
   return Object.fromEntries(RATING_BUCKETS.map((b) => [b, 0]));
 }
 
+function uniformRates(cdr: number): Record<string, number> {
+  return Object.fromEntries(RATING_BUCKETS.map((b) => [b, cdr]));
+}
+
+// Disable defaults under per-position WARF: per-position reads warfHazard
+// from loan.warfFactor and ignores defaultRatesByRating unless cdrMultiplierPathFn
+// is set. To genuinely disable defaults, pair (a) a non-zero baseline
+// (uniformRates(1) override) with (b) this path-fn returning 0 → multiplier
+// 0/1 = 0 → hazard = warfHazard × 0 = 0. Pair via `noDefaults` spread:
+// `makeXxxInputs({ ...noDefaults, ... })`. Don't use the path-fn alone:
+// baseline=0 + path=0 hits the Infinity-fallback edge case at
+// projection.ts:2920 (multiplier=1, defaults active at warfHazard).
+const noDefaults = {
+  defaultRatesByRating: uniformRates(1),
+  cdrMultiplierPathFn: () => zeroCdrs(),
+} as const;
+
 // Full 9-tranche deal: X, A, B-1, B-2, C, D, E, F, Sub
 // Realistic EUR CLO with tight OC/IC triggers
 function makeFullDealInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs {
@@ -98,8 +115,6 @@ function makeFullDealInputs(overrides: Partial<ProjectionInputs> = {}): Projecti
     cccBucketLimitPct: CLO_DEFAULTS.cccBucketLimitPct,
     cccMarketValuePct: CLO_DEFAULTS.cccMarketValuePct,
     deferredInterestCompounds: true,
-    // D2 — legacy pin; test predates per-position WARF hazard. See test-helpers.ts.
-    useLegacyBucketHazard: true,
     ...overrides,
   };
 }
@@ -500,10 +515,15 @@ describe("Deferrable tranches (PIK) on OC failure", () => {
   });
 
   it("deferred interest is included in OC denominator (increases liabilities)", () => {
-    // When OC fails and interest is deferred (compounding), the OC denominator grows
-    // because trancheBalances include the PIK'd interest, making it harder to cure
+    // When OC fails and interest is deferred (compounding), the OC denominator
+    // grows because trancheBalances include the PIK'd interest, making it
+    // harder to cure. The "declining OC over time" property requires defaults
+    // strong enough to overwhelm any natural amortization-driven denominator
+    // shrinkage. CCC rating (warfFactor 6500 → ~10%/y annualized) is enough.
+    // Pre-closure this used `B: 5` annual which under per-position branch was
+    // ignored — only warfHazard for B (~3.13%/y) was active, weak enough that
+    // amortization effects flipped the OC ratio direction (Q4 > Q1).
     const resultHighDefaults = runProjection(makeFullDealInputs({
-      defaultRatesByRating: { ...zeroCdrs(), B: 5 },
       cprPct: 0,
       deferredInterestCompounds: true,
       ocTriggers: [
@@ -511,7 +531,7 @@ describe("Deferrable tranches (PIK) on OC failure", () => {
         { className: "J-1", triggerLevel: 999, rank: 3 },
       ],
       icTriggers: [],
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "CCC", spreadBps: 375 }],
       reinvestmentPeriodEnd: null,
     }));
 
@@ -727,9 +747,9 @@ describe("Post-RP reinvestment", () => {
 
   it("30% of principal proceeds are reinvested post-RP when postRpReinvestmentPct=30", () => {
     const result = runProjection(makeFullDealInputs({
+      ...noDefaults,
       postRpReinvestmentPct: 30,
       reinvestmentPeriodEnd: rpEnd,
-      defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
       loans: postRpLoans,
       ocTriggers: [],
@@ -740,7 +760,11 @@ describe("Post-RP reinvestment", () => {
     const q8 = result.periods[7];
     expect(q8.scheduledMaturities).toBeGreaterThan(0);
 
-    // Reinvestment should be exactly 30% of principal proceeds
+    // Reinvestment should be exactly 30% of principal proceeds.
+    // With noDefaults active, principalProceeds = scheduledMaturities (no
+    // recoveries to inflate the base). Pre-closure this used zeroCdrs() which
+    // under per-position branch was a no-op — defaults at warfHazard ≈ 0.79%/q
+    // produced recoveries by Q8, inflating principalProceeds above maturities.
     const expectedReinvestment = q8.scheduledMaturities * 0.30;
     expect(q8.reinvestment).toBeCloseTo(expectedReinvestment, -2);
   });
