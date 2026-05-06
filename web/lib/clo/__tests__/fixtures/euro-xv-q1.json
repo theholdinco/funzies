@@ -150,7 +150,9 @@
           295
         ],
         "sourceCondition": null
-      }
+      },
+      "industryDistributionPct": null,
+      "largestIndustryPct": null
     },
     "ocTriggers": [
       {
@@ -303,7 +305,9 @@
         "triggerLevel": 90,
         "cushion": 10,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Senior Secured Obligations"
       },
       {
         "testName": "Senior Secured Loans",
@@ -312,7 +316,9 @@
         "triggerLevel": 70,
         "cushion": 19.33,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Senior Secured Loans"
       },
       {
         "testName": "Unsecured / HY / Mezz / 2nd Lien",
@@ -321,7 +327,9 @@
         "triggerLevel": 10,
         "cushion": 10,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Unsecured / HY / Mezz / 2nd Lien"
       },
       {
         "testName": "Fixed Rate CDOs",
@@ -330,7 +338,9 @@
         "triggerLevel": 10,
         "cushion": 2.58,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fixed Rate CDOs"
       },
       {
         "testName": "Sr Secured Bonds / HY Bonds / Mezz",
@@ -339,7 +349,9 @@
         "triggerLevel": 30,
         "cushion": 19.33,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Sr Secured Bonds / HY Bonds / Mezz"
       },
       {
         "testName": "Cov-Lite Loans",
@@ -348,7 +360,9 @@
         "triggerLevel": 30,
         "cushion": 29.07,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Cov-Lite Loans"
       },
       {
         "testName": "Hedged CDOs",
@@ -357,7 +371,9 @@
         "triggerLevel": 30,
         "cushion": 30,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Hedged CDOs"
       },
       {
         "testName": "Country ceiling < AAA (Fitch)",
@@ -366,7 +382,9 @@
         "triggerLevel": 10,
         "cushion": 5.68,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Country ceiling < AAA (Fitch)"
       },
       {
         "testName": "Domicile below Aa3 (Moody's)",
@@ -375,7 +393,9 @@
         "triggerLevel": 10,
         "cushion": 9.6,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Domicile below Aa3 (Moody's)"
       },
       {
         "testName": "Current Pay Obligations",
@@ -384,7 +404,9 @@
         "triggerLevel": 5,
         "cushion": 5,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Current Pay Obligations"
       },
       {
         "testName": "Bridge Loans",
@@ -393,7 +415,9 @@
         "triggerLevel": 2.5,
         "cushion": 2.5,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Bridge Loans"
       },
       {
         "testName": "Revolving + Delayed Drawdown",
@@ -402,7 +426,9 @@
         "triggerLevel": 5,
         "cushion": 4.93,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Revolving + Delayed Drawdown"
       },
       {
         "testName": "PIK Securities",
@@ -411,7 +437,9 @@
         "triggerLevel": 5,
         "cushion": 4.49,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "PIK Securities"
       },
       {
         "testName": "Moody's Caa Obligations",
@@ -420,7 +448,9 @@
         "triggerLevel": 7.5,
         "cushion": 0.5800000000000001,
         "isPassing": true,
-        "canonicalType": "moodys_caa_concentration"
+        "canonicalType": "moodys_caa_concentration",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Caa Obligations"
       },
       {
         "testName": "Fitch CCC Obligations",
@@ -429,7 +459,9 @@
         "triggerLevel": 7.5,
         "cushion": 1.63,
         "isPassing": true,
-        "canonicalType": "fitch_ccc_concentration"
+        "canonicalType": "fitch_ccc_concentration",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch CCC Obligations"
       },
       {
         "testName": "Highest Single Obligor Sr Sec",
@@ -438,7 +470,9 @@
         "triggerLevel": 2.5,
         "cushion": 1.48,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Highest Single Obligor Sr Sec"
       },
       {
         "testName": "6th Highest Sr Sec Obligor",
@@ -447,7 +481,9 @@
         "triggerLevel": 2,
         "cushion": 1,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "6th Highest Sr Sec Obligor"
       },
       {
         "testName": "Highest Single Obligor non-Sr-Sec",
@@ -456,7 +492,9 @@
         "triggerLevel": 2,
         "cushion": 2,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Highest Single Obligor non-Sr-Sec"
       },
       {
         "testName": "6th Highest non-Sr-Sec",
@@ -465,7 +503,9 @@
         "triggerLevel": 1.5,
         "cushion": 1.5,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "6th Highest non-Sr-Sec"
       },
       {
         "testName": "Highest Single Obligor any",
@@ -474,7 +514,9 @@
         "triggerLevel": 2.5,
         "cushion": 1.48,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Highest Single Obligor any"
       },
       {
         "testName": "6th Highest Obligor any",
@@ -483,7 +525,9 @@
         "triggerLevel": 2,
         "cushion": 1,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "6th Highest Obligor any"
       },
       {
         "testName": "Top 10 Obligors",
@@ -492,7 +536,9 @@
         "triggerLevel": 16,
         "cushion": 6.539999999999999,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Top 10 Obligors"
       },
       {
         "testName": "Largest Single Fitch Industry",
@@ -501,7 +547,9 @@
         "triggerLevel": 17.5,
         "cushion": 6.49,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Largest Single Fitch Industry"
       },
       {
         "testName": "2nd Largest Fitch Industry",
@@ -510,7 +558,9 @@
         "triggerLevel": 15,
         "cushion": 4.289999999999999,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "2nd Largest Fitch Industry"
       },
       {
         "testName": "Largest Three Fitch Industries",
@@ -519,7 +569,9 @@
         "triggerLevel": 40,
         "cushion": 8.29,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Largest Three Fitch Industries"
       },
       {
         "testName": "Corporate Rescue Loans",
@@ -528,7 +580,9 @@
         "triggerLevel": 5,
         "cushion": 5,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Corporate Rescue Loans"
       },
       {
         "testName": "Highest Obligor Corporate Rescue",
@@ -537,7 +591,9 @@
         "triggerLevel": 2,
         "cushion": 2,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Highest Obligor Corporate Rescue"
       },
       {
         "testName": "Participations",
@@ -546,7 +602,9 @@
         "triggerLevel": 5,
         "cushion": 5,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Participations"
       },
       {
         "testName": "Obligors Total Indebt 200-250m",
@@ -555,7 +613,9 @@
         "triggerLevel": 5,
         "cushion": 5,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Obligors Total Indebt 200-250m"
       },
       {
         "testName": "Discount Obligations",
@@ -564,7 +624,9 @@
         "triggerLevel": 25,
         "cushion": 25,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Discount Obligations"
       },
       {
         "testName": "Portfolio Company",
@@ -573,7 +635,9 @@
         "triggerLevel": 10,
         "cushion": 10,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Portfolio Company"
       },
       {
         "testName": "Fitch Individual AAA",
@@ -582,7 +646,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Individual AAA"
       },
       {
         "testName": "Fitch Individual AA+",
@@ -591,7 +657,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Individual AA+"
       },
       {
         "testName": "Fitch Individual AA",
@@ -600,7 +668,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Individual AA"
       },
       {
         "testName": "Fitch Individual AA-",
@@ -609,7 +679,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Individual AA-"
       },
       {
         "testName": "Fitch Individual A+",
@@ -618,7 +690,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Individual A+"
       },
       {
         "testName": "Fitch Individual A",
@@ -627,7 +701,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Individual A"
       },
       {
         "testName": "Fitch Individual A- or below",
@@ -636,7 +712,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Individual A- or below"
       },
       {
         "testName": "Fitch Aggregate AAA",
@@ -645,7 +723,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Aggregate AAA"
       },
       {
         "testName": "Fitch Aggregate AA+",
@@ -654,7 +734,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Aggregate AA+"
       },
       {
         "testName": "Fitch Aggregate AA",
@@ -663,7 +745,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Aggregate AA"
       },
       {
         "testName": "Fitch Aggregate AA-",
@@ -672,7 +756,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Aggregate AA-"
       },
       {
         "testName": "Fitch Aggregate A+",
@@ -681,7 +767,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Aggregate A+"
       },
       {
         "testName": "Fitch Aggregate A",
@@ -690,7 +778,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Aggregate A"
       },
       {
         "testName": "Fitch Aggregate A- or below",
@@ -699,7 +789,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Fitch Aggregate A- or below"
       },
       {
         "testName": "Moody's Aggregate Aaa or Lower",
@@ -708,7 +800,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Aggregate Aaa or Lower"
       },
       {
         "testName": "Moody's Aggregate Aa1 or Lower",
@@ -717,7 +811,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Aggregate Aa1 or Lower"
       },
       {
         "testName": "Moody's Aggregate Aa2",
@@ -726,7 +822,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Aggregate Aa2"
       },
       {
         "testName": "Moody's Aggregate Aa3",
@@ -735,7 +833,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Aggregate Aa3"
       },
       {
         "testName": "Moody's Aggregate A1",
@@ -744,7 +844,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Aggregate A1"
       },
       {
         "testName": "Moody's Aggregate A2 or Lower w P-1",
@@ -753,7 +855,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Aggregate A2 or Lower w P-1"
       },
       {
         "testName": "Moody's Aggregate A2 or Lower wo P-1",
@@ -762,7 +866,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Aggregate A2 or Lower wo P-1"
       },
       {
         "testName": "Moody's Individual Aaa",
@@ -771,7 +877,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Individual Aaa"
       },
       {
         "testName": "Moody's Individual Aa1",
@@ -780,7 +888,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Individual Aa1"
       },
       {
         "testName": "Moody's Individual Aa2",
@@ -789,7 +899,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Individual Aa2"
       },
       {
         "testName": "Moody's Individual Aa3",
@@ -798,7 +910,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Individual Aa3"
       },
       {
         "testName": "Moody's Individual A1",
@@ -807,7 +921,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Individual A1"
       },
       {
         "testName": "Moody's Individual A2 w P-1",
@@ -816,7 +932,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Individual A2 w P-1"
       },
       {
         "testName": "Moody's Individual A2 wo P-1",
@@ -825,7 +943,9 @@
         "triggerLevel": null,
         "cushion": null,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Individual A2 wo P-1"
       },
       {
         "testName": "Annual Obligations",
@@ -834,7 +954,9 @@
         "triggerLevel": 5,
         "cushion": 5,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Annual Obligations"
       },
       {
         "testName": "Distressed Exchange",
@@ -843,7 +965,9 @@
         "triggerLevel": 2.5,
         "cushion": 2.5,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Distressed Exchange"
       },
       {
         "testName": "Integral services / casinos / gambling",
@@ -852,7 +976,9 @@
         "triggerLevel": 5,
         "cushion": 4,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Integral services / casinos / gambling"
       },
       {
         "testName": "Moody's Rating derived from S&P",
@@ -861,7 +987,9 @@
         "triggerLevel": 10,
         "cushion": 10,
         "isPassing": true,
-        "canonicalType": "other"
+        "canonicalType": "other",
+        "concentrationType": "OTHER",
+        "bucketName": "Moody's Rating derived from S&P"
       }
     ],
     "reinvestmentOcTrigger": {
@@ -9129,18 +9257,23 @@
     "ratingAgencies": [
       "moodys",
       "fitch"
-    ]
+    ],
+    "industryTaxonomy": null,
+    "industryCapPresentInPpm": null,
+    "industryCapRules": null,
+    "excludedIndustryNames": null,
+    "dealSpecificIndustryList": null
   },
   "warnings": [
     {
       "field": "poolSummary.wacSpread",
-      "message": "Interpreted wacSpread 3.6799999999999997 as percentage \u2192 368 bps",
+      "message": "Interpreted wacSpread 3.6799999999999997 as percentage → 368 bps",
       "severity": "info",
-      "resolvedFrom": "3.6799999999999997 \u2192 368"
+      "resolvedFrom": "3.6799999999999997 → 368"
     },
     {
       "field": "fees.trusteeFeeBps",
-      "message": "Trustee/admin fee found in PPM but rate is 'per agreement' \u2014 set manually from the compliance report fee schedule (typically 1-5 bps).",
+      "message": "Trustee/admin fee found in PPM but rate is 'per agreement' — set manually from the compliance report fee schedule (typically 1-5 bps).",
       "severity": "warn"
     },
     {
@@ -9150,7 +9283,7 @@
     },
     {
       "field": "complianceTests.uncomputedTests",
-      "message": "3 test(s) have an actual value but no trigger and are not marked passing \u2014 consumers filtering on triggerLevel != null will hide them. Examples: Minimum WAS excl floor incl Agg Exc Funded Spread; Minimum WAS excl floor excl Agg Exc Funded Spread; Frequency Switch part (b)",
+      "message": "3 test(s) have an actual value but no trigger and are not marked passing — consumers filtering on triggerLevel != null will hide them. Examples: Minimum WAS excl floor incl Agg Exc Funded Spread; Minimum WAS excl floor excl Agg Exc Funded Spread; Frequency Switch part (b)",
       "severity": "warn"
     }
   ],
@@ -9208,9 +9341,9 @@
         "name": "Ares Management Limited"
       },
       "waterfall": {
-        "interestPriority": "(A) Issuer taxes (i) + Issuer Profit Amount (ii)\n(B) Trustee Fees & Expenses \u2014 subject to Senior Expenses Cap\n(C) Administrative Expenses \u2014 subject to Senior Expenses Cap\n(D) Top-up of Expense Reserve Account \u2014 Senior Expenses Cap headroom\n(E) Senior Collateral Management Fee + VAT (current, then past due)\n(F) Scheduled Periodic Hedge Payments + Currency/Interest Rate Hedge Termination Payments (non-defaulted); Hedge Replacement Payments\n(G) Class A Interest Amounts\n(H) Class B-1 & B-2 Interest Amounts (pro rata, pari passu)\n(I) Redemption to cure Class A/B Coverage Tests (per Note Payment Sequence)\n(J) Class C Interest Amounts (current, ex Deferred Interest)\n(K) Class C Deferred Interest (per Condition 6(c))\n(L) Redemption to cure Class C Coverage Tests\n(M) Class D Interest Amounts (current, ex Deferred Interest)\n(N) Class D Deferred Interest\n(O) Redemption to cure Class D Coverage Tests\n(P) Class E Interest Amounts (current, ex Deferred Interest)\n(Q) Class E Deferred Interest\n(R) Redemption to cure Class E Par Value Test\n(S) Class F Interest Amounts (current, ex Deferred Interest)\n(T) Class F Deferred Interest\n(U) Redemption to cure Class F Par Value Test\n(V) Redemption on Effective Date Rating Event (if continuing)\n(W) Reinvestment OC Test cure: lesser of 50% of remaining IP, or amount to meet 103.74%, at CM discretion \u2014 reinvest or repay Rated Notes\n(X) Sub Collateral Management Fee + VAT (current, then past due); then CM Advances + interest thereon\n(Y) Trustee Fees & Expenses not paid under cap\n(Z) Administrative Expenses not paid under cap\n(AA) Defaulted Currency/IR Hedge Termination Payments (pari passu, pro rata)\n(BB) Supplemental Reserve Account deposit (during Reinvestment Period, CM discretion)\n(CC) Incentive Collateral Management Fee (IF IRR Threshold met: 20% of remaining IP) + VAT\n(DD) All remaining Interest Proceeds \u2192 Subordinated Notes (pro rata)",
-        "postAcceleration": "(A) taxes + profit \u2192 (B) trustee fees uncapped \u2192 (C) admin expenses uncapped \u2192 (D) senior mgmt fee \u2192 (E) hedge periodic/termination (non-defaulted) \u2192 (F) Class A P+I \u2192 (G) Class B P+I pari passu \u2192 (H) Class C I+P sequential \u2192 \u2026 \u2192 (Q) Sub mgmt fee \u2192 (T) hedge defaulted termination \u2192 (V) incentive fee if IRR met \u2192 (W) residual to Sub Noteholders",
-        "principalPriority": "(A) Sequential backfill of unpaid Interest waterfall items (A)\u2013(H)\n(B) Backfill of Interest item (I) to extent needed for Class A/B Coverage Tests\n(C) Backfill of Interest item (J) to extent Class C Notes are Controlling Class\n(D) Backfill of Interest item (K) to extent Class C Notes are Controlling Class\n(E) Backfill of Interest item (L) to extent needed for Class C Coverage Tests\n(F) Backfill of Interest item (M) to extent Class D Notes are Controlling Class\n(G) Backfill of Interest item (N) to extent Class D Notes are Controlling Class\n(H) Backfill of Interest item (O) to extent needed for Class D Coverage Tests\n(I) Backfill of Interest item (P) to extent Class E Notes are Controlling Class\n(J) Backfill of Interest item (Q) to extent Class E Notes are Controlling Class\n(K) Backfill of Interest item (R) to extent needed for Class E Par Value Test\n(L) Backfill of Interest item (S) to extent Class F Notes are Controlling Class\n(M) Backfill of Interest item (T) to extent Class F Notes are Controlling Class\n(N) Backfill of Interest item (U) to extent needed for Class F Par Value Test\n(O) Backfill of Interest item (V) \u2014 Effective Date Rating Event\n(P) Special Redemption Amount (CM election on Special Redemption Date)\n(Q) Reinvestment/Substitute Collateral \u2014 (1) during Reinvestment Period: purchase Substitute Collateral or hold in Principal Account at CM discretion; (2) post-Reinvestment: reinvestment of Unscheduled Proceeds + Credit Improved/Credit Risk sale proceeds at CM discretion\n(R) After Reinvestment Period: redeem Notes per Note Payment Sequence\n(S) After Reinvestment Period: sequential backfill of Interest items (W)\u2013(Z)\n(T) Reinvesting Noteholder Reinvestment Amounts (sub notes)\n(U) Incentive Collateral Management Fee (IF IRR Threshold met) + VAT\n(V) All remaining Principal Proceeds \u2192 Subordinated Notes (principal first, then interest, pro rata)"
+        "interestPriority": "(A) Issuer taxes (i) + Issuer Profit Amount (ii)\n(B) Trustee Fees & Expenses — subject to Senior Expenses Cap\n(C) Administrative Expenses — subject to Senior Expenses Cap\n(D) Top-up of Expense Reserve Account — Senior Expenses Cap headroom\n(E) Senior Collateral Management Fee + VAT (current, then past due)\n(F) Scheduled Periodic Hedge Payments + Currency/Interest Rate Hedge Termination Payments (non-defaulted); Hedge Replacement Payments\n(G) Class A Interest Amounts\n(H) Class B-1 & B-2 Interest Amounts (pro rata, pari passu)\n(I) Redemption to cure Class A/B Coverage Tests (per Note Payment Sequence)\n(J) Class C Interest Amounts (current, ex Deferred Interest)\n(K) Class C Deferred Interest (per Condition 6(c))\n(L) Redemption to cure Class C Coverage Tests\n(M) Class D Interest Amounts (current, ex Deferred Interest)\n(N) Class D Deferred Interest\n(O) Redemption to cure Class D Coverage Tests\n(P) Class E Interest Amounts (current, ex Deferred Interest)\n(Q) Class E Deferred Interest\n(R) Redemption to cure Class E Par Value Test\n(S) Class F Interest Amounts (current, ex Deferred Interest)\n(T) Class F Deferred Interest\n(U) Redemption to cure Class F Par Value Test\n(V) Redemption on Effective Date Rating Event (if continuing)\n(W) Reinvestment OC Test cure: lesser of 50% of remaining IP, or amount to meet 103.74%, at CM discretion — reinvest or repay Rated Notes\n(X) Sub Collateral Management Fee + VAT (current, then past due); then CM Advances + interest thereon\n(Y) Trustee Fees & Expenses not paid under cap\n(Z) Administrative Expenses not paid under cap\n(AA) Defaulted Currency/IR Hedge Termination Payments (pari passu, pro rata)\n(BB) Supplemental Reserve Account deposit (during Reinvestment Period, CM discretion)\n(CC) Incentive Collateral Management Fee (IF IRR Threshold met: 20% of remaining IP) + VAT\n(DD) All remaining Interest Proceeds → Subordinated Notes (pro rata)",
+        "postAcceleration": "(A) taxes + profit → (B) trustee fees uncapped → (C) admin expenses uncapped → (D) senior mgmt fee → (E) hedge periodic/termination (non-defaulted) → (F) Class A P+I → (G) Class B P+I pari passu → (H) Class C I+P sequential → … → (Q) Sub mgmt fee → (T) hedge defaulted termination → (V) incentive fee if IRR met → (W) residual to Sub Noteholders",
+        "principalPriority": "(A) Sequential backfill of unpaid Interest waterfall items (A)–(H)\n(B) Backfill of Interest item (I) to extent needed for Class A/B Coverage Tests\n(C) Backfill of Interest item (J) to extent Class C Notes are Controlling Class\n(D) Backfill of Interest item (K) to extent Class C Notes are Controlling Class\n(E) Backfill of Interest item (L) to extent needed for Class C Coverage Tests\n(F) Backfill of Interest item (M) to extent Class D Notes are Controlling Class\n(G) Backfill of Interest item (N) to extent Class D Notes are Controlling Class\n(H) Backfill of Interest item (O) to extent needed for Class D Coverage Tests\n(I) Backfill of Interest item (P) to extent Class E Notes are Controlling Class\n(J) Backfill of Interest item (Q) to extent Class E Notes are Controlling Class\n(K) Backfill of Interest item (R) to extent needed for Class E Par Value Test\n(L) Backfill of Interest item (S) to extent Class F Notes are Controlling Class\n(M) Backfill of Interest item (T) to extent Class F Notes are Controlling Class\n(N) Backfill of Interest item (U) to extent needed for Class F Par Value Test\n(O) Backfill of Interest item (V) — Effective Date Rating Event\n(P) Special Redemption Amount (CM election on Special Redemption Date)\n(Q) Reinvestment/Substitute Collateral — (1) during Reinvestment Period: purchase Substitute Collateral or hold in Principal Account at CM discretion; (2) post-Reinvestment: reinvestment of Unscheduled Proceeds + Credit Improved/Credit Risk sale proceeds at CM discretion\n(R) After Reinvestment Period: redeem Notes per Note Payment Sequence\n(S) After Reinvestment Period: sequential backfill of Interest items (W)–(Z)\n(T) Reinvesting Noteholder Reinvestment Amounts (sub notes)\n(U) Incentive Collateral Management Fee (IF IRR Threshold met) + VAT\n(V) All remaining Principal Proceeds → Subordinated Notes (principal first, then interest, pro rata)"
       },
       "dealSizing": {
         "totalDealSize": "511050000",
@@ -9264,7 +9397,7 @@
         "governingLaw": "Ireland",
         "jurisdiction": "Ireland",
         "issuerLegalName": "Ares European CLO XV Designated Activity Company",
-        "listingExchange": "Irish Stock Exchange (Global Exchange Market) \u2014 Rated Notes only",
+        "listingExchange": "Irish Stock Exchange (Global Exchange Market) — Rated Notes only",
         "collateralManager": "Ares Management Limited"
       },
       "capitalStructure": [
@@ -9374,7 +9507,7 @@
       "interestMechanics": {
         "referenceWeightedAverageFixedCoupon": 4,
         "conventions": {
-          "rounding": "Nearest \u20ac0.01",
+          "rounding": "Nearest €0.01",
           "day_count_floating": "Actual/360",
           "applicable_margins_pct": {
             "Class A": 0.95,
@@ -9386,15 +9519,15 @@
             "Class B-2_fixed": 1.95
           },
           "reference_rate_standard": "3-month EURIBOR",
-          "day_count_fixed_class_b2": "30/360 (12 \u00d7 30-day months)",
-          "euribor_cessation_fallback": "Condition 6(e)(i)(B)\u2013(C): Reference Banks polled; alternative benchmarks invoked if primary screen rate unavailable",
-          "reference_rate_floor_source": "Condition 6(e)(i)(E) \u2014 deemed zero if negative",
+          "day_count_fixed_class_b2": "30/360 (12 × 30-day months)",
+          "euribor_cessation_fallback": "Condition 6(e)(i)(B)–(C): Reference Banks polled; alternative benchmarks invoked if primary screen rate unavailable",
+          "reference_rate_floor_source": "Condition 6(e)(i)(E) — deemed zero if negative",
           "reference_rate_determination": "Interest Determination Date (2 Business Days before Accrual Period start) at 11:00 a.m. Brussels",
           "reference_rate_floor_decimal": 0,
           "reference_rate_initial_period": "Linear interpolation of 6-month and 12-month EURIBOR (Issue Date to 15-Jul-2022 only)",
           "reference_rate_post_freq_switch": "6-month EURIBOR"
         },
-        "source_condition": "OC Condition 6 (pp. 192\u2013194); Condition 1 definitions (pp. 127\u2013128)",
+        "source_condition": "OC Condition 6 (pp. 192–194); Condition 1 definitions (pp. 127–128)",
         "interest_deferral": {
           "class_a": {
             "note": "Non-payment beyond 5 BDs (7 BDs if error/omission) is a Note Event of Default per Condition 6 & 10(a)(i)",
@@ -9426,19 +9559,19 @@
           }
         },
         "frequency_switch_event": {
-          "source": "OC Condition 1 (pp. 127\u2013128)",
+          "source": "OC Condition 1 (pp. 127–128)",
           "reversibility": "One-time and irreversible",
           "trigger_logic": "Either (a) CM discretion OR both (b) and (c) below (while any Class A Notes outstanding)",
           "measurement_dates": "Each Determination Date from (and including) the Determination Date immediately preceding the second Payment Date",
           "effects_on_trigger": [
             "Payment Dates switch from quarterly to semi-annual keyed to the prior Payment Date month (15-Jan/15-Jul if last quarterly was Jan/Jul; 15-Apr/15-Oct if last quarterly was Apr/Oct)",
             "Reference rate for all FRN tranches moves from 3-month to 6-month EURIBOR",
-            "Issuer Profit Amount steps from \u20ac250 to \u20ac500 per period"
+            "Issuer Profit Amount steps from €250 to €500 per period"
           ],
           "status_as_of_2026_04_01": "No Frequency Switch Event has occurred. Deal continues on quarterly payments and 3-month EURIBOR.",
           "trigger_a_cm_discretion": "The Collateral Manager declares in its sole discretion that a Frequency Switch Event has occurred",
           "trigger_b_concentration_test": {
-            "metric": "Aggregate Principal Balance of all Frequency Switch Obligations (excluding Defaulted Obligations) \u00f7 Collateral Principal Amount (excluding Defaulted Obligations)",
+            "metric": "Aggregate Principal Balance of all Frequency Switch Obligations (excluding Defaulted Obligations) ÷ Collateral Principal Amount (excluding Defaulted Obligations)",
             "direction": ">=",
             "description": "Semi-annual concentration test",
             "threshold_pct": 20
@@ -9446,13 +9579,13 @@
           "trigger_c_interest_shortfall_test": {
             "direction": "<",
             "numerator": "(A) scheduled and projected interest on Collateral Obligations during the next Due Period + (B) Interest Smoothing Account balance",
-            "denominator": "Scheduled payments for Interest Priority of Payments paragraphs (A)\u2013(I) on the second Payment Date following the Measurement Date",
+            "denominator": "Scheduled payments for Interest Priority of Payments paragraphs (A)–(I) on the second Payment Date following the Measurement Date",
             "description": "Interest shortfall test",
             "threshold_pct": 120
           }
         },
         "worked_example_class_a_15apr2026": {
-          "formula": "Rate \u00d7 Principal \u00d7 (days / 360)",
+          "formula": "Rate × Principal × (days / 360)",
           "tie_out": "Matches 15-Apr-2026 Payment Date Report figure exactly",
           "principal_eur": 310000000,
           "interest_due_eur": 2298650,
@@ -9592,7 +9725,7 @@
           "max": "5",
           "min": null
         },
-        "2nd\u20136th Highest Senior Secured Obligors": {
+        "2nd–6th Highest Senior Secured Obligors": {
           "max": "2",
           "min": null,
           "notes": "Each"
@@ -9634,7 +9767,7 @@
         },
         {
           "name": "Moody's Minimum Diversity Test",
-          "value": "Elected case from Matrix \u2014 Min Diversity score parameter (28 to 72 in steps of 2)",
+          "value": "Elected case from Matrix — Min Diversity score parameter (28 to 72 in steps of 2)",
           "agency": "Moody's"
         },
         {
@@ -9664,7 +9797,7 @@
           {
             "id": 2,
             "basis": "MarketValue",
-            "description": "For each Defaulted Obligation: Market Value \u00d7 Principal Balance (MV \u00d7 PB)"
+            "description": "For each Defaulted Obligation: Market Value × Principal Balance (MV × PB)"
           },
           {
             "id": 3,
@@ -9684,7 +9817,7 @@
           "numerator_component_2_eur": 0,
           "numerator_component_3_eur": -1817412.94
         },
-        "behaviour_with_defaults": "MV component activates \u2014 defaulted par is effectively replaced by recovery-adjusted market value",
+        "behaviour_with_defaults": "MV component activates — defaulted par is effectively replaced by recovery-adjusted market value",
         "denominator_description": "Principal Amount Outstanding of the Class A Notes only",
         "downstream_modelling_note": "Single testType=OC_PAR will mis-compute the ratio in any default scenario; must represent components (1), (2), (3) compositionally",
         "behaviour_when_defaults_zero": "Component (2) = 0; numerator collapses to APB(non-defaulted) + Principal Proceeds = Adjusted CPA; test behaves identically to a Class-A-denominator OC_PAR"

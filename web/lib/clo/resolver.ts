@@ -12,6 +12,7 @@ import { quartersBetween } from "./projection";
 import { resolveAgencyRecovery } from "./recovery-rate";
 import { normalizeClassName as normClass } from "./normalize-class-name";
 import { resolveMoodysRating, resolveFitchRating, type IntexPositionRow } from "./resolve-rating";
+import { lookupByCode as lookupIndustryByCode, lookupByText as lookupIndustryByText } from "./services/taxonomies";
 
 /** Defensive sentinel stripper for rating strings already in the DB. The SDF
  *  parser now filters these at ingest (see trimRating), but pre-fix rows can
@@ -922,6 +923,178 @@ function resolveLongDatedObligation(
   };
 }
 
+/** KI-23: Resolve PPM Condition 1 clause (t) "Industry Concentration" rule
+ *  schedule from `constraints.industryConcentrationTest` (populated by
+ *  `mapIndustryConcentrationTest` from
+ *  `ppm.json:section_8_portfolio_and_quality_tests.industry_concentration_test`).
+ *
+ *  Three-state blocking gate (Option D):
+ *    - PPM block missing/null + SDF has INDUSTRY concentration rows → block.
+ *    - PPM block missing/null + no SDF INDUSTRY rows → permissive (legacy
+ *      extraction on a deal that may genuinely have no clause (t)).
+ *    - present:true + rules empty/null → block (extraction failed mid-PPM).
+ *    - present:true + taxonomy missing → block.
+ *    - present:true + non-empty unmappedRuleDescriptions → block.
+ *    - present:false → no constraint (uniform-mix synthesis fine).
+ *
+ *  Also emits an advisory warning when the PPM-side rank-monotonicity
+ *  invariant is violated (rank-2 cap > rank-1 cap, etc.) — this is a
+ *  structural extraction error (LLM rank confusion); blocking because
+ *  the rule schedule is internally inconsistent.
+ */
+function resolveIndustryConcentrationTest(
+  constraints: ExtractedConstraints,
+  concentrationTests: ResolvedComplianceTest[],
+  warnings: ResolutionWarning[],
+): {
+  industryTaxonomy: ResolvedDealData["industryTaxonomy"];
+  industryCapPresentInPpm: ResolvedDealData["industryCapPresentInPpm"];
+  industryCapRules: ResolvedDealData["industryCapRules"];
+  excludedIndustryNames: ResolvedDealData["excludedIndustryNames"];
+  dealSpecificIndustryList: ResolvedDealData["dealSpecificIndustryList"];
+} {
+  const block = constraints.industryConcentrationTest;
+  const hasSdfIndustryEvidence = concentrationTests.some(
+    (c) => c.concentrationType === "INDUSTRY",
+  );
+
+  if (!block) {
+    if (hasSdfIndustryEvidence) {
+      warnings.push({
+        field: "industryCapRules",
+        message:
+          "SDF reports INDUSTRY concentration rows but PPM clause-(t) extraction was not run " +
+          "(legacy extraction or missing ppm.json:section_8_portfolio_and_quality_tests" +
+          ".industry_concentration_test). C1 reinvestment compliance cannot enforce industry " +
+          "concentration without the per-deal rule schedule. Re-run PPM extraction with " +
+          "the updated section-8 prompt.",
+        severity: "error",
+        blocking: true,
+      });
+    }
+    return {
+      industryTaxonomy: null,
+      industryCapPresentInPpm: null,
+      industryCapRules: null,
+      excludedIndustryNames: null,
+      dealSpecificIndustryList: null,
+    };
+  }
+
+  if (block.present === false) {
+    return {
+      industryTaxonomy: null,
+      industryCapPresentInPpm: false,
+      industryCapRules: null,
+      excludedIndustryNames: null,
+      dealSpecificIndustryList: null,
+    };
+  }
+
+  // present:true — gate on rules + taxonomy + unmapped descriptions.
+  if (block.unmappedRuleDescriptions && block.unmappedRuleDescriptions.length > 0) {
+    warnings.push({
+      field: "industryCapRules",
+      message:
+        `PPM clause (t) extraction surfaced ${block.unmappedRuleDescriptions.length} ` +
+        `sub-rule(s) the structured schema cannot represent: ` +
+        block.unmappedRuleDescriptions.map((s) => `"${s}"`).join("; ") +
+        `. Enforcing the partial rule set would silently understate concentration vs the ` +
+        `PPM. Extend the IndustryCapRule discriminated union or the appliesWhen taxonomy ` +
+        `to cover the unmapped shape, then re-run extraction.`,
+      severity: "error",
+      blocking: true,
+    });
+    return {
+      industryTaxonomy: null,
+      industryCapPresentInPpm: true,
+      industryCapRules: null,
+      excludedIndustryNames: null,
+      dealSpecificIndustryList: null,
+    };
+  }
+
+  if (!block.taxonomy) {
+    warnings.push({
+      field: "industryTaxonomy",
+      message:
+        "PPM clause (t) extracted with present:true but no taxonomy. Per-loan " +
+        "industry codes cannot be selected without knowing whether the deal anchors " +
+        "Moody's-33 or S&P or a deal-specific list. Re-run PPM extraction.",
+      severity: "error",
+      blocking: true,
+    });
+    return {
+      industryTaxonomy: null,
+      industryCapPresentInPpm: true,
+      industryCapRules: null,
+      excludedIndustryNames: block.excludedIndustryNames,
+      dealSpecificIndustryList: block.dealSpecificIndustryList,
+    };
+  }
+
+  if (block.rules == null || block.rules.length === 0) {
+    warnings.push({
+      field: "industryCapRules",
+      message:
+        "PPM clause (t) extracted with present:true but no structured rules. " +
+        "C1 reinvestment compliance cannot enforce industry concentration without " +
+        "per-rule trigger thresholds. Verify PPM extraction (the prompt instructs the " +
+        "LLM to emit rules:[] rather than guess on shapes it can't represent — " +
+        "rules:[] surfaces here).",
+      severity: "error",
+      blocking: true,
+    });
+    return {
+      industryTaxonomy: block.taxonomy,
+      industryCapPresentInPpm: true,
+      industryCapRules: null,
+      excludedIndustryNames: block.excludedIndustryNames,
+      dealSpecificIndustryList: block.dealSpecificIndustryList,
+    };
+  }
+
+  // Rank-monotonicity check: among single_rank_max rules with no
+  // appliesWhen condition (or all sharing the same condition), rank-N
+  // trigger should be ≤ rank-(N−1) trigger. Indenture text always has
+  // tighter caps for higher ranks; a violation is a structural LLM
+  // extraction error.
+  const unconditionalRankRules = block.rules
+    .filter((r): r is { kind: "single_rank_max"; rank: number; triggerPct: number; appliesWhen?: unknown } =>
+      r.kind === "single_rank_max" && r.appliesWhen == null,
+    )
+    .sort((a, b) => a.rank - b.rank);
+  for (let i = 1; i < unconditionalRankRules.length; i++) {
+    const prev = unconditionalRankRules[i - 1];
+    const cur = unconditionalRankRules[i];
+    if (cur.triggerPct > prev.triggerPct) {
+      warnings.push({
+        field: "industryCapRules",
+        message:
+          `Rank-${cur.rank} cap (${cur.triggerPct}%) exceeds rank-${prev.rank} cap ` +
+          `(${prev.triggerPct}%) — indenture text invariant requires tighter caps for ` +
+          `higher ranks. Likely LLM rank-confusion in PPM extraction; re-extract ` +
+          `clause (t) and verify rank assignments against the PPM verbatim quote.`,
+        severity: "error",
+        blocking: true,
+      });
+      break;
+    }
+  }
+
+  return {
+    industryTaxonomy: block.taxonomy,
+    industryCapPresentInPpm: true,
+    industryCapRules: block.rules.map((r) => {
+      // Type already validated structurally by mapIndustryConcentrationTest;
+      // the spread here is shape-preserving.
+      return { ...r };
+    }) as ResolvedDealData["industryCapRules"],
+    excludedIndustryNames: block.excludedIndustryNames,
+    dealSpecificIndustryList: block.dealSpecificIndustryList,
+  };
+}
+
 function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarning[]): ResolvedFees {
   let seniorFeePct: number = CLO_DEFAULTS.seniorFeePct;
   let subFeePct: number = CLO_DEFAULTS.subFeePct;
@@ -1593,6 +1766,54 @@ export function resolveWaterfallInputs(
     return hasUnfundedCommitment && !hasPikSignal;
   };
 
+  /** KI-23: per-position industry under the deal's active taxonomy.
+   *
+   *  Selection ladder per holding:
+   *    1. SDF code field for the active taxonomy (`moodys_industry_code`
+   *       for moodys_33, `sp_industry_code` for sp). Looked up in the
+   *       taxonomy seed; returns canonicalName.
+   *    2. Falls back to the SDF name field when the code is missing
+   *       (`moodys_industry` / `sp_industry`) via `lookupIndustryByText`,
+   *       which matches against canonicalName + aliases.
+   *    3. When neither resolves AND the holding is funded + non-defaulted,
+   *       the obligor lands in `industryCoverageGapObligors` for the
+   *       post-loop blocking warning.
+   *
+   *  Returns `{}` when the loan is unfunded/defaulted (no contribution to
+   *  the cap denominator) or when no resolution succeeds — the field stays
+   *  undefined on `ResolvedLoan` and the gate fires upstream.
+   *
+   *  `deal_specific` taxonomy: lookup helpers return null (no canonical
+   *  list); coverage gates fire because no loan can resolve. Caller's
+   *  responsibility — deal_specific currently blocks via the resolver
+   *  Industry block taxonomy gate before reaching here. */
+  const resolveLoanIndustry = (
+    h: CloHolding,
+    taxonomy: NonNullable<ResolvedDealData["industryTaxonomy"]>,
+    contributesToConcentration: boolean,
+    coverageGapAccumulator: string[],
+  ): { industryCode?: string; industryName?: string } => {
+    if (taxonomy === "deal_specific") {
+      // No canonical list to look up against; coverage check still applies
+      // so deal_specific deals fail closed at the gate above.
+      return {};
+    }
+    const codeField = taxonomy === "moodys_33" ? h.moodysIndustryCode : h.spIndustryCode;
+    const nameField = taxonomy === "moodys_33" ? h.moodysIndustry : h.spIndustry;
+    if (codeField) {
+      const entry = lookupIndustryByCode(codeField, taxonomy);
+      if (entry) return { industryCode: entry.code, industryName: entry.canonicalName };
+    }
+    if (nameField) {
+      const entry = lookupIndustryByText(nameField, taxonomy);
+      if (entry) return { industryCode: entry.code, industryName: entry.canonicalName };
+    }
+    if (contributesToConcentration) {
+      coverageGapAccumulator.push(h.obligorName ?? h.lxid ?? h.isin ?? h.facilityId ?? "unknown");
+    }
+    return {};
+  };
+
   // `holdingPar` and the active-holdings predicate are defined above
   // (just before the discount-obligation gate) so a single helper backs
   // both the gate and the consumer-side `activeHoldings` filter. Un-drawn
@@ -1640,6 +1861,19 @@ export function resolveWaterfallInputs(
   // (anti-pattern #3). Active holdings only (defaulted are filtered above).
   const moodysAbsentObligors: string[] = [];
   const fitchAbsentObligors: string[] = [];
+  // KI-23: per-loan industry coverage gate. Active taxonomy is read from
+  // the PPM clause-(t) block when present. When the deal carries clause (t)
+  // (industryCapPresentInPpm === true) every funded non-defaulted holding
+  // MUST have an industryCode under the active taxonomy — without it the
+  // engine evaluator (PR4) cannot bucket the position. Coverage gaps are
+  // collected here and emitted as ONE blocking warning per taxonomy below
+  // (mirroring the moodysAbsentObligors / fitchAbsentObligors pattern).
+  const industryCoverageGapObligors: string[] = [];
+  const ppmIndustryBlock = constraints.industryConcentrationTest;
+  const activeIndustryTaxonomy: ResolvedDealData["industryTaxonomy"] =
+    ppmIndustryBlock?.present === true && ppmIndustryBlock.taxonomy
+      ? ppmIndustryBlock.taxonomy
+      : null;
 
   const loans: ResolvedLoan[] = activeHoldings.map(h => {
     const isFixed = h.isFixedRate === true;
@@ -2026,6 +2260,15 @@ export function resolveWaterfallInputs(
         (h.maturityDate != null && fallbackMaturity != null
           ? new Date(h.maturityDate).getTime() > new Date(fallbackMaturity).getTime()
           : undefined),
+      // KI-23: per-position industry under the deal's active taxonomy.
+      // Selection: moodys_industry_code for moodys_33, sp_industry_code
+      // for sp. Fall back to the *_industry name field if the code is
+      // missing — partner uploads sometimes carry name-only data and
+      // the seed-side lookupByText resolves it to the canonical code.
+      // Coverage gaps are collected for the post-loop blocking warning.
+      ...(activeIndustryTaxonomy != null
+        ? resolveLoanIndustry(h, activeIndustryTaxonomy, holdingPar(h) > 0 && !h.isDefaulted, industryCoverageGapObligors)
+        : {}),
     });
   });
 
@@ -2061,6 +2304,30 @@ export function resolveWaterfallInputs(
         `${fitchAbsentObligors.length} active position(s) have no Fitch rating in any SDF or Intex channel: ${sample}${more}. ` +
         `These positions silently fall into the bucket-rating fallback for the per-agency Fitch CCC Obligations test, understating the trustee-reported concentration. ` +
         `Ingest the Intex DealCF positions CSV (Structured Data Files upload) so per-position shadow ratings populate.`,
+      severity: "error",
+      blocking: true,
+    });
+  }
+  // KI-23: per-position industry coverage gate. Same shape as the
+  // moodysAbsentObligors / fitchAbsentObligors aggregation above — one
+  // blocking warning listing every funded non-defaulted holding whose
+  // industry code didn't resolve under the active taxonomy. The engine
+  // evaluator (PR4) cannot bucket positions without it, so silently
+  // omitting them from the rank ordering would understate concentration.
+  if (industryCoverageGapObligors.length > 0 && activeIndustryTaxonomy != null) {
+    const sample = industryCoverageGapObligors.slice(0, 8).join(", ");
+    const more = industryCoverageGapObligors.length > 8 ? ` (+${industryCoverageGapObligors.length - 8} more)` : "";
+    warnings.push({
+      field: "industryCode",
+      message:
+        `${industryCoverageGapObligors.length} active position(s) have no resolvable ` +
+        `industry under the deal's active taxonomy (${activeIndustryTaxonomy}): ` +
+        `${sample}${more}. ` +
+        `Engine industry-cap enforcement requires 100% per-position coverage — silently ` +
+        `omitting these positions from the rank ordering would understate concentration. ` +
+        `Re-extract per-holding industry from the SDF Collateral File (columns: ` +
+        `${activeIndustryTaxonomy === "moodys_33" ? "Moodys_Industry_Code / Moodys_Industry_Name" : "SP_Industry_Code / Issuer_Industry_Classification___S_P"}) ` +
+        `or extend the taxonomy alias list when the SDF text doesn't match canonical names.`,
       severity: "error",
       blocking: true,
     });
@@ -2674,6 +2941,17 @@ export function resolveWaterfallInputs(
   const concentrationTests: ResolvedComplianceTest[] = concentrationsRaw.map(c => {
     const bucketName = (c.bucketName ?? c.concentrationType ?? "") as string;
     const concType = (c.concentrationType ?? "") as string;
+    // KI-23: lift the SDF concentration tag into a structured field so
+    // downstream consumers (industry-cap evidence gate, validator) don't
+    // regex testName. Map unknown SDF tags to "OTHER" rather than null
+    // so the field is non-null on every concentration row.
+    const concTypeUpper = concType.toUpperCase();
+    const concentrationType =
+      concTypeUpper === "INDUSTRY" || concTypeUpper === "COUNTRY" || concTypeUpper === "SINGLE_OBLIGOR" ||
+      concTypeUpper === "RATING" || concTypeUpper === "MATURITY" || concTypeUpper === "SPREAD" ||
+      concTypeUpper === "ASSET_TYPE" || concTypeUpper === "CURRENCY"
+        ? concTypeUpper
+        : "OTHER";
 
     // Prefer compliance test (has both actual + trigger + passing flag)
     const ct = concTestsByLetter.get(concType.toLowerCase());
@@ -2693,6 +2971,8 @@ export function resolveWaterfallInputs(
         cushion: round4(ct.cushionPct ?? directionalCushion(ct.testType, ct.testName, ct.actualValue, ct.triggerLevel)),
         isPassing: ct.isPassing,
         canonicalType: classifyComplianceTest(ct.testName || bucketName),
+        concentrationType,
+        bucketName: bucketName || null,
       };
     }
 
@@ -2718,6 +2998,8 @@ export function resolveWaterfallInputs(
       cushion: round4(directionalCushion(null, bucketName, actualValue, triggerLevel)),
       isPassing: typeof c.isPassing === "boolean" ? c.isPassing : null,
       canonicalType: classifyComplianceTest(bucketName),
+      concentrationType,
+      bucketName: bucketName || null,
     };
   });
 
@@ -3076,6 +3358,37 @@ export function resolveWaterfallInputs(
   // reflects only identifiable-obligor concentration.
   poolSummary.top10ObligorsPct = loans.length > 0 ? computeTopNObligorsPct(loans, 10) : null;
 
+  // KI-23: industry distribution under the deal's active taxonomy.
+  // Populated only when the per-loan coverage gate above didn't fire (the
+  // gate is upstream blocking, so reaching here with non-empty
+  // industryCoverageGapObligors is impossible — the projection refuses).
+  // For greenfield / no-loans / no-taxonomy paths the field stays null
+  // and the engine treats the deal as industry-cap-unconstrained
+  // (industryCapPresentInPpm guides whether that's correct).
+  if (activeIndustryTaxonomy != null && industryCoverageGapObligors.length === 0 && loans.length > 0) {
+    const totalPar = loans.reduce((s, l) => s + (l.parBalance > 0 ? l.parBalance : 0), 0);
+    if (totalPar > 0) {
+      const perBucket = new Map<string, { name: string; par: number }>();
+      for (const loan of loans) {
+        if (loan.parBalance <= 0) continue;
+        if (!loan.industryCode || !loan.industryName) continue;
+        const existing = perBucket.get(loan.industryCode);
+        if (existing) {
+          existing.par += loan.parBalance;
+        } else {
+          perBucket.set(loan.industryCode, { name: loan.industryName, par: loan.parBalance });
+        }
+      }
+      const distribution = Array.from(perBucket, ([industryCode, v]) => ({
+        industryCode,
+        industryName: v.name,
+        parPct: (v.par / totalPar) * 100,
+      })).sort((a, b) => b.parPct - a.parPct);
+      poolSummary.industryDistributionPct = distribution;
+      poolSummary.largestIndustryPct = distribution[0]?.parPct ?? null;
+    }
+  }
+
   // Deal currency. Prefer the deal-level field (CloDeal.dealCurrency) when
   // populated; otherwise derive from the par-weighted modal native_currency
   // across non-defaulted holdings. Null when neither is determinable — UI
@@ -3178,16 +3491,18 @@ export function resolveWaterfallInputs(
     }
   }
 
-  // KI-23 — placeholder until PR2 wires the LLM extraction layer + PR3
-  // wires resolver consumption. With the placeholders, every existing deal
-  // resolves with `industryCapPresentInPpm: null` (treated as "unknown" by
-  // the PR3 blocking gate) and `industryCapRules: null` (no enforcement).
-  // Behavior is unchanged from pre-KI-23 state.
-  const industryTaxonomy = null;
-  const industryCapPresentInPpm = null;
-  const industryCapRules = null;
-  const excludedIndustryNames = null;
-  const dealSpecificIndustryList = null;
+  // KI-23: resolve PPM clause (t) industry-cap rule schedule + cross-check
+  // against SDF concentration evidence. Emits blocking warnings on the
+  // three-state failure modes (extraction missing on a deal with SDF
+  // INDUSTRY rows; rules empty on present:true; taxonomy missing on
+  // present:true; rank-monotonicity violation; non-empty unmapped rules).
+  const {
+    industryTaxonomy,
+    industryCapPresentInPpm,
+    industryCapRules,
+    excludedIndustryNames,
+    dealSpecificIndustryList,
+  } = resolveIndustryConcentrationTest(constraints, concentrationTests, warnings);
 
   return {
     resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, dealSpecificIndustryList, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
