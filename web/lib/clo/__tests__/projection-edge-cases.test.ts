@@ -9,6 +9,14 @@ function uniformRates(cdr: number): Record<string, number> {
   return Object.fromEntries(RATING_BUCKETS.map((b) => [b, cdr]));
 }
 
+// Disable defaults under per-position WARF: factory keeps a non-zero baseline
+// in `defaultRatesByRating`, this path-fn returns 0 → multiplier 0/baseline = 0
+// → hazard = warfHazard × 0 = 0. Setting `defaultRatesByRating: uniformRates(0)`
+// alone does NOT disable defaults — per-position reads `warfFactor`, not the
+// rates map. baseline=0 + path>0 also wouldn't work: it hits the Infinity
+// fallback at projection.ts:2920 and routes through bucket-map.
+const noDefaultsPath = (): Record<string, number> => uniformRates(0);
+
 /** Minimal 3-tranche deal: A (senior), B (mezzanine, deferrable), Sub (equity). */
 function makeSimpleInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs {
   const currentDate = "2026-01-15";
@@ -58,8 +66,6 @@ function makeSimpleInputs(overrides: Partial<ProjectionInputs> = {}): Projection
     cccBucketLimitPct: CLO_DEFAULTS.cccBucketLimitPct,
     cccMarketValuePct: CLO_DEFAULTS.cccMarketValuePct,
     deferredInterestCompounds: true,
-    // D2 — legacy pin; test predates per-position WARF hazard. See test-helpers.ts.
-    useLegacyBucketHazard: true,
     ...overrides,
   };
 }
@@ -128,8 +134,6 @@ function makeMultiTrancheInputs(overrides: Partial<ProjectionInputs> = {}): Proj
     cccBucketLimitPct: CLO_DEFAULTS.cccBucketLimitPct,
     cccMarketValuePct: CLO_DEFAULTS.cccMarketValuePct,
     deferredInterestCompounds: true,
-    // D2 — legacy pin; test predates per-position WARF hazard. See test-helpers.ts.
-    useLegacyBucketHazard: true,
     ...overrides,
   };
 }
@@ -145,7 +149,7 @@ describe("1. Partial Cure Precision", () => {
     // Cure should be small — most interest should still reach equity.
     const inputs = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01", // expired → outside RP
-      defaultRatesByRating: uniformRates(0),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 
@@ -182,7 +186,7 @@ describe("1. Partial Cure Precision", () => {
     // During RP with OC-only failure: cure buys collateral. Should buy only what's needed.
     const inputs = makeSimpleInputs({
       reinvestmentPeriodEnd: addQuarters("2026-01-15", 20), // well inside RP
-      defaultRatesByRating: uniformRates(0),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 
@@ -472,7 +476,7 @@ describe("3. Boundary Conditions", () => {
     // B denom = A + B = 90M. Need par/90M = 1.10 → par = 99M
     const inputs = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 
@@ -498,11 +502,15 @@ describe("3. Boundary Conditions", () => {
   it("single loan remaining: one default wipes all par", () => {
     const inputs = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(100), // 100% CDR → all defaults
       cprPct: 0,
       recoveryPct: 0,
 
-    ratingAgencies: ["moodys", "sp", "fitch"],      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 }],
+    ratingAgencies: ["moodys", "sp", "fitch"],      // warfFactor 10000 (Moody's Ca/C) → cumulative default = 1.0 →
+      // per-position quarterly hazard = 1.0 → entire loan defaults Q1.
+      // Replaces the legacy `uniformRates(100)` setup which under per-position
+      // would only produce ~0.79%/q (B bucket WARF), since per-position reads
+      // warfFactor not the rates map.
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400, warfFactor: 10000 }],
       ocTriggers: [{ className: "A", triggerLevel: 120, rank: 1 }],
       icTriggers: [],
     });
@@ -510,8 +518,7 @@ describe("3. Boundary Conditions", () => {
     const result = runProjection(inputs);
     const p1 = result.periods[0];
 
-    // 100% annual CDR clamped to 99.99%, quarterly hazard = 1-(0.0001)^0.25 ≈ 90%
-    // So ~90M defaults in Q1, leaving ~10M
+    // warfFactor=10000 → quarterly hazard = 1.0 → 100M defaults in Q1.
     expect(p1.defaults).toBeGreaterThan(80_000_000);
     expect(p1.endingPar).toBeLessThan(20_000_000);
 
@@ -1016,11 +1023,20 @@ describe("7. Recovery & Default Timing", () => {
   it("100% CDR: all loans default, zero par, recovery pipeline loaded", () => {
     const inputs = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(100),
       cprPct: 0,
       recoveryPct: 70,
 
     ratingAgencies: ["moodys", "sp", "fitch"],      recoveryLagMonths: 3, // 1 quarter
+      // warfFactor 10000 (Moody's Ca/C) → quarterly hazard = 1.0 → instant
+      // wipeout. Per-position reads warfFactor not the rates map; previous
+      // `defaultRatesByRating: uniformRates(100)` was a no-op under per-position.
+      loans: Array.from({ length: 10 }, (_, i) => ({
+        parBalance: 10_000_000,
+        maturityDate: addQuarters("2026-01-15", 12 + i),
+        ratingBucket: "B" as const,
+        spreadBps: 400,
+        warfFactor: 10000,
+      })),
       ocTriggers: [],
       icTriggers: [],
     });
@@ -1028,7 +1044,7 @@ describe("7. Recovery & Default Timing", () => {
     const result = runProjection(inputs);
 
     // After a few quarters, par should be near zero
-    // (100% annual CDR → quarterly hazard ≈ 100%)
+    // (warfFactor=10000 → quarterly hazard = 1.0 → instant default)
     const q2 = result.periods[1];
     expect(q2.endingPar).toBeLessThan(5_000_000);
 
@@ -1161,7 +1177,7 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
     // not treated as maturing at par.
     const atPar = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 
@@ -1176,7 +1192,7 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
 
     const atDiscount = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 
@@ -1315,7 +1331,7 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
     // Verify that principal proceeds pay down A completely before touching B.
     const inputs = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      cdrMultiplierPathFn: noDefaultsPath,
       cprPct: 0,
       recoveryPct: 0,
 
