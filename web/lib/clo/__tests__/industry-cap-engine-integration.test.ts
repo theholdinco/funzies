@@ -164,6 +164,27 @@ describe("Industry-cap engine-integration — synthesis with industry-cap rules"
     expect(Number.isFinite(result.equityIrr!)).toBe(true);
   });
 
+  it("greenfield (loans=[]) + industryCapRules: synthesis blocks reinvestment instead of creating untagged loans (regression)", () => {
+    // Pre-fix: greenfield ramp with industry-cap rules → synthesis gate
+    // bypassed (hasLoans=false) → single-bucket fallback creates untagged
+    // synthetic loans on first period → next period (hasLoans=true now)
+    // hits the boundary assertion at projection.ts:3402 and throws.
+    // Post-fix: greenfield + industryCapRules blocks all reinvestment in
+    // the no-prior period, routing par to senior paydown. Synthesis never
+    // creates untagged loans; downstream periods stay clean.
+    const inputs = makeInputs({
+      initialPar: 100_000_000,
+      loans: [], // greenfield — no current pool composition
+      industryCapRules: [{ kind: "single_rank_max", rank: 1, triggerPct: 50 }],
+      excludedIndustryCodes: null,
+    });
+    // The projection should complete without throwing — pre-fix would throw
+    // once any reinvestment created untagged synthetics that survived to
+    // the next period.
+    const result = runProjection(inputs);
+    expect(result.periods.length).toBeGreaterThan(0);
+  });
+
   it("excludedIndustryCodes are honored at synthesis: excluded code drops out of cap denominator (regression)", () => {
     // Pool: 4 buckets at 25M each (100M total). One of them ("9999") is the
     // excluded industry. Rule: rank-1 cap of 30%. Without exclusion, all

@@ -3394,6 +3394,18 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // industryCode tagging) — preserving pre-industry-cap behavior on every deal
     // that doesn't carry a clause (t).
     let industryAllocation: Map<string, number> | null = null;
+    // When industryCapRules are set, synthesis MUST produce industry-tagged
+    // synthetic loans so the next-period boundary assertion doesn't throw.
+    // Greenfield (hasLoans=false) has no prior to anchor allocation: block
+    // all reinvestment rather than creating untagged synthetics that would
+    // poison the downstream pool. Non-greenfield without industry-cap rules
+    // takes the legacy single-bucket path (no industryCode on synthetics)
+    // — that's only safe because the boundary assertion is gated on
+    // industryCapRules being set.
+    if (reinvestment > 0 && industryCapRules != null && industryCapRules.length > 0 && !hasLoans) {
+      reinvestmentBlockedCompliance += reinvestment;
+      reinvestment = 0;
+    }
     if (reinvestment > 0 && hasLoans && industryCapRules != null && industryCapRules.length > 0) {
       // Boundary assertion (anti-pattern #5): when industry-cap rules are
       // active, every funded position MUST carry industryCode. The resolver's
