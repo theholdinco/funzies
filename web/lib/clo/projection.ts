@@ -8,6 +8,7 @@ import {
   BUCKET_WARF_FALLBACK,
   aggregateQualityMetrics,
   computePoolQualityMetrics,
+  resolveWarfFactor,
   type PoolQualityMetrics,
   type QualityMetricLoan,
 } from "./pool-metrics";
@@ -1503,31 +1504,6 @@ function trancheCouponRate(t: ProjectionInputs["tranches"][number], baseRatePct:
     : t.spreadBps / 10000;
 }
 
-/** Resolve LoanInput.warfFactor at the LoanInput → LoanState boundary.
- *  Throws on explicit zero or negative — those values produce silent
- *  zero-hazard under per-position WARF (the engine's only hazard branch)
- *  since `warfFactorToQuarterlyHazard(0) === 0`, which would silently
- *  disable defaults for that position. The valid representations of "no
- *  per-position factor available" are `null` and `undefined`, both of
- *  which trigger the BUCKET_WARF_FALLBACK[ratingBucket] →
- *  BUCKET_WARF_FALLBACK.NR fallback chain (every entry ≥ 1, never silent).
- *
- *  Anti-pattern guard per CLAUDE.md anti-pattern #3: the failure mode
- *  this prevents is the "silent fallback that produces a wrong number"
- *  shape, here disguised as "missing defaults on a position that should
- *  have defaulted." */
-function resolveLoanWarfFactor(l: LoanInput): number {
-  if (l.warfFactor != null && l.warfFactor <= 0) {
-    throw new Error(
-      `Invalid LoanInput.warfFactor: ${l.warfFactor} (must be > 0). ` +
-      `Use null or undefined to fall back to BUCKET_WARF_FALLBACK[ratingBucket]; ` +
-      `passing 0 silently disables defaults for this position via ` +
-      `warfFactorToQuarterlyHazard(0) = 0.`,
-    );
-  }
-  return l.warfFactor ?? BUCKET_WARF_FALLBACK[l.ratingBucket] ?? BUCKET_WARF_FALLBACK.NR;
-}
-
 export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultDrawFn): ProjectionResult {
   const {
     initialPar, wacSpreadBps, baseRatePct, baseRateFloorPct, seniorFeePct, subFeePct,
@@ -1883,7 +1859,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     maturityQuarter: Math.max(1, quartersBetween(currentDate, l.maturityDate)),
     ratingBucket: l.ratingBucket,
     spreadBps: l.spreadBps,
-    warfFactor: resolveLoanWarfFactor(l),
+    warfFactor: resolveWarfFactor(l.warfFactor, l.ratingBucket),
     isFixedRate: l.isFixedRate,
     fixedCouponPct: l.fixedCouponPct,
     isDeferring: l.isDeferring,

@@ -270,6 +270,14 @@ describe("OC partial cure outside RP", () => {
     expect(ocF).toBeDefined();
     expect(ocF.passing).toBe(false);
 
+    // Cure actually fired with a non-zero diversion at F-rank boundary.
+    // Closes the same coverage gap the test at line ~440 had: an
+    // equity-only assertion would silently pass under a zero-cure bug
+    // (engine considers OC failing but computes diversion as 0).
+    const fCureDiversion = p1.stepTrace.ocCureDiversions.find((d) => d.rank === 6);
+    expect(fCureDiversion).toBeDefined();
+    expect(fCureDiversion!.amount).toBeGreaterThan(0);
+
     // Partial cure (small cure amount < available interest) → equity > 0
     expect(p1.equityDistribution).toBeGreaterThan(0);
   });
@@ -451,6 +459,16 @@ describe("OC cure during RP buys collateral", () => {
     );
     expect(fCureDiversion).toBeDefined();
     expect(fCureDiversion!.amount).toBeGreaterThan(0);
+
+    // Partial-cure pin (the (b) property the test name promises): cure
+    // strictly less than the interest available at the F-rank boundary.
+    // Without this, a regression where cure consumed all available interest
+    // could still satisfy the (a) cure-fired and (c) equity > 0 checks if
+    // equity received a residual from the principal waterfall — falsely
+    // passing this test under a fully-diverted-interest scenario.
+    const availableForTranches = failingPeriod!.stepTrace.availableForTranches;
+    expect(availableForTranches).not.toBeNull();
+    expect(fCureDiversion!.amount).toBeLessThan(availableForTranches!);
 
     // Partial cure leaves a remainder for equity: cure < available interest
     // at the F-rank boundary, so equityDistribution > 0 in the failing period.

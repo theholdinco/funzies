@@ -2,9 +2,9 @@ import type { ResolvedDealData, ResolvedLoan, ResolutionWarning } from "./resolv
 import type { ProjectionInputs } from "./projection";
 import { buildFromResolved, type UserAssumptions } from "./build-projection-inputs";
 import {
-  BUCKET_WARF_FALLBACK,
   computePoolQualityMetrics,
   computeTopNObligorsPct,
+  resolveWarfFactor,
 } from "./pool-metrics";
 
 export interface SwitchParams {
@@ -38,14 +38,18 @@ function yearsBetween(fromIso: string, toIso: string): number {
 }
 
 /** D4 — Map a ResolvedLoan to the QualityMetricLoan shape the shared helper
- *  expects. `warfFactor` falls back to BUCKET_WARF_FALLBACK when the resolver
- *  didn't populate (NR loans without a rating; see KI-19). Per-agency ratings
- *  and exclusion flags propagate so the helper can apply the PPM Condition 1
- *  Floating WAS / Excess WAC / per-agency Caa-CCC methodology. */
+ *  expects. `warfFactor` resolves via `resolveWarfFactor` which falls back
+ *  to BUCKET_WARF_FALLBACK when the resolver didn't populate (NR loans
+ *  without a rating; see KI-19) AND throws on malformed values (zero,
+ *  negative, NaN, Infinity). Single source of truth shared with the engine
+ *  boundary at projection.ts so any future ResolvedLoan path that consumes
+ *  warfFactor enforces the same invariant. Per-agency ratings and exclusion
+ *  flags propagate so the helper can apply the PPM Condition 1 Floating WAS
+ *  / Excess WAC / per-agency Caa-CCC methodology. */
 function toQualityMetricLoan(l: ResolvedLoan, currentDate: string) {
   return {
     parBalance: l.parBalance,
-    warfFactor: l.warfFactor ?? BUCKET_WARF_FALLBACK[l.ratingBucket] ?? BUCKET_WARF_FALLBACK.NR,
+    warfFactor: resolveWarfFactor(l.warfFactor, l.ratingBucket),
     yearsToMaturity: yearsBetween(currentDate, l.maturityDate),
     spreadBps: l.spreadBps,
     ratingBucket: l.ratingBucket,

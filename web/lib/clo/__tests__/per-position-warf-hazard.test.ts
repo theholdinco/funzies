@@ -154,6 +154,43 @@ describe("LoanInput.warfFactor boundary guard", () => {
       runProjection({ ...baseInputs, loans: [wellFormed] }, expectationDraw),
     ).not.toThrow();
   });
+
+  it("explicit warfFactor: NaN throws at construction (the silent-NaN-propagation hole)", () => {
+    // NaN <= 0 is false, so a literal `<= 0` guard misses NaN. Then `NaN ??
+    // fallback` is NaN (?? only coalesces null/undefined). Result: LoanState
+    // .warfFactor = NaN → warfFactorToQuarterlyHazard(NaN) returns 0 via
+    // its !Number.isFinite guard → silent zero-hazard. Pinning the throw
+    // here so a future relaxation of the construction guard fails loud.
+    const baseInputs = buildFromResolved(fixture.resolved, defaultsFromResolved(fixture.resolved, fixture.raw));
+    const malformed: LoanInput = {
+      parBalance: 1_000_000,
+      maturityDate: "2030-01-15",
+      ratingBucket: "B",
+      spreadBps: 400,
+      warfFactor: NaN,
+    };
+    expect(() =>
+      runProjection({ ...baseInputs, loans: [malformed] }, expectationDraw),
+    ).toThrow(/warfFactor/);
+  });
+
+  it("explicit warfFactor: Infinity throws at construction", () => {
+    // Infinity passes the <= 0 check; warfFactorToQuarterlyHazard(Infinity)
+    // returns 1 (cumDef clamped to 1) — instant default, not silent, but
+    // still a malformed input that should fail loud at the boundary rather
+    // than silently flipping the position's hazard to 100%/q.
+    const baseInputs = buildFromResolved(fixture.resolved, defaultsFromResolved(fixture.resolved, fixture.raw));
+    const malformed: LoanInput = {
+      parBalance: 1_000_000,
+      maturityDate: "2030-01-15",
+      ratingBucket: "B",
+      spreadBps: 400,
+      warfFactor: Infinity,
+    };
+    expect(() =>
+      runProjection({ ...baseInputs, loans: [malformed] }, expectationDraw),
+    ).toThrow(/warfFactor/);
+  });
 });
 
 describe("reinvested loans carry bucket-fallback factor into per-position path", () => {

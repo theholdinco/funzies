@@ -402,3 +402,40 @@ export const BUCKET_WARF_FALLBACK: Record<string, number> = {
   CCC: 6500,
   NR: 6500,
 };
+
+/** Resolve a per-position warfFactor at any LoanInput | ResolvedLoan →
+ *  downstream-consumer boundary. Throws on explicit zero, negative, NaN, or
+ *  Infinity — all four produce silent zero-hazard or non-finite propagation
+ *  under per-position WARF. `warfFactorToQuarterlyHazard` returns 0 on
+ *  `!Number.isFinite(warfFactor)` AND on `<= 0`, so any malformed value
+ *  silently disables defaults for the position; NaN additionally
+ *  propagates through `??` (which only coalesces null/undefined) and
+ *  poisons downstream WARF aggregations.
+ *
+ *  The valid representations of "no per-position factor available" are
+ *  `null` and `undefined`, both of which trigger the
+ *  BUCKET_WARF_FALLBACK[ratingBucket] → BUCKET_WARF_FALLBACK.NR fallback
+ *  chain (every entry ≥ 1, never silent).
+ *
+ *  Anti-pattern guard per CLAUDE.md anti-pattern #5: the failure mode this
+ *  prevents is the "boundary type carries no invariant" shape — the TS
+ *  type permits any `number`, so the runtime guard is the only thing
+ *  standing between a malformed input and a silent missing-defaults bug.
+ *  Throw loud, never re-interpret. Single source of truth so any future
+ *  ResolvedLoan → engine boundary that consumes warfFactor is guarded
+ *  identically (matches the "boundaries assert sign and scale" rule). */
+export function resolveWarfFactor(
+  rawWarfFactor: number | null | undefined,
+  ratingBucket: string,
+): number {
+  if (rawWarfFactor != null && (!Number.isFinite(rawWarfFactor) || rawWarfFactor <= 0)) {
+    throw new Error(
+      `Invalid warfFactor: ${rawWarfFactor} (must be a finite number > 0). ` +
+      `Use null or undefined to fall back to BUCKET_WARF_FALLBACK[ratingBucket]; ` +
+      `passing 0, negative, NaN, or Infinity silently disables defaults for ` +
+      `this position via warfFactorToQuarterlyHazard's <=0 / !isFinite guard ` +
+      `returning 0.`,
+    );
+  }
+  return rawWarfFactor ?? BUCKET_WARF_FALLBACK[ratingBucket] ?? BUCKET_WARF_FALLBACK.NR;
+}
