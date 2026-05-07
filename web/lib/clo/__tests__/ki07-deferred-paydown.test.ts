@@ -28,19 +28,33 @@
  * side vs principal-side) is deferred to the broader principal-POP
  * schema redesign tracked in `web/docs/principal-pop-redesign-research.md`.
  *
- * KI-66 marker tests (below): pin the post-fix Controlling-Class gating
- * behavior. With Class A outstanding at start-of-period, principal-POP
- * phase 1 (deferred) for junior ranks is correctly skipped per Ares XV
- * PPM clause (D). The remaining principal-POP backfill clauses (Coverage
- * Test cure backfill from principal, Effective Date redemption, RP-vs-
- * post-RP dispatch, Reinvesting Holder, Restructured Asset Acquisition)
- * are still open under KI-66 PARTIAL — closed by the schema-driven
- * redesign per the research note's §4.
+ * KI-66 marker tests (below): pin both the post-fix Controlling-Class
+ * gating behavior and the schema-driven principal-POP dispatch. With
+ * Class A outstanding at start-of-period, principal-POP phase 1
+ * (deferred) for junior ranks is correctly skipped per Ares XV PPM
+ * clause (D). Structured test fixtures also assert principal-funded
+ * current-interest backfill and user-elected Special Redemption reserve
+ * behavior.
  */
 
 import { describe, it, expect } from "vitest";
 import { runProjection } from "../projection";
 import { makeInputs, noDefaults } from "./test-helpers";
+import type { ResolvedPrincipalPop } from "../resolver-types";
+
+const schemaPop = (clauses: ResolvedPrincipalPop["clauses"]): ResolvedPrincipalPop => ({
+  interestWaterfall: {
+    items: [
+      { id: "class_a_current_interest", kind: "tranche_current_interest", tranche: 1 },
+      { id: "class_c_deferred_interest", kind: "tranche_deferred_interest", tranche: 3 },
+    ],
+  },
+  preWaterfallReservations: [],
+  clauses,
+  controllingClass: { kind: "highest_rank_outstanding" },
+  redemptionMode: "sequential_npss",
+  accelerationWaterfall: null,
+});
 
 describe("KI-07 — deferredPaydownByTranche field exists and populates", () => {
   it("field exists on every period's stepTrace and is zero when no deferred state", () => {
@@ -251,5 +265,53 @@ describe("KI-66 — Controlling-Class gating on principal POP deferred paydown",
     expect(c!.paid).toBeLessThan(4_100_000);
     expect(d!.paid).toBeGreaterThan(2_900_000);
     expect(d!.paid).toBeLessThan(3_100_000);
+  });
+
+  it("schema POP clause (P): Special Redemption reserve survives RP reinvestment and redeems notes in pass 2", () => {
+    const inputs = makeInputs({
+      ...minimalInterestSetup,
+      cprPct: 0,
+      reinvestmentPeriodEnd: "2028-06-15",
+      initialPrincipalCash: 10_000_000,
+      specialRedemptionAmount: 3_000_000,
+      principalPop: schemaPop([
+        { id: "P", kind: "special_redemption", proceedsSubset: "special_redemption_amount" },
+        { id: "V", kind: "residual_to_subordinated" },
+      ]),
+    });
+
+    const p1 = runProjection(inputs).periods[0];
+    const a = p1.tranchePrincipal.find((t) => t.className === "A");
+
+    expect(p1.reinvestment).toBeGreaterThan(6_900_000);
+    expect(p1.reinvestment).toBeLessThan(7_100_000);
+    expect(a?.paid).toBeGreaterThan(2_900_000);
+    expect(a?.paid).toBeLessThan(3_100_000);
+  });
+
+  it("schema POP clause (A): principal proceeds backfill unpaid current interest without redeeming principal", () => {
+    const inputs = makeInputs({
+      ...minimalInterestSetup,
+      baseRatePct: 0,
+      baseRateFloorPct: 0,
+      reinvestmentPeriodEnd: "2025-01-01",
+      initialPrincipalCash: 1_000_000,
+      tranches: [
+        { className: "A", currentBalance: 10_000_000, spreadBps: 400, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "Sub", currentBalance: 5_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
+      ],
+      principalPop: schemaPop([
+        { id: "A", kind: "unconditional_backfill", paysItems: ["class_a_current_interest"] },
+        { id: "V", kind: "residual_to_subordinated" },
+      ]),
+    });
+
+    const p1 = runProjection(inputs).periods[0];
+    const aInterest = p1.trancheInterest.find((t) => t.className === "A");
+    const aPrincipal = p1.tranchePrincipal.find((t) => t.className === "A");
+
+    expect(aInterest?.due).toBeGreaterThan(0);
+    expect(aInterest?.paid).toBeCloseTo(aInterest!.due, 6);
+    expect(aPrincipal?.paid).toBe(0);
   });
 });

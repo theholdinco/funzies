@@ -2,7 +2,7 @@
 
 **Status:** pre-KI research artifact, dated 2026-05-06. Compiled to support filing a new tentative ledger entry for the engine's principal Priority of Payments redesign. **Cross-reference verification completed 2026-05-06** — see §11 for the verification report and resulting changes applied to §3, §4. Two §6 targets remain unresolved (one more European-2.0 indenture read; fresh Ares XV OC pp. 176-179 spot-check); both are tracked in §8 as tentative residuals.
 
-**Implementation status update (2026-05-06):** The highest-leverage slice — Controlling-Class gating on principal-POP phase 1 deferred-interest backfill (PPM clauses (D)/(G)/(J)/(M)) — has been implemented in `web/lib/clo/projection.ts:4150-4195`. KI-66 ledger entry is now PARTIALLY CLOSED. The full schema-driven dispatch remains open and is the path-to-close for the remaining principal-POP backfill clauses (Coverage-Test cure backfill from principal, Effective Date redemption, RP-vs-post-RP dispatch, Reinvesting Noteholder, Restructured Asset Acquisition). §6 verification work and §7 closure path stay relevant for the broader redesign.
+**Implementation status update (2026-05-07):** The Ares XV schema-driven path has shipped through resolver + engine. `ResolvedPrincipalPop` is populated from the structured PPM block, `buildFromResolved` threads it into `ProjectionInputs`, and `projection.ts` runs a two-pass dispatch: pre-interest clauses for Controlling-Class deferred backfill and mandatory post-RP redemption, post-interest clauses for principal-funded interest backfills, cure-from-principal, Special Redemption, post-RP interest overflow, Reinvesting Holder, incentive/residual sequencing, and no-op event/acquisition arms where the model lacks state. Remaining closure work is the resolver coverage gate (missing structured block still warns, not blocks), non-Ares production round-trip validation, and event/acquisition state for clauses that are zero on current Euro XV.
 
 **Reading order for a cross-reference agent:** §1 establishes the defect against the actual engine code (verified). §2 establishes Ares XV's PPM clauses against `ppm.json` (verified against repo). §3 contains a research-agent survey of cross-manager indenture variation (UNVERIFIED — this is what cross-ref work needs to validate). §4 proposes a schema derived from §3 (UNVERIFIED, treat as STARTING PROMPT). §5 maps Ares XV into the schema. §6 lists explicit verification targets the cross-ref agent should hit. §7 is the conceptual closure path. §8 is the tentative residual. §9 is the draft ledger entry.
 
@@ -17,7 +17,7 @@ Tags used:
 
 ## §1. The defect (engine code state)
 
-### §1.1 What the engine does today
+### §1.1 What the engine did before the 2026-05-07 schema dispatch
 
 The principal POP at `web/lib/clo/projection.ts:4096-4118` is a uniformly-simplified pro-rata loop that does not model the conditional backfill structure the PPM specifies. Concretely: `[VERIFIED]`
 

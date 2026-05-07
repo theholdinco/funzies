@@ -495,6 +495,11 @@ export default function ProjectionModel({
           ddtlDrawPercent,
           equityEntryPriceCents,
           supplementalReserveDisposition,
+          // KI-66 Special Redemption + Reinvesting Holder amounts. Default 0
+          // (no-op) — UI sliders not yet wired. Engine consumes via the
+          // schema-driven principal-POP pass-2 dispatch.
+          specialRedemptionAmount: 0,
+          reinvestingHolderRedemptionAmount: 0,
         },
         resolutionWarnings,
       );
@@ -604,6 +609,9 @@ export default function ProjectionModel({
     ddtlDrawPercent,
     equityEntryPriceCents,
     supplementalReserveDisposition,
+    // KI-66 — see `inputs` memo for default rationale.
+    specialRedemptionAmount: 0,
+    reinvestingHolderRedemptionAmount: 0,
   }), [
     baseRatePct, baseRateFloorPct, defaultRates, overriddenBuckets, cprPct, recoveryPct, recoveryLagMonths,
     reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating, cccBucketLimitPct, cccMarketValuePct,
