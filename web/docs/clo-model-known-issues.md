@@ -33,7 +33,7 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-38 — FX / multi-currency unmodeled; `native_currency` parsed and discarded](#ki-38)
 - [KI-45 — Senior Expenses Cap carryforward seed not populated; mid-life projections start with empty buffer](#ki-45)
 - [KI-46 — DDTL draw event inflates forward OC numerator; impliedOcAdjustment frozen at T=0 calibration](#ki-46) — **BLOCKED ON DATA ACQUISITION** (deal with active DDTL draws + non-zero `impliedOcAdjustment`)
-- [KI-66 — Principal POP backfill conditionality unmodeled (Ares XV path closed; non-Ares validation + dormant event/acquisition state remain)](#ki-66) — **PARTIALLY CLOSED** (structured Ares XV resolver/engine path shipped 2026-05-07; missing structured principal POP now blocks production resolver paths)
+- [KI-66 — Principal POP backfill conditionality unmodeled (Ares XV path closed; remaining work needs new PPM/event data)](#ki-66) — **BLOCKED ON NEW DATA FOR FULL CLOSURE** (structured Ares XV resolver/engine path shipped 2026-05-07; missing structured principal POP now blocks production resolver paths)
 
 ### Deferred — intentionally not modeled, magnitude known
 - [KI-02 — Step (D) Expense Reserve top-up](#ki-02)
@@ -478,9 +478,11 @@ The fix shape is straightforward. What's blocked is *verifying* the fix produces
 ---
 
 <a id="ki-66"></a>
-### [KI-66] Principal POP backfill conditionality unmodeled — **PARTIALLY CLOSED (Ares XV schema-driven dispatch shipped 2026-05-07)**
+### [KI-66] Principal POP backfill conditionality unmodeled — **ARES XV CLOSED; FULL CLOSURE BLOCKED ON NEW DATA**
 
-**Status (2026-05-07):** Schema-driven principal-POP extraction and Ares XV engine dispatch shipped and deep-review amended. The resolver now exposes `ResolvedDealData.principalPop`; the projection engine walks structured clauses in sequenced passes: pass 1 before OC/IC measurement for Controlling-Class deferred backfill and mandatory post-RP redemption; pass 2 after debt-interest/cure for upstream interest backfills, cure-from-principal, and Special Redemption; and a late clause-S/T pass after sub-management fee and trustee/admin overflow have run from interest, preserving S-before-T principal-POP ordering. Missing structured principal POP now emits `severity:"error", blocking:true` on production resolver paths; the engine's null-`principalPop` fallback remains only for direct synthetic `ProjectionInputs`.
+**Status (2026-05-07):** The current Ares XV principal-POP path is closed for the data and state the model has today. Schema-driven extraction and Ares XV engine dispatch shipped and deep-review amended. The resolver now exposes `ResolvedDealData.principalPop`; the projection engine walks structured clauses in sequenced passes: pass 1 before OC/IC measurement for Controlling-Class deferred backfill and mandatory post-RP redemption; pass 2 after debt-interest/cure for upstream interest backfills, cure-from-principal, and Special Redemption; and a late clause-S/T pass after sub-management fee and trustee/admin overflow have run from interest, preserving S-before-T principal-POP ordering. Missing structured principal POP now emits `severity:"error", blocking:true` on production resolver paths; the engine's null-`principalPop` fallback remains only for direct synthetic `ProjectionInputs`.
+
+**Full KI closure is blocked on new data, not additional Ares XV engine work.** The remaining work requires either (a) a non-Ares PPM ingested through the same structured schema, or (b) future event/acquisition state for clauses that are dormant on current Euro XV. Until one of those data conditions exists, there is no current Ares XV behavior left to make more correct.
 
 **What shipped:**
 
@@ -503,15 +505,15 @@ The fix shape is straightforward. What's blocked is *verifying* the fix produces
 
 **PPM reference:** Ares XV OC Condition 3(c), Principal Priority of Payments, clauses (A) through (V). Mapped in `ppm.json:249-276`. Clauses (D)/(G)/(J)/(M) explicitly require Class C/D/E/F to be Controlling Class for principal-side deferred backfill — that's the gate this closure ships.
 
-**Open residuals — what remains outside the shipped current-Ares XV path:**
+**Blocked residuals — what needs new data before it can close:**
 
-- **Effective Date Rating Event redemption** (clause (O)): schema arm is present but no rating-event state input exists; remains equivalent to KI-03 and is permanently inactive for current Euro XV.
-- **Restructured Asset Acquisition** (workout-loan / rescue-financing path identified in cross-reference §11.6): schema arm exists for portability, but no acquisition-authorization user input or per-deal cap-state engine path exists.
-- **Non-Ares portability:** the schema was verified against a small sample. At least one non-Ares production PPM should be ingested and round-tripped before treating the schema as fully portable.
+- **Effective Date Rating Event redemption** (clause (O)) — **needs event-state data:** schema arm is present but no rating-event state input exists; remains equivalent to KI-03 and is permanently inactive for current Euro XV.
+- **Restructured Asset Acquisition** — **needs acquisition/cap-state data:** workout-loan / rescue-financing path identified in cross-reference §11.6; schema arm exists for portability, but no acquisition-authorization user input or per-deal cap-state engine path exists.
+- **Non-Ares portability** — **needs another PPM:** the schema was verified against a small sample. At least one non-Ares production PPM should be ingested and round-tripped before treating the schema as fully portable.
 
 Each residual is zero on current Euro XV base case.
 
-**Path to close (remaining residuals):**
+**Path to full close once new data exists:**
 
 1. **Validation against ≥1 non-Ares PPM ingested in production** — KI-29-shape portability checkpoint. The Controlling-Class gating's hardcoded `highest_rank_outstanding` definition is sample-bounded; lifting it to extracted per-deal config waits on a deal that surfaces an alternative.
 2. **1 additional European 2.0 indenture read** to confirm the PV-vs-Coverage-Test bifurcation is European-typical (vs Ares-family-specific). Tracked in `web/docs/principal-pop-redesign-research.md` §8.3.
