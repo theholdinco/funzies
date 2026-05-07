@@ -4131,21 +4131,79 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       }
       principalGroupByRank.get(t.seniorityRank)!.push(t);
     }
+
+    // Controlling-Class derivation per Ares XV PPM Condition 1 — "highest
+    // rank of Notes outstanding at the Determination Date". Verified
+    // uniform across 4 sampled indentures (Ares XV, Carlyle DL 24-1,
+    // Golub 18, Barings 19) per cross-reference §11.2 in
+    // web/docs/principal-pop-redesign-research.md. The rule is hardcoded
+    // here against `bopTrancheBalances` (start-of-period principal
+    // balance, captured at projection-loop top). A future deal whose
+    // indenture defines Controlling Class differently (majority-vote,
+    // balance-weighted) will require lifting this to a per-deal extracted
+    // ResolvedDealData.controllingClassRule field.
+    //
+    // "Outstanding at start-of-period" → bopTrancheBalances[t] > 0.01.
+    // A tranche fully paid down in a prior period is no longer Controlling
+    // even if it once was. Determination-Date-anchored, NOT mid-period —
+    // so even if rank 0 pays off entirely DURING this period, the
+    // Controlling-Class for the rest of this period's principal POP
+    // remains rank 0 (the rank that was Controlling at start). This
+    // matches the PPM's static-per-period gating semantics.
+    const controllingClassRank = (() => {
+      for (const rank of principalRanksInOrder) {
+        const group = principalGroupByRank.get(rank)!;
+        if (group.some((t) => bopTrancheBalances[t.className] > 0.01)) {
+          return rank;
+        }
+      }
+      return null;
+    })();
+
     for (const rank of principalRanksInOrder) {
       const group = principalGroupByRank.get(rank)!;
-      // Phase 1: deferred — pro-rata across group by deferredBalance.
-      const groupDeferred = group.reduce((s, t) => s + deferredBalances[t.className], 0);
-      const deferredPaidGroup = Math.min(groupDeferred, remainingPrelim);
-      remainingPrelim -= deferredPaidGroup;
+
+      // PPM Condition 3(c) clauses (D)/(G)/(J)/(M) — principal-side
+      // backfill of deferred interest (PIK) fires only when the relevant
+      // class is the Controlling Class. Without this gate, the engine
+      // pays Class C/D/E/F deferred from principal proceeds regardless
+      // of Controlling status, which is wrong while a more senior class
+      // is outstanding (the more senior class is Controlling per the
+      // Determination Date convention; clause D for Class C explicitly
+      // requires "Class C Notes are Controlling Class").
+      //
+      // Non-deferrable tranches (Class A/B per Ares XV) have
+      // deferredBalances == 0 by construction (accrueShortfall routes
+      // their shortfall to interestShortfall, not deferredBalances), so
+      // this gate is a no-op for them.
+      const isControllingRank = rank === controllingClassRank;
       const deferredShare: Record<string, number> = {};
-      for (const t of group) {
-        const share = groupDeferred > 0 ? deferredPaidGroup * (deferredBalances[t.className] / groupDeferred) : 0;
-        deferredShare[t.className] = share;
-        deferredBalances[t.className] -= share;
-        _stepTrace_deferredPaydownByTranche[t.className] =
-          (_stepTrace_deferredPaydownByTranche[t.className] ?? 0) + share;
+      if (isControllingRank) {
+        // Phase 1: deferred — pro-rata across group by deferredBalance.
+        const groupDeferred = group.reduce((s, t) => s + deferredBalances[t.className], 0);
+        const deferredPaidGroup = Math.min(groupDeferred, remainingPrelim);
+        remainingPrelim -= deferredPaidGroup;
+        for (const t of group) {
+          const share = groupDeferred > 0 ? deferredPaidGroup * (deferredBalances[t.className] / groupDeferred) : 0;
+          deferredShare[t.className] = share;
+          deferredBalances[t.className] -= share;
+          _stepTrace_deferredPaydownByTranche[t.className] =
+            (_stepTrace_deferredPaydownByTranche[t.className] ?? 0) + share;
+        }
+      } else {
+        for (const t of group) deferredShare[t.className] = 0;
       }
+
       // Phase 2: principal — pro-rata across group by trancheBalance.
+      // Phase 2 is the sequential redemption per Note Payment Sequence
+      // (PPM clause R post-RP) and is NOT gated on Controlling Class —
+      // each rank pays principal in seniority order regardless. Clause R
+      // applies only post-Reinvestment-Period; during-RP behavior is
+      // governed by clause Q (reinvestment vs hold) which is modeled
+      // separately upstream of this loop. The current engine collapses
+      // both regimes into the same sequential pay-down, a structural
+      // simplification documented in the principal-POP research note's
+      // §8.4 and out of scope for this change.
       const groupPrincipal = group.reduce((s, t) => s + trancheBalances[t.className], 0);
       const principalPaidGroup = Math.min(groupPrincipal, remainingPrelim);
       remainingPrelim -= principalPaidGroup;

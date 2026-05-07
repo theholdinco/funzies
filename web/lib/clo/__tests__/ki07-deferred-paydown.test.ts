@@ -138,53 +138,112 @@ describe("KI-07 — deferredPaydownByTranche field exists and populates", () => 
   });
 });
 
-describe("KI-66 marker — principal POP unconditional deferred paydown", () => {
-  it("KI-66-uniformLoop: engine pays Class C deferred from principal POP regardless of Controlling Class (current WRONG behavior; flips when KI-66 lands)", () => {
-    // Per Ares XV PPM Condition 3(c) clause (D), principal POP backfill of
-    // Class C deferred interest fires only when Class C is the Controlling
-    // Class (i.e., Class A and Class B are paid off). Under the engine's
-    // current uniformly-simplified loop, Class C deferred is paid from
-    // principal POP regardless — wrong on Ares XV when Class A is still
-    // outstanding.
+describe("KI-66 — Controlling-Class gating on principal POP deferred paydown", () => {
+  // Common minimal-interest fixture: low loan coupon so vanilla step (K)
+  // interest-side paydown is negligible (≪ €1M PIK seed). This isolates
+  // the principal-POP gating fix as the load-bearing mechanism — without
+  // step (K) cannibalising the PIK before principal POP runs, the
+  // pre-fix vs post-fix difference is fully observable in
+  // `tranchePrincipal[C].paid`.
+  const minimalInterestSetup = {
+    ...noDefaults,
+    initialPar: 10_000_000,
+    wacSpreadBps: 1,
+    baseRatePct: 0,
+    baseRateFloorPct: 0,
+    loans: Array.from({ length: 1 }, () => ({
+      parBalance: 10_000_000,
+      maturityDate: "2034-06-15",
+      ratingBucket: "B" as const,
+      spreadBps: 1,
+    })),
+    ocTriggers: [],
+    icTriggers: [],
+    deferredInterestCompounds: false,
+    seniorFeePct: 0,
+    subFeePct: 0,
+    reinvestmentPeriodEnd: "2025-01-01", // post-RP — principal redeems
+  };
+
+  it("PPM Condition 3(c) clause (D): Class C deferred is NOT paid from principal POP while Class A is outstanding", () => {
+    // Fixture engineered so:
+    //  - Vanilla step (K) interest paydown is negligible (minimal interest)
+    //  - Principal cash (€20M) reaches Class C's deferred phase
+    //  - Class A is outstanding at start-of-period 1 (the Determination Date)
     //
-    // Marker scenario: Class A outstanding + Class C with seeded deferred
-    // balance + Class A maturity at q=1 (forces principal proceeds to flow).
-    // Assert engine currently pays Class C deferred from principal POP.
-    // Marker assertion flips to ZERO Class C principal-POP deferred-paydown
-    // when KI-66 closes (gating predicate evaluated, paydown skipped).
+    // Pre-fix sequence in principal POP: pay A (€5M) → pay B (€1M) →
+    // pay C deferred (€1M) → pay C principal (€4M). C.paid = €5M total.
+    // Post-fix: skip C deferred (gated; A is Controlling), pay C
+    // principal (€4M). C.paid = €4M. Class C deferred balance persists
+    // at ≈ €1M.
     const inputs = makeInputs({
-      ...noDefaults,
+      ...minimalInterestSetup,
       tranches: [
-        { className: "A", currentBalance: 50_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "B", currentBalance: 10_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "C", currentBalance: 20_000_000, spreadBps: 350, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: true, deferredInterestBalance: 1_000_000 },
-        { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 4, isFloating: false, isIncomeNote: true, isDeferrable: false },
+        { className: "A", currentBalance: 5_000_000, spreadBps: 1, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "B", currentBalance: 1_000_000, spreadBps: 1, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "C", currentBalance: 4_000_000, spreadBps: 1, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: true, deferredInterestBalance: 1_000_000 },
+        { className: "Sub", currentBalance: 4_000_000, spreadBps: 0, seniorityRank: 4, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
-      ocTriggers: [],
-      icTriggers: [],
-      deferredInterestCompounds: false,
+      initialPrincipalCash: 20_000_000,
     });
     const result = runProjection(inputs);
+    const p1 = result.periods[0];
 
-    // The seed of €1M Class C PIK must show paydown across the projection
-    // horizon (current behavior pays from any source — interest waterfall
-    // step (K), cure mode, OR principal POP). The KI-66 marker is the
-    // FACT that Class C PIK paydown happens via principal-POP at any
-    // point while Class A is still outstanding.
-    const totalCPaydown = result.periods.reduce(
-      (s, p) => s + (p.stepTrace.deferredPaydownByTranche["C"] ?? 0), 0
-    );
+    const c = p1.tranchePrincipal.find((t) => t.className === "C");
+    expect(c).toBeDefined();
 
-    // Pin: under current uniformly-simplified principal-POP loop, the
-    // €1M Class C PIK seed gets paid down at some point during the
-    // projection (either via interest-side step K, or principal-POP).
-    // After KI-66 fix, principal-POP paydown will be gated; if interest
-    // alone can't pay the full €1M, the residual will persist past
-    // Class A's lifetime — the assertion structure changes.
-    expect(totalCPaydown).toBeGreaterThan(0);
-    // Documentation: when KI-66 lands, decompose this assertion into
-    // (a) interest-side paydown (still allowed) vs (b) principal-side
-    // paydown gated on Controlling Class. The current bundled field
-    // can't distinguish them; KI-66 closure introduces the field split.
+    // Load-bearing assertion: tranchePrincipal[C].paid in period 1 does
+    // NOT include the deferred share. Pre-fix would have been €5M (€1M
+    // deferred + €4M principal); post-fix is €4M (principal phase 2 only,
+    // phase 1 gated).
+    expect(c!.paid).toBeLessThan(4_100_000);  // strictly < pre-fix €5M
+    expect(c!.paid).toBeGreaterThan(3_900_000);  // confirm phase 2 still ran
+
+    // Class C ending balance ≈ deferred residual (€1M minus tiny step K).
+    // Pre-fix would have been ~0.
+    expect(c!.endBalance).toBeGreaterThan(900_000);
+
+    // Sanity: Class A WAS Controlling at start (paid down by phase 2).
+    const a = p1.tranchePrincipal.find((t) => t.className === "A");
+    expect(a?.paid).toBeGreaterThan(4_900_000);
+
+    // Sanity: deferredPaydownByTranche[C] reflects only the small step K
+    // interest-side amount post-fix, NOT the €1M principal-POP unconditional
+    // paydown that would have happened pre-fix.
+    const cPaydownP1 = p1.stepTrace.deferredPaydownByTranche["C"] ?? 0;
+    expect(cPaydownP1).toBeLessThan(100_000); // pre-fix would have been ≥ €1M
+  });
+
+  it("PPM Condition 3(c) clauses (D)/(G)/(J)/(M): gating applies uniformly across all deferrable ranks (not just one)", () => {
+    // Stronger structural assertion across multiple deferrable ranks:
+    // when Class A is outstanding at start, NEITHER Class C (rank 3) NOR
+    // Class D (rank 4) deferred is paid from principal POP — only the
+    // Controlling rank (A, rank 1) gets phase 1 (no-op since A is non-
+    // deferrable). Phase 2 principal redemption is unaffected by gating
+    // and proceeds in seniority order regardless.
+    const inputs = makeInputs({
+      ...minimalInterestSetup,
+      tranches: [
+        { className: "A", currentBalance: 5_000_000, spreadBps: 1, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "B", currentBalance: 1_000_000, spreadBps: 1, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "C", currentBalance: 4_000_000, spreadBps: 1, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: true, deferredInterestBalance: 800_000 },
+        { className: "D", currentBalance: 3_000_000, spreadBps: 1, seniorityRank: 4, isFloating: true, isIncomeNote: false, isDeferrable: true, deferredInterestBalance: 600_000 },
+        { className: "Sub", currentBalance: 5_000_000, spreadBps: 0, seniorityRank: 5, isFloating: false, isIncomeNote: true, isDeferrable: false },
+      ],
+      initialPrincipalCash: 25_000_000,
+    });
+    const result = runProjection(inputs);
+    const p1 = result.periods[0];
+
+    const c = p1.tranchePrincipal.find((t) => t.className === "C");
+    const d = p1.tranchePrincipal.find((t) => t.className === "D");
+
+    // Both C and D phase 1 (deferred) gated; phase 2 (principal) runs.
+    // Pre-fix: C.paid = 4M + 800K = €4.8M; D.paid = 3M + 600K = €3.6M.
+    // Post-fix: C.paid = €4M; D.paid = €3M.
+    expect(c!.paid).toBeGreaterThan(3_900_000);
+    expect(c!.paid).toBeLessThan(4_100_000);
+    expect(d!.paid).toBeGreaterThan(2_900_000);
+    expect(d!.paid).toBeLessThan(3_100_000);
   });
 });
