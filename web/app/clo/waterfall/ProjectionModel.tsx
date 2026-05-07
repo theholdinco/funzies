@@ -190,6 +190,8 @@ export default function ProjectionModel({
   // incentive-aligned canonical case.
   const [supplementalReserveDisposition, setSupplementalReserveDisposition] =
     useState<"principalCash" | "interest" | "hold">("principalCash");
+  const [expenseReserveDepositAmount, setExpenseReserveDepositAmount] = useState<number>(0);
+  const [supplementalReserveDepositAmount, setSupplementalReserveDepositAmount] = useState<number>(0);
   const [equityEntryPriceCents, setEquityEntryPriceCents] = useState<number | null>(null); // null = use book value
   // Forward IRR anchor price (in cents). Free-text input — user types the
   // entry price they want to evaluate. Empty string means "fall back to
@@ -495,6 +497,8 @@ export default function ProjectionModel({
           ddtlDrawPercent,
           equityEntryPriceCents,
           supplementalReserveDisposition,
+          expenseReserveDepositAmount,
+          supplementalReserveDepositAmount,
           // KI-66 Special Redemption + Reinvesting Holder amounts. Default 0
           // (no-op) — UI sliders not yet wired. Engine consumes via the
           // schema-driven principal-POP pass-2 dispatch.
@@ -506,19 +510,12 @@ export default function ProjectionModel({
     },
     [
       resolved, resolutionWarnings, incompleteDataErrors,
-      // `resolved?.seniorExpensesCap` and `resolved?.deferredInterestCompounds`
-      // listed explicitly to mirror `userAssumptions`'s dep granularity. If
-      // `resolved` ever becomes reference-stable across a sub-field change,
-      // these guard against a stale `inputs` while `userAssumptions`
-      // correctly rebuilds — the same divergence shape KI principle 6 warns
-      // about.
-      resolved?.seniorExpensesCap, resolved?.deferredInterestCompounds,
       baseRatePct, baseRateFloorPct, defaultRates, overriddenBuckets, cprPct, recoveryPct, recoveryLagMonths,
       reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating, cccBucketLimitPct, cccMarketValuePct,
       seniorFeePct, subFeePct, taxesBps, issuerProfitAmount, trusteeFeeBps, adminFeeBps, seniorExpensesCapBps,
       hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr, postRpReinvestmentPct,
       callMode, callDate, callPricePct, callPriceMode, ddtlDrawAssumption, ddtlDrawQuarter, ddtlDrawPercent, equityEntryPriceCents,
-      supplementalReserveDisposition,
+      supplementalReserveDisposition, expenseReserveDepositAmount, supplementalReserveDepositAmount,
     ]
   );
 
@@ -609,6 +606,8 @@ export default function ProjectionModel({
     ddtlDrawPercent,
     equityEntryPriceCents,
     supplementalReserveDisposition,
+    expenseReserveDepositAmount,
+    supplementalReserveDepositAmount,
     // KI-66 — see `inputs` memo for default rationale.
     specialRedemptionAmount: 0,
     reinvestingHolderRedemptionAmount: 0,
@@ -621,7 +620,7 @@ export default function ProjectionModel({
     taxesBps, issuerProfitAmount, trusteeFeeBps, adminFeeBps, seniorExpensesCapBps,
     incentiveFeePct, incentiveFeeHurdleIrr,
     ddtlDrawAssumption, ddtlDrawQuarter, ddtlDrawPercent, equityEntryPriceCents,
-    supplementalReserveDisposition,
+    supplementalReserveDisposition, expenseReserveDepositAmount, supplementalReserveDepositAmount,
   ]);
 
   const validationErrors = useMemo(() => validateInputs(inputs), [inputs]);
@@ -704,7 +703,7 @@ export default function ProjectionModel({
       return { kind: "invalid", reason: "preNcp", userInput: trimmed };
     }
     return { kind: "user", date: trimmed };
-  }, [userCallDate, defaultCallDate, resolved?.dates.nonCallPeriodEnd, resolved?.dates.currentDate]);
+  }, [userCallDate, defaultCallDate, resolved?.dates]);
 
   const withCallDate = useMemo<string | null>(() => {
     if (!callDateValidation || callDateValidation.kind === "invalid") return null;
@@ -1119,6 +1118,56 @@ export default function ProjectionModel({
             />
             <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginTop: "0.3rem", lineHeight: 1.4, opacity: 0.8 }}>
               PPM Condition 3(j)(vi) gives the manager discretion. &quot;Reinvest / Paydown&quot; routes the opening Supplemental balance into Q1 principal proceeds (RP→reinvestment, post-RP→senior paydown). &quot;Interest Distribution&quot; routes it into Q1 available interest. &quot;Hold&quot; leaves it on the books as a claim against equity at maturity. Yield accrues to the Interest Account in all three cases.
+            </div>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: "0.35rem" }}>
+              Expense Reserve Deposit (EUR)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={10000}
+              value={expenseReserveDepositAmount}
+              onChange={(e) => setExpenseReserveDepositAmount(Math.max(0, Number(e.target.value) || 0))}
+              style={{
+                width: "100%",
+                padding: "0.45rem 0.55rem",
+                border: "1px solid var(--color-border-light)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text-primary)",
+                fontFamily: "var(--font-body)",
+                fontSize: "0.8rem",
+              }}
+            />
+            <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginTop: "0.3rem", lineHeight: 1.4, opacity: 0.8 }}>
+              Discretionary step (D) allocation of available interest proceeds into the Expense Reserve during the Reinvestment Period. Default 0; nonzero values reduce cash available later in the waterfall.
+            </div>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: "0.35rem" }}>
+              Supplemental Reserve Deposit (EUR)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={10000}
+              value={supplementalReserveDepositAmount}
+              onChange={(e) => setSupplementalReserveDepositAmount(Math.max(0, Number(e.target.value) || 0))}
+              style={{
+                width: "100%",
+                padding: "0.45rem 0.55rem",
+                border: "1px solid var(--color-border-light)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text-primary)",
+                fontFamily: "var(--font-body)",
+                fontSize: "0.8rem",
+              }}
+            />
+            <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginTop: "0.3rem", lineHeight: 1.4, opacity: 0.8 }}>
+              Discretionary step (BB) allocation of late-waterfall interest proceeds into the Supplemental Reserve during the Reinvestment Period. Later use follows the reserve-use selection above.
             </div>
           </div>
         </div>

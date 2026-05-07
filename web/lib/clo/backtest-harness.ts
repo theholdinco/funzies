@@ -45,10 +45,10 @@ export const STEP_TOLERANCES_TARGET: Record<EngineBucket, number> = {
   // valuable for audit visibility but failing the test on them is noise.
   taxes: 100,                        // step a.i      — drift should be day-count residual only
   issuerProfit: 1,                   // step a.ii     — fixed €250/period, engine ties to the cent
-  expenseReserve: Infinity,          // step d        — KI-02 (CM discretionary, usually 0)
+  expenseReserve: Infinity,          // step d        — CM discretionary, usually 0
   effectiveDateRating: Infinity,     // step v        — KI-03 (inactive post-ramp)
   defaultedHedgeTermination: Infinity, // step aa     — KI-06 (hedge-default-only)
-  supplementalReserve: Infinity,     // step bb       — KI-05 (CM discretionary)
+  supplementalReserve: Infinity,     // step bb       — CM discretionary
   trusteeOverflow: Infinity,         // step y        — only fires when observed > cap
   adminOverflow: Infinity,           // step z        — only fires when observed > cap
   reinvestmentBlockedCompliance: Infinity, // C1 — no trustee analogue; audit-only visibility
@@ -368,11 +368,12 @@ function extractEngineBuckets(
     taxes: p.stepTrace.taxes ?? 0,
     // Issuer profit: now emitted when issuerProfitAmount is set.
     issuerProfit: p.stepTrace.issuerProfit ?? 0,
-    // Steps the engine still doesn't model — KI-02/03/05/06.
-    expenseReserve: 0,
+    // Discretionary reserve deposits default to 0 unless the user supplies
+    // fixed euro elections.
+    expenseReserve: p.stepTrace.expenseReserveDeposit ?? 0,
     effectiveDateRating: 0,
     defaultedHedgeTermination: 0,
-    supplementalReserve: 0,
+    supplementalReserve: p.stepTrace.supplementalReserveDeposit ?? 0,
 
     // Fees (from stepTrace) — C3 split surfaces (B)/(C)/(Y)/(Z) as four buckets
     trusteeFeesPaid: p.stepTrace.trusteeFeesPaid,     // PPM (B)

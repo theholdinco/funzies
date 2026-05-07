@@ -113,6 +113,17 @@ export function buildPeriodTraceLines(period: PeriodResult): PeriodTraceLine[] {
     section: "interest",
   });
   lines.push({
+    label: "Expense Reserve deposit",
+    ppmStep: "D",
+    amount: t.expenseReserveDeposit,
+    engineField: "expenseReserveDeposit",
+    indent: 1,
+    severity: "fee",
+    outflow: true,
+    muted: t.expenseReserveDeposit === 0,
+    section: "interest",
+  });
+  lines.push({
     label: "Senior management fee",
     ppmStep: "E",
     amount: t.seniorMgmtFeePaid,
@@ -210,6 +221,19 @@ export function buildPeriodTraceLines(period: PeriodResult): PeriodTraceLine[] {
     section: "interest",
   });
 
+  // PPM step (X): Sub mgmt fee
+  lines.push({
+    label: "Subordinated mgmt fee",
+    ppmStep: "X",
+    amount: t.subMgmtFeePaid,
+    engineField: "subMgmtFeePaid",
+    indent: 1,
+    severity: "fee",
+    outflow: true,
+    muted: t.subMgmtFeePaid === 0,
+    section: "interest",
+  });
+
   // PPM steps (Y/Z): Trustee + admin overflow
   lines.push({
     label: "Trustee fee overflow",
@@ -234,16 +258,16 @@ export function buildPeriodTraceLines(period: PeriodResult): PeriodTraceLine[] {
     section: "interest",
   });
 
-  // PPM step (BB): Sub mgmt fee
+  // PPM step (BB): Supplemental Reserve Account deposit
   lines.push({
-    label: "Subordinated mgmt fee",
+    label: "Supplemental Reserve deposit",
     ppmStep: "BB",
-    amount: t.subMgmtFeePaid,
-    engineField: "subMgmtFeePaid",
+    amount: t.supplementalReserveDeposit,
+    engineField: "supplementalReserveDeposit",
     indent: 1,
     severity: "fee",
     outflow: true,
-    muted: t.subMgmtFeePaid === 0,
+    muted: t.supplementalReserveDeposit === 0,
     section: "interest",
   });
 

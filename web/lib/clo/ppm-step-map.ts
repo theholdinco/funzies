@@ -91,12 +91,12 @@ export function normalizePpmStepCode(description: string | null | undefined): Pp
 //   - sum trustee-reported amounts across the step codes a bucket covers
 //   - compare that sum against the engine's emitted bucket amount
 //
-// Buckets the engine does NOT emit (D, V, AA, BB) are modeled as zero by
-// the harness — see KI-02/03/06 in the known-issues ledger. The
-// corresponding trustee rows are mostly zero for Euro XV Q1 as well, so
-// deltas are trivial. Step A(i) taxes, A(ii) issuer profit, Y trustee
-// overflow + Z admin overflow ARE emitted — see per-bucket annotations
-// below.
+// Buckets the engine does NOT emit (V, AA) are modeled as zero by the
+// harness — see KI-03/06 in the known-issues ledger. The corresponding
+// trustee rows are mostly zero for Euro XV Q1 as well, so deltas are
+// trivial. Step D expense-reserve deposits, step BB supplemental-reserve
+// deposits, step A(i) taxes, A(ii) issuer profit, Y trustee overflow, and Z
+// admin overflow ARE emitted — see per-bucket annotations below.
 
 /** Semantic names for the buckets the engine emits in `PeriodResult.stepTrace`
  *  and adjacent PeriodResult fields. */
@@ -105,7 +105,7 @@ export type EngineBucket =
   | "issuerProfit"          // step a.ii — emitted via seniorExpenseBreakdown.issuerProfit
   | "trusteeFeesPaid"       // step b    — Sprint 3 / C3 split from admin
   | "adminFeesPaid"         // step c    — Sprint 3 / C3 split from trustee
-  | "expenseReserve"        // step d    — NOT EMITTED by engine (KI-02)
+  | "expenseReserve"        // step d    — from stepTrace.expenseReserveDeposit
   | "seniorMgmtFeePaid"     // steps e.1 + e.2 (current + past-due bundled)
   | "hedgePaymentPaid"      // step f
   | "stepG_interest"        // step g    (Class A interest + Class X amort paid from interest, pari-passu per PPM step G; sourced from PeriodResult.trancheInterest[ClassA].paid + stepTrace.classXAmortFromInterest)
@@ -129,7 +129,7 @@ export type EngineBucket =
   | "trusteeOverflow"       // step y    — emitted as trusteeOverflowPaid (KI-08 / C3 closed Sprint 3)
   | "adminOverflow"         // step z    — emitted as adminOverflowPaid (KI-08 / C3 closed Sprint 3)
   | "defaultedHedgeTermination" // step aa — NOT EMITTED by engine (KI-06)
-  | "supplementalReserve"   // step bb   — NOT EMITTED by engine (KI-05)
+  | "supplementalReserve"   // step bb   — from stepTrace.supplementalReserveDeposit
   | "incentiveFeePaid"      // step cc
   | "subDistribution"       // step dd   (from stepTrace.equityFromInterest)
   | "reinvestmentBlockedCompliance"; // C1 — no direct PPM step; trustee doesn't report a bucket for "manager chose not to reinvest due to compliance". Displayed in the harness table with Infinity tolerance for audit visibility.

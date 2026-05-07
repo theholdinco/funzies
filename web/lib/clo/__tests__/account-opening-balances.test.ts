@@ -393,6 +393,19 @@ describe("Supplemental Reserve opening balance — PPM 3(j)(vi) manager discreti
     expect(interestDelta).toBeLessThan(30_000);
   });
 
+  it("disposition='hold': held balance continues to earn account yield after Q1", () => {
+    const baseline = runProjection(BASE_INPUTS());
+    const withSupp = runProjection({
+      ...BASE_INPUTS(),
+      initialSupplementalReserveBalance: 2_000_000,
+      supplementalReserveDisposition: "hold",
+    });
+
+    expect(withSupp.periods[1].interestCollected).toBeGreaterThan(
+      baseline.periods[1].interestCollected,
+    );
+  });
+
   it("disposition='hold': terminal release at maturity flows the balance to equity (PPM Condition 3(j)(vi)(G)(1))", () => {
     // Under "hold" disposition the Supplemental Reserve balance is kept in
     // the account during the deal life and released at the terminal event

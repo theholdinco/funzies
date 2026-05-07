@@ -134,7 +134,7 @@ describe("buildPeriodTraceLines", () => {
     const ppmSteps = lines.map((l) => l.ppmStep).filter((s): s is string => Boolean(s));
 
     // Helper emits in PPM order. Find indices and assert monotonicity.
-    const order = ["A.i", "A.ii", "B", "C", "E", "F", "G/H/J/M/P/S", "I/L/O/R/U", "W", "Y", "Z", "BB", "CC", "DD"];
+    const order = ["A.i", "A.ii", "B", "C", "D", "E", "F", "G/H/J/M/P/S", "I/L/O/R/U", "W", "X", "Y", "Z", "BB", "CC", "DD"];
     let lastFoundIndex = -1;
     for (const step of ppmSteps) {
       const idx = order.indexOf(step);
@@ -182,7 +182,8 @@ describe("engine-ui invariants: helper output matches engine on every row", () =
     expect(t.availableForTranches).not.toBeNull();
     expect(t.availableForTranches!).toBeCloseTo(
       period.interestCollected - t.taxes - t.issuerProfit -
-        t.trusteeFeesPaid - t.adminFeesPaid - t.seniorMgmtFeePaid - t.hedgePaymentPaid,
+        t.trusteeFeesPaid - t.adminFeesPaid - t.expenseReserveDeposit -
+        t.seniorMgmtFeePaid - t.hedgePaymentPaid,
       -2,
     );
   });

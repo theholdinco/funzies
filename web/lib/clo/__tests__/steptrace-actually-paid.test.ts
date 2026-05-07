@@ -55,6 +55,7 @@ function sumInterestSideConsumers(p: PeriodResult): number {
     t.issuerProfit +
     t.trusteeFeesPaid +
     t.adminFeesPaid +
+    t.expenseReserveDeposit +
     t.seniorMgmtFeePaid +
     t.hedgePaymentPaid +
     trancheInterestPaidSum +
@@ -64,6 +65,7 @@ function sumInterestSideConsumers(p: PeriodResult): number {
     t.subMgmtFeePaid +
     t.trusteeOverflowPaid +
     t.adminOverflowPaid +
+    t.supplementalReserveDeposit +
     t.incentiveFeeFromInterest +
     t.equityFromInterest
   );

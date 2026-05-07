@@ -85,11 +85,10 @@ describe("disclosure ↔ ledger bijection", () => {
 
   it("ledger has parseable anchors", () => {
     // Smoke check on the parser — confirm at least a handful of `<a id="ki-N">`
-    // anchors were extracted. The exact count drifts as closures land
-    // (KI-31 + KI-33 merge brought it to 20); the strict `> 20` previously
-    // was a happy-accident of the count at the time, not a load-bearing
-    // assertion. Use `> 15` for buffer that survives several more closures.
-    expect(anchors.size).toBeGreaterThan(15);
+    // anchors were extracted. The exact count drifts as closures land; this
+    // must remain a parser smoke test, not a blocker to removing closed issues
+    // from the active ledger.
+    expect(anchors.size).toBeGreaterThan(10);
   });
 
   for (const relPath of SCAN_FILES) {

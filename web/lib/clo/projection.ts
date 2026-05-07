@@ -446,8 +446,8 @@ export interface ProjectionInputs {
    *  each period: trustee/admin fees can draw up to
    *  `seniorExpensesCap + expenseReserveBalance`. Drains as overflow is
    *  paid; carries forward across periods until exhausted. Distinct
-   *  from KI-02 step (D) deposit-into-reserve flow. NOT credited to the
-   *  OC numerator. Included in `equityBookValue`. */
+   *  from the step (D) deposit-into-reserve flow. NOT credited to the OC
+   *  numerator. Included in `equityBookValue`. */
   initialExpenseReserveBalance?: number;
   /** Supplemental Reserve Account opening balance at T=0. Per PPM
    *  Condition 3(j)(vi) the Collateral Manager has discretion across
@@ -465,6 +465,16 @@ export interface ProjectionInputs {
    *  balance into Q1 `availableInterest` (PPM 3(j)(vi)(B)). "hold"
    *  leaves the balance on the books (claim against equity at maturity). */
   supplementalReserveDisposition?: "principalCash" | "interest" | "hold";
+  /** PPM step (D) discretionary Expense Reserve Account deposit funded
+   *  from available Interest Proceeds during non-terminal Reinvestment
+   *  Period payments. Fixed euro amount per period; default 0. This is
+   *  an allocation of waterfall cash, not outside cash. */
+  expenseReserveDepositAmount?: number;
+  /** PPM step (BB) discretionary Supplemental Reserve Account deposit
+   *  funded from available Interest Proceeds during non-terminal
+   *  Reinvestment Period payments. Fixed euro amount per period; default
+   *  0. This is an allocation of waterfall cash, not outside cash. */
+  supplementalReserveDepositAmount?: number;
   /** PPM Condition 3(c) clause (P) — Special Redemption Amount (€).
    *  User-input modeling assumption. The schema-driven principal-POP
    *  dispatch consumes this in pass 2 and applies sequential redemption
@@ -584,11 +594,13 @@ export interface ProjectionInputs {
  *    - taxes                  → PPM step (A)(i) (issuer taxes Sprint 3)
  *    - trusteeFeesPaid        → PPM step (B) ONLY (trustee fee; split from admin in Sprint 3 / C3)
  *    - adminFeesPaid          → PPM step (C) (admin expenses; split from trustee in Sprint 3 / C3)
+ *    - expenseReserveDeposit  → PPM step (D) (user-entered discretionary deposit)
  *    - trusteeOverflowPaid    → PPM step (Y) (trustee-fee overflow past cap, residual-interest funded)
  *    - adminOverflowPaid      → PPM step (Z) (admin-expense overflow past cap)
  *    - seniorMgmtFeePaid      → PPM step (E) (current + past-due bundled)
  *    - hedgePaymentPaid       → PPM step (F) (non-defaulted hedge only)
  *    - subMgmtFeePaid         → PPM step (X)
+ *    - supplementalReserveDeposit → PPM step (BB) (user-entered discretionary deposit)
  *    - incentiveFeeFromInterest → PPM step (CC) (interest waterfall)
  *    - incentiveFeeFromPrincipal → PPM step (U) (principal waterfall)
  *    - ocCureDiversions       → PPM steps (I)/(L)/(O)/(R)/(U) keyed by tranche rank
@@ -621,12 +633,15 @@ export interface PeriodStepTrace {
   trusteeFeesPaid: number;
   /** PPM step (C) — admin expenses, capped portion actually paid. */
   adminFeesPaid: number;
+  /** PPM step (D) — discretionary Expense Reserve Account deposit. */
+  expenseReserveDeposit: number;
   seniorMgmtFeePaid: number;
   hedgePaymentPaid: number;
-  /** Interest residual after PPM steps (A.i)→(F): `interestCollected` minus
-   *  taxes, issuerProfit, trustee+admin (capped portions only), seniorMgmt,
-   *  hedge. The amount entering the tranche-interest pari-passu loop (PPM
-   *  step (G) onward).
+  /** Interest residual after PPM steps (A.i)→(F), including the step (D)
+   *  Expense Reserve deposit: `interestCollected` minus taxes, issuerProfit,
+   *  trustee+admin (capped portions only), expense reserve deposit,
+   *  seniorMgmt, and hedge. The amount entering the tranche-interest
+   *  pari-passu loop (PPM step (G) onward).
    *
    *  NULL under acceleration mode: the Post-Acceleration Priority of
    *  Payments steps (B)+(C) proviso ("provided that following an acceleration
@@ -656,6 +671,8 @@ export interface PeriodStepTrace {
   trusteeOverflowPaid: number;
   /** PPM step (Z) — admin-expense overflow. Same mechanics as trustee. */
   adminOverflowPaid: number;
+  /** PPM step (BB) — discretionary Supplemental Reserve Account deposit. */
+  supplementalReserveDeposit: number;
   /** Senior Expenses Cap effective amount used at this period's cap test
    *  — equals `bps × cap base + floor + carryforward augmentation +
    *  expense-reserve augmentation`. This is the value passed to
@@ -1616,6 +1633,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     initialExpenseReserveBalance = 0,
     initialSupplementalReserveBalance = 0,
     supplementalReserveDisposition = "principalCash",
+    expenseReserveDepositAmount = 0,
+    supplementalReserveDepositAmount = 0,
     specialRedemptionAmount = 0,
     reinvestingHolderRedemptionAmount = 0,
     principalPop = null,
@@ -2716,8 +2735,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     const seniorFeeAmountT0 = poolPar * (seniorFeePct / 100) / 4;
     const hedgeCostAmountT0 = poolPar * (hedgeCostBps / 10000) / 4;
     // Fold the six per-T0 fee amounts into the canonical
-    // SeniorExpenseBreakdown so a future senior expense (e.g. KI-02 step
-    // (D) Expense Reserve top-up) auto-propagates here. The IC numerator
+    // SeniorExpenseBreakdown so future senior expense additions
+    // auto-propagate here. The IC numerator
     // at T=0 uses REQUESTED amounts (parity with the normal-mode IC
     // numerator at the period loop), so trusteeOverflow / adminOverflow
     // are zero and the cap is not exercised at this site.
@@ -2909,7 +2928,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   // can be paid up to `Senior Expenses Cap + expenseReserveBalance`, with
   // any draw above the standard cap draining the reserve. Carries forward
   // across periods until exhausted; deposits into the reserve via step (D)
-  // are KI-02's scope (out of this PR), so the balance only decreases here.
+  // increase the balance for future B/C support.
   let expenseReserveBalance = initialExpenseReserveBalance;
 
   // Supplemental Reserve Account multi-period state under "hold" disposition.
@@ -2923,10 +2942,12 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   // (manager-directed release at deal wind-up) or the first period running
   // under acceleration (automatic release per (G)(2)). After release the
   // balance is zeroed so subsequent periods contribute nothing. Under the
-  // "principalCash" / "interest" dispositions the balance is consumed at
-  // q=1 elsewhere; this state stays at 0 in those cases.
+  // "principalCash" / "interest" dispositions the opening balance is
+  // consumed at q=1 elsewhere; step (BB) deposits after q=1 release in a
+  // later period under those same assumptions.
   let heldSupplementalReserveBalance =
     supplementalReserveDisposition === "hold" ? initialSupplementalReserveBalance : 0;
+  let supplementalReserveBalance = 0;
 
   // Senior Expenses Cap rolling carryforward state (PPM Condition 1
   // proviso (ii)). Each period's unused stated-cap headroom is appended;
@@ -3367,26 +3388,31 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       // requires this. NOT credited to the OC numerator (Adjusted CPA per
       // Condition 1(d) limits account-cash credit to Principal Account +
       // Unused Proceeds Account).
+      const reserveYieldBase =
+        q === 1
+          ? initialInterestAccountCash +
+            initialInterestSmoothingBalance +
+            initialExpenseReserveBalance +
+            initialSupplementalReserveBalance
+          : expenseReserveBalance + heldSupplementalReserveBalance + supplementalReserveBalance;
       if (q === 1) {
         const suppToInterest =
           supplementalReserveDisposition === "interest"
             ? initialSupplementalReserveBalance
             : 0;
         const reserveBalanceContribution =
-          initialInterestAccountCash +
-          initialInterestSmoothingBalance +
-          suppToInterest;
-        const reserveYieldBase =
-          initialInterestAccountCash +
-          initialInterestSmoothingBalance +
-          initialExpenseReserveBalance +
-          initialSupplementalReserveBalance;
+            initialInterestAccountCash +
+            initialInterestSmoothingBalance +
+            suppToInterest;
         if (reserveBalanceContribution > 0) {
           interestCollected += reserveBalanceContribution;
         }
-        if (reserveYieldBase > 0) {
-          interestCollected += reserveYieldBase * flooredBaseRate / 100 * dayFracActual;
-        }
+      } else if (supplementalReserveDisposition === "interest" && supplementalReserveBalance > 0) {
+        interestCollected += supplementalReserveBalance;
+        supplementalReserveBalance = 0;
+      }
+      if (reserveYieldBase > 0) {
+        interestCollected += reserveYieldBase * flooredBaseRate / 100 * dayFracActual;
       }
     } else {
       const allInRate = (flooredBaseRate + wacSpreadBps / 100) / 100;
@@ -3411,6 +3437,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // "hold" disposition keeps the balance held in `heldSupplementalReserveBalance`
     // (no Q1 cash effect) until the terminal release per Condition
     // 3(j)(vi)(G) at maturity or upon acceleration — handled below.
+    const supplementalReserveDepositToPrincipal =
+      supplementalReserveDisposition === "principalCash" ? supplementalReserveBalance : 0;
+    if (supplementalReserveDepositToPrincipal > 0) {
+      supplementalReserveBalance = 0;
+    }
     const q1SuppToPrincipal =
       q === 1 && supplementalReserveDisposition === "principalCash"
         ? initialSupplementalReserveBalance
@@ -3427,7 +3458,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       suppReserveTerminalRelease = heldSupplementalReserveBalance;
       heldSupplementalReserveBalance = 0;
     }
-    const q1Cash = (q === 1) ? initialPrincipalCash + q1SuppToPrincipal : 0;
+    const q1Cash =
+      (q === 1 ? initialPrincipalCash + q1SuppToPrincipal : 0) +
+      supplementalReserveDepositToPrincipal;
     const totalPrincipalAvailable = principalProceeds + q1Cash + suppReserveTerminalRelease;
     const userElectedPrincipalPopReserve = principalPop
       ? Math.min(
@@ -3834,6 +3867,43 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           Math.max(0, cappedRequested - capAmountFromCapBps),
         )
       : 0;
+    const seniorExpenseBreakdownThroughStepC: SeniorExpenseBreakdown = {
+      taxes: taxesAmount,
+      issuerProfit: issuerProfitPaid,
+      trusteeCapped: trusteeFeeAmount,
+      adminCapped: adminFeeAmount,
+      seniorMgmt: 0,
+      hedge: 0,
+      trusteeOverflow: 0,
+      adminOverflow: 0,
+    };
+    const seniorExpenseBreakdownAfterStepD: SeniorExpenseBreakdown = {
+      taxes: 0,
+      issuerProfit: 0,
+      trusteeCapped: 0,
+      adminCapped: 0,
+      seniorMgmt: seniorFeeAmount,
+      hedge: hedgeCostAmount,
+      trusteeOverflow: 0,
+      adminOverflow: 0,
+    };
+    const expenseReserveBalanceAfterDrawForStepD =
+      expenseReserveBalance - expenseReserveTransferToInterest;
+    const expenseReserveDepositHeadroom =
+      Number.isFinite(capAmountFromCapBps)
+        ? Math.max(0, capAmountFromCapBps - expenseReserveBalanceAfterDrawForStepD)
+        : Infinity;
+    const expenseReserveDepositRequested =
+      inRP && !isMaturity ? Math.max(0, expenseReserveDepositAmount) : 0;
+    const availableAfterStepCForIc = applySeniorExpensesToAvailable(
+      seniorExpenseBreakdownThroughStepC,
+      interestCollected + expenseReserveTransferToInterest,
+    ).remainingAvailable;
+    const expenseReserveDepositForIc = Math.min(
+      expenseReserveDepositRequested,
+      Math.max(0, availableAfterStepCForIc),
+      expenseReserveDepositHeadroom,
+    );
     // The Math.max(0, …) floor here is load-bearing for the requested-vs-paid
     // equivalence noted above: under stress where requested > available, paid
     // = available (truncated by the helper), so available − paid = 0; without
@@ -3843,7 +3913,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // must switch to `seniorExpensesApplied.paid` to preserve the equivalence.
     const interestAfterFees = Math.max(
       0,
-      interestCollected + expenseReserveTransferToInterest - totalSeniorExpenses,
+      interestCollected + expenseReserveTransferToInterest - totalSeniorExpenses - expenseReserveDepositForIc,
     );
 
     const bopTrancheBalances: Record<string, number> = {};
@@ -4054,6 +4124,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           issuerProfit: accelResult.seniorExpensesPaid.issuerProfit,
           trusteeFeesPaid: accelResult.seniorExpensesPaid.trusteeCapped,
           adminFeesPaid: accelResult.seniorExpensesPaid.adminCapped,
+          expenseReserveDeposit: 0,
           trusteeOverflowPaid: 0,
           adminOverflowPaid: 0,
           // Cap is suppressed under acceleration (post-accel POP proviso);
@@ -4084,6 +4155,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           // is unconditionally sequential P+I by seniority, no diversion.
           ocCureDiversions: [],
           reinvOcDiversion: 0,
+          supplementalReserveDeposit: 0,
           // Equity collapsed into a single bucket (residualToSub). The
           // normal-mode interest/principal equity split doesn't apply
           // because under acceleration all cash is pooled before distribution.
@@ -4584,21 +4656,40 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       expenseReserveDraw = expenseReserveTransferToInterest;
     }
 
-    // PPM Steps (A)(i) → (F): senior expenses deducted in strict PPM order
-    // (taxes → issuer profit → trustee capped → admin capped → senior mgmt
-    // → hedge). Single helper drives this AND the IC numerator above from
-    // the same `seniorExpenseBreakdown` object — drift-by-construction
-    // impossible because both consumers read the same field set. The
-    // `paid` return is consumed by stepTrace emission below (post-truncation
-    // values per partner-visible "actually paid" semantic); the IC numerator
-    // above keeps the requested-deducted reading on purpose — see comment
-    // at the IC numerator construction.
-    const seniorExpensesApplied = applySeniorExpensesToAvailable(
-      seniorExpenseBreakdown,
+    // PPM Steps (A)(i) → (C), then step (D), then Steps (E) → (F).
+    // The split preserves strict PPM priority while still using the same
+    // helper for post-truncation paid trace semantics.
+    const seniorExpensesAppliedThroughStepC = applySeniorExpensesToAvailable(
+      seniorExpenseBreakdownThroughStepC,
       availableInterest,
     );
-    availableInterest = seniorExpensesApplied.remainingAvailable;
-    const seniorExpensesPaid = seniorExpensesApplied.paid;
+    availableInterest = seniorExpensesAppliedThroughStepC.remainingAvailable;
+
+    const expenseReserveDeposit = Math.min(
+      expenseReserveDepositRequested,
+      Math.max(0, availableInterest),
+      expenseReserveDepositHeadroom,
+    );
+    if (expenseReserveDeposit > 0) {
+      availableInterest -= expenseReserveDeposit;
+      expenseReserveBalance += expenseReserveDeposit;
+    }
+
+    const seniorExpensesAppliedAfterStepD = applySeniorExpensesToAvailable(
+      seniorExpenseBreakdownAfterStepD,
+      availableInterest,
+    );
+    availableInterest = seniorExpensesAppliedAfterStepD.remainingAvailable;
+    const seniorExpensesPaid: SeniorExpenseBreakdown = {
+      taxes: seniorExpensesAppliedThroughStepC.paid.taxes,
+      issuerProfit: seniorExpensesAppliedThroughStepC.paid.issuerProfit,
+      trusteeCapped: seniorExpensesAppliedThroughStepC.paid.trusteeCapped,
+      adminCapped: seniorExpensesAppliedThroughStepC.paid.adminCapped,
+      seniorMgmt: seniorExpensesAppliedAfterStepD.paid.seniorMgmt,
+      hedge: seniorExpensesAppliedAfterStepD.paid.hedge,
+      trusteeOverflow: 0,
+      adminOverflow: 0,
+    };
 
     // Capture residual at this point for stepTrace.availableForTranches —
     // the amount entering the tranche-interest pari-passu loop (PPM step G
@@ -5211,7 +5302,22 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       priorPeriodEndPrincipalCash = remainingPrelim;
     }
 
-    // PPM Step BB: Incentive management fee — % of residual when equity IRR > hurdle.
+    // PPM Step BB: discretionary Supplemental Reserve Account deposit.
+    // This is a Collateral Manager election funded from available Interest
+    // Proceeds during non-terminal Reinvestment Period payments, not outside cash.
+    const supplementalReserveDeposit = inRP && !isMaturity
+      ? Math.min(Math.max(0, supplementalReserveDepositAmount), Math.max(0, availableInterest))
+      : 0;
+    if (supplementalReserveDeposit > 0) {
+      availableInterest -= supplementalReserveDeposit;
+      if (supplementalReserveDisposition === "hold") {
+        heldSupplementalReserveBalance += supplementalReserveDeposit;
+      } else {
+        supplementalReserveBalance += supplementalReserveDeposit;
+      }
+    }
+
+    // PPM Step CC: Incentive management fee — % of residual when equity IRR > hurdle.
     // Incentive fee is circular: the fee reduces equity distributions, which reduces
     // the IRR, which determines whether the fee should be charged. resolveIncentiveFee
     // handles this by checking three regimes — see function docstring.
@@ -5365,6 +5471,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         // both normal and accelerated paths.
         trusteeFeesPaid: seniorExpensesPaid.trusteeCapped, // PPM (B)
         adminFeesPaid: seniorExpensesPaid.adminCapped,     // PPM (C)
+        expenseReserveDeposit,                             // PPM (D)
         trusteeOverflowPaid,                               // PPM (Y)
         adminOverflowPaid,                                 // PPM (Z)
         seniorExpensesCapAmount: capAmount,
@@ -5377,6 +5484,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         incentiveFeeFromPrincipal,
         ocCureDiversions: _stepTrace_ocCureDiversions,
         reinvOcDiversion: _stepTrace_reinvOcDiversion,
+        supplementalReserveDeposit,                        // PPM (BB)
         equityFromInterest,
         equityFromPrincipal,
         classXAmortFromInterest: _stepTrace_classXAmortFromInterest,
@@ -5413,14 +5521,17 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       // Manager at any time prior to a Note Event of Default" — natural
       // wind-up (collateral and debt both depleted before the configured
       // maturity quarter) is functionally a manager-directed terminal
-      // event. Release any pending "hold" Supplemental Reserve balance
-      // into the just-emitted period's principal residual so the partner-
-      // facing equity distribution at deal end reflects it. This preserves
-      // the configured-maturity-or-acceleration release path above for
-      // those scenarios; this branch covers the deal-winds-up-early case.
-      if (heldSupplementalReserveBalance > 0.01) {
-        const release = heldSupplementalReserveBalance;
+      // event. Release any pending Supplemental Reserve balance into the
+      // just-emitted period's principal residual so the partner-facing
+      // equity distribution at deal end reflects it. This includes both
+      // "hold" balances and step (BB) deposits that would otherwise wait
+      // for a next-period disposition.
+      const pendingSupplementalReserve =
+        heldSupplementalReserveBalance + supplementalReserveBalance;
+      if (pendingSupplementalReserve > 0.01) {
+        const release = pendingSupplementalReserve;
         heldSupplementalReserveBalance = 0;
+        supplementalReserveBalance = 0;
         const lastPeriod = periods[periods.length - 1];
         lastPeriod.equityDistribution += release;
         lastPeriod.stepTrace.equityFromPrincipal += release;

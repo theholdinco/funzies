@@ -36,10 +36,8 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-66 — Principal POP backfill conditionality unmodeled (Ares XV path closed; remaining work needs new PPM/event data)](#ki-66) — **BLOCKED ON NEW DATA FOR FULL CLOSURE** (structured Ares XV resolver/engine path shipped 2026-05-07; missing structured principal POP now blocks production resolver paths)
 
 ### Deferred — intentionally not modeled, magnitude known
-- [KI-02 — Step (D) Expense Reserve top-up](#ki-02)
 - [KI-03 — Step (V) Effective Date Rating Event redemption](#ki-03)
 - [KI-04 — Frequency Switch mid-projection cadence/rate switch (C4 Phase 3)](#ki-04)
-- [KI-05 — Supplemental Reserve Account (step BB)](#ki-05)
 - [KI-06 — Defaulted Hedge Termination (step AA)](#ki-06)
 
 ### Cascades — residuals that close as upstream closes
@@ -54,19 +52,6 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-19 — NR positions proxied to Caa2 for WARF (Moody's convention)](#ki-19)
 
 *KI-44 (proposed during 2026-04-30 audit, not added): a candidate raised that `parse-collateral.ts:209-210` writes absolute `Market_Value` into the percent-shaped `current_price` column, with the bug masked on Euro XV by Asset Level enrichment. Verified not a bug. Two pieces of evidence: (i) `ENRICHMENT_COLUMNS` at `sdf/ingest.ts:450` lists only `current_price`, not `market_value` — Asset Level cannot overwrite `market_value`; (ii) every fixture row shows `marketValue == currentPrice` (e.g. 80.097, 99.823, 91.797) which is consistent only with `raw.Market_Value` being itself percent-shaped. If `raw.Market_Value` were absolute, the two columns would diverge after enrichment because only `current_price` gets overwritten. Conclusion: `raw.Market_Value` is percent-shaped despite the misleading column name; parser is correct; consumers are correct. Disposition: not added to ledger; no anchor created (any code referencing `KI-44` would be referencing a non-issue and the disclosure-bijection scanner correctly rejects it). A future verification against the SDF spec would close the question definitively.*
-
----
-
-<a id="ki-02"></a>
-### [KI-02] Step (D) Expense Reserve top-up
-
-**PPM reference:** Condition 3.3(d).
-**Current engine behavior:** Not modeled. No `stepTrace.expenseReserve` field exists on `PeriodStepTrace`; the N1 harness mapper hardcodes the bucket to 0 (`backtest-harness.ts:366`). `ppm-step-map.ts:108` documents the bucket as "NOT EMITTED by engine (KI-02)".
-**PPM-correct behavior:** CM-discretionary deposit during Reinvestment Period to maintain senior-expense headroom.
-**Quantitative magnitude:** €0 in Euro XV Q1 2026 waterfall. Typically €0 in steady-state; activates only when senior-expense accruals are building toward the cap.
-**Deferral rationale:** Discretionary and rarely activated. Our observed data has zero Q1 expense-reserve deposit across Euro XV's 17-period Intex history.
-**Path to close:** Add `expenseReserveDepositBps` user input; engine routes to reserve account. Activates only when a deal exercises step (D); until then the engine emits 0 correctly.
-**Test:** No active marker — both engine and trustee emit 0 on Euro XV. The `expenseReserve` row in the N1 harness table (Infinity tolerance) is the passive audit channel; a non-zero trustee value on a future deal would surface via that row.
 
 ---
 
@@ -102,19 +87,6 @@ These were originally tracked as "A10" and "A11" in the 2026-04-30 audit. They a
 **Path to close:** Trigger: a deal where the trigger actually fires, or a partner request. The fix sequence is (a) replace literal `/ 4` and `4`-as-periods-per-year throughout the engine with day-count-fraction or `periodsPerYear` derived from the active cadence, (b) carry a per-projection `cadence: "quarterly" | "semiAnnual"` value as input, (c) implement automatic switch detection on (b) concentration + (c) interest-shortfall conditions, (d) re-run the N1 harness on a pre-switch fixture and a post-switch synthetic to confirm.
 
 **Test:** No active marker — trigger does not fire on Euro XV (0% Frequency-Switch-Obligation concentration). Future deals that trip the trigger would surface as a cadence mismatch in the N1 harness period-count row. When the fix lands, also add (i) a synthetic T=0 IC test under semi-annual cadence asserting the correct day-count fraction is applied (catching the `:2644-2778` site), and (ii) a synthetic incentive-fee scenario under semi-annual cadence asserting `resolveIncentiveFee` annualizes correctly (catching all three solver call sites — two normal-mode at `:4736`/`:4774` + one post-accel at `:1319` via `PostAccelExecutorInput.periodsPerYear`).
-
----
-
-<a id="ki-05"></a>
-### [KI-05] Supplemental Reserve Account (step BB)
-
-**PPM reference:** Condition 3.3(b).
-**Current engine behavior:** Not modeled. No `stepTrace.supplementalReserve` field exists; the N1 harness mapper hardcodes the bucket to 0 (`backtest-harness.ts:369`). `ppm-step-map.ts:132` documents the bucket as "NOT EMITTED by engine (KI-05)". This entry covers the *flow into* the account during the waterfall; the *opening balance* is consumed by the engine via `ProjectionInputs.initialSupplementalReserveBalance` per the user-driven `supplementalReserveDisposition` (PPM Condition 3(j)(vi) manager discretion).
-**PPM-correct behavior:** CM-discretionary deposit during Reinvestment Period, funds reinvestment buffer.
-**Quantitative magnitude:** Not exercised on Euro XV per observed waterfall data.
-**Deferral rationale:** CM-discretionary; not used in current operations.
-**Path to close:** Add `supplementalReserveDepositBps` user input; engine routes to reserve account. Activates only when a deal exercises step (BB).
-**Test:** No active marker — engine and trustee both 0 on Euro XV. The `supplementalReserve` row in the N1 harness table (Infinity tolerance) surfaces if a deal exercises it.
 
 ---
 

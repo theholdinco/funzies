@@ -889,7 +889,8 @@ describe("PeriodStepTrace.availableForTranches", () => {
     const interest = result.periods[0].interestCollected;
     const expected =
       interest - t.taxes - t.issuerProfit - t.trusteeFeesPaid -
-      t.adminFeesPaid - t.seniorMgmtFeePaid - t.hedgePaymentPaid;
+      t.adminFeesPaid - t.expenseReserveDeposit -
+      t.seniorMgmtFeePaid - t.hedgePaymentPaid;
     expect(t.availableForTranches).not.toBeNull();
     expect(t.availableForTranches!).toBeCloseTo(expected, -2);
   });

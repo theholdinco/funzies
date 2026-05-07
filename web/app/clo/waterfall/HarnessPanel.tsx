@@ -33,11 +33,10 @@ import { useDealCurrency } from "./CurrencyContext";
 import { currencySymbol } from "./helpers";
 
 /** E2 (Sprint 5) — Static map from harness engine bucket to the KI ledger
- *  entries that document its expected drift. Rendered as small badges on
- *  non-green rows so partners can click through from a drift to the ledger
- *  explanation. Only buckets with real documented drift or deferred
- *  modeling are included; a bucket showing red without a KI badge = genuine
- *  unexpected drift, partner should flag. Ledger anchors at
+ *  entries that document its expected drift or user-election semantics.
+ *  Rendered as small badges on non-green rows so partners can click through
+ *  from a drift to the ledger explanation. Buckets showing red without a KI
+ *  badge are genuine unexpected drift that partners should flag. Ledger anchors at
  *  `docs/clo-model-known-issues.md#ki-<id>` (kebab-case). */
 const BUCKET_TO_KI: Partial<Record<EngineBucket, { ids: string[]; blurb: string }>> = {
   taxes: { ids: ["KI-12a"], blurb: "Issuer taxes (A.i). Residual is 91/360 vs 90/360 harness-period-mismatch — closes fully with KI-12a." },
@@ -55,10 +54,8 @@ const BUCKET_TO_KI: Partial<Record<EngineBucket, { ids: string[]; blurb: string 
   classF_current: { ids: ["KI-12b", "KI-12a"], blurb: "Class F current interest day-count drift." },
   seniorMgmtFeePaid: { ids: ["KI-12a"], blurb: "Senior mgmt fee (E). Fee-base harness period mismatch — engine beginningPar vs trustee prior-DD ACB." },
   subMgmtFeePaid: { ids: ["KI-12a"], blurb: "Sub mgmt fee (X). Same fee-base mismatch as senior mgmt." },
-  expenseReserve: { ids: ["KI-02"], blurb: "Expense Reserve top-up (D). Deferred — CM-discretionary; usually zero." },
   effectiveDateRating: { ids: ["KI-03"], blurb: "Effective Date Rating Event (V). Deferred — inactive post-ramp." },
   defaultedHedgeTermination: { ids: ["KI-06"], blurb: "Defaulted hedge termination (AA). Deferred — hedge-default-only." },
-  supplementalReserve: { ids: ["KI-05"], blurb: "Supplemental Reserve (BB). Deferred — CM-discretionary." },
   reinvestmentBlockedCompliance: { ids: [], blurb: "C1 audit metric — amount of reinvestment the engine blocked due to WARF trigger enforcement. No PPM step / no trustee analogue." },
 };
 
@@ -246,8 +243,8 @@ export default function HarnessPanel({ inputs, backtest, engineMathInputs }: Pro
           <p style={{ padding: "0.5rem 1rem", fontSize: "0.78rem", color: "var(--color-text-muted)", lineHeight: 1.5 }}>
             {mode === "engine-math" ? (
               <>
-                Engine projects forward one quarter (Q2) from the fixture's current-period
-                snapshot and compares against trustee's most recent realized period (Q1).
+                Engine projects forward one quarter (Q2) from the fixture&apos;s current-period
+                snapshot and compares against trustee&apos;s most recent realized period (Q1).
                 This is <em>not</em> a Q1 replay — the engine has no rewind; the current
                 snapshot is its starting state. Pre-fills come from <code>defaultsFromResolved</code>
                 (observed EURIBOR, PPM fee rates, Q1-waterfall-derived trustee fee). Remaining

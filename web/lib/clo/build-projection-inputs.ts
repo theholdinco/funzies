@@ -101,6 +101,14 @@ export interface UserAssumptions {
    *  the existing `initialPrincipalCash` Q1 routing (RP→reinvestment,
    *  post-RP→senior paydown), the manager-incentive-aligned canonical case. */
   supplementalReserveDisposition: "principalCash" | "interest" | "hold";
+  /** PPM step (D): fixed euro amount of available Interest Proceeds the
+   *  manager elects to deposit into the Expense Reserve Account each
+   *  Reinvestment Period payment date. Default 0. */
+  expenseReserveDepositAmount: number;
+  /** PPM step (BB): fixed euro amount of available Interest Proceeds the
+   *  manager elects to deposit into the Supplemental Reserve Account each
+   *  Reinvestment Period payment date. Default 0. */
+  supplementalReserveDepositAmount: number;
   /** Manager-call gating (post-v6 plan §4.1). Default "none" so the engine
    *  projects to legal final unless the user explicitly chooses to model a
    *  call. The Phase A type union excludes "economic" mode (Phase D §7.4). */
@@ -224,6 +232,8 @@ export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
   postRpReinvestmentPct: 0,
   hedgeCostBps: 0,
   supplementalReserveDisposition: "principalCash",
+  expenseReserveDepositAmount: 0,
+  supplementalReserveDepositAmount: 0,
   callMode: "none",
   callDate: null,
   callPricePct: 100,
@@ -1013,6 +1023,8 @@ export function buildFromResolved(
     initialExpenseReserveBalance: resolved.expenseReserveBalance,
     initialSupplementalReserveBalance: resolved.supplementalReserveBalance,
     supplementalReserveDisposition: userAssumptions.supplementalReserveDisposition,
+    expenseReserveDepositAmount: userAssumptions.expenseReserveDepositAmount,
+    supplementalReserveDepositAmount: userAssumptions.supplementalReserveDepositAmount,
     specialRedemptionAmount: userAssumptions.specialRedemptionAmount,
     reinvestingHolderRedemptionAmount: userAssumptions.reinvestingHolderRedemptionAmount,
     principalPop: resolved.principalPop,

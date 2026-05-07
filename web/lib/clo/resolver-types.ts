@@ -812,9 +812,9 @@ export interface ResolvedDealData {
   supplementalReserveBalance: number;
   /** Expense Reserve Account balance — reserved for senior expenses (PPM
    *  Condition 3(j)(x)). Per Interest Priority of Payments steps (B) + (C)
-   *  the balance augments the Senior Expenses Cap each period; the engine
-   *  drains it as overflow is paid. Distinct from KI-02 step (D) deposit-
-   *  into-reserve flow. NOT credited to the OC numerator. */
+  *  the balance augments the Senior Expenses Cap each period; the engine
+  *  drains it as overflow is paid. Distinct from the step (D) deposit-
+  *  into-reserve flow. NOT credited to the OC numerator. */
   expenseReserveBalance: number;
   /** Annualized hedge cost in bps on collateral par, sourced via Signal 2
    *  (compliance fees row matching /hedge|swap/i in `resolveHedgeCost`).
