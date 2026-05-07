@@ -186,6 +186,24 @@ export interface UserAssumptions {
   // cost basis = subNotePar × (equityEntryPriceCents / 100). Null = fall back
   // to engine default (bookValue).
   equityEntryPriceCents: number | null;
+  /** PPM Condition 3(c) clause (P) — Special Redemption Amount (€).
+   *  Collateral-manager-elected partial redemption funded by a designated
+   *  amount carved from principal proceeds on a Special Redemption Date.
+   *  Modeling input — the engine has no signal to choose this autonomously.
+   *  Default 0 (no Special Redemption). When >0, the schema-driven
+   *  principal-POP dispatch's `special_redemption` clause arm consumes
+   *  this amount in pass 2 and applies it sequentially per Note Payment
+   *  Sequence. */
+  specialRedemptionAmount: number;
+  /** PPM Condition 3(c) clause (T) — Reinvesting Holder Reinvestment
+   *  Amount (€). Amount the EU-risk-retention holder elects to reinvest
+   *  back into the deal. Modeling input — engine has no signal to choose.
+   *  Default 0 (no reinvestment). When >0, the schema-driven dispatch's
+   *  `reinvesting_holder` clause arm consumes the amount in pass 2 by
+   *  adding it back to the principal pool for reinvestment (during RP)
+   *  or sequential redemption (post-RP) — handled by the upstream
+   *  reinvestment-allocation logic when the cash flows back through. */
+  reinvestingHolderRedemptionAmount: number;
 }
 
 export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
@@ -237,6 +255,8 @@ export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
   incentiveFeePct: CLO_DEFAULTS.incentiveFeePct,
   incentiveFeeHurdleIrr: CLO_DEFAULTS.incentiveFeeHurdleIrr,
   equityEntryPriceCents: null,
+  specialRedemptionAmount: 0,
+  reinvestingHolderRedemptionAmount: 0,
 };
 
 /**
@@ -993,6 +1013,9 @@ export function buildFromResolved(
     initialExpenseReserveBalance: resolved.expenseReserveBalance,
     initialSupplementalReserveBalance: resolved.supplementalReserveBalance,
     supplementalReserveDisposition: userAssumptions.supplementalReserveDisposition,
+    specialRedemptionAmount: userAssumptions.specialRedemptionAmount,
+    reinvestingHolderRedemptionAmount: userAssumptions.reinvestingHolderRedemptionAmount,
+    principalPop: resolved.principalPop,
     preExistingDefaultedPar: resolved.preExistingDefaultedPar,
     preExistingDefaultRecovery: resolved.preExistingDefaultRecovery,
     unpricedDefaultedPar: resolved.unpricedDefaultedPar,

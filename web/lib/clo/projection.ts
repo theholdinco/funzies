@@ -465,6 +465,27 @@ export interface ProjectionInputs {
    *  balance into Q1 `availableInterest` (PPM 3(j)(vi)(B)). "hold"
    *  leaves the balance on the books (claim against equity at maturity). */
   supplementalReserveDisposition?: "principalCash" | "interest" | "hold";
+  /** PPM Condition 3(c) clause (P) — Special Redemption Amount (€).
+   *  User-input modeling assumption. The schema-driven principal-POP
+   *  dispatch consumes this in pass 2 and applies sequential redemption
+   *  per Note Payment Sequence. Default 0 = no Special Redemption. */
+  specialRedemptionAmount?: number;
+  /** PPM Condition 3(c) clause (T) — Reinvesting Holder Reinvestment
+   *  Amount (€). User-input modeling assumption. The schema-driven
+   *  dispatch routes this back to the reinvestment allocation logic in
+   *  pass 2 (during RP) or applies as redemption (post-RP). Default 0. */
+  reinvestingHolderRedemptionAmount?: number;
+  /** PPM Condition 3(c) Principal Priority of Payments — schema-driven
+   *  dispatch encoding of the deal's principal POP. When non-null, the
+   *  engine walks `clauses` per period in two passes (pass 1 before the
+   *  interest waterfall for clauses that don't depend on interest-side
+   *  outcomes; pass 2 after the cure-from-interest block for clauses
+   *  that backfill interest-side shortfalls or apply user-input
+   *  redemptions). When null, the engine falls back to the
+   *  uniformly-simplified pro-rata loop (transitional during the KI-66
+   *  closure rollout — Step 7 flips the resolver gate to blocking once
+   *  all ingested deals carry the structured PPM extract). */
+  principalPop?: import("./resolver-types").ResolvedPrincipalPop | null;
   preExistingDefaultedPar?: number; // par of pre-existing defaulted loans
   preExistingDefaultRecovery?: number; // market-price recovery for priced defaulted holdings
   unpricedDefaultedPar?: number; // par of defaulted holdings without market price (model applies recoveryPct)
@@ -1596,6 +1617,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     initialExpenseReserveBalance = 0,
     initialSupplementalReserveBalance = 0,
     supplementalReserveDisposition = "principalCash",
+    specialRedemptionAmount = 0,
+    reinvestingHolderRedemptionAmount = 0,
+    principalPop = null,
     seniorExpensesCapCarryforwardSeed,
     preExistingDefaultedPar = 0, preExistingDefaultRecovery = 0, unpricedDefaultedPar = 0, preExistingDefaultOcValue = 0,
     impliedOcAdjustment = 0, quartersSinceReport = 0,
