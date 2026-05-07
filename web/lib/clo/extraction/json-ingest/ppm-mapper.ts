@@ -568,6 +568,43 @@ function mapWaterfallRules(ppm: PpmJson): Record<string, unknown> {
     interestPriority: serializeClauses(wf.interest_priority_of_payments.clauses),
     principalPriority: serializeClauses(wf.principal_priority_of_payments.clauses),
     postAcceleration: wf.post_acceleration_priority_of_payments?.sequence_summary ?? undefined,  // ppmWaterfallRulesSchema is string | undefined, NOT nullable
+    // Schema-driven principal POP block. Resolver consumes via
+    // `resolvePrincipalPop` and emits a `severity: "error", blocking: true`
+    // warning on any malformed clause variant. Shape mirrors
+    // `ResolvedPrincipalPop` (resolver-types.ts) for direct passthrough —
+    // ppm.json:section_6_waterfall.principal_priority_of_payments.structured.
+    principalPriorityOfPayments: mapPrincipalPriorityOfPayments(ppm),
+  };
+}
+
+/** Read the schema-driven principal POP block from ppm.json into a
+ *  passthrough shape consumed by the resolver. The block is already
+ *  shaped to mirror `ResolvedPrincipalPop` (camelCase keys, discriminated
+ *  union clause variants); the resolver does the per-clause variant
+ *  validation. Returns null when the block is absent or fails the
+ *  top-level structural check (the resolver then either falls back to
+ *  the uniformly-simplified loop or, post-Step-7, blocks with an
+ *  extraction-failure warning). */
+function mapPrincipalPriorityOfPayments(ppm: PpmJson): unknown {
+  const wf = ppm.section_6_waterfall;
+  const popBlock = wf.principal_priority_of_payments as {
+    structured?: unknown;
+    [k: string]: unknown;
+  };
+  const structured = popBlock.structured;
+  if (
+    !structured ||
+    typeof structured !== "object" ||
+    !("clauses" in structured) ||
+    !("interestWaterfall" in structured)
+  ) {
+    return null;
+  }
+  const provenance = deriveSectionProvenance(wf as { source_pages?: unknown; source_condition?: unknown });
+  return {
+    ...structured,
+    sourcePages: provenance?.source_pages ?? null,
+    sourceCondition: provenance?.source_condition ?? null,
   };
 }
 

@@ -1,5 +1,5 @@
 import type { ExtractedConstraints, CloPoolSummary, CloComplianceTest, CloTranche, CloTrancheSnapshot, CloHolding, CloAccountBalance, CloParValueAdjustment } from "./types";
-import type { Citation, ComplianceTestType, ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolvedComplianceTest, ResolvedEodTest, ResolvedMetadata, ResolvedSeniorExpensesCap, ResolvedDiscountObligationRule, ResolvedLongDatedValuationRule, ResolutionWarning } from "./resolver-types";
+import type { Citation, ComplianceTestType, ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolvedComplianceTest, ResolvedEodTest, ResolvedMetadata, ResolvedSeniorExpensesCap, ResolvedDiscountObligationRule, ResolvedLongDatedValuationRule, ResolvedPrincipalPop, ResolvedPrincipalClause, ResolvedInterestWaterfallShape, ResolutionWarning } from "./resolver-types";
 import { parseSpreadToBps, normalizeWacSpread } from "./ingestion-gate";
 import { isHigherBetter } from "./test-direction";
 import { mapToRatingBucket, moodysWarfFactor } from "./rating-mapping";
@@ -916,6 +916,309 @@ function resolveLongDatedObligation(
     capBase: block.capBase,
     withinCap: block.withinCap,
     postCap: block.postCap,
+    citation:
+      block.sourcePages != null || block.sourceCondition != null
+        ? { sourcePages: block.sourcePages, sourceCondition: block.sourceCondition }
+        : null,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// Principal Priority of Payments resolver (KI-66 schema redesign)
+//
+// Reads the schema-driven principal POP from
+// `constraints.principalPriorityOfPayments` (populated by
+// `mapPrincipalPriorityOfPayments` from
+// `ppm.json:section_6_waterfall.principal_priority_of_payments.structured`)
+// and validates each clause variant against the discriminated union in
+// `resolver-types.ts`. Per-clause variant validation matters because the
+// engine's schema-driven dispatch loop relies on each clause's gating
+// fields being present (e.g. `controlling_class_backfill` requires
+// `gatingTranche` + `paysItems`; missing either silently breaks dispatch).
+//
+// Blocking gate (KI-66 closure):
+//   - Returns null AND emits `severity: "error", blocking: true` when the
+//     structured block is absent or malformed. Engine still has a legacy
+//     null-`principalPop` fallback for hand-built synthetic ProjectionInputs,
+//     but production resolver paths must not silently degrade to it.
+//     Silent fallback would drop principal-POP clauses from execution —
+//     anti-pattern #3 forbids.
+
+/** Validate a single clause variant against the resolver-types
+ *  discriminated union. Returns the typed clause on success, null on
+ *  malformed input. Per-variant validation tracks the field set required
+ *  by each variant; missing fields fail loudly rather than silently
+ *  producing a clause the engine cannot dispatch. */
+function validatePrincipalClause(raw: unknown): ResolvedPrincipalClause | null {
+  if (!raw || typeof raw !== "object") return null;
+  const c = raw as Record<string, unknown>;
+  if (typeof c.id !== "string" || typeof c.kind !== "string") return null;
+  const id = c.id;
+  const isStringArray = (v: unknown): v is string[] =>
+    Array.isArray(v) && v.every((x) => typeof x === "string");
+  const isPayTarget = (v: unknown): v is { kind: string; rank: number } =>
+    !!v && typeof v === "object" &&
+    typeof (v as Record<string, unknown>).kind === "string" &&
+    typeof (v as Record<string, unknown>).rank === "number";
+
+  switch (c.kind) {
+    case "unconditional_backfill":
+      if (!isStringArray(c.paysItems)) return null;
+      return { id, kind: "unconditional_backfill", paysItems: c.paysItems };
+    case "coverage_test_cure":
+      if (typeof c.gatingTranche !== "number" || !isPayTarget(c.payTarget)) return null;
+      if (c.payTarget.kind !== "note_payment_sequence_from" && c.payTarget.kind !== "specific_class") return null;
+      return {
+        id,
+        kind: "coverage_test_cure",
+        gatingTranche: c.gatingTranche,
+        payTarget: c.payTarget as ResolvedPrincipalClause extends { payTarget: infer P } ? P : never,
+      };
+    case "par_value_test_cure":
+      if (typeof c.gatingTranche !== "number" || !isPayTarget(c.payTarget)) return null;
+      if (c.payTarget.kind !== "note_payment_sequence_from" && c.payTarget.kind !== "specific_class") return null;
+      return {
+        id,
+        kind: "par_value_test_cure",
+        gatingTranche: c.gatingTranche,
+        payTarget: c.payTarget as ResolvedPrincipalClause extends { payTarget: infer P } ? P : never,
+      };
+    case "controlling_class_backfill":
+      if (typeof c.gatingTranche !== "number" || !isStringArray(c.paysItems)) return null;
+      return {
+        id,
+        kind: "controlling_class_backfill",
+        gatingTranche: c.gatingTranche,
+        paysItems: c.paysItems,
+      };
+    case "effective_date_rating_event":
+      return { id, kind: "effective_date_rating_event" };
+    case "special_redemption":
+      if (typeof c.proceedsSubset !== "string") return null;
+      return {
+        id,
+        kind: "special_redemption",
+        proceedsSubset: c.proceedsSubset as "all" | "unscheduled_principal_only" | "unscheduled_plus_credit_improved_credit_risk" | "special_redemption_amount",
+      };
+    case "reinvestment_discretion": {
+      if (typeof c.phase !== "string") return null;
+      if (c.phase !== "rp" && c.phase !== "post_rp_carveout" && c.phase !== "rp_or_post_rp_carveout") return null;
+      if (!Array.isArray(c.options)) return null;
+      const validOpt = (o: unknown): boolean =>
+        o === "hold" ||
+        o === "reinvest_substitute" ||
+        o === "reinvest_unscheduled_or_credit" ||
+        o === "redeem_on_retention_deficiency";
+      if (!c.options.every(validOpt)) return null;
+      const proceedsSubset = c.proceedsSubset === undefined || c.proceedsSubset === null ? null : c.proceedsSubset;
+      if (proceedsSubset !== null && typeof proceedsSubset !== "string") return null;
+      return {
+        id,
+        kind: "reinvestment_discretion",
+        phase: c.phase as "rp" | "post_rp_carveout" | "rp_or_post_rp_carveout",
+        options: c.options as Array<"hold" | "reinvest_substitute" | "reinvest_unscheduled_or_credit" | "redeem_on_retention_deficiency">,
+        proceedsSubset: proceedsSubset as ResolvedPrincipalClause extends { kind: "reinvestment_discretion"; proceedsSubset: infer P } ? P : never,
+      };
+    }
+    case "mandatory_post_rp_redemption":
+      if (typeof c.sequence !== "string") return null;
+      if (c.sequence !== "note_payment_sequence" && c.sequence !== "debt_payment_sequence" && c.sequence !== "pro_rata_within_class") return null;
+      return {
+        id,
+        kind: "mandatory_post_rp_redemption",
+        sequence: c.sequence as "note_payment_sequence" | "debt_payment_sequence" | "pro_rata_within_class",
+      };
+    case "post_rp_interest_overflow":
+      if (!isStringArray(c.paysItems)) return null;
+      return { id, kind: "post_rp_interest_overflow", paysItems: c.paysItems };
+    case "reinvesting_holder":
+      return { id, kind: "reinvesting_holder" };
+    case "incentive_fee":
+      if (typeof c.trigger !== "string" || typeof c.thresholdParam !== "number") return null;
+      if (c.trigger !== "subnote_irr_threshold" && c.trigger !== "incentive_management_fee_threshold") return null;
+      return {
+        id,
+        kind: "incentive_fee",
+        trigger: c.trigger as "subnote_irr_threshold" | "incentive_management_fee_threshold",
+        thresholdParam: c.thresholdParam,
+      };
+    case "restructured_asset_acquisition": {
+      if (typeof c.proceedsSubset !== "string") return null;
+      if (c.proceedsSubset !== "principal_only" && c.proceedsSubset !== "interest_or_principal" && c.proceedsSubset !== "non_principal_only") return null;
+      if (!isStringArray(c.gatingConditions)) return null;
+      const caps = (c.caps && typeof c.caps === "object") ? c.caps as Record<string, unknown> : null;
+      if (!caps) return null;
+      return {
+        id,
+        kind: "restructured_asset_acquisition",
+        proceedsSubset: c.proceedsSubset as "principal_only" | "interest_or_principal" | "non_principal_only",
+        gatingConditions: c.gatingConditions as Array<"target_par_balance_satisfied" | "oc_test_satisfied" | "post_acquisition_principal_amount_cap" | "cumulative_principal_amount_cap">,
+        caps: {
+          perAcquisition: typeof caps.perAcquisition === "number" ? caps.perAcquisition : undefined,
+          cumulativeSinceClosing: typeof caps.cumulativeSinceClosing === "number" ? caps.cumulativeSinceClosing : undefined,
+        },
+      };
+    }
+    case "residual_to_subordinated":
+      return { id, kind: "residual_to_subordinated" };
+    default:
+      return null;
+  }
+}
+
+/** Validate the interest-waterfall items list — used by the engine to map
+ *  backfill `paysItems` IDs to interest-side flows. The mapper has already
+ *  shaped each item; this guards the discriminated `kind` union. */
+function validateInterestWaterfall(raw: unknown): ResolvedInterestWaterfallShape | null {
+  if (!raw || typeof raw !== "object") return null;
+  const items = (raw as { items?: unknown }).items;
+  if (!Array.isArray(items)) return null;
+  const validKinds = new Set([
+    "taxes", "issuer_profit", "trustee_admin", "expense_reserve",
+    "senior_mgmt_fee", "hedge", "tranche_current_interest",
+    "tranche_deferred_interest", "coverage_test_cure",
+    "par_value_test_cure", "effective_date_rating",
+    "reinv_oc_diversion", "sub_mgmt_fee", "incentive_fee",
+    "subnote_residual",
+  ]);
+  const out: ResolvedInterestWaterfallShape["items"] = [];
+  for (const it of items) {
+    if (!it || typeof it !== "object") return null;
+    const obj = it as Record<string, unknown>;
+    if (typeof obj.id !== "string" || typeof obj.kind !== "string") return null;
+    if (!validKinds.has(obj.kind)) return null;
+    out.push({
+      id: obj.id,
+      kind: obj.kind as ResolvedInterestWaterfallShape["items"][number]["kind"],
+      tranche: typeof obj.tranche === "number" ? obj.tranche : undefined,
+    });
+  }
+  return { items: out };
+}
+
+function resolvePrincipalPop(
+  constraints: ExtractedConstraints,
+  warnings: ResolutionWarning[],
+): ResolvedPrincipalPop | null {
+  const block = constraints.principalPriorityOfPayments;
+  if (!block) {
+    warnings.push({
+      field: "principalPop",
+      message:
+        "PPM Principal Priority of Payments structured block is not extracted " +
+        "(ppm.json:section_6_waterfall.principal_priority_of_payments.structured). " +
+        "The engine would otherwise run the legacy uniformly-simplified principal-POP loop, " +
+        "which ignores Controlling-Class / Coverage-Test / Par-Value-Test / RP-boundary " +
+        "gating predicates. This is a blocking extraction failure under KI-66 — " +
+        "Re-extract with the structured principal-POP block populated.",
+      severity: "error",
+      blocking: true,
+    });
+    return null;
+  }
+
+  // Top-level structural validation
+  const interestWaterfall = validateInterestWaterfall(block.interestWaterfall);
+  if (!interestWaterfall) {
+    warnings.push({
+      field: "principalPop.interestWaterfall",
+      message:
+        "PPM principal POP structured block has malformed interestWaterfall — " +
+        "the engine's schema-driven dispatch cannot map backfill paysItems IDs " +
+        "to interest-side flows. Re-extract ppm.json with the interestWaterfall " +
+        "items array populated and each item carrying a valid `kind` from the " +
+        "ResolvedInterestWaterfallItem union.",
+      severity: "error",
+      blocking: true,
+    });
+    return null;
+  }
+  if (!Array.isArray(block.clauses)) {
+    warnings.push({
+      field: "principalPop.clauses",
+      message:
+        "PPM principal POP structured block missing or malformed `clauses` array. " +
+        "Re-extract ppm.json with the schema-driven clause list populated.",
+      severity: "error",
+      blocking: true,
+    });
+    return null;
+  }
+
+  // Per-clause variant validation
+  const clauses: ResolvedPrincipalClause[] = [];
+  for (let idx = 0; idx < block.clauses.length; idx++) {
+    const validated = validatePrincipalClause(block.clauses[idx]);
+    if (!validated) {
+      const rawId = (block.clauses[idx] as { id?: unknown } | null)?.id;
+      warnings.push({
+        field: `principalPop.clauses[${idx}]`,
+        message:
+          `PPM principal POP clause ${typeof rawId === "string" ? `\"${rawId}\"` : `at index ${idx}`} ` +
+          `failed variant validation — required fields missing or wrong shape. ` +
+          `The engine's schema-driven dispatch cannot execute a malformed clause; ` +
+          `silent fallback would drop the clause from execution. Re-extract ppm.json ` +
+          `with the clause matching its variant's required-field set per ` +
+          `ResolvedPrincipalClause in resolver-types.ts.`,
+        severity: "error",
+        blocking: true,
+      });
+      return null;
+    }
+    clauses.push(validated);
+  }
+
+  // Controlling-class rule
+  const cc = block.controllingClass as { kind?: unknown } | null;
+  if (!cc || cc.kind !== "highest_rank_outstanding") {
+    warnings.push({
+      field: "principalPop.controllingClass",
+      message:
+        "PPM principal POP structured block missing or malformed `controllingClass`. " +
+        "Only `highest_rank_outstanding` is supported today (the four sampled " +
+        "indentures all use this variant; see research note §11.2). " +
+        "Re-extract or extend the ControllingClassRule union if a new variant is observed.",
+      severity: "error",
+      blocking: true,
+    });
+    return null;
+  }
+
+  const redemptionMode = block.redemptionMode;
+  if (
+    redemptionMode !== "sequential_npss" &&
+    redemptionMode !== "pro_rata_post_rp_with_subnote_election" &&
+    redemptionMode !== "sequential_then_pro_rata_within_group"
+  ) {
+    warnings.push({
+      field: "principalPop.redemptionMode",
+      message:
+        "PPM principal POP `redemptionMode` is missing or unsupported. " +
+        "Valid values: sequential_npss, pro_rata_post_rp_with_subnote_election, " +
+        "sequential_then_pro_rata_within_group. Re-extract or extend the " +
+        "RedemptionMode union.",
+      severity: "error",
+      blocking: true,
+    });
+    return null;
+  }
+
+  // Pre-waterfall reservations + acceleration waterfall — passthrough
+  // shape; tighter validation can be added when these surfaces are
+  // exercised by a deal that needs them. Today no sampled deal populates
+  // accelerationWaterfall (Ares XV's post-acceleration POP is referenced
+  // separately via constraints.waterfall.postAcceleration).
+  const preWaterfallReservations = Array.isArray(block.preWaterfallReservations)
+    ? (block.preWaterfallReservations as ResolvedPrincipalPop["preWaterfallReservations"])
+    : [];
+
+  return {
+    interestWaterfall,
+    preWaterfallReservations,
+    clauses,
+    controllingClass: { kind: "highest_rank_outstanding" },
+    redemptionMode,
+    accelerationWaterfall: null,
     citation:
       block.sourcePages != null || block.sourceCondition != null
         ? { sourcePages: block.sourcePages, sourceCondition: block.sourceCondition }
@@ -3596,7 +3899,7 @@ export function resolveWaterfallInputs(
   } = industryConcentrationResolved;
 
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, excludedIndustryCodes, preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, excludedIndustryCodes, principalPop: resolvePrincipalPop(constraints, warnings), preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
     warnings,
   };
 }

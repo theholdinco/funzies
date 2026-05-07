@@ -465,6 +465,26 @@ export interface ProjectionInputs {
    *  balance into Q1 `availableInterest` (PPM 3(j)(vi)(B)). "hold"
    *  leaves the balance on the books (claim against equity at maturity). */
   supplementalReserveDisposition?: "principalCash" | "interest" | "hold";
+  /** PPM Condition 3(c) clause (P) — Special Redemption Amount (€).
+   *  User-input modeling assumption. The schema-driven principal-POP
+   *  dispatch consumes this in pass 2 and applies sequential redemption
+   *  per Note Payment Sequence. Default 0 = no Special Redemption. */
+  specialRedemptionAmount?: number;
+  /** PPM Condition 3(c) clause (T) — Reinvesting Holder Reinvestment
+   *  Amount (€). User-input modeling assumption. The schema-driven
+   *  dispatch routes this back to the reinvestment allocation logic in
+   *  pass 2 (during RP) or applies as redemption (post-RP). Default 0. */
+  reinvestingHolderRedemptionAmount?: number;
+  /** PPM Condition 3(c) Principal Priority of Payments — schema-driven
+   *  dispatch encoding of the deal's principal POP. When non-null, the
+   *  engine walks `clauses` per period in two passes (pass 1 before the
+   *  interest waterfall for clauses that don't depend on interest-side
+   *  outcomes; pass 2 after the cure-from-interest block for clauses
+   *  that backfill interest-side shortfalls or apply user-input
+   *  redemptions). When null, the engine falls back to the legacy loop;
+   *  production resolver paths now block before this fallback, so null is
+   *  reserved for direct synthetic ProjectionInputs. */
+  principalPop?: import("./resolver-types").ResolvedPrincipalPop | null;
   preExistingDefaultedPar?: number; // par of pre-existing defaulted loans
   preExistingDefaultRecovery?: number; // market-price recovery for priced defaulted holdings
   unpricedDefaultedPar?: number; // par of defaulted holdings without market price (model applies recoveryPct)
@@ -1596,6 +1616,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     initialExpenseReserveBalance = 0,
     initialSupplementalReserveBalance = 0,
     supplementalReserveDisposition = "principalCash",
+    specialRedemptionAmount = 0,
+    reinvestingHolderRedemptionAmount = 0,
+    principalPop = null,
     seniorExpensesCapCarryforwardSeed,
     preExistingDefaultedPar = 0, preExistingDefaultRecovery = 0, unpricedDefaultedPar = 0, preExistingDefaultOcValue = 0,
     impliedOcAdjustment = 0, quartersSinceReport = 0,
@@ -3406,11 +3429,20 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     }
     const q1Cash = (q === 1) ? initialPrincipalCash + q1SuppToPrincipal : 0;
     const totalPrincipalAvailable = principalProceeds + q1Cash + suppReserveTerminalRelease;
+    const userElectedPrincipalPopReserve = principalPop
+      ? Math.min(
+          totalPrincipalAvailable,
+          Math.max(0, specialRedemptionAmount) + Math.max(0, reinvestingHolderRedemptionAmount),
+        )
+      : 0;
     if (!isMaturity && inRP) {
-      reinvestment = totalPrincipalAvailable;
+      reinvestment = Math.max(0, totalPrincipalAvailable - userElectedPrincipalPopReserve);
     } else if (!isMaturity && postRpReinvestmentPct > 0 && principalProceeds > 0) {
       // Post-RP limited reinvestment (credit improved/risk sales, unscheduled principal)
-      reinvestment = principalProceeds * (postRpReinvestmentPct / 100);
+      reinvestment = Math.max(
+        0,
+        principalProceeds - userElectedPrincipalPopReserve,
+      ) * (postRpReinvestmentPct / 100);
     }
     // C1 — Reinvestment compliance enforcement. The single gate
     // `maxCompliantReinvestment` applies all four triggers in turn (WARF,
@@ -4160,60 +4192,202 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       return null;
     })();
 
-    for (const rank of principalRanksInOrder) {
-      const group = principalGroupByRank.get(rank)!;
-
-      // PPM Condition 3(c) clauses (D)/(G)/(J)/(M) — principal-side
-      // backfill of deferred interest (PIK) fires only when the relevant
-      // class is the Controlling Class. Without this gate, the engine
-      // pays Class C/D/E/F deferred from principal proceeds regardless
-      // of Controlling status, which is wrong while a more senior class
-      // is outstanding (the more senior class is Controlling per the
-      // Determination Date convention; clause D for Class C explicitly
-      // requires "Class C Notes are Controlling Class").
-      //
-      // Non-deferrable tranches (Class A/B per Ares XV) have
-      // deferredBalances == 0 by construction (accrueShortfall routes
-      // their shortfall to interestShortfall, not deferredBalances), so
-      // this gate is a no-op for them.
-      const isControllingRank = rank === controllingClassRank;
-      const deferredShare: Record<string, number> = {};
-      if (isControllingRank) {
-        // Phase 1: deferred — pro-rata across group by deferredBalance.
-        const groupDeferred = group.reduce((s, t) => s + deferredBalances[t.className], 0);
-        const deferredPaidGroup = Math.min(groupDeferred, remainingPrelim);
-        remainingPrelim -= deferredPaidGroup;
-        for (const t of group) {
-          const share = groupDeferred > 0 ? deferredPaidGroup * (deferredBalances[t.className] / groupDeferred) : 0;
-          deferredShare[t.className] = share;
-          deferredBalances[t.className] -= share;
-          _stepTrace_deferredPaydownByTranche[t.className] =
-            (_stepTrace_deferredPaydownByTranche[t.className] ?? 0) + share;
+    const payPrincipalByRank = (
+      amount: number,
+      startRank = Number.NEGATIVE_INFINITY,
+      endRank = Number.POSITIVE_INFINITY,
+      includeDeferred = true,
+    ): number => {
+      let remaining = Math.min(amount, remainingPrelim);
+      const starting = remaining;
+      for (const rank of principalRanksInOrder) {
+        if (remaining <= 0.01) break;
+        if (rank < startRank || rank > endRank) continue;
+        const group = principalGroupByRank.get(rank);
+        if (!group) continue;
+        if (includeDeferred) {
+          const groupDeferred = group.reduce((s, t) => s + deferredBalances[t.className], 0);
+          const deferredPaidGroup = Math.min(groupDeferred, remaining);
+          remaining -= deferredPaidGroup;
+          remainingPrelim -= deferredPaidGroup;
+          for (const t of group) {
+            const share = groupDeferred > 0
+              ? deferredPaidGroup * (deferredBalances[t.className] / groupDeferred)
+              : 0;
+            deferredBalances[t.className] -= share;
+            principalPaid[t.className] += share;
+            _stepTrace_deferredPaydownByTranche[t.className] =
+              (_stepTrace_deferredPaydownByTranche[t.className] ?? 0) + share;
+          }
         }
-      } else {
-        for (const t of group) deferredShare[t.className] = 0;
+        const groupPrincipal = group.reduce((s, t) => s + trancheBalances[t.className], 0);
+        const principalPaidGroup = Math.min(groupPrincipal, remaining);
+        remaining -= principalPaidGroup;
+        remainingPrelim -= principalPaidGroup;
+        for (const t of group) {
+          const share = groupPrincipal > 0
+            ? principalPaidGroup * (trancheBalances[t.className] / groupPrincipal)
+            : 0;
+          trancheBalances[t.className] -= share;
+          principalPaid[t.className] += share;
+        }
       }
+      return starting - remaining;
+    };
 
-      // Phase 2: principal — pro-rata across group by trancheBalance.
-      // Phase 2 is the sequential redemption per Note Payment Sequence
-      // (PPM clause R post-RP) and is NOT gated on Controlling Class —
-      // each rank pays principal in seniority order regardless. Clause R
-      // applies only post-Reinvestment-Period; during-RP behavior is
-      // governed by clause Q (reinvestment vs hold) which is modeled
-      // separately upstream of this loop. The current engine collapses
-      // both regimes into the same sequential pay-down, a structural
-      // simplification documented in the principal-POP research note's
-      // §8.4 and out of scope for this change.
-      const groupPrincipal = group.reduce((s, t) => s + trancheBalances[t.className], 0);
-      const principalPaidGroup = Math.min(groupPrincipal, remainingPrelim);
-      remainingPrelim -= principalPaidGroup;
+    const payDeferredOnlyAtRank = (amount: number, rank: number): number => {
+      const group = principalGroupByRank.get(rank);
+      if (!group) return 0;
+      const groupDeferred = group.reduce((s, t) => s + deferredBalances[t.className], 0);
+      const paid = Math.min(groupDeferred, amount, remainingPrelim);
+      remainingPrelim -= paid;
       for (const t of group) {
-        const share = groupPrincipal > 0 ? principalPaidGroup * (trancheBalances[t.className] / groupPrincipal) : 0;
-        trancheBalances[t.className] -= share;
-        principalPaid[t.className] += deferredShare[t.className] + share;
+        const share = groupDeferred > 0
+          ? paid * (deferredBalances[t.className] / groupDeferred)
+          : 0;
+        deferredBalances[t.className] -= share;
+        principalPaid[t.className] += share;
+        _stepTrace_deferredPaydownByTranche[t.className] =
+          (_stepTrace_deferredPaydownByTranche[t.className] ?? 0) + share;
       }
-      if (remainingPrelim <= 0.01) break;
-    }
+      return paid;
+    };
+
+    const legacyPrincipalPopPaydown = () => {
+      for (const rank of principalRanksInOrder) {
+        const group = principalGroupByRank.get(rank)!;
+
+        // PPM Condition 3(c) clauses (D)/(G)/(J)/(M) — principal-side
+        // backfill of deferred interest (PIK) fires only when the relevant
+        // class is the Controlling Class. Without this gate, the engine
+        // pays Class C/D/E/F deferred from principal proceeds regardless
+        // of Controlling status, which is wrong while a more senior class
+        // is outstanding.
+        const isControllingRank = rank === controllingClassRank;
+        const deferredShare: Record<string, number> = {};
+        if (isControllingRank) {
+          const groupDeferred = group.reduce((s, t) => s + deferredBalances[t.className], 0);
+          const deferredPaidGroup = Math.min(groupDeferred, remainingPrelim);
+          remainingPrelim -= deferredPaidGroup;
+          for (const t of group) {
+            const share = groupDeferred > 0 ? deferredPaidGroup * (deferredBalances[t.className] / groupDeferred) : 0;
+            deferredShare[t.className] = share;
+            deferredBalances[t.className] -= share;
+            _stepTrace_deferredPaydownByTranche[t.className] =
+              (_stepTrace_deferredPaydownByTranche[t.className] ?? 0) + share;
+          }
+        } else {
+          for (const t of group) deferredShare[t.className] = 0;
+        }
+
+        const groupPrincipal = group.reduce((s, t) => s + trancheBalances[t.className], 0);
+        const principalPaidGroup = Math.min(groupPrincipal, remainingPrelim);
+        remainingPrelim -= principalPaidGroup;
+        for (const t of group) {
+          const share = groupPrincipal > 0 ? principalPaidGroup * (trancheBalances[t.className] / groupPrincipal) : 0;
+          trancheBalances[t.className] -= share;
+          principalPaid[t.className] += deferredShare[t.className] + share;
+        }
+        if (remainingPrelim <= 0.01) break;
+      }
+    };
+
+    const runPrincipalPopPass1 = () => {
+      if (!principalPop) {
+        legacyPrincipalPopPaydown();
+        return;
+      }
+      for (const clause of principalPop.clauses) {
+        if (remainingPrelim <= 0.01) break;
+        if (clause.kind === "controlling_class_backfill") {
+          if (clause.gatingTranche !== controllingClassRank) continue;
+          const paysDeferred = clause.paysItems.some((id) => {
+            const item = principalPop.interestWaterfall.items.find((it) => it.id === id);
+            return item?.kind === "tranche_deferred_interest";
+          });
+          if (paysDeferred) {
+            payDeferredOnlyAtRank(remainingPrelim, clause.gatingTranche);
+          }
+        } else if (clause.kind === "mandatory_post_rp_redemption" && (!inRP || isMaturity)) {
+          payPrincipalByRank(remainingPrelim, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, false);
+        }
+      }
+    };
+
+    runPrincipalPopPass1();
+
+    const interestItemById = principalPop
+      ? new Map(principalPop.interestWaterfall.items.map((item) => [item.id, item]))
+      : null;
+    const backfillInterestItemsFromPrincipal = (itemIds: string[]): number => {
+      if (!interestItemById || remainingPrelim <= 0.01) return 0;
+      let paid = 0;
+      for (const id of itemIds) {
+        if (remainingPrelim <= 0.01) break;
+        const item = interestItemById.get(id);
+        if (!item) continue;
+        let demand = 0;
+        const apply = (amount: number) => {
+          const p = Math.min(amount, remainingPrelim);
+          remainingPrelim -= p;
+          paid += p;
+          return p;
+        };
+        switch (item.kind) {
+          case "taxes":
+            demand = Math.max(0, taxesAmount - seniorExpensesPaid.taxes);
+            seniorExpensesPaid.taxes += apply(demand);
+            break;
+          case "issuer_profit":
+            demand = Math.max(0, issuerProfitPaid - seniorExpensesPaid.issuerProfit);
+            seniorExpensesPaid.issuerProfit += apply(demand);
+            break;
+          case "trustee_admin": {
+            demand = Math.max(0, trusteeFeeAmount - seniorExpensesPaid.trusteeCapped);
+            seniorExpensesPaid.trusteeCapped += apply(demand);
+            demand = Math.max(0, adminFeeAmount - seniorExpensesPaid.adminCapped);
+            seniorExpensesPaid.adminCapped += apply(demand);
+            break;
+          }
+          case "senior_mgmt_fee":
+            demand = Math.max(0, seniorFeeAmount - seniorExpensesPaid.seniorMgmt);
+            seniorExpensesPaid.seniorMgmt += apply(demand);
+            break;
+          case "hedge":
+            demand = Math.max(0, hedgeCostAmount - seniorExpensesPaid.hedge);
+            seniorExpensesPaid.hedge += apply(demand);
+            break;
+          case "tranche_current_interest": {
+            if (item.tranche == null) break;
+            const rows = trancheInterest.filter((row) => {
+              const tranche = sortedTranches.find((t) => t.className === row.className);
+              return tranche?.seniorityRank === item.tranche;
+            });
+            for (const row of rows) {
+              if (remainingPrelim <= 0.01) break;
+              const shortfall = Math.max(0, row.due - row.paid);
+              const p = apply(shortfall);
+              row.paid += p;
+              const tranche = sortedTranches.find((t) => t.className === row.className);
+              if (tranche?.isDeferrable) {
+                const deferredReduction = Math.min(deferredBalances[row.className] ?? 0, p);
+                deferredBalances[row.className] -= deferredReduction;
+                const principalReduction = p - deferredReduction;
+                if (principalReduction > 0) {
+                  trancheBalances[row.className] = Math.max(0, trancheBalances[row.className] - principalReduction);
+                }
+              } else {
+                interestShortfall[row.className] = Math.max(0, (interestShortfall[row.className] ?? 0) - p);
+              }
+            }
+            break;
+          }
+          default:
+            break;
+        }
+      }
+      return paid;
+    };
 
     // ── 9. Compute OC & IC ratios ────────────────────────────────
     // OC uses post-paydown balances (liability position after payments).
@@ -4469,6 +4643,14 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     }
 
     let diverted = false;
+    // KI-66 cure-from-principal — track per-rank cure shortfall under
+    // paydown-mode (when interest cure cash was insufficient to lift the
+    // OC/IC ratio above trigger). Pass-2 schema-driven principal-POP
+    // dispatch consumes this map to apply principal redemption per the
+    // gating clause's payTarget. Reinvest-mode (during-RP, IC passing)
+    // shortfalls are NOT tracked: principal-side cure does not apply
+    // in reinvest mode (Ares XV reinvest cure is interest-only).
+    const cureFromInterestShortfallByRank = new Map<number, number>();
     for (const rank of ranksInOrder) {
       const group = groupByRank.get(rank)!;
       const dueByMember: Record<string, number> = {};
@@ -4696,6 +4878,15 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         const diversion = Math.min(cureAmount, availableInterest);
         availableInterest -= diversion;
         if (availableInterest <= 0.01) diverted = true;
+        // Track cure-from-interest shortfall in paydown mode for the
+        // pass-2 cure-from-principal dispatch. Reinvest mode (during-RP
+        // OC cure when IC is passing) is interest-only — the engine's
+        // collateral-purchase mechanic uses interest, not principal —
+        // so we don't track shortfall there.
+        const _isReinvestMode = inRP && !failingIc;
+        if (!_isReinvestMode && cureAmount > diversion + 0.01) {
+          cureFromInterestShortfallByRank.set(rank, cureAmount - diversion);
+        }
 
         if (diversion > 0) {
           const _mode: "reinvest" | "paydown" = inRP && !failingIc ? "reinvest" : "paydown";
@@ -4784,6 +4975,102 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       }
     }
 
+    // ── 10b. Schema-driven principal POP — pass 2 (post-interest-waterfall)
+    //
+    // KI-66 schema-driven dispatch. Walks `principalPop.clauses` and
+    // executes clauses whose gating predicate depends on post-debt-interest
+    // state: principal-funded interest backfills (A/C/F/I/L), cure-from-
+    // principal (B/E/H/K/N), and Special Redemption (P). Pass 1 above
+    // handled clauses that must run before OC/IC
+    // measurement — Controlling-Class deferred backfill (D/G/J/M) and
+    // post-RP NPSS principal redemption (R).
+    //
+    // Gated on `principalPop != null`. Production resolver paths now block
+    // before this can be null; the fallback remains for direct synthetic
+    // ProjectionInputs that intentionally don't model a structured PPM.
+    //
+    // Pass-2 mutations:
+    //   - interest backfills reduce `remainingPrelim` and increase paid
+    //     interest / expense buckets
+    //   - cure-from-principal reduces `remainingPrelim` and
+    //     `trancheBalances` / `deferredBalances` (notes redeemed)
+    //   - Special Redemption + Reinvesting Holder consume
+    //     `remainingPrelim` per Note Payment Sequence
+    //
+    // The post-pass-2 `remainingPrelim` re-captures
+    // `priorPeriodEndPrincipalCash` so the carry-forward to next period
+    // reflects the cash that actually left the Principal Account during
+    // pass 2. The OC numerator at the determination date (line 4288)
+    // is intentionally pre-pass-2 — the test fires at start-of-period
+    // before the cure attempt, per PPM determination-date semantics.
+    if (principalPop && remainingPrelim > 0.01) {
+      for (const clause of principalPop.clauses) {
+        if (remainingPrelim <= 0.01) break;
+        switch (clause.kind) {
+          case "unconditional_backfill":
+            backfillInterestItemsFromPrincipal(clause.paysItems);
+            break;
+          case "controlling_class_backfill":
+            if (clause.gatingTranche === controllingClassRank) {
+              backfillInterestItemsFromPrincipal(clause.paysItems);
+            }
+            break;
+          case "coverage_test_cure":
+          case "par_value_test_cure": {
+            const shortfall = cureFromInterestShortfallByRank.get(clause.gatingTranche);
+            if (!shortfall || shortfall <= 0.01) break;
+            const startRank = clause.payTarget.rank;
+            const endRank =
+              clause.payTarget.kind === "specific_class"
+                ? clause.payTarget.rank
+                : Number.POSITIVE_INFINITY;
+            const paid = payPrincipalByRank(shortfall, startRank, endRank, true);
+            cureFromInterestShortfallByRank.set(clause.gatingTranche, Math.max(0, shortfall - paid));
+            break;
+          }
+          case "effective_date_rating_event":
+            // KI-03: no event-state input exists; Ares XV is past Effective Date.
+            break;
+          case "special_redemption":
+            if (specialRedemptionAmount > 0.01) {
+              payPrincipalByRank(specialRedemptionAmount, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, false);
+            }
+            break;
+          case "reinvestment_discretion":
+            // Clause Q is consumed by the upstream reinvestment / hold decision.
+            break;
+          case "mandatory_post_rp_redemption":
+            // Pass 1 handles this before OC/IC so tests see post-paydown debt.
+            break;
+          case "post_rp_interest_overflow":
+            // Clause S backfills downstream interest-waterfall items (W-Z),
+            // so it runs after the sub-fee and trustee/admin overflow blocks.
+            break;
+          case "reinvesting_holder":
+            // Clause T is ordered after late clause S, so it runs with that
+            // late pass once W-Z shortfalls have had first claim.
+            break;
+          case "incentive_fee":
+            // Existing normal-mode step U solver consumes principal below.
+            break;
+          case "restructured_asset_acquisition":
+            // No acquisition-authorization user input exists yet; no-op.
+            break;
+          case "residual_to_subordinated":
+            // Existing residual-to-equity path consumes `availablePrincipal` below.
+            break;
+        }
+      }
+
+      // Re-capture priorPeriodEndPrincipalCash to reflect post-pass-2
+      // residual. Pre-pass-2 capture at line 4274 was used for the OC
+      // numerator at the determination date (PPM-correct: OC test is a
+      // start-of-period snapshot); the carry-forward to next period
+      // must reflect cash that actually left the Principal Account
+      // during pass 2.
+      priorPeriodEndPrincipalCash = remainingPrelim;
+    }
+
     // PPM Step V: Reinvestment OC Test — divert a percentage of remaining interest during RP to buy collateral.
     // Evaluated after standard OC cures which may have bought collateral (updating ocNumerator).
     if (inRP && reinvestmentOcTrigger && availableInterest > 0) {
@@ -4843,7 +5130,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // the requested `subFeeAmount` overstates payment under stress when
     // `availableInterest` is exhausted before reaching this step.
     const subFeeAmount = beginningPar * (subFeePct / 100) * dayFracActual;
-    const subFeePaid = Math.min(subFeeAmount, availableInterest);
+    let subFeePaid = Math.min(subFeeAmount, availableInterest);
     availableInterest -= subFeePaid;
 
     // PPM Steps (Y) trustee-overflow + (Z) admin-overflow.
@@ -4867,6 +5154,61 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         adminOverflowPaid = adminOverflowRequested * overflowRatio;
         availableInterest -= overflowPayable;
       }
+    }
+
+    // PPM Condition 3(c) clauses S/T — post-RP principal proceeds first
+    // backfill downstream interest-waterfall items (W)-(Z) after those
+    // interest-side steps have had their ordinary interest-proceeds pass,
+    // then apply any Reinvesting Holder amount. This is deliberately later
+    // than the A/C/F/I/L current-interest backfill pass: sub-fee and
+    // overflow shortfalls are not known until this point.
+    if (principalPop && remainingPrelim > 0.01) {
+      const applyPrincipalToLateInterestShortfall = (amount: number): number => {
+        const paid = Math.min(Math.max(0, amount), remainingPrelim);
+        remainingPrelim -= paid;
+        return paid;
+      };
+      for (const clause of principalPop.clauses) {
+        if (remainingPrelim <= 0.01) break;
+        if (clause.kind === "post_rp_interest_overflow" && !inRP) {
+          for (const id of clause.paysItems) {
+            if (remainingPrelim <= 0.01) break;
+            const item = interestItemById?.get(id);
+            if (!item) continue;
+            switch (item.kind) {
+              case "sub_mgmt_fee":
+                subFeePaid += applyPrincipalToLateInterestShortfall(subFeeAmount - subFeePaid);
+                break;
+              case "trustee_admin":
+                if (id.includes("trustee_overflow")) {
+                  trusteeOverflowPaid += applyPrincipalToLateInterestShortfall(
+                    trusteeOverflowRequested - trusteeOverflowPaid,
+                  );
+                } else if (id.includes("admin_overflow")) {
+                  adminOverflowPaid += applyPrincipalToLateInterestShortfall(
+                    adminOverflowRequested - adminOverflowPaid,
+                  );
+                }
+                break;
+              case "reinv_oc_diversion":
+                // Step W is a Reinvestment-Period diversion. Clause S only
+                // applies post-RP for Ares XV, so there is no post-RP target to
+                // backfill in this engine state.
+                break;
+              default:
+                break;
+            }
+          }
+        } else if (clause.kind === "reinvesting_holder" && reinvestingHolderRedemptionAmount > 0.01) {
+          payPrincipalByRank(
+            reinvestingHolderRedemptionAmount,
+            Number.NEGATIVE_INFINITY,
+            Number.POSITIVE_INFINITY,
+            false,
+          );
+        }
+      }
+      priorPeriodEndPrincipalCash = remainingPrelim;
     }
 
     // PPM Step BB: Incentive management fee — % of residual when equity IRR > hurdle.

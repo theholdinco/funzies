@@ -369,6 +369,403 @@ export type IndustryCapRule =
       appliesWhen?: IndustryCapAppliesWhen;
     };
 
+// ----------------------------------------------------------------------------
+// Principal Priority of Payments (PPM Condition 3(c) — schema-driven dispatch)
+// ----------------------------------------------------------------------------
+//
+// Discriminated-union encoding of the principal POP, replacing the engine's
+// uniformly-simplified pro-rata loop (`projection.ts:4115-4215`) with a
+// per-clause dispatch driven by per-deal extracted predicates (Controlling
+// Class, Coverage / Par Value test failures, RP boundary, Effective Date
+// Rating Event, Special Redemption election, EU risk-retention deficiency,
+// Incentive Fee threshold, Restructured Asset Acquisition authorization).
+//
+// Design constraints (CLAUDE.md anti-patterns):
+//
+//  1. Don't overfit to one deal — clauses identify tranches by
+//     `SeniorityRank: number`, never by class-name string. Pari-passu
+//     sub-classes (e.g. Golub C-1/C-2, Carlyle A-Senior split) share a
+//     SeniorityRank; the engine's existing pari-passu absorption logic
+//     handles them naturally.
+//
+//  2. Partner-facing claims bound to engine state — every clause variant
+//     listed here MUST have a matching dispatch arm in the engine's
+//     principal-POP loop. Adding a variant without an engine arm leaves
+//     the resolver emitting structure the engine silently drops, which
+//     is exactly the anti-pattern the schema redesign closes.
+//
+//  3. Silent fallbacks on extraction failures — `resolvePrincipalPop`
+//     emits `severity: "error", blocking: true` when a deal's PPM has
+//     a principal-POP block but the resolver can't map a clause to a
+//     known variant. Never silently drop or coerce.
+//
+// Cross-reference verification (2026-05-06): schema validated against four
+// indentures (Ares XV, Carlyle DL 2024-1, Golub 2018, Barings 2019) plus
+// Fitch "U.S. CLO Indenture Features Explained" (Jun 2023) + S&P "Par Wars:
+// The Phantom Limits" (Feb 2020). See
+// `web/docs/principal-pop-redesign-research.md` §4 + §11 for the schema
+// derivation and verification report. */
+
+/** Stable schema-level ID into `ResolvedPrincipalPop.interestWaterfall.items[].id`,
+ *  used by clauses that backfill specific interest-waterfall items. NOT the
+ *  indenture letter — letters drift across managers (Ares (J)=Class C interest
+ *  vs Carlyle 11.1.1.2.1.2=Class C interest). IDs are stable across the
+ *  schema lifetime. */
+export type InterestItemId = string;
+
+/** 1 = most senior; identifies tranche by rank, NOT class-name. Pari-passu
+ *  sub-classes share the same SeniorityRank — the engine's pari-passu
+ *  absorption logic in the interest waterfall handles this implicitly. */
+export type SeniorityRank = number;
+
+/** Where a cure-redemption clause directs the redemption flow. */
+export type PayTarget =
+  /** Sequentially redeem starting from the named rank, walking down the
+   *  Note Payment Sequence until cure is achieved or principal exhausts.
+   *  Ares XV's Coverage / PV cure clauses use this. */
+  | { kind: "note_payment_sequence_from"; rank: SeniorityRank }
+  /** Redeem a specific class only. Sample-bounded: not observed in the
+   *  four sampled indentures, retained for portability. */
+  | { kind: "specific_class"; rank: SeniorityRank };
+
+/** Subset of principal proceeds a clause applies to. Many post-RP
+ *  reinvestment-discretion clauses gate on a subset (e.g. Unscheduled +
+ *  Credit Improved / Credit Risk only). */
+export type ProceedsSubset =
+  | "all"
+  | "unscheduled_principal_only"
+  | "unscheduled_plus_credit_improved_credit_risk"
+  | "special_redemption_amount";
+
+/** How the deal derives its Controlling Class for principal-POP gating
+ *  predicates. Verified across four indentures: all use
+ *  `highest_rank_outstanding`. Discriminated-union shape retained so a
+ *  future variant can be added without breaking the type. */
+export type ControllingClassRule =
+  | { kind: "highest_rank_outstanding" };
+
+/** Mode for non-cure redemption clauses (mandatory post-RP, optional
+ *  redemption, special redemption). Sample variants include sequential
+ *  per Note Payment Sequence (Ares XV, Carlyle, Golub, Barings) and
+ *  pro-rata-with-subnote-election (S&P Par Wars feature observed in some
+ *  managed deals). */
+export type RedemptionMode =
+  | "sequential_npss"
+  | "pro_rata_post_rp_with_subnote_election"
+  | "sequential_then_pro_rata_within_group";
+
+/** Pre-waterfall carve-outs: amounts removed from the Principal Proceeds
+ *  bucket before the POP runs. Modeled as a separate concept (not a clause)
+ *  because they consume principal but don't dispatch through the ordered
+ *  POP — they reserve liquidity ahead of any noteholder distribution. */
+export interface ResolvedPreWaterfallReservation {
+  kind:
+    | "ddtl_revolver_funding"
+    | "prior_period_reinvestment_commitment"
+    | "interest_reserve_account_topup";
+}
+
+/** Reference to the deal's interest waterfall item set, surfaced inside
+ *  `ResolvedPrincipalPop` so backfill clauses can name items by stable ID
+ *  rather than indenture letter. The engine cross-references this against
+ *  its actual interest-waterfall execution to confirm a backfill clause's
+ *  paysItems can be paid. */
+export interface ResolvedInterestWaterfallShape {
+  items: ResolvedInterestWaterfallItem[];
+}
+
+export interface ResolvedInterestWaterfallItem {
+  id: InterestItemId;
+  /** Canonical kind tag — drives the engine's mapping from
+   *  ResolvedPrincipalPop clause references to the actual interest-side
+   *  flow. Same vocabulary as `ENGINE_BUCKET_TO_PPM` in
+   *  `web/lib/clo/ppm-step-map.ts`, lifted into the resolver layer
+   *  because the principal-POP backfills cross-reference these items. */
+  kind:
+    | "taxes"
+    | "issuer_profit"
+    | "trustee_admin"
+    | "expense_reserve"
+    | "senior_mgmt_fee"
+    | "hedge"
+    | "tranche_current_interest"
+    | "tranche_deferred_interest"
+    | "coverage_test_cure"
+    | "par_value_test_cure"
+    | "effective_date_rating"
+    | "reinv_oc_diversion"
+    | "sub_mgmt_fee"
+    | "incentive_fee"
+    | "subnote_residual";
+  /** Tranche the item targets, when applicable (interest, deferred
+   *  interest, cure flows). Null on tranche-agnostic items (taxes,
+   *  trustee/admin fees). */
+  tranche?: SeniorityRank;
+}
+
+/** Reference to the deal's Acceleration / Enforcement-Event waterfall,
+ *  which is structurally distinct from the going-concern principal POP
+ *  (different ordering, different gating). Recursively encoded as another
+ *  `ResolvedPrincipalPop` so the schema captures both deterministic
+ *  flow paths uniformly. */
+export interface ResolvedAccelerationWaterfallRef {
+  pop: ResolvedPrincipalPop;
+}
+
+interface PrincipalClauseBase {
+  /** Stable schema ID; NOT the indenture letter. Engine-side comparators
+   *  and per-clause `stepTrace` keys reference this. */
+  id: string;
+}
+
+/** Bundled-backfill of multiple unconditional interest-side items. Ares
+ *  XV's clause (A) is this shape — a single principal-POP clause that
+ *  pays interest items (A) through (H) [taxes, profit, trustee, admin,
+ *  expense reserve, senior mgmt fee, hedge, Class A interest, Class B
+ *  interest] from principal whenever interest is insufficient. */
+export interface UnconditionalBackfillClause extends PrincipalClauseBase {
+  kind: "unconditional_backfill";
+  paysItems: InterestItemId[];
+}
+
+/** Cure clause gated on Coverage Test (OC + IC) failure. Ares XV's
+ *  clauses (B), (E), (H) are this shape. The engine evaluates the
+ *  gating tranche's OC + IC results from the current period and, if
+ *  failing, redeems toward `payTarget` until cure is achieved or
+ *  principal exhausts. */
+export interface CoverageTestCureClause extends PrincipalClauseBase {
+  kind: "coverage_test_cure";
+  gatingTranche: SeniorityRank;
+  payTarget: PayTarget;
+}
+
+/** Cure clause gated on Par Value Test (OC-only) failure. Distinct from
+ *  Coverage Test cure because PV-Test deals (Ares XV E/F) have no IC
+ *  component — the engine evaluates only the OC ratio against trigger.
+ *  Observed in Ares XV; uniformly absent in 3 sampled US-domestic deals.
+ *  Generalization to "European-typical" remains open with sample of one
+ *  (research note §8.3). */
+export interface ParValueTestCureClause extends PrincipalClauseBase {
+  kind: "par_value_test_cure";
+  gatingTranche: SeniorityRank;
+  payTarget: PayTarget;
+}
+
+/** Backfill clause gated on Controlling-Class predicate. Ares XV's
+ *  clauses (C), (D), (F), (G), (I), (J), (L), (M) are this shape — pay
+ *  current or deferred interest of class N from principal only when
+ *  class N is the Controlling Class (equivalent to: every class senior
+ *  to N has paid off). The engine's KI-66 phase-1 partial closure
+ *  (`projection.ts:4150-4195`) implements this for deferred-interest
+ *  buckets; the schema-driven dispatch generalizes to current-interest
+ *  buckets as well. */
+export interface ControllingClassBackfillClause extends PrincipalClauseBase {
+  kind: "controlling_class_backfill";
+  gatingTranche: SeniorityRank;
+  paysItems: InterestItemId[];
+}
+
+/** One-shot redemption gated on an Effective-Date-Rating-Event predicate
+ *  (S&P / Moody's confirmation pending after the Effective Date). Ares
+ *  XV's clause (O) is this shape; the redemption applies to all classes
+ *  pari-passu within the rated stack until the rating confirmation
+ *  resolves. NOT EMITTED by the engine today (KI-03); the schema variant
+ *  exists so the redesign can pick it up. */
+export interface EffectiveDateRatingEventClause extends PrincipalClauseBase {
+  kind: "effective_date_rating_event";
+}
+
+/** Special Redemption — collateral-manager-elected partial redemption,
+ *  funded by a designated `Special Redemption Amount` reserved against
+ *  principal proceeds. Ares XV's clause (P) is this shape; the manager
+ *  may elect on a Special Redemption Date and the engine reads the
+ *  user-input Special Redemption Amount as a modeling assumption. */
+export interface SpecialRedemptionClause extends PrincipalClauseBase {
+  kind: "special_redemption";
+  /** Which proceeds subset funds the redemption. Ares XV: a designated
+   *  `special_redemption_amount` carved from principal proceeds. Other
+   *  managers may use `unscheduled_principal_only`. */
+  proceedsSubset: ProceedsSubset;
+}
+
+/** Reinvestment-discretion clause — non-distributing application of
+ *  principal proceeds to either hold (RP) or reinvest into substitute
+ *  collateral (RP), or a post-RP-carveout subset (Unscheduled + CIO + CRO
+ *  sale proceeds). Ares XV's clause (Q) is this shape; the engine
+ *  consumes the manager-discretion choice via UserAssumptions. */
+export interface ReinvestmentDiscretionClause extends PrincipalClauseBase {
+  kind: "reinvestment_discretion";
+  phase: "rp" | "post_rp_carveout" | "rp_or_post_rp_carveout";
+  options: Array<
+    | "hold"
+    | "reinvest_substitute"
+    | "reinvest_unscheduled_or_credit"
+    | "redeem_on_retention_deficiency"
+  >;
+  /** Subset of principal proceeds the clause applies to (post-RP carveout
+   *  paths typically restrict to Unscheduled + CIO + CRO). Null when the
+   *  clause applies to all principal proceeds. */
+  proceedsSubset: ProceedsSubset | null;
+}
+
+/** Mandatory post-RP redemption — once RP ends, principal proceeds are
+ *  applied sequentially per Note Payment Sequence (or the deal's
+ *  equivalent) without manager discretion. Ares XV's clause (R) is this
+ *  shape. The engine's existing post-RP sequential principal-paydown
+ *  logic implements the sequential variant; the discriminator allows
+ *  alternative shapes (e.g. pro-rata-within-class) to be added when a
+ *  deal surfaces one. */
+export interface MandatoryPostRpRedemptionClause extends PrincipalClauseBase {
+  kind: "mandatory_post_rp_redemption";
+  sequence:
+    | "note_payment_sequence"
+    | "debt_payment_sequence"
+    | "pro_rata_within_class";
+}
+
+/** Post-RP interest-overflow backfill — once RP ends, principal proceeds
+ *  also backfill the interest-waterfall items (W)–(Z) [reinvestment OC
+ *  diversion, sub mgmt fee, trustee/admin overflow]. Ares XV's clause
+ *  (S) is this shape. Distinct from `unconditional_backfill` because
+ *  the gate is post-RP only. */
+export interface PostRpInterestOverflowClause extends PrincipalClauseBase {
+  kind: "post_rp_interest_overflow";
+  paysItems: InterestItemId[];
+}
+
+/** EU risk-retention "Reinvesting Holder" mechanism — when the retention
+ *  holder elects to reinvest its share of principal proceeds back into
+ *  the deal, this clause directs the reinvested amount. Ares XV's
+ *  clause (T) is this shape. Engine reads the reinvesting-holder amount
+ *  via UserAssumptions. */
+export interface ReinvestingHolderClause extends PrincipalClauseBase {
+  kind: "reinvesting_holder";
+}
+
+/** Incentive Collateral Management Fee + VAT — paid from principal only
+ *  when the subnote-IRR threshold has been met (or alternatively, when
+ *  an explicit Incentive Management Fee Threshold is met). Ares XV's
+ *  clause (U) is the subnote-IRR-threshold variant; the
+ *  incentive_management_fee_threshold variant is sample-bounded but
+ *  retained for portability. */
+export interface IncentiveFeeClause extends PrincipalClauseBase {
+  kind: "incentive_fee";
+  trigger: "subnote_irr_threshold" | "incentive_management_fee_threshold";
+  /** The numeric threshold parameter (IRR percentage for subnote_irr
+   *  variant; absolute fee threshold for the explicit variant). The
+   *  engine reads the actual threshold from `ResolvedFees` —
+   *  `thresholdParam` here is a redundant cross-reference for clauses
+   *  whose threshold differs from the deal's main incentive-fee hurdle. */
+  thresholdParam: number;
+}
+
+/** Restructured Asset Acquisition — workout-loan / rescue-financing
+ *  application of principal proceeds. Per Fitch FAQ13 + Carlyle 2024-1
+ *  + S&P "Par Wars 2020". Allows the deal to acquire obligations that
+ *  don't meet the Collateral Obligation criteria (Distressed Exchange,
+ *  Bankruptcy Exchange, Permitted Equity Security, Uptier Priming Debt)
+ *  gated on test-satisfaction and percentage caps. NOT present in
+ *  Ares XV's principal POP today; schema variant added to support
+ *  modern indentures (Carlyle 2024-1 etc.). Engine emits a no-op
+ *  dispatch when this clause appears on a deal whose user inputs do
+ *  not authorize an acquisition. */
+export interface RestructuredAssetAcquisitionClause extends PrincipalClauseBase {
+  kind: "restructured_asset_acquisition";
+  /** Which proceeds bucket can fund the acquisition. Carlyle 2024-1
+   *  permits Principal Proceeds for some sub-categories (Distressed
+   *  Exchange under caps); other deals restrict to non-principal
+   *  sources only. */
+  proceedsSubset: "principal_only" | "interest_or_principal" | "non_principal_only";
+  /** All gating conditions must hold for the acquisition to be
+   *  authorized. Per Carlyle 2024-1: Restructured Asset Target Par
+   *  Balance Condition + OC Test + post-acquisition principal amount
+   *  cap + cumulative-since-Closing cap. */
+  gatingConditions: Array<
+    | "target_par_balance_satisfied"
+    | "oc_test_satisfied"
+    | "post_acquisition_principal_amount_cap"
+    | "cumulative_principal_amount_cap"
+  >;
+  /** Quantitative limits per Carlyle 2024-1: Restructured Assets ≤ 7.5%
+   *  cumulative-since-Closing; Distressed Exchange ≤ 10.0%; Permitted
+   *  Equity ≤ 2.5% outstanding. Per-deal extracted. */
+  caps: {
+    perAcquisition?: number;
+    cumulativeSinceClosing?: number;
+  };
+}
+
+/** Terminal residual clause — distributes principal residual to the
+ *  Subordinated / Income Note holders. Ares XV's clause (V) is this
+ *  shape. Always unconditional terminal: the residual after every
+ *  preceding clause has been satisfied flows to the Subordinated tranche. */
+export interface ResidualToSubordinatedClause extends PrincipalClauseBase {
+  kind: "residual_to_subordinated";
+}
+
+/** Discriminated union of every principal-POP clause variant the schema
+ *  supports. Adding a new clause means adding a variant here AND a
+ *  matching dispatch arm in `projection.ts`'s schema-driven principal-POP
+ *  loop. Resolver blocks if a deal's PPM principal POP contains a clause
+ *  pattern that doesn't fit any variant — silent fallback would silently
+ *  drop the clause from execution. */
+export type ResolvedPrincipalClause =
+  | UnconditionalBackfillClause
+  | CoverageTestCureClause
+  | ParValueTestCureClause
+  | ControllingClassBackfillClause
+  | EffectiveDateRatingEventClause
+  | SpecialRedemptionClause
+  | ReinvestmentDiscretionClause
+  | MandatoryPostRpRedemptionClause
+  | PostRpInterestOverflowClause
+  | ReinvestingHolderClause
+  | IncentiveFeeClause
+  | RestructuredAssetAcquisitionClause
+  | ResidualToSubordinatedClause;
+
+/** Resolved Principal Priority of Payments — schema-driven dispatch
+ *  representation of the deal's principal POP. Replaces the engine's
+ *  uniformly-simplified pro-rata loop with per-clause execution gated
+ *  on per-deal extracted predicates.
+ *
+ *  Resolver emits `severity: "error", blocking: true` when the structured
+ *  principal-POP block is missing or malformed (anti-pattern #3). The
+ *  engine still accepts null for direct synthetic `ProjectionInputs`,
+ *  but production resolved deals must carry this block.
+ *
+ *  Ares XV (Condition 3(c) — clauses (A) through (V), `ppm.json:249-276`)
+ *  maps to 22 ResolvedPrincipalClause entries. Mapping table in
+ *  `web/docs/principal-pop-redesign-research.md` §5. */
+export interface ResolvedPrincipalPop {
+  /** The deal's interest-waterfall item set, with stable IDs that
+   *  backfill clauses reference (rather than indenture letters). */
+  interestWaterfall: ResolvedInterestWaterfallShape;
+  /** Pre-waterfall carve-outs (DDTL/Revolver funding, prior-period
+   *  reinvestment commitments, interest reserve account top-ups). */
+  preWaterfallReservations: ResolvedPreWaterfallReservation[];
+  /** Ordered list of principal-POP clauses, walked in sequence by the
+   *  engine each period. Each clause is gated on its own predicate;
+   *  the engine evaluates the predicate against current period state
+   *  and dispatches to the clause-specific paydown logic when true. */
+  clauses: ResolvedPrincipalClause[];
+  /** How the deal derives its Controlling Class. Verified
+   *  `highest_rank_outstanding` across four indentures; future variants
+   *  add to `ControllingClassRule` without breaking the type. */
+  controllingClass: ControllingClassRule;
+  /** Mode for non-cure redemption clauses (mandatory post-RP, optional,
+   *  special redemption). Ares XV uses `sequential_npss`. */
+  redemptionMode: RedemptionMode;
+  /** Reference to the deal's Acceleration / Enforcement-Event waterfall.
+   *  Recursively another `ResolvedPrincipalPop` because the post-EOD POP
+   *  has the same shape (different ordering, different gating). Null
+   *  when extraction did not capture an acceleration POP — engine falls
+   *  back to its existing post-acceleration handling. */
+  accelerationWaterfall: ResolvedAccelerationWaterfallRef | null;
+  /** PPM provenance (Ares XV: OC pp. 176-179; Condition 3(c)). */
+  citation?: Citation | null;
+}
+
 export interface ResolvedDealData {
   tranches: ResolvedTranche[];
   poolSummary: ResolvedPool;
@@ -482,6 +879,14 @@ export interface ResolvedDealData {
    *  that don't resolve emit a non-blocking warning. Null when no
    *  exclusions OR when the taxonomy is unsupported (deal_specific). */
   excludedIndustryCodes: string[] | null;
+  /** PPM Condition 3(c) Principal Priority of Payments — schema-driven
+   *  dispatch encoding of the deal's principal POP. When non-null, the
+   *  engine walks `clauses` per period and dispatches per the clause's
+   *  gating predicate (Controlling Class, Coverage / Par Value test
+   *  failure, RP boundary, Effective Date Rating Event, etc.). Resolver
+   *  production paths block when this is missing; null remains in the
+   *  type only for legacy fixture / direct synthetic engine inputs. */
+  principalPop: ResolvedPrincipalPop | null;
   preExistingDefaultedPar: number; // par of defaulted loans excluded from loan list
   preExistingDefaultRecovery: number; // market-price recovery for priced defaulted holdings
   unpricedDefaultedPar: number; // par of defaulted holdings without market price (engine applies recoveryPct)
