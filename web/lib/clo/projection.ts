@@ -4978,10 +4978,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // ── 10b. Schema-driven principal POP — pass 2 (post-interest-waterfall)
     //
     // KI-66 schema-driven dispatch. Walks `principalPop.clauses` and
-    // executes clauses whose gating predicate depends on post-interest
-    // state: principal-funded interest backfills (A/C/F/I/L/S), cure-from-
-    // principal (B/E/H/K/N), Special Redemption (P), and Reinvesting
-    // Holder (T). Pass 1 above handled clauses that must run before OC/IC
+    // executes clauses whose gating predicate depends on post-debt-interest
+    // state: principal-funded interest backfills (A/C/F/I/L), cure-from-
+    // principal (B/E/H/K/N), and Special Redemption (P). Pass 1 above
+    // handled clauses that must run before OC/IC
     // measurement — Controlling-Class deferred backfill (D/G/J/M) and
     // post-RP NPSS principal redemption (R).
     //
@@ -5043,17 +5043,12 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
             // Pass 1 handles this before OC/IC so tests see post-paydown debt.
             break;
           case "post_rp_interest_overflow":
-            if (!inRP) backfillInterestItemsFromPrincipal(clause.paysItems);
+            // Clause S backfills downstream interest-waterfall items (W-Z),
+            // so it runs after the sub-fee and trustee/admin overflow blocks.
             break;
           case "reinvesting_holder":
-            if (reinvestingHolderRedemptionAmount > 0.01) {
-              payPrincipalByRank(
-                reinvestingHolderRedemptionAmount,
-                Number.NEGATIVE_INFINITY,
-                Number.POSITIVE_INFINITY,
-                false,
-              );
-            }
+            // Clause T is ordered after late clause S, so it runs with that
+            // late pass once W-Z shortfalls have had first claim.
             break;
           case "incentive_fee":
             // Existing normal-mode step U solver consumes principal below.
@@ -5135,7 +5130,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // the requested `subFeeAmount` overstates payment under stress when
     // `availableInterest` is exhausted before reaching this step.
     const subFeeAmount = beginningPar * (subFeePct / 100) * dayFracActual;
-    const subFeePaid = Math.min(subFeeAmount, availableInterest);
+    let subFeePaid = Math.min(subFeeAmount, availableInterest);
     availableInterest -= subFeePaid;
 
     // PPM Steps (Y) trustee-overflow + (Z) admin-overflow.
@@ -5159,6 +5154,61 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         adminOverflowPaid = adminOverflowRequested * overflowRatio;
         availableInterest -= overflowPayable;
       }
+    }
+
+    // PPM Condition 3(c) clauses S/T — post-RP principal proceeds first
+    // backfill downstream interest-waterfall items (W)-(Z) after those
+    // interest-side steps have had their ordinary interest-proceeds pass,
+    // then apply any Reinvesting Holder amount. This is deliberately later
+    // than the A/C/F/I/L current-interest backfill pass: sub-fee and
+    // overflow shortfalls are not known until this point.
+    if (principalPop && remainingPrelim > 0.01) {
+      const applyPrincipalToLateInterestShortfall = (amount: number): number => {
+        const paid = Math.min(Math.max(0, amount), remainingPrelim);
+        remainingPrelim -= paid;
+        return paid;
+      };
+      for (const clause of principalPop.clauses) {
+        if (remainingPrelim <= 0.01) break;
+        if (clause.kind === "post_rp_interest_overflow" && !inRP) {
+          for (const id of clause.paysItems) {
+            if (remainingPrelim <= 0.01) break;
+            const item = interestItemById?.get(id);
+            if (!item) continue;
+            switch (item.kind) {
+              case "sub_mgmt_fee":
+                subFeePaid += applyPrincipalToLateInterestShortfall(subFeeAmount - subFeePaid);
+                break;
+              case "trustee_admin":
+                if (id.includes("trustee_overflow")) {
+                  trusteeOverflowPaid += applyPrincipalToLateInterestShortfall(
+                    trusteeOverflowRequested - trusteeOverflowPaid,
+                  );
+                } else if (id.includes("admin_overflow")) {
+                  adminOverflowPaid += applyPrincipalToLateInterestShortfall(
+                    adminOverflowRequested - adminOverflowPaid,
+                  );
+                }
+                break;
+              case "reinv_oc_diversion":
+                // Step W is a Reinvestment-Period diversion. Clause S only
+                // applies post-RP for Ares XV, so there is no post-RP target to
+                // backfill in this engine state.
+                break;
+              default:
+                break;
+            }
+          }
+        } else if (clause.kind === "reinvesting_holder" && reinvestingHolderRedemptionAmount > 0.01) {
+          payPrincipalByRank(
+            reinvestingHolderRedemptionAmount,
+            Number.NEGATIVE_INFINITY,
+            Number.POSITIVE_INFINITY,
+            false,
+          );
+        }
+      }
+      priorPeriodEndPrincipalCash = remainingPrelim;
     }
 
     // PPM Step BB: Incentive management fee — % of residual when equity IRR > hurdle.

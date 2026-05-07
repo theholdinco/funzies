@@ -47,6 +47,7 @@ const schemaPop = (clauses: ResolvedPrincipalPop["clauses"]): ResolvedPrincipalP
     items: [
       { id: "class_a_current_interest", kind: "tranche_current_interest", tranche: 1 },
       { id: "class_c_deferred_interest", kind: "tranche_deferred_interest", tranche: 3 },
+      { id: "sub_mgmt_fee", kind: "sub_mgmt_fee" },
     ],
   },
   preWaterfallReservations: [],
@@ -339,5 +340,78 @@ describe("KI-66 — Controlling-Class gating on principal POP deferred paydown",
     expect(c?.paid).toBeLessThan(1_010_000);
     expect(c?.endBalance).toBeGreaterThan(3_900_000);
     expect(p1.stepTrace.deferredPaydownByTranche["C"]).toBeGreaterThan(990_000);
+  });
+
+  it("schema POP clause (S): post-RP principal backfills sub-management fee after the interest step runs short", () => {
+    const baseInputs = {
+      ...minimalInterestSetup,
+      reinvestmentPeriodEnd: "2025-01-01",
+      initialPrincipalCash: 2_000_000,
+      wacSpreadBps: 0,
+      baseRatePct: 0,
+      baseRateFloorPct: 0,
+      seniorFeePct: 0,
+      subFeePct: 1,
+      tranches: [
+        { className: "A", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "Sub", currentBalance: 5_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
+      ],
+    };
+    const withoutS = runProjection(makeInputs({
+      ...baseInputs,
+      principalPop: schemaPop([{ id: "V", kind: "residual_to_subordinated" }]),
+    })).periods[0];
+    const inputs = makeInputs({
+      ...baseInputs,
+      principalPop: schemaPop([
+        { id: "S", kind: "post_rp_interest_overflow", paysItems: ["sub_mgmt_fee"] },
+        { id: "V", kind: "residual_to_subordinated" },
+      ]),
+    });
+
+    const p1 = runProjection(inputs).periods[0];
+    const a = p1.tranchePrincipal.find((t) => t.className === "A");
+
+    expect(p1.interestCollected).toBeLessThan(1_000);
+    expect(p1.stepTrace.subMgmtFeePaid).toBeGreaterThan(20_000);
+    expect(p1.stepTrace.subMgmtFeePaid).toBeLessThan(30_000);
+    expect(a?.paid).toBe(0);
+    expect(withoutS.stepTrace.subMgmtFeePaid).toBeLessThan(1_000);
+    expect(withoutS.stepTrace.equityFromPrincipal - p1.stepTrace.equityFromPrincipal)
+      .toBeCloseTo(p1.stepTrace.subMgmtFeePaid - withoutS.stepTrace.subMgmtFeePaid, 6);
+  });
+
+  it("schema POP clauses (S)/(T): late overflow backfill has priority over Reinvesting Holder amount", () => {
+    const baseInputs = {
+      ...minimalInterestSetup,
+      reinvestmentPeriodEnd: "2025-01-01",
+      initialPrincipalCash: 40_000,
+      cprPct: 0,
+      wacSpreadBps: 0,
+      baseRatePct: 0,
+      baseRateFloorPct: 0,
+      seniorFeePct: 0,
+      subFeePct: 1,
+      tranches: [
+        { className: "A", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "Sub", currentBalance: 5_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
+      ],
+      reinvestingHolderRedemptionAmount: 40_000,
+    };
+    const p1 = runProjection(makeInputs({
+      ...baseInputs,
+      principalPop: schemaPop([
+        { id: "S", kind: "post_rp_interest_overflow", paysItems: ["sub_mgmt_fee"] },
+        { id: "T", kind: "reinvesting_holder" },
+        { id: "V", kind: "residual_to_subordinated" },
+      ]),
+    })).periods[0];
+    const a = p1.tranchePrincipal.find((t) => t.className === "A");
+
+    expect(p1.stepTrace.subMgmtFeePaid).toBeGreaterThan(20_000);
+    expect(p1.stepTrace.subMgmtFeePaid).toBeLessThan(30_000);
+    expect(a?.paid).toBeGreaterThan(10_000);
+    expect(a?.paid).toBeLessThan(20_000);
+    expect(p1.stepTrace.subMgmtFeePaid + (a?.paid ?? 0)).toBeCloseTo(40_000 + p1.interestCollected, 6);
   });
 });
