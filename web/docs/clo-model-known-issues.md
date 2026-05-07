@@ -33,6 +33,7 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-38 — FX / multi-currency unmodeled; `native_currency` parsed and discarded](#ki-38)
 - [KI-45 — Senior Expenses Cap carryforward seed not populated; mid-life projections start with empty buffer](#ki-45)
 - [KI-46 — DDTL draw event inflates forward OC numerator; impliedOcAdjustment frozen at T=0 calibration](#ki-46) — **BLOCKED ON DATA ACQUISITION** (deal with active DDTL draws + non-zero `impliedOcAdjustment`)
+- [KI-66 — Principal POP backfill conditionality unmodeled (engine runs uniformly-simplified loop)](#ki-66) — **TENTATIVE** (cross-reference verification complete; non-Ares PPM ingestion + 1 more European 2.0 indenture remain as portability residuals)
 
 ### Deferred — intentionally not modeled, magnitude known
 - [KI-02 — Step (D) Expense Reserve top-up](#ki-02)
@@ -40,7 +41,6 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-04 — Frequency Switch mid-projection cadence/rate switch (C4 Phase 3)](#ki-04)
 - [KI-05 — Supplemental Reserve Account (step BB)](#ki-05)
 - [KI-06 — Defaulted Hedge Termination (step AA)](#ki-06)
-- [KI-07 — Class C/D/E/F current + deferred interest bundled in step map](#ki-07)
 
 ### Cascades — residuals that close as upstream closes
 
@@ -128,30 +128,6 @@ These were originally tracked as "A10" and "A11" in the 2026-04-30 audit. They a
 **Deferral rationale:** Contingent on counterparty default; model would need hedge-counterparty state which the upstream data pipeline doesn't track.
 **Path to close:** Out of scope without hedge counterparty data pipeline.
 **Test:** No active marker — activates only on counterparty default. `defaultedHedgeTermination` in the N1 harness table (Infinity tolerance) surfaces the magnitude if it ever triggers.
-
----
-
-<a id="ki-07"></a>
-### [KI-07] Class C/D/E/F deferred-balance pay-down may commingle with current interest under stress (currently latent on Euro XV)
-
-**PPM reference:** PPM step codes (J) (current interest) and (K) (deferred-interest accrual / pay-down) for Class C; (M)/(N) for D; (P)/(Q) for E; (S)/(T) for F.
-
-**Current engine behavior — corrected (was previously framed as "bundled in step map", which is contradicted by the code):** Engine emits step (J) and step (K) as **separate** fields:
-- `classC_current` ← `PeriodResult.trancheInterest[].paid` (`backtest-harness.ts:303`, sourced from `projection.ts:2156`).
-- `classC_deferred` ← `stepTrace.deferredAccrualByTranche` (`backtest-harness.ts:309`, sourced from `projection.ts:295, 1418-1419, 2194`).
-- `ppm-step-map.ts:157-167` maps each bucket to a single PPM step code (`["j"]`, `["k"]`, etc.), not a bundled list.
-
-The genuine latent risk this entry tracks: under deferred-interest stress, deferred-balance **pay-downs** (cash flowing OUT of `deferredBalances` back to noteholders) are routed via `deferredPay = Math.min(deferredBalances[t.className], remainingPrelim)` at `projection.ts:1956-1957`, and this paid-out amount may not surface as a separately-labelled PPM-step bucket — it is added back to the same `trancheInterest[].paid` field that carries current interest. Under stress, a partner reading the trace sees a `classC_current` row that combines (i) actual step (J) current interest and (ii) step (K) deferred pay-down, with no separation. This is the actual bundling concern.
-
-**PPM-correct behavior:** Separate step lines for current interest (J/M/P/S) and deferred-balance accrual / pay-down (K/N/Q/T). Engine should emit a `stepTrace.classX_deferredPaydown` row distinct from `classX_current` whenever residual interest pays down deferred balance.
-
-**Quantitative magnitude:** 0 drift on Euro XV Q1 2026 (no deferred-balance state to pay down). Under stress where Class C/D/E/F deferred balances accumulate and then a high-interest period flushes some of that deferred back, the bundled output cannot be cleanly compared against split trustee lines.
-
-**Deferral rationale:** No deferred state in current data → no observable bundling on Euro XV. Splitting requires extending `stepTrace` with deferred-paydown rows distinct from current-interest rows.
-
-**Path to close:** After B1+B2 (compositional EoD + post-acceleration) land — engine then carries non-trivial deferred-balance state across periods (T=0 deferred-interest seeding for non-compounding PPMs is wired via `ResolvedTranche.deferredInterestBalance` and the conditional seed at `projection.ts`). Add `stepTrace.classX_deferredPaydown` for X ∈ {C, D, E, F}, populated from `deferredPay` at `projection.ts:1956-1957`. Update `backtest-harness.ts` and `ppm-step-map.ts` mappings to surface the new field as PPM step (K)/(N)/(Q)/(T). Update the trace renderer to display the row.
-
-**Test:** `n1-correctness.test.ts > "green buckets" > Class C/D/E/F deferred interest is zero (no stress)`. No stress case exists on Euro XV; under deferred-interest stress this assertion will need to move into a `failsWithMagnitude` marker covering the new `classX_deferredPaydown` row.
 
 ---
 
@@ -498,5 +474,41 @@ The fix shape is straightforward. What's blocked is *verifying* the fix produces
 5. Update the inline comment at `resolver.ts:2899-2907` to describe the closure rather than the open question.
 
 **Test:** `web/lib/clo/__tests__/projection-fixed-rate-ddtl.test.ts > KI-46-ddtlPostDrawOcInflation`. Synthetic fixture (€210M pool, €10M DDTL drawing fully at q=4, `impliedOcAdjustment = €1M`, default tranches) pinning the OC ratio jump > 10 points at the draw quarter. Marker flips when the fix lands.
+
+---
+
+<a id="ki-66"></a>
+### [KI-66] Principal POP backfill conditionality unmodeled (engine runs uniformly-simplified loop)
+
+**Status (initial filing, 2026-05-06):** TENTATIVE — design grounded in public-corpus survey of four CLO indentures (Ares XV, Carlyle DL 2024-1, Golub 2018, Barings 2019) plus Fitch "U.S. CLO Indenture Features Explained" (Jun 2023) + S&P "Par Wars: The Phantom Limits" (Feb 2020). Cross-reference verification completed 2026-05-06 (see `web/docs/principal-pop-redesign-research.md` §11). Schema has known portability surfaces unexercised by Ares XV (see Quantitative magnitude). Validation against ≥1 non-Ares PPM ingestion + 1 additional European 2.0 indenture read are the residual closure steps.
+
+**PPM reference:** Ares XV OC Condition 3(c), Principal Priority of Payments, clauses (A) through (V). Mapped in `ppm.json:249-276`.
+
+**Current engine behavior:** `web/lib/clo/projection.ts:4096-4118` runs a uniformly-simplified principal POP: iterates ranks ascending, for each rank pays accumulated deferred-balance pro-rata then trancheBalance pro-rata. No gating predicates applied — the engine ignores the 14 conditional backfill clauses (Controlling Class gating on (C)-(D) (F)-(G) (I)-(J) (L)-(M); Coverage Tests gating on (B), (E), (H); Par Value Tests gating on (K), (N); Effective Date Rating Event on (O); RP-vs-post-RP dispatch on (Q)/(R)/(S)) that the PPM specifies. The `resolved.principalPop` field does not exist — the resolver discards the principal-POP block during resolution despite the data being present in `ppm.json`.
+
+This is exactly the silent-fallback shape anti-pattern #3 forbids: extracted PPM data is silently dropped, and the engine substitutes a per-deal-invariant simplification.
+
+**PPM-correct behavior:** Engine consumes a per-deal `PrincipalPop` discriminated union (see `web/docs/principal-pop-redesign-research.md` §4) extracted from the deal's PPM. For each period's principal-POP execution, the engine walks the ordered clauses, evaluates each clause's gating predicate against current period state (Controlling Class derivation, OC/IC/PV test results, RP boundary), and dispatches to clause-specific paydown logic when the predicate evaluates true. Per-clause amounts emit to `stepTrace` for partner-facing trace reconstruction.
+
+**Quantitative magnitude:** Zero on Ares XV today (no PIK on any deferrable class, no Effective Date events, no Coverage Test failures requiring principal-side cure backfill). Latent in three modes:
+- Stress on Ares XV (PIK accrues + principal arrives + junior class isn't Controlling → engine pays PIK from principal regardless of Controlling Class gate, which Ares XV's clause (D) forbids)
+- Late-life Ares XV (after Class A+B paid off, the gating becomes load-bearing)
+- Any non-Ares deal (different clause structure, possibly different predicates)
+
+The synthetic marker pins the engine's current uniformly-simplified behavior on a fixture that exercises the Controlling-Class gating gap.
+
+**Deferral rationale:** Tentative until cross-reference verification completes the European-2.0 bifurcation labeling and a non-Ares PPM is ingested for portability validation. Engine work is bounded (7 sequential steps; see research note §7) but rides on the schema being correct, which the 4-deal sample size doesn't fully validate. Two §6 verification targets remain open and are tracked as residuals in the research note's §8.
+
+**Path to close:** See `web/docs/principal-pop-redesign-research.md` §6 for verification targets and §7 for the conceptual closure sequence. Six sequential steps after verification:
+1. Encode `PrincipalPop` schema in `web/lib/clo/resolver-types.ts` (sibling to `LongDatedValuationRule`).
+2. Extend `ppm.json` schema with `principal_priority_of_payments` block; populate Ares XV from a fresh OC read (clauses A-V mapped per research note §5).
+3. Resolver extraction + blocking gate (`severity: "error", blocking: true` when missing on non-greenfield deal).
+4. Engine dispatch refactor at `projection.ts:4096-4118` — replace uniform pro-rata loop with clause-by-clause walk.
+5. Re-baseline cascade tests — `ki27-deferred-interest-seed.test.ts` case 1 (€5M Class E PIK drift), `b1-compositional-eod.test.ts`, `b2-post-acceleration.test.ts`, `projection-cure.test.ts`. Each shifted assertion gets re-baselined to the new PPM-correct value.
+6. Integrate with KI-07's `deferredPaydownByTranche` field — the new dispatch populates the field at gated decrement sites.
+
+Validation against ≥1 non-Ares PPM ingested in production + 1 additional European 2.0 indenture read remain tentative residuals (KI-29 shape).
+
+**Test:** `web/lib/clo/__tests__/ki66-principal-pop-conditionality.test.ts > KI-66-uniformLoop`. Synthetic fixture exercising Class C PIK accumulation (period 1 starves interest → PIK accrues) + principal arrival in period 2 while Class A is outstanding → asserts engine currently pays Class C deferred from principal POP (engine WRONG per PPM clause (D) Controlling-Class gate). Marker pins the engine's uniformly-simplified behavior; assertion flips when the schema-driven dispatch lands.
 
 ---

@@ -297,7 +297,13 @@ function extractEngineBuckets(
   const trancheInterestByClass = new Map<string, number>();
   for (const ti of p.trancheInterest) trancheInterestByClass.set(ti.className, ti.paid);
 
-  const deferredByClass = p.stepTrace.deferredAccrualByTranche;
+  // KI-07 closure: source from deferredPaydownByTranche (cash-paid, mirrors
+  // trustee step (K) semantics) rather than deferredAccrualByTranche (PIK
+  // accrual = new debt added, NOT a cash event and NOT comparable to step
+  // (K)). Both fields are zero on Euro XV today (no deferred state) so the
+  // re-route is bit-identical on the current N1 harness; under stress it's
+  // load-bearing.
+  const deferredByClass = p.stepTrace.deferredPaydownByTranche;
 
   // Build tier groups: non-amortising debt tranches, grouped by unique
   // seniorityRank, sorted ascending. Pari-passu pairs share a tier.

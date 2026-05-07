@@ -576,7 +576,16 @@ export interface ProjectionInputs {
  *    - equityFromInterest     → PPM step (DD) (interest residual to sub notes)
  *    - equityFromPrincipal    → Principal waterfall residual to sub notes
  *    - classXAmortFromInterest → PPM step (G) (Class X amort paid from interest pool, pari-passu with Class A interest)
- *    - deferredAccrualByTranche → PPM steps (K)/(N)/(Q)/(T) PIK additions this period
+ *    - deferredAccrualByTranche → engine-internal: PIK additions this period
+ *      (interest shortfall added to deferredBalances). NOT a PPM waterfall
+ *      step amount — trustee step (K)/(N)/(Q)/(T) maps to
+ *      deferredPaydownByTranche below.
+ *    - deferredPaydownByTranche → PPM steps (K)/(N)/(Q)/(T) cash paid OUT
+ *      against accumulated deferredBalances this period. Three populate
+ *      sites: vanilla pre-acceleration interest waterfall step (K) (between
+ *      current interest and cure check); cure-mode interest paydown when
+ *      cure target is a deferrable rank; principal POP deferred-then-
+ *      principal sequencing.
  */
 export interface PeriodStepTrace {
   /** PPM step (A)(i) Issuer taxes. Engine emits zero pre-fix; post-fix
@@ -655,6 +664,29 @@ export interface PeriodStepTrace {
    *  unsound. Zero on deals with no `isAmortising: true` tranche. */
   classXAmortFromInterest: number;
   deferredAccrualByTranche: Record<string, number>;
+  /** PPM steps (K)/(N)/(Q)/(T) — cash paid OUT against accumulated
+   *  deferredBalances this period, by tranche. Mirror of
+   *  deferredAccrualByTranche (which tracks PIK growth, not cash flow).
+   *  Three populate sites: (1) vanilla pre-acceleration interest waterfall
+   *  step (K)/(N)/(Q)/(T) between current-interest and cure check;
+   *  (2) cure-mode interest paydown when the cure target is a deferrable
+   *  rank; (3) principal POP deferred-then-principal sequencing. Zero on
+   *  deals with no deferred state. The harness's `classC_deferred` /
+   *  `classD_deferred` etc. buckets source from THIS field, not from
+   *  deferredAccrualByTranche — comparing against PPM step (K) requires
+   *  cash-paid (here) rather than PIK-accrued (the accrual sibling).
+   *
+   *  Bundling note: trustee step (K) reports interest-side deferred-interest
+   *  payment specifically (per Ares XV OC Condition 3(c) interest POP).
+   *  Principal-side deferred backfill (Ares XV principal POP clauses (D),
+   *  (G), (J), (M)) is reported separately by the trustee. This field
+   *  bundles both engine-side sources, so a strict harness comparison
+   *  against trustee step (K) under stress where principal-POP deferred-
+   *  paydown > 0 will over-state. Magnitude on Euro XV today: zero on
+   *  every site, so the bundling is invisible. Field-split (interest-side
+   *  vs principal-side) deferred to KI-66 closure (the principal-POP
+   *  redesign), which integrates with this field per its §6 path-to-close. */
+  deferredPaydownByTranche: Record<string, number>;
   /** C1 — Reinvestment amount blocked this period because the purchase would
    *  have caused the Moody's WARF trigger to breach. Zero when no enforcement
    *  is active (no trigger set) or the purchase fit within the trigger.
@@ -3025,6 +3057,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     for (const t of debtTranches) _amortFromInterestByTranche[t.className] = 0;
     const _stepTrace_deferredAccrualByTranche: Record<string, number> = {};
     for (const t of debtTranches) _stepTrace_deferredAccrualByTranche[t.className] = 0;
+    const _stepTrace_deferredPaydownByTranche: Record<string, number> = {};
+    for (const t of debtTranches) _stepTrace_deferredPaydownByTranche[t.className] = 0;
 
     // Per-loan beginning par for interest calc (post-draw, so newly-funded DDTLs are included)
     const loanBeginningPar = hasLoans ? loanStates.map((l) => l.survivingPar) : [];
@@ -4032,6 +4066,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           // does NOT PIK post-breach (PPM 10(b)); unpaid interest becomes a
           // shortfall captured in accelResult.perPeriodInterestShortfall instead.
           deferredAccrualByTranche: {},
+          // Same rationale: no deferred-paydown under acceleration. Sequential
+          // P+I paydown by seniority absorbs all rated-debt cash; the post-
+          // accel executor doesn't run the deferred-then-principal phase.
+          deferredPaydownByTranche: {},
           // Acceleration skips the normal-mode reinvestment decision entirely
           // (sequential P+I paydown by seniority); no C1 enforcement applies.
           reinvestmentBlockedCompliance: 0,
@@ -4104,6 +4142,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         const share = groupDeferred > 0 ? deferredPaidGroup * (deferredBalances[t.className] / groupDeferred) : 0;
         deferredShare[t.className] = share;
         deferredBalances[t.className] -= share;
+        _stepTrace_deferredPaydownByTranche[t.className] =
+          (_stepTrace_deferredPaydownByTranche[t.className] ?? 0) + share;
       }
       // Phase 2: principal — pro-rata across group by trancheBalance.
       const groupPrincipal = group.reduce((s, t) => s + trancheBalances[t.className], 0);
@@ -4492,6 +4532,37 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         }
       }
 
+      // PPM step (K)/(N)/(Q)/(T) — vanilla pre-acceleration deferred-interest
+      // payment. After current-interest (J)/(M)/(P)/(S) is paid for this rank's
+      // group, before the cure check (L)/(O)/(R)/(U), pay accumulated deferred
+      // PIK from any remaining availableInterest. Applies only to deferrable
+      // ranks (Class C/D/E/F per Ares XV's deferral_permitted=true tranches);
+      // non-deferrable ranks have deferredBalances == 0 by construction
+      // (accrueShortfall routes their shortfall to interestShortfall instead),
+      // so the loop is a no-op for Class A / B.
+      //
+      // Pari-passu split: when multiple deferrable tranches share a rank
+      // (rare structurally, but supported), the available paydown distributes
+      // pro-rata by current deferredBalance. Same shape as the other two
+      // decrement sites (principal POP at lines 4125-4137, cure-mode at
+      // lines 4651-4660).
+      if (availableInterest > 0) {
+        const deferrablesInGroup = group.filter((t) => t.isDeferrable);
+        const groupDeferredBalance = deferrablesInGroup.reduce(
+          (s, t) => s + deferredBalances[t.className], 0
+        );
+        if (groupDeferredBalance > 0) {
+          const groupDeferredPaid = Math.min(groupDeferredBalance, availableInterest);
+          availableInterest -= groupDeferredPaid;
+          for (const t of deferrablesInGroup) {
+            const share = groupDeferredPaid * (deferredBalances[t.className] / groupDeferredBalance);
+            deferredBalances[t.className] -= share;
+            _stepTrace_deferredPaydownByTranche[t.className] =
+              (_stepTrace_deferredPaydownByTranche[t.className] ?? 0) + share;
+          }
+        }
+      }
+
       // Diversion check at end of rank group — all members at this rank are
       // paid before any cure fires. Replaces the per-iteration
       // `atRankBoundary` check from the sequential form.
@@ -4626,6 +4697,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
                 const share = groupDeferred > 0 ? deferredPaidGroup * (deferredBalances[t.className] / groupDeferred) : 0;
                 deferredBalances[t.className] -= share;
                 principalPaid[t.className] += share;
+                _stepTrace_deferredPaydownByTranche[t.className] =
+                  (_stepTrace_deferredPaydownByTranche[t.className] ?? 0) + share;
               }
               const groupPrincipal = cgroup.reduce((s, t) => s + trancheBalances[t.className], 0);
               const principalPaidGroup = Math.min(groupPrincipal, remaining);
@@ -4896,6 +4969,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         equityFromPrincipal,
         classXAmortFromInterest: _stepTrace_classXAmortFromInterest,
         deferredAccrualByTranche: _stepTrace_deferredAccrualByTranche,
+        deferredPaydownByTranche: _stepTrace_deferredPaydownByTranche,
         reinvestmentBlockedCompliance,
         expenseReserveDraw,
       },
