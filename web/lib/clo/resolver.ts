@@ -936,19 +936,13 @@ function resolveLongDatedObligation(
 // fields being present (e.g. `controlling_class_backfill` requires
 // `gatingTranche` + `paysItems`; missing either silently breaks dispatch).
 //
-// Transitional gate (KI-66 path-to-close):
-//   - Returns null when the structured block is absent AND emits a
-//     non-blocking advisory warning. Engine falls back to the
-//     uniformly-simplified pro-rata loop.
+// Blocking gate (KI-66 closure):
 //   - Returns null AND emits `severity: "error", blocking: true` when the
-//     block is present but malformed (clause variant fails validation).
-//     Silent fallback would drop the clause from execution — anti-pattern
-//     #3 forbids.
-//   - Step 7 of the closure path (web/docs/principal-pop-redesign-research.md
-//     §7) flips the absent-block warning to blocking once the resolver
-//     covers all ingested deals. Until then, missing-block is a
-//     non-blocking back-compat warning (the engine fallback is
-//     deal-correct on Ares XV today).
+//     structured block is absent or malformed. Engine still has a legacy
+//     null-`principalPop` fallback for hand-built synthetic ProjectionInputs,
+//     but production resolver paths must not silently degrade to it.
+//     Silent fallback would drop principal-POP clauses from execution —
+//     anti-pattern #3 forbids.
 
 /** Validate a single clause variant against the resolver-types
  *  discriminated union. Returns the typed clause on success, null on
@@ -1108,22 +1102,17 @@ function resolvePrincipalPop(
 ): ResolvedPrincipalPop | null {
   const block = constraints.principalPriorityOfPayments;
   if (!block) {
-    // Step 7 of the KI-66 closure path flips this to blocking once the
-    // resolver covers all ingested deals (see KI-66 in the ledger).
-    // Today: non-blocking back-compat warning. Engine falls back to the
-    // uniformly-simplified pro-rata loop.
     warnings.push({
       field: "principalPop",
       message:
         "PPM Principal Priority of Payments structured block is not extracted " +
         "(ppm.json:section_6_waterfall.principal_priority_of_payments.structured). " +
-        "Engine is running the uniformly-simplified pro-rata principal-POP loop, " +
+        "The engine would otherwise run the legacy uniformly-simplified principal-POP loop, " +
         "which ignores Controlling-Class / Coverage-Test / Par-Value-Test / RP-boundary " +
-        "gating predicates. Latent on Ares XV today (zero-PIK state) but catastrophic " +
-        "under stress or on a non-Ares deal — see KI-66 in clo-model-known-issues.md. " +
+        "gating predicates. This is a blocking extraction failure under KI-66 — " +
         "Re-extract with the structured principal-POP block populated.",
-      severity: "warn",
-      blocking: false,
+      severity: "error",
+      blocking: true,
     });
     return null;
   }

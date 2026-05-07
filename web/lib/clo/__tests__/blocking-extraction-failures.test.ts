@@ -259,6 +259,20 @@ describe("Pattern A (silent fallback to common default)", () => {
     expectGateThrows(resolved, warnings);
   });
 
+  it("principalPop — structured Principal Priority of Payments block missing → blocking", () => {
+    // KI-66 closure: the principal POP is now executable structured data.
+    // A production resolver path that lacks it would silently fall back to
+    // the engine's legacy uniform principal loop and drop conditional
+    // Controlling-Class / Coverage-Test / Par-Value-Test gates.
+    const raw = loadRaw();
+    delete (raw.constraints as any).principalPriorityOfPayments;
+    const { resolved, warnings } = runResolver(raw);
+    const w = warnings.find((w) => w.field === "principalPop");
+    expectBlockingError(w, "principalPop");
+    expect(resolved.principalPop).toBeNull();
+    expectGateThrows(resolved, warnings);
+  });
+
   it("hedgeCostBps (resolver.ts:728) — hedge fee row present but rate unparseable → blocking", () => {
     // KI-31 closure (Signal 2). When a /hedge|swap/i fee row is extracted
     // but the rate is unparseable ("per agreement", null, etc.), silent

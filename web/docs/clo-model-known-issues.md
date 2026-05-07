@@ -33,7 +33,7 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-38 — FX / multi-currency unmodeled; `native_currency` parsed and discarded](#ki-38)
 - [KI-45 — Senior Expenses Cap carryforward seed not populated; mid-life projections start with empty buffer](#ki-45)
 - [KI-46 — DDTL draw event inflates forward OC numerator; impliedOcAdjustment frozen at T=0 calibration](#ki-46) — **BLOCKED ON DATA ACQUISITION** (deal with active DDTL draws + non-zero `impliedOcAdjustment`)
-- [KI-66 — Principal POP backfill conditionality unmodeled (PARTIAL: schema-driven Ares XV dispatch shipped; non-Ares validation + event-driven clauses remain)](#ki-66) — **PARTIALLY CLOSED** (structured Ares XV resolver/engine path shipped 2026-05-07; missing-structured-POP resolver gate remains transitional for legacy fixtures)
+- [KI-66 — Principal POP backfill conditionality unmodeled (PARTIAL: schema-driven Ares XV dispatch + blocking gate shipped; non-Ares validation + event-driven clauses remain)](#ki-66) — **PARTIALLY CLOSED** (structured Ares XV resolver/engine path shipped 2026-05-07; missing structured principal POP now blocks production resolver paths)
 
 ### Deferred — intentionally not modeled, magnitude known
 - [KI-02 — Step (D) Expense Reserve top-up](#ki-02)
@@ -480,7 +480,7 @@ The fix shape is straightforward. What's blocked is *verifying* the fix produces
 <a id="ki-66"></a>
 ### [KI-66] Principal POP backfill conditionality unmodeled — **PARTIALLY CLOSED (schema-driven Ares XV dispatch shipped 2026-05-07)**
 
-**Status (2026-05-07):** Schema-driven principal-POP extraction and Ares XV engine dispatch shipped. The resolver now exposes `ResolvedDealData.principalPop`; the projection engine walks structured clauses in two passes: pass 1 before OC/IC measurement for Controlling-Class deferred backfill and mandatory post-RP redemption, then pass 2 after the interest waterfall for interest-side backfills, cure-from-principal, Special Redemption, post-RP interest overflow, Reinvesting Holder, and residual/no-op/event-driven arms. The legacy/null-`principalPop` fallback remains during the resolver-coverage transition.
+**Status (2026-05-07):** Schema-driven principal-POP extraction and Ares XV engine dispatch shipped. The resolver now exposes `ResolvedDealData.principalPop`; the projection engine walks structured clauses in two passes: pass 1 before OC/IC measurement for Controlling-Class deferred backfill and mandatory post-RP redemption, then pass 2 after the interest waterfall for interest-side backfills, cure-from-principal, Special Redemption, post-RP interest overflow, Reinvesting Holder, and residual/no-op/event-driven arms. Missing structured principal POP now emits `severity:"error", blocking:true` on production resolver paths; the engine's null-`principalPop` fallback remains only for direct synthetic `ProjectionInputs`.
 
 **What shipped:**
 
@@ -493,6 +493,7 @@ The fix shape is straightforward. What's blocked is *verifying* the fix produces
    - "PPM Condition 3(c) clauses (D)/(G)/(J)/(M)": same fixture with multiple deferrable ranks (C and D). Confirms gating applies uniformly.
    - "schema POP clause (P)": Special Redemption reserve survives RP reinvestment and redeems notes in pass 2.
    - "schema POP clause (A)": principal proceeds backfill unpaid current interest without redeeming principal.
+6. **Blocking extraction gate:** `web/lib/clo/__tests__/blocking-extraction-failures.test.ts` pins missing `principalPriorityOfPayments` as a blocking `principalPop` warning.
 
 **Partner-visible behavior on Euro XV today: zero impact under base case.** No PIK state, no Coverage/PV cure failure, no Special Redemption/Reinvesting Holder election, and no Effective Date Rating Event on current Euro XV. The change activates under stress or explicit user election.
 
@@ -502,8 +503,7 @@ The fix shape is straightforward. What's blocked is *verifying* the fix produces
 
 - **Effective Date Rating Event redemption** (clause (O)): schema arm is present but no rating-event state input exists; remains equivalent to KI-03 and is permanently inactive for current Euro XV.
 - **Restructured Asset Acquisition** (workout-loan / rescue-financing path identified in cross-reference §11.6): schema arm exists for portability, but no acquisition-authorization user input or per-deal cap-state engine path exists.
-- **Non-Ares portability:** the schema was verified against a small sample. At least one non-Ares production PPM should be ingested and round-tripped before removing the compatibility fallback.
-- **Resolver missing-block gate:** absent structured principal POP still emits a non-blocking warning and engine fallback. Flipping that to `blocking: true` is the remaining closure gate once legacy fixtures and ingested deals all carry the structured block.
+- **Non-Ares portability:** the schema was verified against a small sample. At least one non-Ares production PPM should be ingested and round-tripped before treating the schema as fully portable.
 
 Each residual is zero on current Euro XV base case.
 
@@ -511,7 +511,7 @@ Each residual is zero on current Euro XV base case.
 
 1. **Validation against ≥1 non-Ares PPM ingested in production** — KI-29-shape portability checkpoint. The Controlling-Class gating's hardcoded `highest_rank_outstanding` definition is sample-bounded; lifting it to extracted per-deal config waits on a deal that surfaces an alternative.
 2. **1 additional European 2.0 indenture read** to confirm the PV-vs-Coverage-Test bifurcation is European-typical (vs Ares-family-specific). Tracked in `web/docs/principal-pop-redesign-research.md` §8.3.
-3. **Flip missing structured principal-POP extraction to blocking** once resolver coverage is complete for all supported fixture/production paths.
+3. **Add event/acquisition state** only if a future deal actually activates Effective Date Rating Event or Restructured Asset Acquisition.
 
 **Tests pinning the closed slice:**
 - `web/lib/clo/__tests__/ki07-deferred-paydown.test.ts > KI-66 — Controlling-Class gating on principal POP deferred paydown` (4 tests). The marker tests pin the post-fix PPM-correct behavior and schema dispatch. KI-27 case 1 (€5M Class E PIK seed on Euro XV) continues to pass — Class E PIK is paid via vanilla step (K) interest-side and / or terminal liquidation rather than principal-POP backfill while A/B/C/D outstanding.

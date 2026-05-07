@@ -481,10 +481,9 @@ export interface ProjectionInputs {
    *  interest waterfall for clauses that don't depend on interest-side
    *  outcomes; pass 2 after the cure-from-interest block for clauses
    *  that backfill interest-side shortfalls or apply user-input
-   *  redemptions). When null, the engine falls back to the
-   *  uniformly-simplified pro-rata loop (transitional during the KI-66
-   *  closure rollout — Step 7 flips the resolver gate to blocking once
-   *  all ingested deals carry the structured PPM extract). */
+   *  redemptions). When null, the engine falls back to the legacy loop;
+   *  production resolver paths now block before this fallback, so null is
+   *  reserved for direct synthetic ProjectionInputs. */
   principalPop?: import("./resolver-types").ResolvedPrincipalPop | null;
   preExistingDefaultedPar?: number; // par of pre-existing defaulted loans
   preExistingDefaultRecovery?: number; // market-price recovery for priced defaulted holdings
@@ -4968,11 +4967,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // measurement — Controlling-Class deferred backfill (D/G/J/M) and
     // post-RP NPSS principal redemption (R).
     //
-    // Gated on `principalPop != null` — when the resolver did not
-    // populate the structured PPM block, the engine falls back to the
-    // legacy uniform loop for both passes (Step 7 of the KI-66 closure
-    // path flips the resolver gate to blocking; until then this is a
-    // back-compat shim).
+    // Gated on `principalPop != null`. Production resolver paths now block
+    // before this can be null; the fallback remains for direct synthetic
+    // ProjectionInputs that intentionally don't model a structured PPM.
     //
     // Pass-2 mutations:
     //   - interest backfills reduce `remainingPrelim` and increase paid

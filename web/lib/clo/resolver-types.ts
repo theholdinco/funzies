@@ -729,12 +729,10 @@ export type ResolvedPrincipalClause =
  *  uniformly-simplified pro-rata loop with per-clause execution gated
  *  on per-deal extracted predicates.
  *
- *  Resolver `severity: "error", blocking: true` when a deal's PPM has
- *  a principal-POP block but resolver mapping fails (anti-pattern #3).
- *  Null on legacy fixtures or extraction-miss when the engine should
- *  fall back to the uniform loop (transitional during the redesign;
- *  the gate flips to blocking once the resolver covers all ingested
- *  deals — see KI-66 in `web/docs/clo-model-known-issues.md`).
+ *  Resolver emits `severity: "error", blocking: true` when the structured
+ *  principal-POP block is missing or malformed (anti-pattern #3). The
+ *  engine still accepts null for direct synthetic `ProjectionInputs`,
+ *  but production resolved deals must carry this block.
  *
  *  Ares XV (Condition 3(c) — clauses (A) through (V), `ppm.json:249-276`)
  *  maps to 22 ResolvedPrincipalClause entries. Mapping table in
@@ -885,12 +883,9 @@ export interface ResolvedDealData {
    *  dispatch encoding of the deal's principal POP. When non-null, the
    *  engine walks `clauses` per period and dispatches per the clause's
    *  gating predicate (Controlling Class, Coverage / Par Value test
-   *  failure, RP boundary, Effective Date Rating Event, etc.). Null
-   *  during the transitional KI-66 close — engine falls back to the
-   *  uniformly-simplified loop. The gate flips to blocking once the
-   *  resolver covers all ingested deals (see KI-66 path-to-close in
-   *  `web/docs/clo-model-known-issues.md` and the redesign research
-   *  note `web/docs/principal-pop-redesign-research.md`). */
+   *  failure, RP boundary, Effective Date Rating Event, etc.). Resolver
+   *  production paths block when this is missing; null remains in the
+   *  type only for legacy fixture / direct synthetic engine inputs. */
   principalPop: ResolvedPrincipalPop | null;
   preExistingDefaultedPar: number; // par of defaulted loans excluded from loan list
   preExistingDefaultRecovery: number; // market-price recovery for priced defaulted holdings
