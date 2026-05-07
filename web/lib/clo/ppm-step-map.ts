@@ -112,7 +112,7 @@ export type EngineBucket =
   | "classB_interest"       // step h    (from PeriodResult.trancheInterest[ClassB-*].paid — B-1 + B-2 pari passu)
   | "ocCure_AB"             // step i    (from stepTrace.ocCureDiversions filtered by rank)
   | "classC_current"        // step j    (from PeriodResult.trancheInterest[ClassC].paid)
-  | "classC_deferred"       // step k    (from stepTrace.deferredAccrualByTranche[ClassC])
+  | "classC_deferred"       // step k    (from stepTrace.deferredPaydownByTranche[ClassC] — cash paid against accumulated PIK; mirrors trustee step (K) semantics, not the accrual sibling)
   | "ocCure_C"              // step l
   | "classD_current"        // step m
   | "classD_deferred"       // step n
