@@ -44,6 +44,7 @@ export const EMPTY_RESOLVED: ResolvedDealData = {
   industryCapRules: null,
   excludedIndustryNames: null,
   excludedIndustryCodes: null,
+  principalPop: null,
   preExistingDefaultedPar: 0,
   preExistingDefaultRecovery: 0,
   unpricedDefaultedPar: 0,

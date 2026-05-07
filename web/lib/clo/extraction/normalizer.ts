@@ -1003,7 +1003,26 @@ export function normalizePpmSectionResults(
   }
 
   const waterfallRules = sections.waterfall_rules;
-  if (waterfallRules) result.waterfall = waterfallRules;
+  if (waterfallRules) {
+    const {
+      interestPriority,
+      principalPriority,
+      postAcceleration,
+      principalPriorityOfPayments,
+      ...rest
+    } = waterfallRules;
+    const waterfallView: Record<string, unknown> = {};
+    if (interestPriority != null) waterfallView.interestPriority = interestPriority;
+    if (principalPriority != null) waterfallView.principalPriority = principalPriority;
+    if (postAcceleration != null) waterfallView.postAcceleration = postAcceleration;
+    if (Object.keys(waterfallView).length > 0) result.waterfall = waterfallView;
+    if (principalPriorityOfPayments !== undefined) {
+      result.principalPriorityOfPayments = principalPriorityOfPayments;
+    }
+    for (const [key, value] of Object.entries(rest)) {
+      if (value != null) result[key] = value;
+    }
+  }
 
   const fees = sections.fees_and_expenses;
   if (fees) {

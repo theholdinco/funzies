@@ -254,6 +254,26 @@ export interface ExtractedConstraints {
     sourcePages: number[] | null;
     sourceCondition: string | null;
   } | null;
+  /** PPM Condition 3(c) Principal Priority of Payments — schema-driven
+   *  dispatch block. Sourced from
+   *  `ppm.json:section_6_waterfall.principal_priority_of_payments.structured`
+   *  via `mapPrincipalPriorityOfPayments`. Resolver consumes via
+   *  `resolvePrincipalPop` and (post-Step-7 KI-66 closure) emits
+   *  `severity: "error", blocking: true` when missing or malformed on a
+   *  non-greenfield deal. Shape is a passthrough mirror of
+   *  `ResolvedPrincipalPop` (resolver-types.ts); the resolver does
+   *  per-clause variant validation. Null when extraction missed or the
+   *  top-level structural check failed (the mapper returned null). */
+  principalPriorityOfPayments?: {
+    interestWaterfall: unknown;
+    preWaterfallReservations: unknown;
+    clauses: unknown[];
+    controllingClass: unknown;
+    redemptionMode: unknown;
+    accelerationWaterfall: unknown;
+    sourcePages: number[] | null;
+    sourceCondition: string | null;
+  } | null;
   /** PPM Condition 1 clause (t) "Industry Classification" — industry-cap closure.
    *  Sourced from `ppm.json:section_8_portfolio_and_quality_tests
    *  .industry_concentration_test` via `mapIndustryConcentrationTest`.
