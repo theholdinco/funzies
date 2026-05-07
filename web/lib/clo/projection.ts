@@ -4597,15 +4597,27 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       // ranks (Class C/D/E/F per Ares XV's deferral_permitted=true tranches);
       // non-deferrable ranks have deferredBalances == 0 by construction
       // (accrueShortfall routes their shortfall to interestShortfall instead),
-      // so the loop is a no-op for Class A / B.
+      // so the early-return at the empty-deferrables check below is a no-op
+      // for Class A / B.
+      //
+      // Safety: the empty-deferrables early-return is structurally important
+      // at the senior-non-amortising rank (Step G branch above sets
+      // availableInterest = 0 in the short-side branch; in the sufficient-
+      // funds branch, surplus interest could otherwise reach this site).
+      // Class A is non-deferrable on every sampled CLO (Ares XV, Carlyle DL
+      // 24-1, Golub 18, Barings 19) and on every deal whose top-2 ranks are
+      // protected by `d1-ab-deferral-assertion.test.ts`. If a future deal
+      // structure violates that assumption (deferrable Class A), this site
+      // would silently pay senior PIK before the cure check — which is a
+      // PPM-correctness concern requiring a per-deal reframing rather than
+      // a code change here. The early-return makes the no-op explicit.
       //
       // Pari-passu split: when multiple deferrable tranches share a rank
       // (rare structurally, but supported), the available paydown distributes
       // pro-rata by current deferredBalance. Same shape as the other two
-      // decrement sites (principal POP at lines 4125-4137, cure-mode at
-      // lines 4651-4660).
-      if (availableInterest > 0) {
-        const deferrablesInGroup = group.filter((t) => t.isDeferrable);
+      // decrement sites (principal POP phase 1, cure-mode interest paydown).
+      const deferrablesInGroup = group.filter((t) => t.isDeferrable);
+      if (deferrablesInGroup.length > 0 && availableInterest > 0) {
         const groupDeferredBalance = deferrablesInGroup.reduce(
           (s, t) => s + deferredBalances[t.className], 0
         );
