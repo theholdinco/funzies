@@ -4235,6 +4235,24 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       return starting - remaining;
     };
 
+    const payDeferredOnlyAtRank = (amount: number, rank: number): number => {
+      const group = principalGroupByRank.get(rank);
+      if (!group) return 0;
+      const groupDeferred = group.reduce((s, t) => s + deferredBalances[t.className], 0);
+      const paid = Math.min(groupDeferred, amount, remainingPrelim);
+      remainingPrelim -= paid;
+      for (const t of group) {
+        const share = groupDeferred > 0
+          ? paid * (deferredBalances[t.className] / groupDeferred)
+          : 0;
+        deferredBalances[t.className] -= share;
+        principalPaid[t.className] += share;
+        _stepTrace_deferredPaydownByTranche[t.className] =
+          (_stepTrace_deferredPaydownByTranche[t.className] ?? 0) + share;
+      }
+      return paid;
+    };
+
     const legacyPrincipalPopPaydown = () => {
       for (const rank of principalRanksInOrder) {
         const group = principalGroupByRank.get(rank)!;
@@ -4288,7 +4306,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
             return item?.kind === "tranche_deferred_interest";
           });
           if (paysDeferred) {
-            payPrincipalByRank(remainingPrelim, clause.gatingTranche, clause.gatingTranche, true);
+            payDeferredOnlyAtRank(remainingPrelim, clause.gatingTranche);
           }
         } else if (clause.kind === "mandatory_post_rp_redemption" && (!inRP || isMaturity)) {
           payPrincipalByRank(remainingPrelim, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, false);

@@ -314,4 +314,30 @@ describe("KI-66 — Controlling-Class gating on principal POP deferred paydown",
     expect(aInterest?.paid).toBeCloseTo(aInterest!.due, 6);
     expect(aPrincipal?.paid).toBe(0);
   });
+
+  it("schema POP clause (D): Controlling-Class deferred backfill does not also redeem principal", () => {
+    const inputs = makeInputs({
+      ...minimalInterestSetup,
+      reinvestmentPeriodEnd: "2025-01-01",
+      tranches: [
+        { className: "A", currentBalance: 0, spreadBps: 1, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "B", currentBalance: 0, spreadBps: 1, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "C", currentBalance: 4_000_000, spreadBps: 1, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: true, deferredInterestBalance: 1_000_000 },
+        { className: "Sub", currentBalance: 4_000_000, spreadBps: 0, seniorityRank: 4, isFloating: false, isIncomeNote: true, isDeferrable: false },
+      ],
+      initialPrincipalCash: 10_000_000,
+      principalPop: schemaPop([
+        { id: "D", kind: "controlling_class_backfill", gatingTranche: 3, paysItems: ["class_c_deferred_interest"] },
+        { id: "V", kind: "residual_to_subordinated" },
+      ]),
+    });
+
+    const p1 = runProjection(inputs).periods[0];
+    const c = p1.tranchePrincipal.find((t) => t.className === "C");
+
+    expect(c?.paid).toBeGreaterThan(990_000);
+    expect(c?.paid).toBeLessThan(1_010_000);
+    expect(c?.endBalance).toBeGreaterThan(3_900_000);
+    expect(p1.stepTrace.deferredPaydownByTranche["C"]).toBeGreaterThan(990_000);
+  });
 });
