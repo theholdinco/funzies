@@ -21,15 +21,21 @@
  *
  * Bundling note: this field bundles all three sources. Trustee step (K)
  * specifically reports interest-side payment per Ares XV OC Condition
- * 3(c). Under stress where principal-POP also pays deferred (KI-66
- * Controlling-Class gating gap), this field would over-state trustee
- * step (K) by the principal-POP component. Field-split deferred to
- * KI-66 closure.
+ * 3(c). With KI-66's Controlling-Class gating shipped, the principal-POP
+ * deferred backfill only fires when the relevant class is the Controlling
+ * Class — but in that regime the bundled field can still over-state
+ * trustee step (K) by the principal-POP component. Field-split (interest-
+ * side vs principal-side) is deferred to the broader principal-POP
+ * schema redesign tracked in `web/docs/principal-pop-redesign-research.md`.
  *
- * KI-66 marker: also pinned in this file — current uniformly-simplified
- * principal-POP loop pays Class C deferred from principal regardless of
- * Controlling Class, which is wrong per Ares XV clause (D). Marker flips
- * when KI-66 fix lands.
+ * KI-66 marker tests (below): pin the post-fix Controlling-Class gating
+ * behavior. With Class A outstanding at start-of-period, principal-POP
+ * phase 1 (deferred) for junior ranks is correctly skipped per Ares XV
+ * PPM clause (D). The remaining principal-POP backfill clauses (Coverage
+ * Test cure backfill from principal, Effective Date redemption, RP-vs-
+ * post-RP dispatch, Reinvesting Holder, Restructured Asset Acquisition)
+ * are still open under KI-66 PARTIAL — closed by the schema-driven
+ * redesign per the research note's §4.
  */
 
 import { describe, it, expect } from "vitest";
