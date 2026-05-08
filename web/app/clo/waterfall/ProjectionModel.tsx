@@ -41,7 +41,7 @@ import {
   applyOptionalRedemptionCall,
 } from "@/lib/clo/services";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
-import { buildFromResolved, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED, selectBlockingWarnings, defaultsFromResolved, defaultsFromIntex, diagnoseFeePrefill } from "@/lib/clo/build-projection-inputs";
+import { buildFromResolved, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED, selectBlockingWarnings, defaultsFromResolved, defaultsFromIntex, diagnoseFeePrefill, diagnoseCarryforwardSeed } from "@/lib/clo/build-projection-inputs";
 import type { IntexAssumptions } from "@/lib/clo/intex/parse-past-cashflows";
 import { DEFAULT_RATES_BY_RATING, RATING_BUCKETS, type RatingBucket, warfFactorToAnnualCDRPct } from "@/lib/clo/rating-mapping";
 import { BUCKET_WARF_FALLBACK } from "@/lib/clo/pool-metrics";
@@ -192,6 +192,18 @@ export default function ProjectionModel({
     useState<"principalCash" | "interest" | "hold">("principalCash");
   const [expenseReserveDepositAmount, setExpenseReserveDepositAmount] = useState<number>(0);
   const [supplementalReserveDepositAmount, setSupplementalReserveDepositAmount] = useState<number>(0);
+  const [seniorExpensesCapCarryforwardSeedAmount, setSeniorExpensesCapCarryforwardSeedAmount] =
+    useState<number | null>(null);
+  const activeSeniorExpensesCapCarryforwardPeriods =
+    resolved?.seniorExpensesCap?.carryforwardPeriods ??
+    DEFAULT_ASSUMPTIONS.seniorExpensesCapCarryforwardPeriods;
+  const hasActiveSeniorExpensesCapCarryforward =
+    activeSeniorExpensesCapCarryforwardPeriods != null &&
+    activeSeniorExpensesCapCarryforwardPeriods > 0;
+  const effectiveSeniorExpensesCapCarryforwardSeedAmount =
+    hasActiveSeniorExpensesCapCarryforward
+      ? seniorExpensesCapCarryforwardSeedAmount
+      : null;
   const [equityEntryPriceCents, setEquityEntryPriceCents] = useState<number | null>(null); // null = use book value
   // Forward IRR anchor price (in cents). Free-text input — user types the
   // entry price they want to evaluate. Empty string means "fall back to
@@ -499,6 +511,7 @@ export default function ProjectionModel({
           supplementalReserveDisposition,
           expenseReserveDepositAmount,
           supplementalReserveDepositAmount,
+          seniorExpensesCapCarryforwardSeedAmount: effectiveSeniorExpensesCapCarryforwardSeedAmount,
           // KI-66 Special Redemption + Reinvesting Holder amounts. Default 0
           // (no-op) — UI sliders not yet wired. Engine consumes via the
           // schema-driven principal-POP pass-2 dispatch.
@@ -516,6 +529,7 @@ export default function ProjectionModel({
       hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr, postRpReinvestmentPct,
       callMode, callDate, callPricePct, callPriceMode, ddtlDrawAssumption, ddtlDrawQuarter, ddtlDrawPercent, equityEntryPriceCents,
       supplementalReserveDisposition, expenseReserveDepositAmount, supplementalReserveDepositAmount,
+      effectiveSeniorExpensesCapCarryforwardSeedAmount,
     ]
   );
 
@@ -608,6 +622,7 @@ export default function ProjectionModel({
     supplementalReserveDisposition,
     expenseReserveDepositAmount,
     supplementalReserveDepositAmount,
+    seniorExpensesCapCarryforwardSeedAmount: effectiveSeniorExpensesCapCarryforwardSeedAmount,
     // KI-66 — see `inputs` memo for default rationale.
     specialRedemptionAmount: 0,
     reinvestingHolderRedemptionAmount: 0,
@@ -621,9 +636,14 @@ export default function ProjectionModel({
     incentiveFeePct, incentiveFeeHurdleIrr,
     ddtlDrawAssumption, ddtlDrawQuarter, ddtlDrawPercent, equityEntryPriceCents,
     supplementalReserveDisposition, expenseReserveDepositAmount, supplementalReserveDepositAmount,
+    effectiveSeniorExpensesCapCarryforwardSeedAmount,
   ]);
 
   const validationErrors = useMemo(() => validateInputs(inputs), [inputs]);
+  const carryforwardSeedWarnings = useMemo(
+    () => resolved ? diagnoseCarryforwardSeed(resolved, userAssumptions) : [],
+    [resolved, userAssumptions],
+  );
   const result: ProjectionResult | null = useMemo(
     () => (validationErrors.length === 0 ? runProjection(inputs) : null),
     [inputs, validationErrors]
@@ -1122,6 +1142,50 @@ export default function ProjectionModel({
           </div>
           <div>
             <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: "0.35rem" }}>
+              Senior Expenses Cap Carryforward Seed (EUR)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={10000}
+              value={hasActiveSeniorExpensesCapCarryforward ? seniorExpensesCapCarryforwardSeedAmount ?? "" : ""}
+              placeholder={hasActiveSeniorExpensesCapCarryforward ? "Unknown" : "Not active"}
+              disabled={!hasActiveSeniorExpensesCapCarryforward}
+              onChange={(e) => {
+                if (!hasActiveSeniorExpensesCapCarryforward) {
+                  setSeniorExpensesCapCarryforwardSeedAmount(null);
+                  return;
+                }
+                const value = e.target.value.trim();
+                if (value === "") {
+                  setSeniorExpensesCapCarryforwardSeedAmount(null);
+                  return;
+                }
+                const numeric = Number(value);
+                setSeniorExpensesCapCarryforwardSeedAmount(
+                  Number.isFinite(numeric) ? Math.max(0, numeric) : null,
+                );
+              }}
+              style={{
+                width: "100%",
+                padding: "0.45rem 0.55rem",
+                border: "1px solid var(--color-border-light)",
+                borderRadius: "var(--radius-sm)",
+                background: hasActiveSeniorExpensesCapCarryforward ? "var(--color-surface)" : "var(--color-surface-alt)",
+                color: "var(--color-text-primary)",
+                fontFamily: "var(--font-body)",
+                fontSize: "0.8rem",
+                cursor: hasActiveSeniorExpensesCapCarryforward ? "text" : "not-allowed",
+              }}
+            />
+            <div style={{ fontSize: "0.62rem", color: "var(--color-text-muted)", marginTop: "0.3rem", lineHeight: 1.4, opacity: 0.8 }}>
+              {hasActiveSeniorExpensesCapCarryforward
+                ? "Historical unused senior-expense cap headroom at the projection start date. Blank means unknown and the model uses a zero seed; nonzero values increase cap headroom only and do not add cash."
+                : "No Senior Expenses Cap carryforward window is active for this deal."}
+            </div>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: "0.35rem" }}>
               Expense Reserve Deposit (EUR)
             </label>
             <input
@@ -1255,7 +1319,7 @@ export default function ProjectionModel({
       {/* Data-quality warnings: resolver-level (pool, triggers, etc.) +
           fee-prefill gate (admin source missing, etc.). Merged so the
           partner sees a single panel rather than scattered alerts. */}
-      {((resolutionWarnings?.length ?? 0) > 0 || prefillWarnings.length > 0) && (
+      {((resolutionWarnings?.length ?? 0) > 0 || prefillWarnings.length > 0 || carryforwardSeedWarnings.length > 0) && (
         <div
           style={{
             padding: "0.75rem 1rem",
@@ -1268,13 +1332,16 @@ export default function ProjectionModel({
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-            Data Quality Warnings ({(resolutionWarnings?.length ?? 0) + prefillWarnings.length})
+            Data Quality Warnings ({(resolutionWarnings?.length ?? 0) + prefillWarnings.length + carryforwardSeedWarnings.length})
           </div>
           {(resolutionWarnings ?? []).filter((w) => w.severity !== "info").map((w, i) => (
             <div key={`rw-${i}`}>&bull; <strong>{w.field}:</strong> {w.message}</div>
           ))}
           {prefillWarnings.map((w, i) => (
             <div key={`pw-${i}`}>&bull; <strong>{w.field}:</strong> {w.message}</div>
+          ))}
+          {carryforwardSeedWarnings.map((w, i) => (
+            <div key={`cfw-${i}`}>&bull; <strong>{w.field}:</strong> {w.message}</div>
           ))}
         </div>
       )}

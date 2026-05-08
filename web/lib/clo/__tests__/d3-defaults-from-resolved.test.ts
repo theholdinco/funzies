@@ -106,6 +106,9 @@ describe("D3 — defaultsFromResolved (Euro XV fixture)", () => {
     expect(d.callPriceMode).toBe(DEFAULT_ASSUMPTIONS.callPriceMode);
     expect(d.expenseReserveDepositAmount).toBe(DEFAULT_ASSUMPTIONS.expenseReserveDepositAmount);
     expect(d.supplementalReserveDepositAmount).toBe(DEFAULT_ASSUMPTIONS.supplementalReserveDepositAmount);
+    expect(d.seniorExpensesCapCarryforwardSeedAmount).toBe(
+      DEFAULT_ASSUMPTIONS.seniorExpensesCapCarryforwardSeedAmount,
+    );
   });
 });
 

@@ -31,7 +31,7 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 
 - [KI-36 — Per-tranche `payment_frequency` extracted but not consumed (uniform quarterly cadence)](#ki-36)
 - [KI-38 — FX / multi-currency unmodeled; `native_currency` parsed and discarded](#ki-38)
-- [KI-45 — Senior Expenses Cap carryforward seed not populated; mid-life projections start with empty buffer](#ki-45)
+- [KI-45 — Senior Expenses Cap carryforward seed is user-supplied; automatic historical ingest not wired](#ki-45)
 - [KI-46 — DDTL draw event inflates forward OC numerator; impliedOcAdjustment frozen at T=0 calibration](#ki-46) — **BLOCKED ON DATA ACQUISITION** (deal with active DDTL draws + non-zero `impliedOcAdjustment`)
 - [KI-66 — Principal POP backfill conditionality unmodeled (Ares XV path closed; remaining work needs new PPM/event data)](#ki-66) — **BLOCKED ON NEW DATA FOR FULL CLOSURE** (structured Ares XV resolver/engine path shipped 2026-05-07; missing structured principal POP now blocks production resolver paths)
 
@@ -383,28 +383,25 @@ No FX rate is ingested. The engine does not consume `currency` anywhere — `web
 ---
 
 <a id="ki-45"></a>
-### [KI-45] Senior Expenses Cap carryforward seed not populated; mid-life projections start with empty buffer
+### [KI-45] Senior Expenses Cap carryforward seed is user-supplied; automatic historical ingest not wired
 
 **PPM reference:** Condition 1 ("Senior Expenses Cap") proviso (ii), OC pp. 150-151. Each Payment Date's cap is augmented by Σ unused stated-cap headroom from the prior N Payment Dates (Ares XV: 3 pre-FSE).
 
-**Current engine behavior:** `web/lib/clo/projection.ts:420` declares `seniorExpensesCapCarryforwardSeed?: number[]` on `ProjectionInputs`; the engine consumes it at `projection.ts:2886-2887` to seed the FIFO buffer at projection start. **No production caller populates the field** — `web/lib/clo/build-projection-inputs.ts` doesn't include it in the `buildFromResolved` return, `defaultsFromResolved` doesn't compute it, and `web/app/clo/waterfall/ProjectionModel.tsx` doesn't pass it. Engine docstring at `projection.ts:2882-2885` already documents the gap: *"Default empty — appropriate at deal inception; latent under-count for mid-life projections that lack the seed input."* Every production projection starts with `capCarryforwardHistory = []` regardless of the deal's trustee history. The field is exercised only by the synthetic test at `web/lib/clo/__tests__/c3-senior-expenses-cap.test.ts:389-390`.
+**Current engine behavior:** The engine supports `ProjectionInputs.seniorExpensesCapCarryforwardSeed?: number[]` and consumes it to seed the FIFO buffer at projection start. Production now exposes `UserAssumptions.seniorExpensesCapCarryforwardSeedAmount: number | null`: `null` means the historical seed is unknown, explicit `0` means the user elects a zero seed, and a positive euro amount is expanded evenly across the active carryforward window before reaching the engine. The q=1 aggregate headroom matches the user input while the synthetic historical buckets age out over future periods. The UI surfaces a non-blocking warning when carryforward is active but the seed is unknown. The remaining gap is automatic derivation: no resolver/context-ingest path currently computes the actual vintage-specific historical seed from prior trustee periods.
 
 **PPM-correct behavior:** The seed is the trailing N entries of `max(0, statedCap_priorPD - cappedPaid_priorPD)` from the deal's most recent N PDs. For Ares XV (carryforward = 3), the seed is the unused headroom from the latest 3 historical PDs. With proper seeding, q=1's cap reflects the deal's actual position in the carryforward window rather than treating the projection as a fresh deal-inception run.
 
-**Quantitative magnitude:** On Euro XV, the seed entry derived from the latest historical period would be ~€120K (stated cap ~€383K vs actual paid ~€263K per period — observed fees ~5.24 bps against a 2.5 bps + €300K floor cap). For a 3-period buffer the seed sum could reach ~€360K at q=1. **Currently zero on partner-facing cash flows** — Euro XV's fees don't bind the cap, so adding €360K of headroom raises `period.stepTrace.seniorExpensesCapAmount` from ~€383K to ~€743K but `cappedRequested ≈ €263K < both`, leaving paid amounts and equity distributions unchanged. Magnitude becomes partner-facing on any deal where fees approach the cap.
+**Quantitative magnitude:** On Euro XV, the seed entry derived from the latest historical period would be ~€120K (stated cap ~€383K vs actual paid ~€263K per period — observed fees ~5.24 bps against a 2.5 bps + €300K floor cap). For a 3-period buffer the seed sum could reach ~€360K at q=1. If left unknown, the model uses a €0 seed. On Euro XV this is trace-only today because fees don't bind the cap; the user-supplied €360K seed raises `period.stepTrace.seniorExpensesCapAmount` but `cappedRequested` remains below both seeded and unseeded caps. Magnitude becomes partner-facing on any deal where fees approach the cap.
 
-**Deferral rationale:** Two-axis blocker:
-1. **Implementation** — the partial fix (1-period seed from the latest period's `raw.waterfallSteps` step B+C amount minus computed stated cap) requires approximating the prior-determination-date pool state from the current state (the latest pool summary in the DB is the determination date AT the latest PD, not BEFORE it). The approximation is workable (~2% drift on the seed entry) but introduces a documented modeling shortcut that needs its own validation.
-2. **Data** — the full PPM-faithful 3-period seed requires historical waterfall data for the prior 2 PDs. Per `web/CLAUDE.md` § "Source data access", per-period coverage is uneven; only the latest period for Euro XV has the full per-period ingest. Prior quarters carry only `clo_tranche_snapshots` from the Intex DealCF backfill — no `clo_waterfall_steps`, no historical pool summary, no historical account balances. The full fix is gated on extending the historical ingest pipeline.
+**Deferral rationale:** This is now an ingestion/structured-context gap rather than an engine mechanics gap. The current CLO context JSON / resolver path carries the PPM carryforward window but not the prior-period unused-headroom entries needed to populate the seed automatically. Full automatic closure requires historical waterfall data for the prior carryforward window. Per source-data notes, only the latest Euro XV period has full per-period ingest; prior quarters carry only Intex DealCF backfill and lack `clo_waterfall_steps`, historical pool summary, and account balances.
 
 **Path to close:**
-1. Ingest historical waterfall data: `clo_waterfall_steps` + `clo_pool_summary` + `clo_account_balances` for at least the prior `seniorExpensesCapCarryforwardPeriods` periods of every deal.
-2. Resolver computes seed entries from the historical step B+C amounts vs computed stated cap at each prior determination date.
-3. Thread the seed through `buildFromResolved` (likely as a derived field on `ResolvedDealData` rather than `UserAssumptions` — the seed is structural deal state, not a user input).
-4. Marker test asserts the non-zero seed magnitude on a fixture with multi-period historical data.
-5. Flip the existing marker (described below) from `=== 0` to the computed magnitude.
+1. Extend CLO context JSON ingestion / resolver output to carry historical waterfall rows, pool summary, and account balances for at least the prior `seniorExpensesCapCarryforwardPeriods` periods.
+2. Compute each historical seed entry as `max(0, statedCap_priorPD - cappedPaidPriorPD)` using the period's PPM cap base/day-count mechanics and step B+C capped payments.
+3. Thread the computed vintage-specific seed array through `buildFromResolved` as structural deal state, with user input remaining an aggregate override when history is missing or disputed.
+4. Replace the unknown-seed warning with source attribution for the computed seed.
 
-**Test:** `web/lib/clo/__tests__/c3-senior-expenses-cap.test.ts` — marker pinning `result.periods[0].stepTrace.seniorExpensesCapCarryforwardSum === 0` on a mid-life Euro XV projection with `seniorExpensesCapCarryforwardPeriods=3`. The empty-buffer behavior is exactly the silent under-count the KI describes; closing the KI flips the assertion to the computed seed magnitude.
+**Test:** `web/lib/clo/__tests__/c3-senior-expenses-cap.test.ts` now pins the practical behavior: unknown seed warns and defaults to €0, user-supplied seed threads into q=1 carryforward headroom, and stressed senior expenses move from overflow into capped B/C capacity. Full automatic closure should add a multi-period historical fixture asserting the computed seed magnitude and source attribution.
 
 ---
 

@@ -178,6 +178,12 @@ export interface UserAssumptions {
    *  forward into the current PD's cap (PPM proviso (ii)). Ares XV: 3
    *  pre-FSE, 1 post-FSE. Null = no carryforward (legacy behavior). */
   seniorExpensesCapCarryforwardPeriods: number | null;
+  /** Historical unused Senior Expenses Cap headroom known at projection
+   *  start. Null means unknown/not supplied; the engine falls back to an
+   *  empty seed but the UI should disclose the missing historical state.
+   *  A non-negative euro amount is treated as the aggregate carryforward
+   *  buffer at q=1, not new cash. */
+  seniorExpensesCapCarryforwardSeedAmount: number | null;
   /** Whether VAT on capped expenses counts toward the cap (PPM proviso (i)).
    *  When fee inputs are gross-of-VAT (typical trustee back-derive path)
    *  the engine path is correct without explicit gross-up; this flag with
@@ -260,6 +266,7 @@ export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
   seniorExpensesCapComponentADayCount: "actual_360",
   seniorExpensesCapBaseMode: "APB",
   seniorExpensesCapCarryforwardPeriods: null,
+  seniorExpensesCapCarryforwardSeedAmount: null,
   seniorExpensesCapVatIncluded: false,
   seniorExpensesCapVatRatePct: null,
   incentiveFeePct: CLO_DEFAULTS.incentiveFeePct,
@@ -307,7 +314,7 @@ export interface DefaultsFromResolvedRaw {
  *     `seniorExpensesCapCarryforwardPeriods` /
  *     `seniorExpensesCapVatIncluded` / `seniorExpensesCapVatRatePct`
  *     ← `resolved.seniorExpensesCap` (PPM Condition 1, OC pp. 150-151 for
- *     Ares CLO XV). All seven fields dispatch in the engine cap construction.
+ *     Ares CLO XV). These fields dispatch in the engine cap construction.
  *   - `baseRateFloorPct` ← `resolved.baseRateFloorPct` if set.
  *
  * All other assumption fields inherit from `DEFAULT_ASSUMPTIONS`.
@@ -555,6 +562,44 @@ export function diagnoseFeePrefill(
   return warnings;
 }
 
+export function diagnoseCarryforwardSeed(
+  _resolved: ResolvedDealData,
+  assumptions: UserAssumptions,
+): ResolutionWarning[] {
+  const carryforwardPeriods = assumptions.seniorExpensesCapCarryforwardPeriods ?? 0;
+  if (carryforwardPeriods <= 0 || assumptions.seniorExpensesCapCarryforwardSeedAmount != null) {
+    return [];
+  }
+
+  return [{
+    field: "assumptions.seniorExpensesCapCarryforwardSeedAmount",
+    message:
+      `Senior Expenses Cap carryforward is active, but historical unused cap ` +
+      `headroom at the projection start date is not available in the current ` +
+      `ingest. The model uses a zero seed unless you provide the known trustee ` +
+      `history amount. This changes cap headroom only; it is not new cash.`,
+    severity: "warn",
+    blocking: false,
+    resolvedFrom: "unknown historical carryforward seed",
+  }];
+}
+
+function expandAggregateCarryforwardSeed(
+  amount: number | null,
+  carryforwardPeriods: number | null,
+): number[] | undefined {
+  if (amount == null || !Number.isFinite(amount) || amount <= 0) return undefined;
+  if (carryforwardPeriods == null || carryforwardPeriods <= 0) return undefined;
+  const periodCount = Math.floor(carryforwardPeriods);
+  if (periodCount <= 0) return undefined;
+  // The UI collects a q=1 aggregate when vintage-specific trustee rows are
+  // unavailable. Spread it across the FIFO window so the q=1 sum is exact and
+  // the synthetic historical balance ages out rather than persisting as one
+  // oversized bucket.
+  const perPeriod = amount / periodCount;
+  return Array.from({ length: periodCount }, () => perPeriod);
+}
+
 /**
  * Single source of truth for "which warnings refuse the projection."
  * The buildFromResolved gate uses this; the UI's DATA INCOMPLETE banner
@@ -763,6 +808,61 @@ export function composeBuildWarnings(
     }
   }
 
+  if (
+    userAssumptions.seniorExpensesCapCarryforwardPeriods != null &&
+    (
+      !Number.isFinite(userAssumptions.seniorExpensesCapCarryforwardPeriods) ||
+      userAssumptions.seniorExpensesCapCarryforwardPeriods < 0 ||
+      !Number.isInteger(userAssumptions.seniorExpensesCapCarryforwardPeriods)
+    )
+  ) {
+    composedWarnings.push({
+      field: "seniorExpensesCapCarryforwardPeriods",
+      message:
+        `UserAssumptions.seniorExpensesCapCarryforwardPeriods must be null ` +
+        `or a non-negative integer. Invalid period counts would corrupt the ` +
+        `Senior Expenses Cap FIFO carryforward window.`,
+      severity: "error",
+      blocking: true,
+    });
+  }
+
+  if (
+    userAssumptions.seniorExpensesCapCarryforwardSeedAmount != null &&
+    (
+      !Number.isFinite(userAssumptions.seniorExpensesCapCarryforwardSeedAmount) ||
+      userAssumptions.seniorExpensesCapCarryforwardSeedAmount < 0
+    )
+  ) {
+    composedWarnings.push({
+      field: "seniorExpensesCapCarryforwardSeedAmount",
+      message:
+        `UserAssumptions.seniorExpensesCapCarryforwardSeedAmount must be a ` +
+        `finite non-negative amount. Invalid seed values would corrupt the ` +
+        `Senior Expenses Cap FIFO carryforward buffer.`,
+      severity: "error",
+      blocking: true,
+    });
+  }
+  if (
+    userAssumptions.seniorExpensesCapCarryforwardSeedAmount != null &&
+    Number.isFinite(userAssumptions.seniorExpensesCapCarryforwardSeedAmount) &&
+    userAssumptions.seniorExpensesCapCarryforwardSeedAmount > 0 &&
+    (userAssumptions.seniorExpensesCapCarryforwardPeriods == null ||
+      userAssumptions.seniorExpensesCapCarryforwardPeriods <= 0)
+  ) {
+    composedWarnings.push({
+      field: "seniorExpensesCapCarryforwardSeedAmount",
+      message:
+        `UserAssumptions.seniorExpensesCapCarryforwardSeedAmount was supplied, ` +
+        `but seniorExpensesCapCarryforwardPeriods is not active. A carryforward ` +
+        `seed cannot affect the projection without an active Senior Expenses Cap ` +
+        `carryforward window.`,
+      severity: "error",
+      blocking: true,
+    });
+  }
+
   // Boundary scale invariants on percent-of-par fields. The plausible
   // range for a market price (currentPrice) or purchase price is roughly
   // [1, 200] cents on the par dollar — distressed positions can drop to
@@ -957,6 +1057,10 @@ export function buildFromResolved(
     seniorExpensesCapComponentADayCount: userAssumptions.seniorExpensesCapComponentADayCount,
     seniorExpensesCapBaseMode: userAssumptions.seniorExpensesCapBaseMode,
     seniorExpensesCapCarryforwardPeriods: userAssumptions.seniorExpensesCapCarryforwardPeriods,
+    seniorExpensesCapCarryforwardSeed: expandAggregateCarryforwardSeed(
+      userAssumptions.seniorExpensesCapCarryforwardSeedAmount,
+      userAssumptions.seniorExpensesCapCarryforwardPeriods,
+    ),
     seniorExpensesCapVatIncluded: userAssumptions.seniorExpensesCapVatIncluded,
     seniorExpensesCapVatRatePct: userAssumptions.seniorExpensesCapVatRatePct,
     firstPaymentDate: resolved.dates.firstPaymentDate,

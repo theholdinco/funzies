@@ -15,7 +15,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { runProjection } from "@/lib/clo/projection";
-import { buildFromResolved, defaultsFromResolved } from "@/lib/clo/build-projection-inputs";
+import { buildFromResolved, defaultsFromResolved, diagnoseCarryforwardSeed } from "@/lib/clo/build-projection-inputs";
 import type { ResolvedDealData } from "@/lib/clo/resolver-types";
 
 const FIXTURE_PATH = join(__dirname, "fixtures", "euro-xv-q1.json");
@@ -585,26 +585,12 @@ describe("C3 — backward compatibility: undefined cap → uncapped behavior", (
   });
 });
 
-describe("KI-45 marker — carryforward seed not populated in production path", () => {
-  it("production path produces empty carryforward buffer at q=1 regardless of trustee history", () => {
-    // PPM Condition 1 proviso (ii) requires the cap to be augmented at q=1
-    // by Σ unused stated-cap headroom from the prior N PDs (N=3 for Ares
-    // XV). The engine accepts a `seniorExpensesCapCarryforwardSeed` input
-    // (projection.ts:367) and consumes it at projection.ts:2425-2427, but
-    // no production caller populates it: `buildFromResolved` does not
-    // include the field in its return, `defaultsFromResolved` does not
-    // compute it, and the UI does not pass it. Mid-life projections start
-    // with an empty FIFO buffer regardless of the deal's actual trustee
-    // history. Documented as KI-45 in the known-issues ledger.
-    //
-    // This marker pins the wrong-but-current behavior:
-    // `result.periods[0].stepTrace.seniorExpensesCapCarryforwardSum === 0`
-    // on a mid-life Euro XV run with `carryforwardPeriods=3`. The PPM-
-    // correct value would be the sum of unused headroom from the prior 3
-    // historical PDs (~€360K on Euro XV). Closing KI-45 — populating the
-    // seed in `buildFromResolved` from historical waterfall data — flips
-    // this assertion from `=== 0` to the computed seed magnitude.
+describe("KI-45 marker — carryforward seed is unknown unless supplied", () => {
+  it("surfaces unknown historical state and defaults the q=1 seed to zero", () => {
     const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    expect(baseAssumptions.seniorExpensesCapCarryforwardSeedAmount).toBeNull();
+    expect(diagnoseCarryforwardSeed(fixture.resolved, baseAssumptions)).toHaveLength(1);
+
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     expect(baseInputs.seniorExpensesCapCarryforwardSeed).toBeUndefined();
     const result = runProjection({
@@ -612,5 +598,103 @@ describe("KI-45 marker — carryforward seed not populated in production path", 
       seniorExpensesCapCarryforwardPeriods: 3,
     });
     expect(result.periods[0].stepTrace.seniorExpensesCapCarryforwardSum).toBe(0);
+  });
+
+  it("diagnoses the carryforward seed against the assumptions actually sent to the engine", () => {
+    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const noCarryforwardAssumptions = {
+      ...baseAssumptions,
+      seniorExpensesCapCarryforwardPeriods: null,
+      seniorExpensesCapCarryforwardSeedAmount: null,
+    };
+
+    expect(diagnoseCarryforwardSeed(fixture.resolved, noCarryforwardAssumptions)).toHaveLength(0);
+    expect(buildFromResolved(fixture.resolved, noCarryforwardAssumptions).seniorExpensesCapCarryforwardPeriods)
+      .toBeNull();
+  });
+
+  it("threads a user-supplied aggregate carryforward seed into q=1 cap headroom", () => {
+    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const seededAssumptions = {
+      ...baseAssumptions,
+      seniorExpensesCapCarryforwardSeedAmount: 360_000,
+    };
+
+    expect(diagnoseCarryforwardSeed(fixture.resolved, seededAssumptions)).toHaveLength(0);
+    const seededInputs = buildFromResolved(fixture.resolved, seededAssumptions);
+    const unseededInputs = buildFromResolved(fixture.resolved, {
+      ...baseAssumptions,
+      seniorExpensesCapCarryforwardSeedAmount: 0,
+    });
+
+    expect(seededInputs.seniorExpensesCapCarryforwardSeed).toEqual([120_000, 120_000, 120_000]);
+    expect(unseededInputs.seniorExpensesCapCarryforwardSeed).toBeUndefined();
+
+    const seeded = runProjection(seededInputs);
+    const unseeded = runProjection(unseededInputs);
+    expect(seeded.periods[0].stepTrace.seniorExpensesCapCarryforwardSum).toBeCloseTo(360_000, 2);
+    expect(unseeded.periods[0].stepTrace.seniorExpensesCapCarryforwardSum).toBe(0);
+    expect(
+      seeded.periods[0].stepTrace.seniorExpensesCapAmount -
+        unseeded.periods[0].stepTrace.seniorExpensesCapAmount,
+    ).toBeCloseTo(360_000, 2);
+    expect(
+      seeded.periods[1].stepTrace.seniorExpensesCapCarryforwardSum -
+        unseeded.periods[1].stepTrace.seniorExpensesCapCarryforwardSum,
+    ).toBeCloseTo(240_000, 2);
+  });
+
+  it("uses the supplied seed to move stressed senior expenses from overflow into capped B/C capacity", () => {
+    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const stressedAssumptions = {
+      ...baseAssumptions,
+      seniorExpensesCapCarryforwardSeedAmount: 100_000,
+      seniorExpensesCapBps: 1,
+      seniorExpensesCapAbsoluteFloorPerYear: 0,
+      trusteeFeeBps: 100,
+      adminFeeBps: 0,
+      seniorFeePct: 0,
+      subFeePct: 0,
+      hedgeCostBps: 0,
+    };
+    const seeded = runProjection(buildFromResolved(fixture.resolved, stressedAssumptions));
+    const unseeded = runProjection(buildFromResolved(fixture.resolved, {
+      ...stressedAssumptions,
+      seniorExpensesCapCarryforwardSeedAmount: 0,
+    }));
+
+    expect(
+      seeded.periods[0].stepTrace.trusteeFeesPaid -
+        unseeded.periods[0].stepTrace.trusteeFeesPaid,
+    ).toBeCloseTo(100_000, 2);
+    expect(
+      unseeded.periods[0].stepTrace.trusteeOverflowPaid -
+        seeded.periods[0].stepTrace.trusteeOverflowPaid,
+    ).toBeCloseTo(100_000, 2);
+  });
+
+  it("blocks invalid carryforward seed amounts before they reach the engine FIFO", () => {
+    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    expect(() => buildFromResolved(fixture.resolved, {
+      ...baseAssumptions,
+      seniorExpensesCapCarryforwardPeriods: Number.POSITIVE_INFINITY,
+    })).toThrow(/seniorExpensesCapCarryforwardPeriods/);
+    expect(() => buildFromResolved(fixture.resolved, {
+      ...baseAssumptions,
+      seniorExpensesCapCarryforwardPeriods: 1.5,
+    })).toThrow(/seniorExpensesCapCarryforwardPeriods/);
+    expect(() => buildFromResolved(fixture.resolved, {
+      ...baseAssumptions,
+      seniorExpensesCapCarryforwardSeedAmount: Number.POSITIVE_INFINITY,
+    })).toThrow(/seniorExpensesCapCarryforwardSeedAmount/);
+    expect(() => buildFromResolved(fixture.resolved, {
+      ...baseAssumptions,
+      seniorExpensesCapCarryforwardSeedAmount: -1,
+    })).toThrow(/seniorExpensesCapCarryforwardSeedAmount/);
+    expect(() => buildFromResolved(fixture.resolved, {
+      ...baseAssumptions,
+      seniorExpensesCapCarryforwardPeriods: null,
+      seniorExpensesCapCarryforwardSeedAmount: 1,
+    })).toThrow(/seniorExpensesCapCarryforwardSeedAmount/);
   });
 });
