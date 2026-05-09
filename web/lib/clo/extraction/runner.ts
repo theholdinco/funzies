@@ -20,11 +20,24 @@ import { validateAndNormalizeConstraints, normalizeComplianceTestType } from "..
 import { parseNumeric, parseDecoratedAmount } from "../sdf/csv-utils";
 import { assignDenseSeniorityRanks } from "../seniority-rank";
 import { remapColumnAliases, splitTextIntoPageChunks, mergeChunkResults, detectRepairNeeds, getLastItems } from "./transforms";
+import { canonicalCurrency } from "../currency";
+import { normalizePaymentFrequency } from "../payment-frequency";
 
 const SDF_GUARDED_TABLES = new Set([
   "clo_holdings", "clo_compliance_tests", "clo_tranche_snapshots",
   "clo_account_balances", "clo_trades",
 ]);
+
+const POOL_SUMMARY_CURRENCY_FIELDS = [
+  "pct_eur_denominated",
+  "pct_gbp_denominated",
+  "pct_usd_denominated",
+  "pct_non_base_currency",
+] as const;
+
+function hasValue(value: unknown): boolean {
+  return value != null && value !== "" && value !== "null" && value !== "NULL";
+}
 
 async function hasSdfData(table: string, reportPeriodId: string): Promise<boolean> {
   if (!SDF_GUARDED_TABLES.has(table)) return false;
@@ -33,6 +46,29 @@ async function hasSdfData(table: string, reportPeriodId: string): Promise<boolea
     [reportPeriodId],
   );
   return result.length > 0;
+}
+
+async function preservePoolSummaryCurrencyEvidence(
+  row: Record<string, unknown>,
+  reportPeriodId: string,
+): Promise<Record<string, unknown>> {
+  const existingRows = await query<Record<string, unknown>>(
+    `SELECT ${POOL_SUMMARY_CURRENCY_FIELDS.join(", ")}
+     FROM clo_pool_summary
+     WHERE report_period_id = $1
+     LIMIT 1`,
+    [reportPeriodId],
+  );
+  const existing = existingRows[0];
+  if (!existing) return row;
+
+  const merged = { ...row };
+  for (const field of POOL_SUMMARY_CURRENCY_FIELDS) {
+    if (!hasValue(merged[field]) && hasValue(existing[field])) {
+      merged[field] = existing[field];
+    }
+  }
+  return merged;
 }
 
 /** Adapter: run normalizeComplianceTestType on snake_case DB rows */
@@ -198,12 +234,25 @@ async function getOrCreateDeal(profileId: string): Promise<string> {
 
   const dealName = (dealIdentity.dealName as string) || (constraints.dealIdentity as Record<string, unknown>)?.dealName as string || null;
   const collateralManager = (constraints.collateralManager as string) || (constraints.cmDetails as Record<string, unknown>)?.name as string || null;
+  const dealCurrencyRaw = (dealIdentity.currency as string) || null;
+  const dealCurrencyCanonical = canonicalCurrency(dealCurrencyRaw);
 
   const rows = await query<{ id: string }>(
-    `INSERT INTO clo_deals (profile_id, deal_name, collateral_manager)
-     VALUES ($1, $2, $3)
+    `INSERT INTO clo_deals (
+       profile_id, deal_name, collateral_manager,
+       deal_currency, deal_currency_raw, deal_currency_canonical, deal_currency_source
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id`,
-    [profileId, dealName, collateralManager],
+    [
+      profileId,
+      dealName,
+      collateralManager,
+      dealCurrencyCanonical ?? dealCurrencyRaw,
+      dealCurrencyRaw,
+      dealCurrencyCanonical,
+      dealCurrencyRaw ? "ppm" : null,
+    ],
   );
   return rows[0].id;
 }
@@ -372,6 +421,9 @@ export async function runExtraction(
   // Helper: delete old data only when we have new data to replace it
   async function replaceIfPresent(table: string, rows: Record<string, unknown>[]) {
     if (rows.length === 0) return;
+    if (table === "clo_pool_summary") {
+      rows = [await preservePoolSummaryCurrencyEvidence(rows[0], reportPeriodId)];
+    }
     await query(`DELETE FROM ${table} WHERE report_period_id = $1`, [reportPeriodId]);
     await batchInsert(table, rows);
   }
@@ -939,6 +991,9 @@ export async function runSectionExtraction(
   // Helper: delete old data only when we have new data to replace it
   async function replaceIfPresent(table: string, rows: Record<string, unknown>[]) {
     if (rows.length === 0) return;
+    if (table === "clo_pool_summary") {
+      rows = [await preservePoolSummaryCurrencyEvidence(rows[0], reportPeriodId)];
+    }
     await query(`DELETE FROM ${table} WHERE report_period_id = $1`, [reportPeriodId]);
     await batchInsert(table, rows);
   }
@@ -1289,8 +1344,15 @@ export async function runSectionExtraction(
           setClauses.push(`is_floating = COALESCE(is_floating, $${pi++})`);
           values.push(false);
         }
+        const paymentFrequencyRaw = String(entry.paymentFrequency ?? "").trim() || null;
         setClauses.push(`payment_frequency = $${pi++}`);
-        values.push(String(entry.paymentFrequency ?? "").trim() || null);
+        values.push(paymentFrequencyRaw);
+        setClauses.push(`payment_frequency_raw = $${pi++}`);
+        values.push(paymentFrequencyRaw);
+        setClauses.push(`payment_frequency_canonical = $${pi++}`);
+        values.push(normalizePaymentFrequency(paymentFrequencyRaw));
+        setClauses.push(`payment_frequency_source = $${pi++}`);
+        values.push(paymentFrequencyRaw ? "ppm" : null);
 
         // Set seniority_rank — overwrite (matches persist-ppm.ts). The
         // previous COALESCE preserved a wrong stored value when re-ingest

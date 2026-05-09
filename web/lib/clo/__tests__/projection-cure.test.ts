@@ -24,6 +24,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
       maturityDate: addQuarters("2026-03-09", 16 + i),
       ratingBucket: "AAA",
       spreadBps: 120,
+    currency: "EUR",
     })),
     // AA loans — 20 × $3M
     ...Array.from({ length: 20 }, (_, i) => ({
@@ -31,6 +32,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
       maturityDate: addQuarters("2026-03-09", 14 + i),
       ratingBucket: "AA",
       spreadBps: 160,
+    currency: "EUR",
     })),
     // A loans — 15 × $3M
     ...Array.from({ length: 15 }, (_, i) => ({
@@ -38,6 +40,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
       maturityDate: addQuarters("2026-03-09", 12 + i),
       ratingBucket: "A",
       spreadBps: 220,
+    currency: "EUR",
     })),
     // BBB loans — 15 × $3M
     ...Array.from({ length: 15 }, (_, i) => ({
@@ -45,6 +48,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
       maturityDate: addQuarters("2026-03-09", 12 + i),
       ratingBucket: "BBB",
       spreadBps: 280,
+    currency: "EUR",
     })),
     // BB loans — 50 × $4M
     ...Array.from({ length: 50 }, (_, i) => ({
@@ -52,6 +56,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
       maturityDate: addQuarters("2026-03-09", 10 + (i % 12)),
       ratingBucket: "BB",
       spreadBps: 350,
+    currency: "EUR",
     })),
     // B loans — 30 × $3M
     ...Array.from({ length: 30 }, (_, i) => ({
@@ -59,6 +64,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
       maturityDate: addQuarters("2026-03-09", 8 + (i % 10)),
       ratingBucket: "B",
       spreadBps: 420,
+    currency: "EUR",
     })),
     // CCC loans — 10 × $2M
     ...Array.from({ length: 10 }, (_, i) => ({
@@ -66,6 +72,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
       maturityDate: addQuarters("2026-03-09", 6 + (i % 6)),
       ratingBucket: "CCC",
       spreadBps: 650,
+    currency: "EUR",
     })),
   ];
 
@@ -75,6 +82,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
 
   return {
     initialPar: 490_000_000,
+    dealCurrency: "EUR",
     wacSpreadBps: 330,
     baseRatePct: CLO_DEFAULTS.baseRatePct,          // 3.5%
     baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct, // 0%
@@ -99,6 +107,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
         seniorityRank: 0,
         isFloating: false,
         isIncomeNote: false,
+        paymentFrequency: "quarterly" as const,
         isDeferrable: false,
         isAmortising: true,
         amortisationPerPeriod: 400_000,
@@ -112,6 +121,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
         seniorityRank: 1,
         isFloating: true,
         isIncomeNote: false,
+        paymentFrequency: "quarterly" as const,
         isDeferrable: false,
       },
       // Class B-1 — AA (non-deferrable per PPM)
@@ -122,6 +132,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
         seniorityRank: 2,
         isFloating: true,
         isIncomeNote: false,
+        paymentFrequency: "quarterly" as const,
         isDeferrable: false,
       },
       // Class B-2 — AA (same rank as B-1, non-deferrable per PPM)
@@ -132,6 +143,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
         seniorityRank: 2,
         isFloating: true,
         isIncomeNote: false,
+        paymentFrequency: "quarterly" as const,
         isDeferrable: false,
       },
       // Class C — A
@@ -142,6 +154,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
         seniorityRank: 3,
         isFloating: true,
         isIncomeNote: false,
+        paymentFrequency: "quarterly" as const,
         isDeferrable: true,
       },
       // Class D — BBB
@@ -152,6 +165,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
         seniorityRank: 4,
         isFloating: true,
         isIncomeNote: false,
+        paymentFrequency: "quarterly" as const,
         isDeferrable: true,
       },
       // Class E — BB
@@ -162,6 +176,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
         seniorityRank: 5,
         isFloating: true,
         isIncomeNote: false,
+        paymentFrequency: "quarterly" as const,
         isDeferrable: true,
       },
       // Class F — B
@@ -172,6 +187,7 @@ function makeRealisticInputs(overrides: Partial<ProjectionInputs> = {}): Project
         seniorityRank: 6,
         isFloating: true,
         isIncomeNote: false,
+        paymentFrequency: "quarterly" as const,
         isDeferrable: true,
       },
       // Sub notes — equity
@@ -506,9 +522,11 @@ describe("IC partial cure", () => {
         parBalance: 9_800_000,
         maturityDate: addQuarters("2026-03-09", 20 + i),
         ratingBucket: "BBB",
-        spreadBps: 200, // low spread to reduce interest income
+        spreadBps: 200,
+    currency: "EUR", // low spread to reduce interest income
       })),
       initialPar: 490_000_000,
+    dealCurrency: "EUR",
     });
 
     const result = runProjection(inputs);
@@ -921,8 +939,10 @@ describe("OC cure exactly at boundary", () => {
         maturityDate: addQuarters("2026-03-09", 20 + i),
         ratingBucket: "B",
         spreadBps: 375,
+    currency: "EUR",
       })),
       initialPar: 490_000_000,
+    dealCurrency: "EUR",
     });
 
     const result = runProjection(inputs);

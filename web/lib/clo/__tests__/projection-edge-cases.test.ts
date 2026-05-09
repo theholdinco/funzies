@@ -18,10 +18,12 @@ function makeSimpleInputs(overrides: Partial<ProjectionInputs> = {}): Projection
     maturityDate: addQuarters(currentDate, 12 + i),
     ratingBucket: "B",
     spreadBps: 400,
+    currency: "EUR",
   }));
 
   return {
     initialPar: 100_000_000,
+    dealCurrency: "EUR",
     wacSpreadBps: 400,
     baseRatePct: 3.5,
     baseRateFloorPct: 0,
@@ -38,8 +40,8 @@ function makeSimpleInputs(overrides: Partial<ProjectionInputs> = {}): Projection
     callPriceMode: "par",
     reinvestmentOcTrigger: null,
     tranches: [
-      { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+      { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+      { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
       { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
     ],
     ocTriggers: [],
@@ -71,10 +73,12 @@ function makeMultiTrancheInputs(overrides: Partial<ProjectionInputs> = {}): Proj
     maturityDate: addQuarters(currentDate, 10 + i),
     ratingBucket: "B",
     spreadBps: 400,
+    currency: "EUR",
   }));
 
   return {
     initialPar: 100_000_000,
+    dealCurrency: "EUR",
     wacSpreadBps: 400,
     baseRatePct: 3.5,
     baseRateFloorPct: 0,
@@ -91,11 +95,11 @@ function makeMultiTrancheInputs(overrides: Partial<ProjectionInputs> = {}): Proj
     callPriceMode: "par",
     reinvestmentOcTrigger: null,
     tranches: [
-      { className: "A", currentBalance: 55_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "J", currentBalance: 12_000_000, spreadBps: 225, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "C", currentBalance: 8_000_000, spreadBps: 330, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: true },
-      { className: "D", currentBalance: 7_000_000, spreadBps: 450, seniorityRank: 4, isFloating: true, isIncomeNote: false, isDeferrable: true },
-      { className: "E", currentBalance: 6_000_000, spreadBps: 650, seniorityRank: 5, isFloating: true, isIncomeNote: false, isDeferrable: true },
+      { className: "A", currentBalance: 55_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+      { className: "J", currentBalance: 12_000_000, spreadBps: 225, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+      { className: "C", currentBalance: 8_000_000, spreadBps: 330, seniorityRank: 3, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true },
+      { className: "D", currentBalance: 7_000_000, spreadBps: 450, seniorityRank: 4, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true },
+      { className: "E", currentBalance: 6_000_000, spreadBps: 650, seniorityRank: 5, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true },
       { className: "Sub", currentBalance: 12_000_000, spreadBps: 0, seniorityRank: 6, isFloating: false, isIncomeNote: true, isDeferrable: false },
     ],
     ocTriggers: [
@@ -150,7 +154,8 @@ describe("1. Partial Cure Precision", () => {
       // B denom = A + B = 90M. OC = par/denom*100. At 100M par: 100/90*100 = 111.1% → passes 110.
       // Reduce initial par to 98.5M: 98.5/90*100 = 109.44% → fails 110.
       initialPar: 98_500_000,
-      loans: [{ parBalance: 98_500_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 }],
+    dealCurrency: "EUR",
+      loans: [{ parBalance: 98_500_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 , currency: "EUR" }],
       ocTriggers: [{ className: "J", triggerLevel: 110, rank: 2 }],
       icTriggers: [],
     });
@@ -197,7 +202,8 @@ describe("1. Partial Cure Precision", () => {
       recoveryPct: 0,
 
     ratingAgencies: ["moodys", "sp", "fitch"],      initialPar: 98_500_000,
-      loans: [{ parBalance: 98_500_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 }],
+    dealCurrency: "EUR",
+      loans: [{ parBalance: 98_500_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 , currency: "EUR" }],
       ocTriggers: [{ className: "J", triggerLevel: 110, rank: 2 }],
       icTriggers: [],
     });
@@ -500,7 +506,8 @@ describe("3. Boundary Conditions", () => {
       recoveryPct: 0,
 
     ratingAgencies: ["moodys", "sp", "fitch"],      initialPar: 99_000_000,
-      loans: [{ parBalance: 99_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 }],
+    dealCurrency: "EUR",
+      loans: [{ parBalance: 99_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 , currency: "EUR" }],
       ocTriggers: [{ className: "J", triggerLevel: 110, rank: 2 }],
       icTriggers: [],
     });
@@ -529,7 +536,7 @@ describe("3. Boundary Conditions", () => {
       // Replaces the legacy `uniformRates(100)` setup which under per-position
       // would only produce ~0.79%/q (B bucket WARF), since per-position reads
       // warfFactor not the rates map.
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400, warfFactor: 10000 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400, currency: "EUR", warfFactor: 10000 }],
       ocTriggers: [{ className: "A", triggerLevel: 120, rank: 1 }],
       icTriggers: [],
     });
@@ -556,7 +563,8 @@ describe("3. Boundary Conditions", () => {
       recoveryPct: 0,
 
     ratingAgencies: ["moodys", "sp", "fitch"],      initialPar: 98_999_100,
-      loans: [{ parBalance: 98_999_100, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 }],
+    dealCurrency: "EUR",
+      loans: [{ parBalance: 98_999_100, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 , currency: "EUR" }],
       ocTriggers: [{ className: "J", triggerLevel: 110, rank: 2 }],
       icTriggers: [],
     });
@@ -585,9 +593,9 @@ describe("4. Deferred Interest / PIK Interactions", () => {
   function makePikInputs(overrides: Partial<ProjectionInputs> = {}): ProjectionInputs {
     return makeSimpleInputs({
       tranches: [
-        { className: "A", currentBalance: 60_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "B", currentBalance: 10_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "C", currentBalance: 20_000_000, spreadBps: 400, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: true },
+        { className: "A", currentBalance: 60_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "B", currentBalance: 10_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "C", currentBalance: 20_000_000, spreadBps: 400, seniorityRank: 3, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true },
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 4, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       // Pool collects ~1.875M/quarter (100M × 7.5% / 4). Senior fee 3% =
@@ -690,9 +698,9 @@ describe("4. Deferred Interest / PIK Interactions", () => {
         // + cure-paydown-targets-deferred mechanics. D1 protects the top two
         // non-amort debt ranks; K sits at rank 3 (= Class C-equivalent PIK
         // tranche, PPM-correct). A/B above are non-deferrable placeholders.
-        { className: "A",   currentBalance:  5_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "B",   currentBalance:  5_000_000, spreadBps: 130, seniorityRank: 2, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "K",   currentBalance: 60_000_000, spreadBps: 140, seniorityRank: 3, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
+        { className: "A",   currentBalance:  5_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "B",   currentBalance:  5_000_000, spreadBps: 130, seniorityRank: 2, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "K",   currentBalance: 60_000_000, spreadBps: 140, seniorityRank: 3, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
         { className: "Sub", currentBalance: 30_000_000, spreadBps:   0, seniorityRank: 4, isFloating: false, isIncomeNote: true,  isDeferrable: false },
       ],
       // OC trigger at A (rank 1) — fails → cure diverts at rank-1 boundary
@@ -723,8 +731,8 @@ describe("4. Deferred Interest / PIK Interactions", () => {
       recoveryPct: 0,
 
     ratingAgencies: ["moodys", "sp", "fitch"],      tranches: [
-        { className: "A", currentBalance: 5_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "J", currentBalance: 5_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 5_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "J", currentBalance: 5_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 90_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
@@ -768,11 +776,11 @@ describe("5. Class X / Amortising Edge Cases", () => {
       tranches: [
         {
           className: "X", currentBalance: 2_000_000, spreadBps: 60,
-          seniorityRank: 0, isFloating: true, isIncomeNote: false, isDeferrable: false,
+          seniorityRank: 0, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false,
           isAmortising: true, amortisationPerPeriod: 500_000, amortStartDate: "2025-01-01",
         },
-        { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "J", currentBalance: 18_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "J", currentBalance: 18_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
@@ -811,11 +819,11 @@ describe("5. Class X / Amortising Edge Cases", () => {
     ratingAgencies: ["moodys", "sp", "fitch"],      tranches: [
         {
           className: "X", currentBalance: 5_000_000, spreadBps: 60,
-          seniorityRank: 0, isFloating: true, isIncomeNote: false, isDeferrable: false,
+          seniorityRank: 0, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false,
           isAmortising: true, amortisationPerPeriod: 500_000, amortStartDate: "2025-01-01",
         },
-        { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "J", currentBalance: 15_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "J", currentBalance: 15_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       // Set OC trigger for A. If X is included in denom, ratio = 100M / (5M+70M) = 133.3%
@@ -846,11 +854,11 @@ describe("5. Class X / Amortising Edge Cases", () => {
     ratingAgencies: ["moodys", "sp", "fitch"],      tranches: [
         {
           className: "X", currentBalance: 2_000_000, spreadBps: 60,
-          seniorityRank: 0, isFloating: true, isIncomeNote: false, isDeferrable: false,
+          seniorityRank: 0, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false,
           isAmortising: true, amortisationPerPeriod: 500_000,
           amortStartDate: addQuarters(currentDate, 3), // starts Q3
         },
-        { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 28_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
@@ -1054,6 +1062,7 @@ describe("7. Recovery & Default Timing", () => {
         maturityDate: addQuarters("2026-01-15", 12 + i),
         ratingBucket: "B" as const,
         spreadBps: 400,
+    currency: "EUR",
         warfFactor: 10000,
       })),
       ocTriggers: [],
@@ -1122,7 +1131,7 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
 
     ratingAgencies: ["moodys", "sp", "fitch"],      maturityDate: addQuarters("2026-01-15", 4),
       // Single loan that matures in Q4, at par = 100M
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 4), ratingBucket: "B", spreadBps: 400 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 4), ratingBucket: "B", spreadBps: 400 , currency: "EUR" }],
       // Total debt only 90M (A=70M + B=20M), par = 100M
       // At maturity: 100M proceeds, 90M to pay off debt, 10M surplus to equity
       ocTriggers: [],
@@ -1204,7 +1213,7 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
       callDate: addQuarters("2026-01-15", 4),
       callPricePct: 100,
       callPriceMode: "par",
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 , currency: "EUR" }],
       ocTriggers: [],
       icTriggers: [],
     });
@@ -1219,7 +1228,7 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
       callDate: addQuarters("2026-01-15", 4),
       callPricePct: 95,
       callPriceMode: "manual",
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 32), ratingBucket: "B", spreadBps: 400 , currency: "EUR" }],
       ocTriggers: [],
       icTriggers: [],
     });
@@ -1356,8 +1365,8 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
 
     ratingAgencies: ["moodys", "sp", "fitch"],      maturityDate: addQuarters("2026-01-15", 8),
       loans: [
-        { parBalance: 50_000_000, maturityDate: addQuarters("2026-01-15", 4), ratingBucket: "B", spreadBps: 400 },
-        { parBalance: 50_000_000, maturityDate: addQuarters("2026-01-15", 8), ratingBucket: "B", spreadBps: 400 },
+        { parBalance: 50_000_000, maturityDate: addQuarters("2026-01-15", 4), ratingBucket: "B", spreadBps: 400 , currency: "EUR" },
+        { parBalance: 50_000_000, maturityDate: addQuarters("2026-01-15", 8), ratingBucket: "B", spreadBps: 400 , currency: "EUR" },
       ],
       ocTriggers: [],
       icTriggers: [],
@@ -1390,9 +1399,9 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
 
     ratingAgencies: ["moodys", "sp", "fitch"],      deferredInterestCompounds: false,
       tranches: [
-        { className: "A", currentBalance: 10_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "B", currentBalance:  5_000_000, spreadBps: 175, seniorityRank: 2, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 3, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
+        { className: "A", currentBalance: 10_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "B", currentBalance:  5_000_000, spreadBps: 175, seniorityRank: 2, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 3, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
         { className: "Sub", currentBalance: 65_000_000, spreadBps: 0, seniorityRank: 4, isFloating: false, isIncomeNote: true,  isDeferrable: false },
       ],
       // A fails OC → interest diverted → J (rank-3 deferrable) gets PIK
@@ -1400,8 +1409,8 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
       icTriggers: [],
       // Loans mature early to generate principal flows
       loans: [
-        { parBalance: 50_000_000, maturityDate: addQuarters("2026-01-15", 2), ratingBucket: "B", spreadBps: 400 },
-        { parBalance: 50_000_000, maturityDate: addQuarters("2026-01-15", 6), ratingBucket: "B", spreadBps: 400 },
+        { parBalance: 50_000_000, maturityDate: addQuarters("2026-01-15", 2), ratingBucket: "B", spreadBps: 400 , currency: "EUR" },
+        { parBalance: 50_000_000, maturityDate: addQuarters("2026-01-15", 6), ratingBucket: "B", spreadBps: 400 , currency: "EUR" },
       ],
     });
 
@@ -1486,8 +1495,8 @@ describe("Structural Invariants", () => {
       recoveryPct: 0,
 
     ratingAgencies: ["moodys", "sp", "fitch"],      tranches: [
-        { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false }, // NOT deferrable
+        { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false }, // NOT deferrable
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
@@ -1620,8 +1629,8 @@ describe("ProjectionInitialState.equityBookValue / equityWipedOut", () => {
     const inputs = makeSimpleInputs({
       tranches: [
         // Total non-equity debt 200M > 100M loan assets → insolvent
-        { className: "A", currentBalance: 150_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "J", currentBalance: 50_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 150_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "J", currentBalance: 50_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],

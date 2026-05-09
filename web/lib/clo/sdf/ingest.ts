@@ -8,6 +8,8 @@ import { parseTransactions, type SdfTransactionRow } from "./parse-transactions"
 import { parseAccruals, type SdfAccrualRow } from "./parse-accruals";
 import { parseIntexPositions, type ParsedIntexPositionRow } from "../intex/parse-positions";
 import type { SdfFileType, SdfIngestionResult, SdfParseResult } from "./types";
+import { canonicalCurrency } from "../currency";
+import { normalizePaymentFrequency } from "../payment-frequency";
 
 type ParsedFile =
   | { fileType: "test_results"; parsed: SdfParseResult<SdfTestResultRow> }
@@ -362,6 +364,21 @@ async function processCollateral(
 ): Promise<number> {
   if (parsed.rows.length === 0) return 0;
 
+  const withCurrencyProvenance = (r: SdfCollateralRow) => {
+    const rawCurrency = r.currency ?? r.native_currency;
+    const canonical = canonicalCurrency(rawCurrency);
+    const nativeCanonical = canonicalCurrency(r.native_currency);
+    return {
+      ...r,
+      currency: canonical ?? r.currency,
+      currency_raw: rawCurrency,
+      currency_canonical: canonical,
+      currency_source: rawCurrency ? "sdf_collateral" : null,
+      native_currency_raw: r.native_currency,
+      native_currency_canonical: nativeCanonical,
+    };
+  };
+
   // Check for enrichment data loss — only warn when Asset Level is NOT in the batch
   if (!assetLevelInBatch) {
     const enriched = await query<{ count: string }>(
@@ -382,7 +399,7 @@ async function processCollateral(
     );
     const rows = parsed.rows.map((r) => ({
       report_period_id: reportPeriodId,
-      ...r,
+      ...withCurrencyProvenance(r),
     }));
     await sdfBatchInsert("clo_holdings", rows, externalClient);
     return parsed.rows.length;
@@ -398,7 +415,7 @@ async function processCollateral(
 
     const rows = parsed.rows.map((r) => ({
       report_period_id: reportPeriodId,
-      ...r,
+      ...withCurrencyProvenance(r),
     }));
     await sdfBatchInsert("clo_holdings", rows, client);
 
@@ -463,7 +480,13 @@ const ENRICHMENT_COLUMNS = [
   "current_price",
   "facility_id",
   "figi",
+  "currency",
   "native_currency",
+  "native_currency_raw",
+  "native_currency_canonical",
+  "currency_raw",
+  "currency_canonical",
+  "currency_source",
   "next_payment_date",
   "call_date",
   "put_date",
@@ -517,8 +540,17 @@ async function processAssetLevel(
     let enrichedCount = 0;
 
     for (const row of parsed.rows) {
+      const enrichedRow = {
+        ...row,
+        currency: canonicalCurrency(row.native_currency) ?? row.native_currency,
+        native_currency_raw: row.native_currency,
+        native_currency_canonical: canonicalCurrency(row.native_currency),
+        currency_raw: row.native_currency,
+        currency_canonical: canonicalCurrency(row.native_currency),
+        currency_source: row.native_currency ? "sdf_asset_level" : null,
+      };
       const enrichmentValues = ENRICHMENT_COLUMNS.map((col) => {
-        const val = row[col as keyof SdfAssetLevelRow];
+        const val = enrichedRow[col as keyof typeof enrichedRow];
         return val === null || val === undefined ? null : val;
       });
 
@@ -581,8 +613,11 @@ async function processNotes(
   const client = await getClient();
   try {
     await client.query("BEGIN");
+    const noteCurrencySet = new Set<string>();
 
     for (const note of parsed.rows) {
+      const noteCurrencyCanonical = canonicalCurrency(note.currency);
+      if (noteCurrencyCanonical) noteCurrencySet.add(noteCurrencyCanonical);
       // Find or create tranche
       const existing = await client.query<{
         id: string;
@@ -613,16 +648,22 @@ async function processNotes(
            reference_rate = COALESCE($5, reference_rate),
            original_balance = COALESCE($6, original_balance),
            payment_frequency = $7,
-           day_count_convention = COALESCE($8, day_count_convention),
-           cusip = COALESCE($9, cusip),
-           isin = COALESCE($10, isin),
-           currency = COALESCE($11, currency),
-           tranche_type = COALESCE($12, tranche_type),
-           liab_prin = COALESCE($13, liab_prin),
-           legal_maturity_date = COALESCE($14, legal_maturity_date),
-           amount_native = COALESCE($15, amount_native),
-           vendor_custom_fields = COALESCE($16, vendor_custom_fields)
-         WHERE id = $17`,
+           payment_frequency_raw = $8,
+           payment_frequency_canonical = $9,
+           payment_frequency_source = $10,
+           day_count_convention = COALESCE($11, day_count_convention),
+           cusip = COALESCE($12, cusip),
+           isin = COALESCE($13, isin),
+           currency = COALESCE($14, currency),
+           currency_raw = COALESCE($15, currency_raw),
+           currency_canonical = COALESCE($16, currency_canonical),
+           currency_source = COALESCE($17, currency_source),
+           tranche_type = COALESCE($18, tranche_type),
+           liab_prin = COALESCE($19, liab_prin),
+           legal_maturity_date = COALESCE($20, legal_maturity_date),
+           amount_native = COALESCE($21, amount_native),
+           vendor_custom_fields = COALESCE($22, vendor_custom_fields)
+         WHERE id = $23`,
         [
           note.rating_moodys,
           note.rating_sp,
@@ -631,10 +672,16 @@ async function processNotes(
           note.reference_rate,
           note.original_balance,
           note.payment_frequency,
+          note.payment_frequency,
+          normalizePaymentFrequency(note.payment_frequency),
+          note.payment_frequency ? "sdf_notes" : null,
           note.day_count_convention,
           note.cusip,
           note.isin,
+          canonicalCurrency(note.currency) ?? note.currency,
           note.currency,
+          canonicalCurrency(note.currency),
+          note.currency ? "sdf_notes" : null,
           note.tranche_type,
           note.liab_prin,
           note.legal_maturity_date,
@@ -719,6 +766,20 @@ async function processNotes(
       }
     }
 
+    if (noteCurrencySet.size === 1) {
+      const dealCurrency = Array.from(noteCurrencySet)[0];
+      await client.query(
+        `UPDATE clo_deals
+         SET deal_currency = $1,
+             deal_currency_raw = $1,
+             deal_currency_canonical = $1,
+             deal_currency_source = $2,
+             updated_at = now()
+         WHERE id = $3`,
+        [dealCurrency, "sdf_notes", dealId],
+      );
+    }
+
     await client.query("COMMIT");
     return parsed.rows.length;
   } catch (err) {
@@ -747,10 +808,18 @@ async function processAccounts(
       [reportPeriodId]
     );
 
-    const rows = parsed.rows.map((r) => ({
-      report_period_id: reportPeriodId,
-      ...r,
-    }));
+    const rows = parsed.rows.map((r) => {
+      const rawCurrency = r.account_name;
+      const canonical = canonicalCurrency(rawCurrency);
+      return {
+        report_period_id: reportPeriodId,
+        ...r,
+        currency: canonical,
+        currency_raw: rawCurrency,
+        currency_canonical: canonical,
+        currency_source: rawCurrency ? "sdf_accounts" : null,
+      };
+    });
     await sdfBatchInsert("clo_account_balances", rows, client);
 
     await client.query("COMMIT");
@@ -781,10 +850,20 @@ async function processTransactions(
       [reportPeriodId]
     );
 
-    const rows = parsed.rows.map((r) => ({
-      report_period_id: reportPeriodId,
-      ...r,
-    }));
+    const rows = parsed.rows.map((r) => {
+      const rawCurrency = r.native_currency;
+      const canonical = canonicalCurrency(rawCurrency);
+      return {
+        report_period_id: reportPeriodId,
+        ...r,
+        currency: canonical,
+        currency_raw: rawCurrency,
+        currency_canonical: canonical,
+        currency_source: rawCurrency ? "sdf_transactions" : null,
+        native_currency_raw: r.native_currency,
+        native_currency_canonical: canonicalCurrency(r.native_currency),
+      };
+    });
     await sdfBatchInsert("clo_trades", rows, client);
 
     await client.query("COMMIT");

@@ -20,6 +20,7 @@ export default function AnalysisForm() {
   const [spreadCoupon, setSpreadCoupon] = useState("");
   const [rating, setRating] = useState("");
   const [maturity, setMaturity] = useState("");
+  const [currency, setCurrency] = useState("");
   const [facilitySize, setFacilitySize] = useState("");
   const [leverage, setLeverage] = useState("");
   const [interestCoverage, setInterestCoverage] = useState("");
@@ -35,6 +36,7 @@ export default function AnalysisForm() {
   const [switchSpreadCoupon, setSwitchSpreadCoupon] = useState("");
   const [switchRating, setSwitchRating] = useState("");
   const [switchMaturity, setSwitchMaturity] = useState("");
+  const [switchCurrency, setSwitchCurrency] = useState("");
   const [switchFacilitySize, setSwitchFacilitySize] = useState("");
   const [switchLeverage, setSwitchLeverage] = useState("");
   const [switchInterestCoverage, setSwitchInterestCoverage] = useState("");
@@ -57,6 +59,7 @@ export default function AnalysisForm() {
       setSpreadCoupon: (v: string) => void;
       setRating: (v: string) => void;
       setMaturity: (v: string) => void;
+      setCurrency: (v: string) => void;
       setFacilitySize: (v: string) => void;
       setLeverage: (v: string) => void;
       setInterestCoverage: (v: string) => void;
@@ -73,8 +76,9 @@ export default function AnalysisForm() {
     const ratingParts = [item.moodysRating, item.spRating].filter(Boolean);
     setters.setRating(ratingParts.join("/"));
     setters.setMaturity(item.maturityDate ?? "");
-    // BuyListItem carries no currency field; render the number without a
-    // symbol so a user on a non-USD deal isn't shown the wrong currency.
+    setters.setCurrency(item.currency ?? "");
+    // Facility size is still shown without a symbol because the analysis form
+    // does not yet have first-class currency inputs for buy/switch writeups.
     setters.setFacilitySize(item.facilitySize != null ? item.facilitySize.toLocaleString() : "");
     setters.setLeverage(item.leverage != null ? `${item.leverage}x` : "");
     setters.setInterestCoverage(item.interestCoverage != null ? `${item.interestCoverage}x` : "");
@@ -85,7 +89,7 @@ export default function AnalysisForm() {
   function handleBuyListSelect(item: BuyListItem) {
     applyBuyListItem(item, {
       setBorrowerName, setSector, setSpreadCoupon, setRating,
-      setMaturity, setFacilitySize, setLeverage, setInterestCoverage,
+      setMaturity, setCurrency, setFacilitySize, setLeverage, setInterestCoverage,
       setCovenantsSummary, setNotes,
     });
     if (!title.trim()) setTitle(`Buy Analysis: ${item.obligorName}`);
@@ -100,6 +104,7 @@ export default function AnalysisForm() {
       setSpreadCoupon: (v: string) => void;
       setRating: (v: string) => void;
       setMaturity: (v: string) => void;
+      setCurrency: (v: string) => void;
       setFacilitySize: (v: string) => void;
       setCovenantsSummary: (v: string) => void;
     }
@@ -114,14 +119,16 @@ export default function AnalysisForm() {
     const ratingParts = [h.moodysRating, h.spRating].filter(Boolean);
     setters.setRating(ratingParts.join("/"));
     setters.setMaturity(h.maturityDate ?? "");
-    setters.setFacilitySize(h.parBalance != null ? `${currencySymbol(h.currency)}${h.parBalance.toLocaleString()}` : "");
+    const holdingCurrency = h.currency ?? h.nativeCurrency ?? "";
+    setters.setCurrency(holdingCurrency);
+    setters.setFacilitySize(h.parBalance != null ? `${currencySymbol(holdingCurrency)}${h.parBalance.toLocaleString()}` : "");
     setters.setCovenantsSummary(h.isCovLite ? "Covenant-lite" : "");
   }
 
   function handlePortfolioSelect(h: CloHolding) {
     applyHolding(h, {
       setBorrowerName, setSector, setLoanType, setSpreadCoupon,
-      setRating, setMaturity, setFacilitySize, setCovenantsSummary,
+      setRating, setMaturity, setCurrency, setFacilitySize, setCovenantsSummary,
     });
     const sellName = h.obligorName ?? "Current";
     if (switchBorrowerName) {
@@ -138,6 +145,7 @@ export default function AnalysisForm() {
       setSpreadCoupon: setSwitchSpreadCoupon,
       setRating: setSwitchRating,
       setMaturity: setSwitchMaturity,
+      setCurrency: setSwitchCurrency,
       setFacilitySize: setSwitchFacilitySize,
       setLeverage: setSwitchLeverage,
       setInterestCoverage: setSwitchInterestCoverage,
@@ -166,6 +174,7 @@ export default function AnalysisForm() {
       spreadCoupon: spreadCoupon.trim(),
       rating: rating.trim(),
       maturity: maturity.trim(),
+      currency: currency.trim().toUpperCase(),
       facilitySize: facilitySize.trim(),
       leverage: leverage.trim(),
       interestCoverage: interestCoverage.trim(),
@@ -183,6 +192,7 @@ export default function AnalysisForm() {
       payload.switchSpreadCoupon = switchSpreadCoupon.trim();
       payload.switchRating = switchRating.trim();
       payload.switchMaturity = switchMaturity.trim();
+      payload.switchCurrency = switchCurrency.trim().toUpperCase();
       payload.switchFacilitySize = switchFacilitySize.trim();
       payload.switchLeverage = switchLeverage.trim();
       payload.switchInterestCoverage = switchInterestCoverage.trim();
@@ -243,6 +253,7 @@ export default function AnalysisForm() {
       spreadCoupon: string;
       rating: string;
       maturity: string;
+      currency: string;
       facilitySize: string;
       leverage: string;
       interestCoverage: string;
@@ -259,6 +270,7 @@ export default function AnalysisForm() {
       setSpreadCoupon: (v: string) => void;
       setRating: (v: string) => void;
       setMaturity: (v: string) => void;
+      setCurrency: (v: string) => void;
       setFacilitySize: (v: string) => void;
       setLeverage: (v: string) => void;
       setInterestCoverage: (v: string) => void;
@@ -339,7 +351,17 @@ export default function AnalysisForm() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem" }}>
+          <div className="ic-field">
+            <label className="ic-field-label">Currency</label>
+            <input
+              type="text"
+              className="ic-input"
+              value={values.currency}
+              onChange={(e) => setters.setCurrency(e.target.value.toUpperCase())}
+              placeholder="e.g., EUR"
+            />
+          </div>
           <div className="ic-field">
             <label className="ic-field-label">Facility Size</label>
             <input
@@ -347,7 +369,7 @@ export default function AnalysisForm() {
               className="ic-input"
               value={values.facilitySize}
               onChange={(e) => setters.setFacilitySize(e.target.value)}
-              placeholder="e.g., $500M"
+              placeholder="e.g., 500M"
             />
           </div>
           <div className="ic-field">
@@ -493,8 +515,8 @@ export default function AnalysisForm() {
 
       {renderLoanFields(
         "primary",
-        { borrowerName, sector, loanType, spreadCoupon, rating, maturity, facilitySize, leverage, interestCoverage, covenantsSummary, ebitda, revenue, companyDescription, notes },
-        { setBorrowerName, setSector, setLoanType, setSpreadCoupon, setRating, setMaturity, setFacilitySize, setLeverage, setInterestCoverage, setCovenantsSummary, setEbitda, setRevenue, setCompanyDescription, setNotes }
+        { borrowerName, sector, loanType, spreadCoupon, rating, maturity, currency, facilitySize, leverage, interestCoverage, covenantsSummary, ebitda, revenue, companyDescription, notes },
+        { setBorrowerName, setSector, setLoanType, setSpreadCoupon, setRating, setMaturity, setCurrency, setFacilitySize, setLeverage, setInterestCoverage, setCovenantsSummary, setEbitda, setRevenue, setCompanyDescription, setNotes }
       )}
 
       {analysisType === "switch" && (
@@ -508,7 +530,7 @@ export default function AnalysisForm() {
             {
               borrowerName: switchBorrowerName, sector: switchSector, loanType: switchLoanType,
               spreadCoupon: switchSpreadCoupon, rating: switchRating, maturity: switchMaturity,
-              facilitySize: switchFacilitySize, leverage: switchLeverage,
+              currency: switchCurrency, facilitySize: switchFacilitySize, leverage: switchLeverage,
               interestCoverage: switchInterestCoverage, covenantsSummary: switchCovenantsSummary,
               ebitda: switchEbitda, revenue: switchRevenue,
               companyDescription: switchCompanyDescription, notes: switchNotes,
@@ -517,7 +539,7 @@ export default function AnalysisForm() {
               setBorrowerName: setSwitchBorrowerName, setSector: setSwitchSector,
               setLoanType: setSwitchLoanType, setSpreadCoupon: setSwitchSpreadCoupon,
               setRating: setSwitchRating, setMaturity: setSwitchMaturity,
-              setFacilitySize: setSwitchFacilitySize, setLeverage: setSwitchLeverage,
+              setCurrency: setSwitchCurrency, setFacilitySize: setSwitchFacilitySize, setLeverage: setSwitchLeverage,
               setInterestCoverage: setSwitchInterestCoverage,
               setCovenantsSummary: setSwitchCovenantsSummary,
               setEbitda: setSwitchEbitda, setRevenue: setSwitchRevenue,

@@ -36,6 +36,7 @@ function makeItem(overrides: Partial<BuyListItem>): BuyListItem {
     spRating: null,
     spreadBps: null,
     referenceRate: null,
+    currency: null,
     price: null,
     maturityDate: null,
     facilitySize: null,

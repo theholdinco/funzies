@@ -20,7 +20,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveWaterfallInputs } from "@/lib/clo/resolver";
 import { buildFromResolved, DEFAULT_ASSUMPTIONS, IncompleteDataError } from "@/lib/clo/build-projection-inputs";
-import type { ExtractedConstraints, CloTranche } from "@/lib/clo/types";
+import type { ExtractedConstraints, CloAccountBalance, CloTranche } from "@/lib/clo/types";
 
 const baseConstraints = {
   deal: null,
@@ -191,7 +191,7 @@ describe("resolver — day-count-convention propagation (DB-tranche branch)", ()
     expect(blockingDcc).toHaveLength(1);
   });
 
-  it("PPM/deal paymentFrequency wins over conflicting DB/SDF tranche value", () => {
+  it("DB/SDF paymentFrequency wins over conflicting PPM/deal tranche value", () => {
     const dbTranches: CloTranche[] = [
       makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 140, paymentFrequency: "1 Month" }),
       makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
@@ -203,9 +203,9 @@ describe("resolver — day-count-convention propagation (DB-tranche branch)", ()
 
     const { resolved, warnings } = resolveWaterfallInputs(constraints, null, dbTranches, [], []);
     const a = resolved.tranches.find((t) => t.className === "Class A");
-    expect(a?.paymentFrequency).toBe("quarterly");
-    expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(false);
-    expect(warnings.some((w) => w.message.includes("using PPM/deal value"))).toBe(true);
+    expect(a?.paymentFrequency).toBe("monthly");
+    expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(true);
+    expect(warnings.some((w) => w.message.includes("using DB/SDF value"))).toBe(true);
   });
 
   it("falls back to PPM/deal paymentFrequency when DB/SDF value is null-like", () => {
@@ -222,6 +222,33 @@ describe("resolver — day-count-convention propagation (DB-tranche branch)", ()
     const a = resolved.tranches.find((t) => t.className === "Class A");
     expect(a?.paymentFrequency).toBe("quarterly");
     expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(false);
+  });
+
+  it("does not infer deal currency from collateral currency when deal-level currency is absent", () => {
+    const holdings = [
+      {
+        id: "h-1",
+        profileId: "p-1",
+        obligorName: "Issuer",
+        facilityName: "Loan",
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingMoodys: null,
+        ratingSp: null,
+        ratingFitch: null,
+        spreadBps: 350,
+        currency: "EUR",
+        nativeCurrency: "EUR",
+        isDefaulted: false,
+      },
+    ] as never;
+    const { resolved, warnings } = resolveWaterfallInputs(minimalConstraints, null, [
+      makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 140, paymentFrequency: "3 Months" }),
+      makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
+    ], [], holdings);
+
+    expect(resolved.currency).toBeNull();
+    expect(warnings.some((w) => w.field === "currency" && /deal record/.test(w.message))).toBe(true);
   });
 
   it("normalizes supported semi-annual DB/SDF tranche paymentFrequency", () => {
@@ -255,6 +282,78 @@ describe("resolver — day-count-convention propagation (DB-tranche branch)", ()
     expect(a?.paymentFrequency).toBe("2 Months");
     expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(true);
     expect(() => buildFromResolved(resolved, DEFAULT_ASSUMPTIONS, [])).toThrow(IncompleteDataError);
+  });
+
+  it("unsupported DB/SDF tranche paymentFrequency is not masked by a supported PPM/deal fallback", () => {
+    const dbTranches: CloTranche[] = [
+      makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 140, paymentFrequency: "weekly" }),
+      makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
+    ];
+    const constraints = {
+      ...baseConstraints,
+      keyDates: { firstPaymentDate: "2026-04-15", paymentFrequency: "Quarterly" },
+    } as unknown as ExtractedConstraints;
+
+    const { resolved, warnings } = resolveWaterfallInputs(constraints, null, dbTranches, [], []);
+    const a = resolved.tranches.find((t) => t.className === "Class A");
+    expect(a?.paymentFrequency).toBe("weekly");
+    expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(true);
+    expect(() => buildFromResolved(resolved, DEFAULT_ASSUMPTIONS, [])).toThrow(IncompleteDataError);
+  });
+
+  it("blocks non-deal-currency account cash before it can enter waterfall cash", () => {
+    const accountBalances: CloAccountBalance[] = [{
+      id: "acct-1",
+      reportPeriodId: "rp-1",
+      accountName: "Principal Account",
+      accountType: "PRINCIPAL",
+      currency: "USD",
+      balanceAmount: 1_000_000,
+      requiredBalance: null,
+      excessDeficit: null,
+      accountInterest: null,
+      dataSource: "sdf",
+    }];
+    const constraints = {
+      ...minimalConstraints,
+      dealIdentity: { currency: "EUR" },
+    } as unknown as ExtractedConstraints;
+
+    const { warnings } = resolveWaterfallInputs(constraints, null, [
+      makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 140, paymentFrequency: "3 Months" }),
+      makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
+    ], [], [], undefined, accountBalances);
+
+    expect(warnings).toContainEqual(expect.objectContaining({
+      field: "accountBalances.currency",
+      blocking: true,
+    }));
+  });
+
+  it("accepts account cash currency when an explicit ISO code appears in the account name", () => {
+    const accountBalances: CloAccountBalance[] = [{
+      id: "acct-1",
+      reportPeriodId: "rp-1",
+      accountName: "Ares European CLO XV DAC Principle EUR",
+      accountType: "PRINCIPAL",
+      currency: null,
+      balanceAmount: -1_817_412.94,
+      requiredBalance: null,
+      excessDeficit: null,
+      accountInterest: null,
+      dataSource: "sdf",
+    }];
+    const constraints = {
+      ...minimalConstraints,
+      dealIdentity: { currency: "EUR" },
+    } as unknown as ExtractedConstraints;
+
+    const { warnings } = resolveWaterfallInputs(constraints, null, [
+      makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 140, paymentFrequency: "3 Months" }),
+      makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
+    ], [], [], undefined, accountBalances);
+
+    expect(warnings.some((w) => w.field === "accountBalances.currency" && w.blocking)).toBe(false);
   });
 
   it("missing DB/SDF tranche paymentFrequency is preserved as blocking so build cannot silently assume quarterly", () => {

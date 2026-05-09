@@ -2,6 +2,7 @@ import type { ResolvedDealData, ResolutionWarning } from "./resolver-types";
 import type { ProjectionInputs } from "./projection";
 import type { IntexAssumptions } from "./intex/parse-past-cashflows";
 import type { PaymentFrequency } from "./payment-frequency";
+import { canonicalCurrency } from "./currency";
 import { CLO_DEFAULTS } from "./defaults";
 import { DEFAULT_RATES_BY_RATING } from "./rating-mapping";
 
@@ -38,6 +39,75 @@ function canonicalPaymentFrequencyForProjection(
   return undefined;
 }
 
+function loanParExposureForCurrencyGate(loan: ResolvedDealData["loans"][number]): number {
+  return Math.max(0, loan.parBalance ?? 0) + Math.max(0, loan.undrawnCommitment ?? 0);
+}
+
+function hasCurrencyConcentrationSignal(test: ResolvedDealData["concentrationTests"][number]): boolean {
+  if (test.concentrationType === "CURRENCY") return true;
+  const text = `${test.testName ?? ""} ${test.bucketName ?? ""}`.toLowerCase();
+  return /\bcurrenc/.test(text) || /\bnon[-\s]?(euro|eur|usd|us dollar|sterling|pound|gbp|base|deal)\b/.test(text);
+}
+
+function hasPositiveNonDealCurrencyConcentrationEvidence(
+  test: ResolvedDealData["concentrationTests"][number],
+  dealCurrency: string,
+): boolean {
+  if (!hasCurrencyConcentrationSignal(test)) return false;
+  if (test.actualValue == null || test.actualValue <= 0) return false;
+  const rawText = `${test.testName ?? ""} ${test.bucketName ?? ""}`;
+  const text = rawText.toLowerCase();
+  if (/\bnon[-\s]?(base|deal)(?:\s+currenc(?:y|ies))?\b/.test(text) || /\bnon[-\s]?currency\b/.test(text)) {
+    return true;
+  }
+  const nonSpecific = text.match(/\bnon[-\s]?(euro|eur|usd|us dollar|sterling|pound|gbp)\b/);
+  if (nonSpecific) {
+    const targetCurrency = canonicalCurrency(nonSpecific[1]);
+    return targetCurrency === dealCurrency;
+  }
+  if (/\b(base|deal)\s+currenc/.test(text)) return false;
+  const namedCurrency = canonicalCurrency(rawText);
+  return namedCurrency != null && namedCurrency !== dealCurrency;
+}
+
+function hasPositivePoolSummaryNonDealCurrencyEvidence(
+  poolSummary: ResolvedDealData["poolSummary"],
+  dealCurrency: string,
+): boolean {
+  if ((poolSummary.pctNonBaseCurrency ?? 0) > 0) return true;
+  const explicitBuckets: Array<[string, number | null | undefined]> = [
+    ["EUR", poolSummary.pctEurDenominated],
+    ["GBP", poolSummary.pctGbpDenominated],
+    ["USD", poolSummary.pctUsdDenominated],
+  ];
+  const dealCurrencyPct = explicitBuckets.find(([currency]) => currency === dealCurrency)?.[1];
+  if (dealCurrencyPct != null && dealCurrencyPct > 0 && dealCurrencyPct < 99.999) return true;
+  return explicitBuckets.some(([currency, pct]) => currency !== dealCurrency && (pct ?? 0) > 0);
+}
+
+function hasAffirmativeAllDealCurrencyAggregateEvidence(
+  resolved: ResolvedDealData,
+  dealCurrency: string,
+): boolean {
+  const explicitBuckets: Array<[string, number | null | undefined]> = [
+    ["EUR", resolved.poolSummary.pctEurDenominated],
+    ["GBP", resolved.poolSummary.pctGbpDenominated],
+    ["USD", resolved.poolSummary.pctUsdDenominated],
+  ];
+  const dealCurrencyPct = explicitBuckets.find(([currency]) => currency === dealCurrency)?.[1];
+  if ((dealCurrencyPct ?? 0) >= 99.999 && (resolved.poolSummary.pctNonBaseCurrency ?? 0) <= 0) return true;
+
+  return resolved.concentrationTests.some((test) => {
+    if (!hasCurrencyConcentrationSignal(test)) return false;
+    if ((test.actualValue ?? 0) < 99.999) return false;
+    const rawText = `${test.testName ?? ""} ${test.bucketName ?? ""}`;
+    const text = rawText.toLowerCase();
+    if (/\b(base|deal)\s+currenc/.test(text)) return true;
+    const namedCurrency = canonicalCurrency(rawText);
+    return namedCurrency === dealCurrency;
+  });
+}
+
 // Empty resolved data — used when no deal data has been loaded yet.
 // Produces a ProjectionInputs that will fail validation (initialPar = 0)
 // but won't crash. This eliminates the need for a separate safe-default
@@ -49,6 +119,7 @@ export const EMPTY_RESOLVED: ResolvedDealData = {
     numberOfAssets: null, totalMarketValue: null, waRecoveryRate: null,
     pctFixedRate: null, pctCovLite: null, pctPik: null, pctCccAndBelow: null,
     pctBonds: null, pctSeniorSecured: null, pctSecondLien: null, pctCurrentPay: null,
+    pctEurDenominated: null, pctGbpDenominated: null, pctUsdDenominated: null, pctNonBaseCurrency: null,
     top10ObligorsPct: null,
     industryDistributionPct: null,
     largestIndustryPct: null,
@@ -645,7 +716,41 @@ function expandAggregateCarryforwardSeed(
 export function selectBlockingWarnings(
   warnings: ResolutionWarning[],
 ): ResolutionWarning[] {
-  return warnings.filter((w) => w.blocking === true);
+  const selected: ResolutionWarning[] = [];
+  const seen = new Set<string>();
+  for (const warning of warnings) {
+    if (warning.blocking !== true) continue;
+    const normalizedField = warning.field.replace(/^tranches\./, "");
+    const message = warning.message.toLowerCase();
+    const category = normalizedField.includes(".paymentFrequency")
+      ? message.includes("monthly")
+        ? "monthly"
+        : message.includes("semi")
+          ? "semi-annual-anchor"
+          : message.includes("unsupported")
+            ? "unsupported"
+            : "missing"
+      : normalizedField === "loans.currency"
+        ? message.includes("fx conversion") || message.includes("cross-currency") || /\bnon-[a-z]{3}\b/.test(message)
+          ? "foreign-currency"
+          : message.includes("concentration") || message.includes("pool-level")
+            ? "aggregate-currency"
+            : "missing-currency"
+        : "default";
+    const key = category === "default"
+      ? `${normalizedField}|${category}|${message.replace(/\s+/g, " ").slice(0, 160)}`
+      : `${normalizedField}|${category}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    selected.push(warning);
+  }
+  return selected;
+}
+
+export function selectNonBlockingWarnings(
+  warnings: ResolutionWarning[],
+): ResolutionWarning[] {
+  return warnings.filter((w) => w.severity !== "info" && w.blocking !== true);
 }
 
 /**
@@ -680,6 +785,98 @@ export function composeBuildWarnings(
   callerWarnings: ResolutionWarning[] = [],
 ): ResolutionWarning[] {
   const composedWarnings: ResolutionWarning[] = [...callerWarnings];
+
+  // KI-38 boundary: projection arithmetic assumes every monetary input is
+  // already denominated in the deal currency. Until FX conversion and
+  // cross-currency hedge cashflows are modeled, block deals whose collateral
+  // currency proves otherwise instead of adding USD/GBP par as if it were EUR.
+  const dealCurrency = canonicalCurrency(resolved.currency);
+  const currencyExposureByCurrency = new Map<string, number>();
+  let knownCurrencyExposure = 0;
+  let unknownCurrencyExposure = 0;
+  for (const loan of resolved.loans) {
+    const exposure = loanParExposureForCurrencyGate(loan);
+    if (exposure <= 0) continue;
+    const c = canonicalCurrency(loan.currency);
+    if (c) {
+      knownCurrencyExposure += exposure;
+      currencyExposureByCurrency.set(c, (currencyExposureByCurrency.get(c) ?? 0) + exposure);
+    } else {
+      unknownCurrencyExposure += exposure;
+    }
+  }
+  const aggregatePoolExposure = Math.max(0, resolved.poolSummary.totalPar ?? 0);
+  const loanLevelExposure = knownCurrencyExposure + unknownCurrencyExposure;
+  const unrepresentedAggregateExposure =
+    aggregatePoolExposure > loanLevelExposure + Math.max(1, aggregatePoolExposure * 1e-6)
+      ? aggregatePoolExposure - loanLevelExposure
+      : 0;
+  if (!dealCurrency && (knownCurrencyExposure > 0 || unknownCurrencyExposure > 0 || aggregatePoolExposure > 0)) {
+    composedWarnings.push({
+      field: "currency",
+      message:
+        "Deal currency is missing. Projection needs the deal currency before it can confirm collateral balances are in the same currency.",
+      severity: "error",
+      blocking: true,
+    });
+  } else if (dealCurrency && unrepresentedAggregateExposure > 0) {
+    const hasCurrencyConcentrationEvidence = resolved.concentrationTests.some(hasCurrencyConcentrationSignal);
+    const hasPositiveCurrencyConcentrationEvidence = resolved.concentrationTests.some(
+      (test) => hasPositiveNonDealCurrencyConcentrationEvidence(test, dealCurrency),
+    ) || hasPositivePoolSummaryNonDealCurrencyEvidence(resolved.poolSummary, dealCurrency);
+    if (hasPositiveCurrencyConcentrationEvidence || !hasAffirmativeAllDealCurrencyAggregateEvidence(resolved, dealCurrency)) {
+      composedWarnings.push({
+        field: "loans.currency",
+        message:
+          (hasCurrencyConcentrationEvidence
+            ? `Pool-level currency concentration data is present, but loan-level currency data is missing. `
+            : `Pool-level collateral exposure exceeds loan-level exposure by ${Math.round(unrepresentedAggregateExposure).toLocaleString()}, and loan-level currency data is missing for that exposure. `) +
+          `Projection needs loan currencies before it can confirm collateral balances are in ${dealCurrency}.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+  } else if (dealCurrency) {
+    const foreignCurrencies = Array.from(currencyExposureByCurrency.entries())
+      .filter(([c]) => c !== dealCurrency)
+      .sort((a, b) => b[1] - a[1]);
+    const hasPositiveCurrencyConcentrationEvidence = resolved.concentrationTests.some(
+      (test) => hasPositiveNonDealCurrencyConcentrationEvidence(test, dealCurrency),
+    ) || hasPositivePoolSummaryNonDealCurrencyEvidence(resolved.poolSummary, dealCurrency);
+    if (unknownCurrencyExposure > 0) {
+      composedWarnings.push({
+        field: "loans.currency",
+        message:
+          `Some collateral exposure is missing loan currency (${Math.round(unknownCurrencyExposure).toLocaleString()}). ` +
+          `Projection needs each loan currency before it can confirm balances are in ${dealCurrency}.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+    if (hasPositiveCurrencyConcentrationEvidence && foreignCurrencies.length === 0 && unknownCurrencyExposure === 0) {
+      composedWarnings.push({
+        field: "loans.currency",
+        message:
+          `Pool-level currency concentration data indicates non-${dealCurrency} exposure, but loan-level currencies do not identify that exposure. ` +
+          `Projection needs loan-level currencies before it can confirm collateral balances are all in ${dealCurrency}.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+    if (foreignCurrencies.length > 0) {
+      const summary = foreignCurrencies
+        .map(([c, exposure]) => `${c} ${Math.round(exposure).toLocaleString()}`)
+        .join(", ");
+      composedWarnings.push({
+        field: "loans.currency",
+        message:
+          `Collateral includes non-${dealCurrency} currency exposure (${summary}). ` +
+          `Projection is blocked because FX conversion and cross-currency hedge cashflows are not modeled yet.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+  }
 
   // Per-tranche data-shape gates. Each emits a ResolutionWarning rather
   // than throwing — partner-facing UX is the DATA INCOMPLETE banner via
@@ -721,8 +918,8 @@ export function composeBuildWarnings(
       composedWarnings.push({
         field: `tranches.${t.className}.paymentFrequency`,
         message:
-          `Tranche "${t.className}" is missing paymentFrequency. KI-36 requires an explicit ` +
-          `tranche or deal payment frequency; refusing to default to quarterly.`,
+          `Tranche "${t.className}" is missing its payment frequency. The projection needs an explicit ` +
+          `tranche or deal payment frequency; refusing to assume quarterly payments.`,
         severity: "error",
         blocking: true,
       });
@@ -734,8 +931,8 @@ export function composeBuildWarnings(
       composedWarnings.push({
         field: `tranches.${t.className}.paymentFrequency`,
         message:
-          `Tranche "${t.className}" has unsupported paymentFrequency "${paymentFrequency}". ` +
-          `Supported values are monthly, quarterly, and semi_annual.`,
+          `Tranche "${t.className}" has unsupported payment frequency "${paymentFrequency}". ` +
+          `The current projection supports quarterly and semi-annual tranche interest payments. Monthly is recognized but blocked until monthly liability cash routing is reviewed.`,
         severity: "error",
         blocking: true,
       });
@@ -745,7 +942,7 @@ export function composeBuildWarnings(
       composedWarnings.push({
         field: `tranches.${t.className}.paymentFrequency`,
         message:
-          `Tranche "${t.className}" has monthly paymentFrequency. KI-36 v1 supports a monthly ` +
+          `Tranche "${t.className}" pays monthly. The engine supports a monthly ` +
           `internal accrual clock, but waterfall rows are still deal payment dates; monthly ` +
           `liability cash-routing is blocked until the deal PPM route is reviewed.`,
         severity: "error",
@@ -758,8 +955,8 @@ export function composeBuildWarnings(
         composedWarnings.push({
           field: `tranches.${t.className}.paymentFrequency`,
           message:
-            `Tranche "${t.className}" has semi_annual paymentFrequency but resolved.dates.firstPaymentDate ` +
-            `is missing. The engine needs the first deal payment date to anchor the liability payment phase.`,
+            `Tranche "${t.className}" pays semi-annually, but the first deal payment date is missing. ` +
+            `The engine needs the first deal payment date to anchor the liability payment phase.`,
           severity: "error",
           blocking: true,
         });

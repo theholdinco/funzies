@@ -3,6 +3,8 @@ import { normalizeClassName } from "../api";
 import type { CapitalStructureEntry } from "../types/index";
 import { parseNumeric, parseDecoratedAmount } from "../sdf/csv-utils";
 import { assignDenseSeniorityRanks } from "../seniority-rank";
+import { canonicalCurrency } from "../currency";
+import { normalizePaymentFrequency } from "../payment-frequency";
 
 function parseAmount(s: string | undefined | null): number | null {
   return parseDecoratedAmount(s);
@@ -64,16 +66,20 @@ export async function syncPpmToRelationalTables(
     deals = await pool.query<{ id: string }>(
       `INSERT INTO clo_deals (
         profile_id, deal_name, issuer_legal_entity, jurisdiction, deal_currency,
+        deal_currency_raw, deal_currency_canonical, deal_currency_source,
         closing_date, effective_date, reinvestment_period_end, non_call_period_end,
         stated_maturity_date, collateral_manager, governing_law, ppm_constraints
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
       RETURNING id`,
       [
         profileId,
         di.dealName ?? null,
         di.issuerLegalName ?? null,
         di.jurisdiction ?? null,
+        canonicalCurrency(di.currency) ?? di.currency ?? null,
         di.currency ?? null,
+        canonicalCurrency(di.currency),
+        di.currency ? "ppm" : null,
         kd.originalIssueDate ?? null,
         kd.currentIssueDate ?? null,
         kd.reinvestmentPeriodEnd ?? null,
@@ -87,6 +93,37 @@ export async function syncPpmToRelationalTables(
     console.log(`[worker] syncPpm: created deal ${deals.rows[0].id} for profile ${profileId}`);
   }
   const dealId = deals.rows[0].id;
+  const dealIdentity = (extractedConstraints.dealIdentity ?? {}) as Record<string, string>;
+  const keyDateMetadata = (extractedConstraints.keyDates ?? {}) as Record<string, string>;
+  const dealMetadataClauses: string[] = [];
+  const dealMetadataValues: unknown[] = [];
+  let md = 1;
+  const addMetadataIfPresent = (column: string, value: unknown, overwrite = false) => {
+    if (isNullish(value) || value === "") return;
+    dealMetadataClauses.push(
+      overwrite
+        ? `${column} = $${md++}`
+        : `${column} = CASE WHEN ${column} IS NULL OR ${column}::text = '' THEN $${md++} ELSE ${column} END`,
+    );
+    dealMetadataValues.push(value);
+  };
+  addMetadataIfPresent("deal_name", dealIdentity.dealName);
+  addMetadataIfPresent("issuer_legal_entity", dealIdentity.issuerLegalName);
+  addMetadataIfPresent("jurisdiction", dealIdentity.jurisdiction);
+  addMetadataIfPresent("deal_currency", canonicalCurrency(dealIdentity.currency) ?? dealIdentity.currency, true);
+  addMetadataIfPresent("deal_currency_raw", dealIdentity.currency, true);
+  addMetadataIfPresent("deal_currency_canonical", canonicalCurrency(dealIdentity.currency), true);
+  addMetadataIfPresent("deal_currency_source", dealIdentity.currency ? "ppm" : null, true);
+  addMetadataIfPresent("governing_law", dealIdentity.governingLaw);
+  addMetadataIfPresent("closing_date", keyDateMetadata.originalIssueDate);
+  addMetadataIfPresent("effective_date", keyDateMetadata.currentIssueDate);
+  if (dealMetadataClauses.length > 0) {
+    dealMetadataValues.push(dealId);
+    await pool.query(
+      `UPDATE clo_deals SET ${dealMetadataClauses.join(", ")} WHERE id = $${md}`,
+      dealMetadataValues,
+    );
+  }
 
   // Sync capital structure → clo_tranches
   const capitalStructure = (extractedConstraints.capitalStructure ?? []) as CapitalStructureEntry[];
@@ -165,8 +202,15 @@ export async function syncPpmToRelationalTables(
       setClauses.push(`is_floating = $${pi++}`);
       values.push(false);
     }
+    const paymentFrequencyRaw = entry.paymentFrequency?.trim() || null;
     setClauses.push(`payment_frequency = $${pi++}`);
-    values.push(entry.paymentFrequency?.trim() || null);
+    values.push(paymentFrequencyRaw);
+    setClauses.push(`payment_frequency_raw = $${pi++}`);
+    values.push(paymentFrequencyRaw);
+    setClauses.push(`payment_frequency_canonical = $${pi++}`);
+    values.push(normalizePaymentFrequency(paymentFrequencyRaw));
+    setClauses.push(`payment_frequency_source = $${pi++}`);
+    values.push(paymentFrequencyRaw ? "ppm" : null);
     setClauses.push(`is_subordinate = $${pi++}`);
     values.push(!!isSub);
     setClauses.push(`is_income_note = $${pi++}`);

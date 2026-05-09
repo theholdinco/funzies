@@ -19,6 +19,7 @@ import {
 } from "./senior-expense-breakdown";
 import type { DayCountConvention } from "./day-count-canonicalize";
 import { type PaymentFrequency } from "./payment-frequency";
+import { canonicalCurrency } from "./currency";
 import type { ResolvedDiscountObligationRule, ResolvedLongDatedValuationRule } from "./resolver-types";
 import { aggregateIndustryPar, allocateReinvestment } from "./industry-cap";
 import { resolveAgencyRecovery } from "./recovery-rate";
@@ -68,9 +69,10 @@ export interface LoanInput {
   /** Per PPM "Loss Mitigation Loan" — excluded from Floating Par AND from
    *  Caa/CCC concentration denominators. Optional; defaults to undefined. */
   isLossMitigationLoan?: boolean;
-  /** ISO 4217 currency code. Used by `computePoolQualityMetrics` to flag
+  /** Recognized ISO 4217 currency code. Used by `computePoolQualityMetrics` to flag
    *  Non-Euro Obligations (excluded from Floating Par when the deal currency
-   *  differs). Optional; treated as deal-currency-denominated when absent. */
+   *  differs). Optional only for legacy/direct synthetic callers that do not
+   *  provide `dealCurrency`; production resolver/build paths must populate it. */
   currency?: string;
   /** Per-agency Moody's sub-bucket rating (e.g. "Caa2") for the per-agency
    *  Caa/CCC concentration tests. Optional; falls back to `ratingBucket`
@@ -1729,13 +1731,19 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   // fires immediately) when the resolver hasn't extracted a per-deal
   // value. See ProjectionInputs docstring.
   const eodGrace = interestNonPaymentGracePeriods ?? 0;
-  const monthlyTranche = tranches.find(
-    (t) => !t.isIncomeNote && (t.paymentFrequency ?? "quarterly") === "monthly",
+  const interestBearingTrancheWithoutFrequency = tranches.find(
+    (t) => !t.isIncomeNote && (t.isFloating || t.spreadBps !== 0) && t.paymentFrequency == null,
   );
+  if (interestBearingTrancheWithoutFrequency) {
+    throw new Error(
+      `Tranche "${interestBearingTrancheWithoutFrequency.className}" is missing payment frequency; refusing to assume quarterly payments.`,
+    );
+  }
+  const monthlyTranche = tranches.find((t) => !t.isIncomeNote && t.paymentFrequency === "monthly");
   if (monthlyTranche) {
     throw new Error(
       `Tranche "${monthlyTranche.className}" has monthly paymentFrequency, ` +
-        `but KI-36 v1 only supports monthly tranche payments when the deal waterfall dates are monthly.`,
+        `but monthly tranche payments are blocked until the deal waterfall dates and monthly cash routing are reviewed.`,
     );
   }
   const semiAnnualTrancheWithoutAnchor = tranches.find(
@@ -1754,8 +1762,61 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   if (unsupportedFrequencyTranche) {
     throw new Error(
       `Tranche "${unsupportedFrequencyTranche.className}" has unsupported paymentFrequency ` +
-        `"${unsupportedFrequencyTranche.paymentFrequency}". Supported values are monthly, quarterly, and semi_annual.`,
+        `"${unsupportedFrequencyTranche.paymentFrequency}". Supported projection values are quarterly and semi_annual; monthly is recognized but blocked.`,
     );
+  }
+  const normalizedDealCurrency = canonicalCurrency(dealCurrency);
+  if (dealCurrency != null && !normalizedDealCurrency) {
+    throw new Error(
+      `ProjectionInputs.dealCurrency "${dealCurrency}" is not a recognized currency code; refuse to run without a verified deal currency.`,
+    );
+  }
+  if (normalizedDealCurrency) {
+    const missingCurrencyExposure = loans.reduce((sum, loan) => {
+      const exposure = Math.max(0, loan.parBalance ?? 0) + Math.max(0, loan.undrawnCommitment ?? 0);
+      return exposure > 0 && !canonicalCurrency(loan.currency) ? sum + exposure : sum;
+    }, 0);
+    const foreignCurrencies = new Map<string, number>();
+    for (const loan of loans) {
+      const exposure = Math.max(0, loan.parBalance ?? 0) + Math.max(0, loan.undrawnCommitment ?? 0);
+      if (exposure <= 0) continue;
+      const currency = canonicalCurrency(loan.currency);
+      if (currency && currency !== normalizedDealCurrency) {
+        foreignCurrencies.set(currency, (foreignCurrencies.get(currency) ?? 0) + exposure);
+      }
+    }
+    if (missingCurrencyExposure > 0) {
+      throw new Error(
+        `ProjectionInputs loans include ${Math.round(missingCurrencyExposure).toLocaleString()} of exposure without recognized loan currency; production callers must populate loan currencies before projection.`,
+      );
+    }
+    if (foreignCurrencies.size > 0) {
+      const summary = Array.from(foreignCurrencies.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([currency, exposure]) => `${currency} ${Math.round(exposure).toLocaleString()}`)
+        .join(", ");
+      throw new Error(
+        `ProjectionInputs loans include non-${normalizedDealCurrency} currency exposure (${summary}); FX conversion and cross-currency hedge cashflows are not modeled.`,
+      );
+    }
+  } else if (dealCurrency == null) {
+    const exposedCurrencySet = new Set<string>();
+    let unknownCurrencyExposure = 0;
+    for (const loan of loans) {
+      const exposure = Math.max(0, loan.parBalance ?? 0) + Math.max(0, loan.undrawnCommitment ?? 0);
+      if (exposure <= 0) continue;
+      const currency = canonicalCurrency(loan.currency);
+      if (currency) {
+        exposedCurrencySet.add(currency);
+      } else {
+        unknownCurrencyExposure += exposure;
+      }
+    }
+    if (exposedCurrencySet.size > 0 || unknownCurrencyExposure > 0 || initialPar > 0) {
+      throw new Error(
+        `ProjectionInputs dealCurrency is missing; refuse to sum collateral balances without a verified deal currency.`,
+      );
+    }
   }
   const overriddenBucketSet = overriddenBuckets && overriddenBuckets.length > 0
     ? new Set<string>(overriddenBuckets)
@@ -1884,6 +1945,12 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     }
     return q === 1 ? stubAnchor : addMonthsAnchored(stubAnchor, (q - 1) * 3, postStubAnchorDay);
   };
+  const monthlyTickAnchorDay =
+    useStub && firstPaymentDate != null && stubAnchorPhaseMonthDelta != null && stubPhaseAnchorDay != null
+      ? stubPhaseAnchorDay
+      : useStub
+        ? postStubAnchorDay
+        : paymentAnchorDay;
 
   const semiAnnualTrancheWithUnalignedPaymentGrid = firstPaymentDate == null
     ? null
@@ -2143,7 +2210,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     fixedCouponPct: l.fixedCouponPct,
     isDeferring: l.isDeferring,
     isLossMitigationLoan: l.isLossMitigationLoan,
-    currency: l.currency,
+    currency: canonicalCurrency(l.currency) ?? l.currency,
     moodysRatingFinal: l.moodysRatingFinal,
     fitchRatingFinal: l.fitchRatingFinal,
     moodysRatingSource: l.moodysRatingSource,
@@ -2301,7 +2368,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         fixedCouponPct: l.fixedCouponPct,
         isDeferring: l.isDeferring,
         isLossMitigationLoan: l.isLossMitigationLoan,
-        currency: l.currency,
+        currency: canonicalCurrency(l.currency) ?? l.currency,
         moodysRatingFinal: l.moodysRatingFinal,
         fitchRatingFinal: l.fitchRatingFinal,
         moodysRatingSource: l.moodysRatingSource,
@@ -2318,7 +2385,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       concDenom,
       moodysCaaPar,
       fitchCccPar,
-    } = aggregateQualityMetrics(qLoans, { dealCurrency });
+    } = aggregateQualityMetrics(qLoans, { dealCurrency: normalizedDealCurrency });
 
     // ── WARF gate ──────────────────────────────────────────────────────────
     if (moodysWarfTriggerLevel != null && moodysWarfTriggerLevel > 0 && par > 0) {
@@ -2467,7 +2534,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         fixedCouponPct: l.fixedCouponPct,
         isDeferring: l.isDeferring,
         isLossMitigationLoan: l.isLossMitigationLoan,
-        currency: l.currency,
+        currency: canonicalCurrency(l.currency) ?? l.currency,
         moodysRatingFinal: l.moodysRatingFinal,
         fitchRatingFinal: l.fitchRatingFinal,
         moodysRatingSource: l.moodysRatingSource,
@@ -3316,9 +3383,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     const flooredBaseRate = Math.max(baseRateFloorPct, baseRatePct);
     let tickStartDate = periodStart;
     let periodEndMonth = elapsedMonthIndex;
-    const tickAnchorDay = new Date(periodStart).getUTCDate();
+    let tickOrdinalInPeriod = 0;
     while (tickStartDate < periodEnd) {
-      const nextMonthDate = addMonthsAnchored(tickStartDate, 1, tickAnchorDay);
+      tickOrdinalInPeriod += 1;
+      const nextMonthDate = addMonthsAnchored(tickStartDate, 1, monthlyTickAnchorDay);
       const tickEndDate = nextMonthDate < periodEnd ? nextMonthDate : periodEnd;
       const isFullMonthTick = tickEndDate === nextMonthDate;
       const tickIndex = periodEndMonth + 1;
@@ -3332,7 +3400,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         "30e_360": tickDayFrac30E,
         actual_365: tickDayFracActual365,
       };
-      processDrawsForMonth(tickIndex);
+      processDrawsForMonth((q - 1) * 3 + tickOrdinalInPeriod);
 
       for (const t of debtTranches) {
         const frac = t.dayCountConvention != null

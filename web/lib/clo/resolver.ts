@@ -9,6 +9,7 @@ import { computeTopNObligorsPct } from "./pool-metrics";
 import { assignDenseSeniorityRanks, classOrderBucket } from "./seniority-rank";
 import { canonicalizeDayCount, type DayCountConvention } from "./day-count-canonicalize";
 import { normalizePaymentFrequency, type PaymentFrequency } from "./payment-frequency";
+import { canonicalCurrency } from "./currency";
 import { quartersBetween } from "./projection";
 import { resolveAgencyRecovery } from "./recovery-rate";
 import { normalizeClassName as normClass } from "./normalize-class-name";
@@ -63,6 +64,11 @@ function normalizeConcName(name: string): string {
     .replace(/^\s*\([a-z0-9]+\)(?:\([iv]+\))?\s*/i, "") // strip lettered prefix
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+function isCurrencyConcentrationName(name: string | null | undefined): boolean {
+  const s = String(name ?? "").toLowerCase();
+  return /\bcurrenc/.test(s) || /\bnon[-\s]?(euro|eur|usd|us dollar|sterling|pound|gbp|base|deal)\b/.test(s);
 }
 
 /**
@@ -154,7 +160,7 @@ function resolveTranchePaymentFrequency(
   if (raw != null && raw.trim() !== "") {
     warnings.push({
       field: `${className}.paymentFrequency`,
-      message: `Unsupported tranche payment frequency "${raw}" for ${className}; supported values are monthly, quarterly, and semi-annual.`,
+      message: `Unsupported tranche payment frequency "${raw}" for ${className}; supported projection values are quarterly and semi-annual. Monthly is recognized but blocked until monthly liability cash routing is reviewed.`,
       severity: "error",
       blocking: true,
     });
@@ -162,7 +168,7 @@ function resolveTranchePaymentFrequency(
   }
   warnings.push({
     field: `${className}.paymentFrequency`,
-    message: `No payment frequency found for interest-bearing tranche ${className}. KI-36 requires an explicit tranche or deal payment frequency; refusing to default to quarterly.`,
+    message: `No payment frequency found for interest-bearing tranche ${className}. The projection needs an explicit tranche or deal payment frequency; refusing to default to quarterly.`,
     severity: "error",
     blocking: true,
   });
@@ -431,23 +437,28 @@ function resolveTranches(
           dayCountConvention: trancheDayCountConvention,
           paymentFrequency: resolveTranchePaymentFrequency(
             (() => {
-              const dbRaw = t.paymentFrequency;
+              const dbRaw = t.paymentFrequencyRaw ?? t.paymentFrequency;
+              const dbSource = t.paymentFrequencySource ?? "db_tranche";
               const ppmRaw = ppmPaymentFrequencyByClass.get(key) ?? dealPaymentFrequency;
-              const dbNorm = normalizePaymentFrequency(dbRaw);
+              const dbNorm = normalizePaymentFrequency(t.paymentFrequencyCanonical ?? dbRaw);
               const ppmNorm = normalizePaymentFrequency(ppmRaw);
-              if (dbNorm && ppmNorm && dbNorm !== ppmNorm) {
+              const dbIsPpmSynced = dbSource === "ppm";
+              if (dbRaw != null && dbRaw.trim() !== "" && !isNullLikePaymentFrequency(dbRaw) && !dbNorm) {
+                return dbRaw;
+              }
+              if (!dbIsPpmSynced && dbNorm && ppmNorm && dbNorm !== ppmNorm) {
                 warnings.push({
                   field: `${t.className}.paymentFrequency`,
-                  message: `DB/SDF tranche payment frequency (${dbRaw}) differs from PPM/deal frequency (${ppmRaw}) — using PPM/deal value.`,
+                  message: `Trustee/SDF tranche payment frequency (${dbRaw}) differs from PPM/deal frequency (${ppmRaw}) — using DB/SDF value.`,
                   severity: "warn",
                   blocking: false,
-                  resolvedFrom: "ppm_constraints",
+                  resolvedFrom: dbSource === "sdf_notes" ? "sdf" : "db",
                 });
-                return ppmRaw;
+                return dbRaw;
               }
+              if (!dbIsPpmSynced && dbNorm) return dbRaw;
               if (ppmNorm) return ppmRaw;
               if (dbNorm) return dbRaw;
-              if (dbRaw != null && dbRaw.trim() !== "" && !isNullLikePaymentFrequency(dbRaw)) return dbRaw;
               return ppmRaw;
             })(),
             t.className,
@@ -455,6 +466,9 @@ function resolveTranches(
             firstPayment,
             warnings,
           ),
+          paymentFrequencyRaw: t.paymentFrequencyRaw ?? t.paymentFrequency,
+          paymentFrequencyCanonical: normalizePaymentFrequency(t.paymentFrequencyCanonical ?? t.paymentFrequencyRaw ?? t.paymentFrequency) ?? null,
+          paymentFrequencySource: t.paymentFrequencySource ?? null,
           source: snap ? "snapshot" as const : "db_tranche" as const,
         };
       });
@@ -555,6 +569,9 @@ function resolveTranches(
         firstPayment,
         warnings,
       ),
+      paymentFrequencyRaw: e.paymentFrequency ?? dealPaymentFrequency ?? null,
+      paymentFrequencyCanonical: normalizePaymentFrequency(e.paymentFrequency ?? dealPaymentFrequency) ?? null,
+      paymentFrequencySource: e.paymentFrequency || dealPaymentFrequency ? "ppm" : null,
       source: "ppm" as const,
     };
   });
@@ -1092,6 +1109,12 @@ function validatePrincipalClause(raw: unknown): ResolvedPrincipalClause | null {
       return { id, kind: "effective_date_rating_event" };
     case "special_redemption":
       if (typeof c.proceedsSubset !== "string") return null;
+      if (
+        c.proceedsSubset !== "all" &&
+        c.proceedsSubset !== "unscheduled_principal_only" &&
+        c.proceedsSubset !== "unscheduled_plus_credit_improved_credit_risk" &&
+        c.proceedsSubset !== "special_redemption_amount"
+      ) return null;
       return {
         id,
         kind: "special_redemption",
@@ -1109,6 +1132,13 @@ function validatePrincipalClause(raw: unknown): ResolvedPrincipalClause | null {
       if (!c.options.every(validOpt)) return null;
       const proceedsSubset = c.proceedsSubset === undefined || c.proceedsSubset === null ? null : c.proceedsSubset;
       if (proceedsSubset !== null && typeof proceedsSubset !== "string") return null;
+      if (
+        proceedsSubset !== null &&
+        proceedsSubset !== "all" &&
+        proceedsSubset !== "unscheduled_principal_only" &&
+        proceedsSubset !== "unscheduled_plus_credit_improved_credit_risk" &&
+        proceedsSubset !== "special_redemption_amount"
+      ) return null;
       return {
         id,
         kind: "reinvestment_discretion",
@@ -1143,6 +1173,12 @@ function validatePrincipalClause(raw: unknown): ResolvedPrincipalClause | null {
       if (typeof c.proceedsSubset !== "string") return null;
       if (c.proceedsSubset !== "principal_only" && c.proceedsSubset !== "interest_or_principal" && c.proceedsSubset !== "non_principal_only") return null;
       if (!isStringArray(c.gatingConditions)) return null;
+      const validGatingCondition = (g: string): boolean =>
+        g === "target_par_balance_satisfied" ||
+        g === "oc_test_satisfied" ||
+        g === "post_acquisition_principal_amount_cap" ||
+        g === "cumulative_principal_amount_cap";
+      if (!c.gatingConditions.every(validGatingCondition)) return null;
       const caps = (c.caps && typeof c.caps === "object") ? c.caps as Record<string, unknown> : null;
       if (!caps) return null;
       return {
@@ -1920,6 +1956,10 @@ export function resolveWaterfallInputs(
     pctSeniorSecured: derivedPctSeniorSecured,
     pctSecondLien: derivedPctSecondLien,
     pctCurrentPay: derivedPctCurrentPay,
+    pctEurDenominated: num(pool?.pctEurDenominated),
+    pctGbpDenominated: num(pool?.pctGbpDenominated),
+    pctUsdDenominated: num(pool?.pctUsdDenominated),
+    pctNonBaseCurrency: num(pool?.pctNonBaseCurrency),
     // D4 — populated after `loans` is constructed below (the helper needs
     // `loans[].obligorName` + `parBalance`). Placeholder null here; patched
     // into the literal once the loan list is ready.
@@ -2704,9 +2744,10 @@ export function resolveWaterfallInputs(
       warfFactor,
       // Floating WAS denominator excludes Non-Euro Obligations per PPM
       // Condition 1 (PDF p. 302). Sourced from holding's `currency` (post-
-      // enrichment) or `nativeCurrency` (raw); upper-cased. Undefined means
-      // the loan is assumed deal-currency-denominated.
-      currency: (h.currency ?? h.nativeCurrency ?? undefined)?.trim().toUpperCase() || undefined,
+      // enrichment) or `nativeCurrency` (raw); upper-cased. Missing currency
+      // on exposed loans blocks in the build gate rather than being assumed
+      // deal-currency-denominated.
+      currency: canonicalCurrency(h.currency ?? h.nativeCurrency) ?? undefined,
       // isDeferring / isLossMitigationLoan are CM-designation flags not
       // present in the SDF. Resolver leaves undefined; only relevant for
       // distressed deals where the source extends to populate them.
@@ -3036,6 +3077,22 @@ export function resolveWaterfallInputs(
       severity: "error",
       blocking: true,
     });
+  }
+  const dealCurrencyForAccounts = canonicalCurrency(dealDates?.dealCurrency ?? constraints.dealIdentity?.currency);
+  for (const a of accountBalances ?? []) {
+    const amount = a.balanceAmount ?? 0;
+    if (amount === 0) continue;
+    const accountCurrency = canonicalCurrency(a.currency ?? a.accountName);
+    if (!dealCurrencyForAccounts || !accountCurrency || accountCurrency !== dealCurrencyForAccounts) {
+      warnings.push({
+        field: "accountBalances.currency",
+        message:
+          `Account balance "${a.accountName}" has ${a.currency ?? "missing"} currency with non-zero balance. ` +
+          `Projection needs account cash currencies to match the deal currency before adding cash to the waterfall.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
   }
 
   // --- Principal Account Cash ---
@@ -3473,6 +3530,39 @@ export function resolveWaterfallInputs(
       bucketName: bucketName || null,
     };
   });
+  const complianceCurrencyTests = allComplianceTests.filter(
+    (t) => t.testType === "CONCENTRATION" && isCurrencyConcentrationName(t.testName),
+  );
+  const seenComplianceCurrencyKeys = new Set<string>();
+  for (const complianceCurrencyTest of complianceCurrencyTests) {
+    const key = `${normalizeConcName(complianceCurrencyTest.testName)}|${complianceCurrencyTest.testClass ?? ""}|${complianceCurrencyTest.actualValue ?? ""}|${complianceCurrencyTest.triggerLevel ?? ""}`;
+    if (!seenComplianceCurrencyKeys.has(key)) {
+      seenComplianceCurrencyKeys.add(key);
+      concentrationTests.push({
+        testName: complianceCurrencyTest.testName,
+        testClass: complianceCurrencyTest.testClass,
+        actualValue: complianceCurrencyTest.actualValue,
+        triggerLevel: complianceCurrencyTest.triggerLevel,
+        cushion: round4(complianceCurrencyTest.cushionPct ?? directionalCushion(
+          complianceCurrencyTest.testType,
+          complianceCurrencyTest.testName,
+          complianceCurrencyTest.actualValue,
+          complianceCurrencyTest.triggerLevel,
+        )),
+        isPassing: complianceCurrencyTest.isPassing,
+        canonicalType: classifyComplianceTest(complianceCurrencyTest.testName),
+        concentrationType: "CURRENCY",
+        bucketName: complianceCurrencyTest.testName || null,
+        source: {
+          dataSource: complianceCurrencyTest.dataSource,
+          testDate: complianceCurrencyTest.testDate,
+          vendorId: complianceCurrencyTest.vendorId,
+          testMethodology: complianceCurrencyTest.testMethodology,
+          adjustmentDescription: complianceCurrencyTest.adjustmentDescription,
+        },
+      });
+    }
+  }
 
   // Per-deal rating-agency presence — drives the silent-skip blocking-gate
   // predicate so missing agency-tagged compliance triggers block on
@@ -3877,42 +3967,18 @@ export function resolveWaterfallInputs(
     }
   }
 
-  // Deal currency. Prefer the deal-level field (CloDeal.dealCurrency) when
-  // populated; otherwise derive from the par-weighted modal native_currency
-  // across non-defaulted holdings. Null when neither is determinable — UI
-  // surfaces a "Set deal currency" banner. Per CLAUDE.md § "Recurring
-  // failure modes" principle 1, formatting code MUST read this field; never
-  // hardcode `€`/`$`. Enforced by the `ui-hardcodes-currency-symbol` AST
-  // rule in architecture-boundary.test.ts.
-  let currency: string | null = dealDates?.dealCurrency?.trim() || null;
-  if (!currency) {
-    // Par-weighted modal — row-count would mis-call deals with a few
-    // large foreign-currency positions among many small native-currency
-    // ones (principle 1 — don't overfit Euro XV's mostly-uniform sizes).
-    const parByCurrency = new Map<string, number>();
-    for (const h of holdings) {
-      if (h.isDefaulted) continue;
-      const c = h.nativeCurrency?.trim().toUpperCase();
-      if (!c) continue;
-      parByCurrency.set(c, (parByCurrency.get(c) ?? 0) + holdingPar(h));
-    }
-    if (parByCurrency.size > 0) {
-      let best = "";
-      let bestPar = 0;
-      for (const [c, p] of parByCurrency) {
-        if (p > bestPar) { best = c; bestPar = p; }
-      }
-      currency = best;
-    }
-  }
+  // Deal currency must come from independent deal-level evidence. Collateral
+  // currency can prove whether assets match the deal currency, but it cannot
+  // itself prove the deal reporting/payment currency.
+  let currency: string | null = canonicalCurrency(dealDates?.dealCurrency ?? constraints.dealIdentity?.currency);
   if (!currency) {
     warnings.push({
       field: "currency",
-      message: "Deal currency could not be determined from dealCurrency or holdings. UI will display a 'Set deal currency' banner. Multi-currency modeling tracked under KI-38.",
+      message: "Deal currency could not be determined from the deal record. Projection needs deal currency before it can confirm collateral balances are in the same currency.",
       severity: "warn", blocking: false,
     });
   } else {
-    currency = currency.toUpperCase();
+    currency = canonicalCurrency(currency);
   }
 
   // PPM Target Par Amount (Aggregate Excess Funded Spread denominator term).

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-helpers";
 import { query } from "@/lib/db";
 import { getPanelForUser } from "@/lib/clo/access";
+import { canonicalCurrency } from "@/lib/clo/currency";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
     spreadCoupon,
     rating,
     maturity,
+    currency,
     facilitySize,
     leverage,
     interestCoverage,
@@ -68,6 +70,7 @@ export async function POST(request: NextRequest) {
     switchSpreadCoupon,
     switchRating,
     switchMaturity,
+    switchCurrency,
     switchFacilitySize,
     switchLeverage,
     switchInterestCoverage,
@@ -77,6 +80,16 @@ export async function POST(request: NextRequest) {
     switchCompanyDescription,
     switchNotes,
   } = body;
+  const normalizedCurrency = typeof currency === "string" && currency.trim()
+    ? canonicalCurrency(currency) ?? currency.trim().toUpperCase()
+    : null;
+  const currencyRaw = typeof currency === "string" && currency.trim() ? currency.trim() : null;
+  const currencyCanonical = currencyRaw ? canonicalCurrency(currencyRaw) : null;
+  const normalizedSwitchCurrency = typeof switchCurrency === "string" && switchCurrency.trim()
+    ? canonicalCurrency(switchCurrency) ?? switchCurrency.trim().toUpperCase()
+    : null;
+  const switchCurrencyRaw = typeof switchCurrency === "string" && switchCurrency.trim() ? switchCurrency.trim() : null;
+  const switchCurrencyCanonical = switchCurrencyRaw ? canonicalCurrency(switchCurrencyRaw) : null;
 
   if (!title) {
     return NextResponse.json(
@@ -95,11 +108,14 @@ export async function POST(request: NextRequest) {
   const rows = await query<{ id: string }>(
     `INSERT INTO clo_analyses (
       panel_id, title, analysis_type, borrower_name, sector, loan_type,
-      spread_coupon, rating, maturity, facility_size, leverage,
+      spread_coupon, rating, maturity, currency,
+      currency_raw, currency_canonical, currency_source,
+      facility_size, leverage,
       interest_coverage, covenants_summary, ebitda, revenue,
       company_description, notes,
       switch_borrower_name, switch_sector, switch_loan_type,
-      switch_spread_coupon, switch_rating, switch_maturity,
+      switch_spread_coupon, switch_rating, switch_maturity, switch_currency,
+      switch_currency_raw, switch_currency_canonical, switch_currency_source,
       switch_facility_size, switch_leverage, switch_interest_coverage,
       switch_covenants_summary, switch_ebitda, switch_revenue,
       switch_company_description, switch_notes,
@@ -107,7 +123,7 @@ export async function POST(request: NextRequest) {
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
       $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
-      $29, $30, $31, $32
+      $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40
     ) RETURNING id`,
     [
       panel.id,
@@ -119,6 +135,10 @@ export async function POST(request: NextRequest) {
       spreadCoupon || null,
       rating || null,
       maturity || null,
+      normalizedCurrency,
+      currencyRaw,
+      currencyCanonical,
+      currencyRaw ? "analysis_form" : null,
       facilitySize || null,
       leverage || null,
       interestCoverage || null,
@@ -133,6 +153,10 @@ export async function POST(request: NextRequest) {
       switchSpreadCoupon || null,
       switchRating || null,
       switchMaturity || null,
+      normalizedSwitchCurrency,
+      switchCurrencyRaw,
+      switchCurrencyCanonical,
+      switchCurrencyRaw ? "analysis_form" : null,
       switchFacilitySize || null,
       switchLeverage || null,
       switchInterestCoverage || null,

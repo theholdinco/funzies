@@ -30,7 +30,7 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 *Distinct from "Deferred" (those are intentional design choices about mechanics that exist in the indenture but the model elects not to simulate). "Latent" entries are unmodeled or hardcoded paths whose current Euro XV magnitude happens to be zero, but which will produce wrong numbers the moment a deal hits the triggering condition (different deal structure, different PPM, non-zero balance, FX exposure, etc.). Treat each as a real bug whose materiality is data-dependent, not a deliberate scope decision.*
 
 - [KI-36 — Per-tranche `payment_frequency` consumed for liability interest schedule; monthly liabilities and asset schedules remain out of scope](#ki-36)
-- [KI-38 — FX / multi-currency unmodeled; `native_currency` parsed and discarded](#ki-38)
+- [KI-38 — FX / multi-currency cashflows blocked unless same-currency can be proven](#ki-38)
 - [KI-45 — Senior Expenses Cap carryforward seed is user-supplied; automatic historical ingest not wired](#ki-45)
 - [KI-46 — DDTL draw event inflates forward OC numerator; impliedOcAdjustment frozen at T=0 calibration](#ki-46) — **BLOCKED ON DATA ACQUISITION** (deal with active DDTL draws + non-zero `impliedOcAdjustment`)
 - [KI-66 — Principal POP backfill conditionality unmodeled (Ares XV path closed; remaining work needs new PPM/event data)](#ki-66) — **BLOCKED ON NEW DATA FOR FULL CLOSURE** (structured Ares XV resolver/engine path shipped 2026-05-07; missing structured principal POP now blocks production resolver paths)
@@ -341,7 +341,7 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 
 **PPM reference:** Per-tranche indenture term. Each tranche's payment frequency (Quarterly / Semi-Annual / Monthly) is PPM-specified per class.
 
-**Current engine behavior:** KI-36 v1 is implemented for liability tranche interest scheduling on emitted deal payment dates. SDF/JSON/PPM values normalize to `monthly | quarterly | semi_annual`, thread through `ResolvedTranche` and `ProjectionInputs.tranches[]`, and are consumed by the engine. Quarterly tranches pay every emitted payment row; semi-annual tranches accrue through skipped quarterly rows and are due on aligned semi-annual payment dates and final maturity/call payment dates. Unsupported or missing interest-bearing tranche frequency blocks loudly in the production resolver/build path; legacy hand-constructed `ProjectionInputs` still default omitted tranche frequency to quarterly for backward-compatible synthetic tests. Monthly liability tranches are intentionally blocked because the engine does not yet model monthly deal waterfall cash routing.
+**Current engine behavior:** KI-36 v1 is implemented for liability tranche interest scheduling on emitted deal payment dates. SDF/JSON/PPM values normalize to `monthly | quarterly | semi_annual`, thread through `ResolvedTranche` and `ProjectionInputs.tranches[]`, and are consumed by the engine. Quarterly tranches pay every emitted payment row; semi-annual tranches accrue through skipped quarterly rows and are due on aligned semi-annual payment dates and final maturity/call payment dates. Unsupported or missing interest-bearing tranche frequency blocks loudly for interest-bearing tranches, including direct hand-constructed `ProjectionInputs`. Monthly liability tranches are intentionally blocked because the engine does not yet model monthly deal waterfall cash routing.
 
 **PPM-correct behavior:** Each tranche carries its PPM-specified payment frequency; the engine accrues interest continuously and makes current interest due only on that tranche's scheduled payment dates. If a deal itself pays monthly, waterfall rows and account routing must also be monthly.
 
@@ -354,7 +354,8 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 - **Asset per-loan payment schedules:** requires an explicit asset cash-flow calendar model and source data for each loan's payment dates/frequency. The current engine accrues asset interest monthly into accounts as a compatibility approximation; it does not attempt loan-level monthly/quarterly/semi-annual payment-date cash routing.
 - **DDTL exact draw date under stub periods:** `drawQuarter` remains a coarse user assumption and maps to the first monthly tick of that projected quarter. Exact stub-period draw behavior needs an explicit draw month/date input or trustee draw-event data; the engine should not infer a real draw date from a quarter-only assumption.
 - **Exact account yield:** opening account cash currently earns the engine's existing money-market proxy. Exact account yield would require account-level rate/source fields by account and currency; no such projection input is available today.
-- **Legacy direct inputs:** hand-constructed `ProjectionInputs` without `paymentFrequency` remain quarterly by compatibility design. Production resolver/build paths block missing interest-bearing tranche frequency; closing the direct-input fallback would require updating older synthetic tests/callers, not external trustee data.
+- **Tranche frequency provenance:** closed for fresh ingestion. Reingest writes raw/canonical/source columns for liability payment frequency and the resolver treats trustee/SDF frequency evidence as stronger than PPM-synced DB frequency. Older rows should be rebuilt by reingest rather than interpreted without provenance.
+- **Legacy direct inputs:** hand-constructed `ProjectionInputs` must now state interest-bearing tranche `paymentFrequency` explicitly; older synthetic fixtures were updated to use explicit quarterly frequency.
 
 **Path to close:**
 1. Add deal-level monthly waterfall row generation and account routing once a monthly liability deal/PPM route is reviewed.
@@ -366,27 +367,36 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 ---
 
 <a id="ki-38"></a>
-### [KI-38] FX / multi-currency unmodeled; `native_currency` parsed and discarded
+### [KI-38] FX / multi-currency cashflows blocked unless same-currency can be proven
 
 **PPM reference:** Multi-currency CLO mechanics (USD/EUR/GBP cross-currency hedges, FX revaluation on holdings denominated in non-deal currency).
 
-**Current engine behavior:** `web/lib/clo/sdf/parse-collateral.ts:17-19, 146-150` extracts:
+**Current engine behavior:** The resolver preserves deal currency and loan currency (`currency` / `nativeCurrency`) and canonicalizes common EUR/USD/GBP aliases. Production projection build gates now fail closed when:
 
-- `native_currency_balance: number | null` (the loan's balance in its own currency)
-- `native_currency: string | null` (the loan's denomination)
-- `currency: string | null` (set to the same value as `native_currency`)
+- deal currency is missing while collateral exposure exists,
+- positive loan exposure has missing/unrecognized currency,
+- loan-level currency differs from deal currency,
+- pool-level currency concentration evidence exists but loan-level currencies do not identify the exposure,
+- buy-list or switch-analysis candidates lack currency evidence.
 
-No FX rate is ingested. The engine does not consume `currency` anywhere — `web/lib/clo/projection.ts` has no references. Loan par values are summed as if all denominated in the deal currency.
+`ProjectionInputs.dealCurrency` is passed into the engine for same-currency metrics, and `runProjection` has a direct-input backstop for missing, unrecognized, incomplete, or mixed currency evidence. No FX rates or hedge cashflows are modeled; non-deal-currency collateral is blocked rather than converted.
 
 **PPM-correct behavior:** A USD-denominated loan in a EUR-denominated deal must be revalued at the prevailing EUR/USD rate each period (typically using the trustee report's reference FX). The deal's hedge legs (if cross-currency) net out the FX exposure at a contracted rate.
 
-**Quantitative magnitude:** Zero on Euro XV — single-currency (EUR-investing-in-EUR-loans), no FX exposure. Latent on any multi-currency deal. On a US BSL CLO with 100% USD assets denominated in USD, this works by coincidence (engine treats sums as USD). On a European deal with a USD sleeve (~5-10% of par typical in some structures), the engine over- or under-states pool par by the EUR/USD drift × USD share — easily 5-10pp swings during periods of FX volatility.
+**Quantitative magnitude:** Zero on Euro XV when its EUR deal currency and EUR loan currencies are present. Multi-currency deals no longer produce a silently wrong projection; they block until FX conversion and hedge mechanics are implemented. On a European deal with a USD sleeve (~5-10% of par typical in some structures), the unimplemented model would otherwise over- or under-state pool par by EUR/USD drift × USD share, easily a partner-visible swing during FX volatility.
 
-**Deferral rationale:** Multi-currency support is a substantial engine + extraction extension. Tagged latent because Euro XV is single-currency.
+**Deferral rationale:** The closed scope here is fail-closed same-currency verification. Full multi-currency support remains a substantial engine + extraction extension: FX rate ingestion, per-loan revaluation, hedge-leg cashflows, and currency-bucketed concentration modeling.
 
-**Path to close:** Out of scope until a multi-currency deal is in the pipeline. When that arrives, a separate sprint covers (a) FX rate ingestion, (b) per-loan revaluation, (c) cross-currency hedge legs, (d) currency-bucketed concentration tests.
+**Blocked-on-new-data/model boundary:**
+- **Legacy buy-list rows without candidate currency:** remain blocked until the candidate currency is supplied or the buy list is re-uploaded with a currency column. The migration intentionally does not infer candidate currency from deal currency.
+- **Non-deal-currency collateral or switch candidates:** require FX rates and hedge cashflow modeling before projection can run.
+- **Currency provenance:** closed for fresh ingestion. SDF, JSON compliance, PPM/PDF sync, buy-list uploads, and analysis/switch forms write raw/canonical/source currency fields. Older rows should be rebuilt by reingest rather than interpreted without provenance.
+- **Stale non-empty deal currency:** fresh reingest is the source of truth for extracted deal/reporting currency and writes provenance beside the canonical value. Manual edits still require product policy before they can override extracted source data.
+- **Account-cash currency evidence:** production resolver paths block or infer same-currency account cash from explicit account currency or account-name currency tokens. A fully self-contained direct-engine account-cash backstop would require carrying account-level currency evidence through `ResolvedDealData` / `ProjectionInputs`, not just numeric opening cash.
 
-**Test:** No active marker. Required when a multi-currency deal is onboarded.
+**Path to close:** Add (a) FX rate ingestion, (b) per-loan native/deal-currency revaluation, (c) cross-currency hedge legs, and (d) currency-bucketed concentration tests once a multi-currency deal is in scope.
+
+**Test:** `incomplete-data-banner-bijection.test.ts` covers missing/foreign/aggregate-evidence blockers and alias canonicalization. `d4-switch-simulator-pool-metrics.test.ts` covers missing buy-leg currency and direct `runProjection` backstop. Full FX tests are still required when multi-currency support is implemented.
 
 ---
 

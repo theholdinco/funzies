@@ -189,16 +189,18 @@ describe("Supplemental Reserve step (BB) discretionary deposit", () => {
     const windupInputs = {
       ...baseInputs(),
       initialPar: 1_000_000,
+    dealCurrency: "EUR",
       loans: [
         {
           parBalance: 1_000_000,
           maturityDate: "2026-06-09",
           ratingBucket: "B",
           spreadBps: 375,
+    currency: "EUR",
         },
       ],
       tranches: [
-        { className: "A", currentBalance: 100_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 100_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 0, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],

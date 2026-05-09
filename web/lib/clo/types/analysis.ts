@@ -36,6 +36,7 @@ export interface LoanAnalysis {
   spreadCoupon: string;
   rating: string;
   maturity: string;
+  currency?: string;
   facilitySize: string;
   leverage: string;
   interestCoverage: string;
@@ -50,6 +51,7 @@ export interface LoanAnalysis {
   switchSpreadCoupon?: string;
   switchRating?: string;
   switchMaturity?: string;
+  switchCurrency?: string;
   switchFacilitySize?: string;
   switchLeverage?: string;
   switchInterestCoverage?: string;
@@ -189,6 +191,12 @@ export interface BuyListItem {
   spRating: string | null;
   spreadBps: number | null;
   referenceRate: string | null;
+  /** Candidate-loan currency from the uploaded buy list. Required before a
+   *  buy-list item can be treated as deal-currency collateral in projection. */
+  currency: string | null;
+  currencyRaw?: string | null;
+  currencyCanonical?: string | null;
+  currencySource?: string | null;
   price: number | null;
   maturityDate: string | null;
   facilitySize: number | null;

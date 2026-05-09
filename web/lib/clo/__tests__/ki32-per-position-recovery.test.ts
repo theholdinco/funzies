@@ -47,7 +47,7 @@ function buildKi32Inputs(): ProjectionInputs {
       parBalance: 1_000_000,
       maturityDate: "2030-01-01",
       ratingBucket: "CCC",
-      spreadBps: 500,
+      spreadBps: 500, currency: "EUR",
       warfFactor: 10000,
       recoveryRateMoodys: 70, // → 0.70 fraction
     },
@@ -55,7 +55,7 @@ function buildKi32Inputs(): ProjectionInputs {
       parBalance: 1_000_000,
       maturityDate: "2030-01-01",
       ratingBucket: "CCC",
-      spreadBps: 500,
+      spreadBps: 500, currency: "EUR",
       warfFactor: 10000,
       recoveryRateMoodys: 30, // → 0.30 fraction
     },
@@ -69,13 +69,14 @@ function buildKi32Inputs(): ProjectionInputs {
 
   return {
     initialPar: 2_000_000,
+    dealCurrency: "EUR",
     wacSpreadBps: 500,
     baseRatePct: CLO_DEFAULTS.baseRatePct,
     baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
     seniorFeePct: 0,
     subFeePct: 0,
     tranches: [
-      { className: "A", currentBalance: 1_500_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+      { className: "A", currentBalance: 1_500_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
       { className: "Sub", currentBalance: 500_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
     ],
     ocTriggers: [],

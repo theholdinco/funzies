@@ -32,6 +32,21 @@ export function makeInputs(overrides: Partial<ProjectionInputs> = {}): Projectio
     maturityDate: addQuarters("2026-03-09", 8 + i),
     ratingBucket: "B",
     spreadBps: 375,
+    currency: "EUR",
+  }));
+  const dealCurrency = overrides.dealCurrency ?? "EUR";
+  const loans = (overrides.loans ?? defaultLoans).map((loan) => ({
+    ...loan,
+    currency: loan.currency ?? dealCurrency,
+  }));
+  const tranches = (overrides.tranches ?? [
+    { className: "A", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+    { className: "J", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+    { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
+  ]).map((tranche) => ({
+    ...tranche,
+    paymentFrequency:
+      tranche.paymentFrequency ?? (!tranche.isIncomeNote && (tranche.isFloating || tranche.spreadBps !== 0) ? "quarterly" : tranche.paymentFrequency),
   }));
 
   return {
@@ -41,11 +56,6 @@ export function makeInputs(overrides: Partial<ProjectionInputs> = {}): Projectio
     baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
     seniorFeePct: CLO_DEFAULTS.seniorFeePct,
     subFeePct: CLO_DEFAULTS.subFeePct,
-    tranches: [
-      { className: "A", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "J", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
-    ],
     ocTriggers: [
       { className: "A", triggerLevel: 120, rank: 1 },
       { className: "J", triggerLevel: 110, rank: 2 },
@@ -57,7 +67,6 @@ export function makeInputs(overrides: Partial<ProjectionInputs> = {}): Projectio
     reinvestmentPeriodEnd: "2028-06-15",
     maturityDate: "2034-06-15",
     currentDate: "2026-03-09",
-    loans: defaultLoans,
     defaultRatesByRating: { ...DEFAULT_RATES_BY_RATING },
     cprPct: CLO_DEFAULTS.cprPct,
     recoveryPct: CLO_DEFAULTS.recoveryPct,
@@ -93,5 +102,8 @@ export function makeInputs(overrides: Partial<ProjectionInputs> = {}): Projectio
     quartersSinceReport: 0,
     ddtlDrawPercent: 100,
     ...overrides,
+    tranches,
+    loans,
+    dealCurrency,
   };
 }

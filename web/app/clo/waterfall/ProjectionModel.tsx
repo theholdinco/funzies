@@ -41,7 +41,7 @@ import {
   applyOptionalRedemptionCall,
 } from "@/lib/clo/services";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
-import { buildFromResolved, composeBuildWarnings, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED, selectBlockingWarnings, defaultsFromResolved, defaultsFromIntex, diagnoseFeePrefill, diagnoseCarryforwardSeed } from "@/lib/clo/build-projection-inputs";
+import { buildFromResolved, composeBuildWarnings, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED, selectBlockingWarnings, selectNonBlockingWarnings, defaultsFromResolved, defaultsFromIntex, diagnoseFeePrefill, diagnoseCarryforwardSeed } from "@/lib/clo/build-projection-inputs";
 import type { IntexAssumptions } from "@/lib/clo/intex/parse-past-cashflows";
 import { DEFAULT_RATES_BY_RATING, RATING_BUCKETS, type RatingBucket, warfFactorToAnnualCDRPct } from "@/lib/clo/rating-mapping";
 import { BUCKET_WARF_FALLBACK } from "@/lib/clo/pool-metrics";
@@ -97,6 +97,58 @@ interface Props {
   paymentDate?: string | null;
 }
 
+function formatIncompleteDataField(field: string): string {
+  if (field === "currency") return "Deal currency";
+  if (field === "loans.currency") return "Loan currencies";
+  if (field.includes(".paymentFrequency")) return "Tranche payment frequency";
+  if (field === "reinvestmentPricePct") return "Reinvestment purchase price";
+  return field;
+}
+
+function incompleteDataRecoveryHint(field: string): string | null {
+  if (field === "currency") {
+    return "Set the deal currency in the deal context or upload trustee data with a deal currency.";
+  }
+  if (field === "loans.currency") {
+    return "Upload collateral data with loan currency columns, then rerun the projection.";
+  }
+  if (field.includes(".paymentFrequency")) {
+    return "Populate the tranche payment frequency from the PPM or deal context.";
+  }
+  if (field === "reinvestmentPricePct") {
+    return "Set the reinvestment purchase price assumption.";
+  }
+  return null;
+}
+
+function warningDisplayMessage(w: ResolutionWarning): string {
+  return w.message
+    .replace(/\bpaymentFrequency\b/g, "payment frequency")
+    .replace(/\bsemi_annual\b/g, "semi-annual")
+    .replace(/\bresolved\.dates\.firstPaymentDate\b/g, "first deal payment date")
+    .replace(/\bfirstPaymentDate\b/g, "first deal payment date")
+    .replace(/\bUserAssumptions\b/g, "model assumptions")
+    .replace(/\bresolved\.loans\[\]\.currentPrice\b/g, "loan current price")
+    .replace(/\bLLM\b/g, "extraction")
+    .replace(/\bppm\.json\b/g, "PPM extraction")
+    .replace(/\bResolvedPrincipalClause\b/g, "principal waterfall clause")
+    .replace(/\bengine\b/g, "projection model")
+    .replace(/\bfile new KI\b/gi, "requires model review");
+}
+
+function incompleteDataRecoveryHintForWarning(w: ResolutionWarning): string | null {
+  if (w.field === "loans.currency" && /non-[A-Z]{3} currency exposure|FX conversion|cross-currency/.test(w.message)) {
+    return "Projection is unavailable for cross-currency collateral until FX conversion and hedge cashflows are modeled.";
+  }
+  if (w.field === "loans.currency") {
+    if (/concentration|pool-level/i.test(w.message)) {
+      return "Upload loan-level currency data so pool-level currency evidence can be reconciled to specific collateral positions.";
+    }
+    return "Upload collateral data with loan currency columns, then rerun the projection.";
+  }
+  return incompleteDataRecoveryHint(w.field);
+}
+
 export default function ProjectionModel({
   maturityDate,
   reinvestmentPeriodEnd,
@@ -132,6 +184,7 @@ export default function ProjectionModel({
       buySpread: searchParams.get("buySpread"),
       buyRating: searchParams.get("buyRating"),
       buyMaturity: searchParams.get("buyMaturity"),
+      buyCurrency: searchParams.get("buyCurrency"),
       buyPar: searchParams.get("buyPar"),
     };
   }, [urlTab, searchParams]);
@@ -515,6 +568,10 @@ export default function ProjectionModel({
       composeBuildWarnings(resolved ?? EMPTY_RESOLVED, projectionAssumptions, resolutionWarnings ?? []),
     ),
     [resolved, projectionAssumptions, resolutionWarnings],
+  );
+  const displayResolutionWarnings = useMemo<ResolutionWarning[]>(
+    () => selectNonBlockingWarnings(resolutionWarnings ?? []),
+    [resolutionWarnings],
   );
 
   const inputs: ProjectionInputs = useMemo(
@@ -938,7 +995,7 @@ export default function ProjectionModel({
   return (
     <DealCurrencyProvider currency={dealCurrency}>
     <div className="wf-section" style={{ marginTop: "2.5rem" }}>
-      <MissingCurrencyBanner />
+      {!incompleteDataErrors.some((w) => w.field === "currency") && <MissingCurrencyBanner />}
 
       {/* DATA INCOMPLETE banner. Renders one row per blocking
           ResolutionWarning. The projection panels below are gated on
@@ -967,8 +1024,8 @@ export default function ProjectionModel({
           </div>
           <div style={{ marginBottom: "0.5rem" }}>
             {incompleteDataErrors.length} required field
-            {incompleteDataErrors.length === 1 ? " is" : "s are"} missing from
-            extraction. The model cannot run until {incompleteDataErrors.length === 1 ? "it is" : "they are"} resolved
+            {incompleteDataErrors.length === 1 ? " or modeling input needs" : "s or modeling inputs need"} review.
+            The model cannot run until {incompleteDataErrors.length === 1 ? "it is" : "they are"} resolved
             — substituting a default would risk a confidently-wrong partner-facing number.
           </div>
           <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
@@ -978,7 +1035,10 @@ export default function ProjectionModel({
                 data-field={w.field}
                 style={{ marginBottom: "0.2rem" }}
               >
-                <strong>{w.field}:</strong> {w.message}
+                <strong>{formatIncompleteDataField(w.field)}:</strong> {warningDisplayMessage(w)}
+                {incompleteDataRecoveryHintForWarning(w) ? (
+                  <span> {incompleteDataRecoveryHintForWarning(w)}</span>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -1113,7 +1173,7 @@ export default function ProjectionModel({
           <SliderInput label="Recovery Lag" value={recoveryLagMonths} onChange={setRecoveryLagMonths} min={0} max={24} step={1} suffix=" mo" hint="Months between a loan default and when recovery cash is received." />
           <SliderInput label="Reinvestment Spread" value={reinvestmentSpreadBps} onChange={setReinvestmentSpreadBps} min={0} max={500} step={10} suffix=" bps" hint="Spread (over base rate) earned on newly purchased loans during the reinvestment period." />
           <SliderInput label="Reinvestment Tenor" value={reinvestmentTenorYears} onChange={setReinvestmentTenorYears} min={1} max={10} step={1} suffix=" yr" hint="Average maturity of newly reinvested loans, in years from purchase." />
-          <SliderInput label="Base Rate (EURIBOR)" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" hint="3-month EURIBOR assumption, held flat for the entire projection. Floored at 0%." />
+          <SliderInput label="Base Rate" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" hint="3-month reference rate assumption, held flat for the entire projection. Floored at 0%." />
           <SliderInput label="Post-RP Reinvestment" value={postRpReinvestmentPct} onChange={setPostRpReinvestmentPct} min={0} max={100} step={5} suffix="%" hint="Percentage of principal proceeds reinvested after the reinvestment period ends. 0% means all proceeds go to tranche paydown." />
           <SliderInput label="CCC Bucket Limit" value={cccBucketLimitPct} onChange={setCccBucketLimitPct} min={0} max={15} step={0.5} suffix="%" hint="CCC-rated par exceeding this % of total par gets haircut to market value in the OC test numerator." />
           <SliderInput label="CCC Mkt Value" value={cccMarketValuePct} onChange={setCccMarketValuePct} min={0} max={100} step={5} suffix="%" hint="Market value assumption (as % of par) for CCC excess in the OC haircut calculation." />
@@ -1148,7 +1208,7 @@ export default function ProjectionModel({
           </div>
           <div>
             <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: "0.35rem" }}>
-              Senior Expenses Cap Carryforward Seed (EUR)
+              Senior Expenses Cap Carryforward Seed ({dealCurrency ?? "deal currency"})
             </label>
             <input
               type="number"
@@ -1192,7 +1252,7 @@ export default function ProjectionModel({
           </div>
           <div>
             <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: "0.35rem" }}>
-              Expense Reserve Deposit (EUR)
+              Expense Reserve Deposit ({dealCurrency ?? "deal currency"})
             </label>
             <input
               type="number"
@@ -1217,7 +1277,7 @@ export default function ProjectionModel({
           </div>
           <div>
             <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: "0.35rem" }}>
-              Supplemental Reserve Deposit (EUR)
+              Supplemental Reserve Deposit ({dealCurrency ?? "deal currency"})
             </label>
             <input
               type="number"
@@ -1325,7 +1385,7 @@ export default function ProjectionModel({
       {/* Data-quality warnings: resolver-level (pool, triggers, etc.) +
           fee-prefill gate (admin source missing, etc.). Merged so the
           partner sees a single panel rather than scattered alerts. */}
-      {((resolutionWarnings?.length ?? 0) > 0 || prefillWarnings.length > 0 || carryforwardSeedWarnings.length > 0) && (
+      {(displayResolutionWarnings.length > 0 || prefillWarnings.length > 0 || carryforwardSeedWarnings.length > 0) && (
         <div
           style={{
             padding: "0.75rem 1rem",
@@ -1338,16 +1398,16 @@ export default function ProjectionModel({
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-            Data Quality Warnings ({(resolutionWarnings?.length ?? 0) + prefillWarnings.length + carryforwardSeedWarnings.length})
+            Data Quality Warnings ({displayResolutionWarnings.length + prefillWarnings.length + carryforwardSeedWarnings.length})
           </div>
-          {(resolutionWarnings ?? []).filter((w) => w.severity !== "info").map((w, i) => (
-            <div key={`rw-${i}`}>&bull; <strong>{w.field}:</strong> {w.message}</div>
+          {displayResolutionWarnings.map((w, i) => (
+            <div key={`rw-${i}`}>&bull; <strong>{formatIncompleteDataField(w.field)}:</strong> {warningDisplayMessage(w)}</div>
           ))}
           {prefillWarnings.map((w, i) => (
-            <div key={`pw-${i}`}>&bull; <strong>{w.field}:</strong> {w.message}</div>
+            <div key={`pw-${i}`}>&bull; <strong>{formatIncompleteDataField(w.field)}:</strong> {warningDisplayMessage(w)}</div>
           ))}
           {carryforwardSeedWarnings.map((w, i) => (
-            <div key={`cfw-${i}`}>&bull; <strong>{w.field}:</strong> {w.message}</div>
+            <div key={`cfw-${i}`}>&bull; <strong>{formatIncompleteDataField(w.field)}:</strong> {warningDisplayMessage(w)}</div>
           ))}
         </div>
       )}
@@ -2247,7 +2307,7 @@ export default function ProjectionModel({
               <SliderInput label="Recovery Lag" value={recoveryLagMonths} onChange={setRecoveryLagMonths} min={0} max={24} step={1} suffix=" mo" hint="Months between a loan default and when recovery cash is received." />
               <SliderInput label="Reinvestment Spread" value={reinvestmentSpreadBps} onChange={setReinvestmentSpreadBps} min={0} max={500} step={10} suffix=" bps" hint="Spread (over base rate) earned on newly purchased loans during the reinvestment period." />
               <SliderInput label="Reinvestment Tenor" value={reinvestmentTenorYears} onChange={setReinvestmentTenorYears} min={1} max={10} step={1} suffix=" yr" hint="Average maturity of newly reinvested loans, in years from purchase." />
-              <SliderInput label="Base Rate (EURIBOR)" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" hint="3-month EURIBOR assumption, held flat for the entire projection. Floored at 0%." />
+              <SliderInput label="Base Rate" value={baseRatePct} onChange={setBaseRatePct} min={0} max={8} step={0.25} suffix="%" hint="3-month reference rate assumption, held flat for the entire projection. Floored at 0%." />
               <SliderInput label="Post-RP Reinvestment" value={postRpReinvestmentPct} onChange={setPostRpReinvestmentPct} min={0} max={100} step={5} suffix="%" hint="Percentage of principal proceeds reinvested after the reinvestment period ends. 0% means all proceeds go to tranche paydown." />
               <SliderInput label="CCC Bucket Limit" value={cccBucketLimitPct} onChange={setCccBucketLimitPct} min={0} max={15} step={0.5} suffix="%" hint="CCC-rated par exceeding this % of total par gets haircut to market value in the OC test numerator." />
               <SliderInput label="CCC Mkt Value" value={cccMarketValuePct} onChange={setCccMarketValuePct} min={0} max={100} step={5} suffix="%" hint="Market value assumption (as % of par) for CCC excess in the OC haircut calculation." />

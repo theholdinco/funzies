@@ -21,6 +21,7 @@ import type {
   EquityInceptionData,
   EquityPastPayment,
 } from "./types";
+import { canonicalCurrency } from "./currency";
 
 // pg returns NUMERIC columns as strings — convert to number safely
 function num(v: unknown): number | null {
@@ -249,6 +250,9 @@ function rowToDeal(row: Record<string, unknown>): CloDeal {
     issuerLegalEntity: (row.issuer_legal_entity as string) ?? null,
     jurisdiction: (row.jurisdiction as string) ?? null,
     dealCurrency: (row.deal_currency as string) ?? null,
+    dealCurrencyRaw: (row.deal_currency_raw as string) ?? null,
+    dealCurrencyCanonical: (row.deal_currency_canonical as string) ?? null,
+    dealCurrencySource: (row.deal_currency_source as string) ?? null,
     closingDate: (row.closing_date as string) ?? null,
     effectiveDate: (row.effective_date as string) ?? null,
     reinvestmentPeriodEnd: (row.reinvestment_period_end as string) ?? null,
@@ -301,6 +305,9 @@ function rowToHolding(row: Record<string, unknown>): CloHolding {
     lxid: (row.lxid as string) ?? null,
     assetType: (row.asset_type as string) ?? null,
     currency: (row.currency as string) ?? null,
+    currencyRaw: (row.currency_raw as string) ?? null,
+    currencyCanonical: (row.currency_canonical as string) ?? null,
+    currencySource: (row.currency_source as string) ?? null,
     country: (row.country as string) ?? null,
     industryCode: (row.industry_code as string) ?? null,
     industryDescription: (row.industry_description as string) ?? null,
@@ -348,6 +355,8 @@ function rowToHolding(row: Record<string, unknown>): CloHolding {
     unfundedCommitment: num(row.unfunded_commitment),
     nativeCurrencyBalance: num(row.native_currency_balance),
     nativeCurrency: (row.native_currency as string) ?? null,
+    nativeCurrencyRaw: (row.native_currency_raw as string) ?? null,
+    nativeCurrencyCanonical: (row.native_currency_canonical as string) ?? null,
     issueDate: (row.issue_date as string) ?? null,
     nextPaymentDate: (row.next_payment_date as string) ?? null,
     defaultDate: (row.default_date as string) ?? null,
@@ -529,6 +538,9 @@ function rowToTranche(row: Record<string, unknown>): CloTranche {
     cusip: (row.cusip as string) ?? null,
     commonCode: (row.common_code as string) ?? null,
     currency: (row.currency as string) ?? null,
+    currencyRaw: (row.currency_raw as string) ?? null,
+    currencyCanonical: (row.currency_canonical as string) ?? null,
+    currencySource: (row.currency_source as string) ?? null,
     originalBalance: num(row.original_balance),
     seniorityRank: num(row.seniority_rank),
     isFloating: (row.is_floating as boolean) ?? null,
@@ -539,6 +551,9 @@ function rowToTranche(row: Record<string, unknown>): CloTranche {
     couponCap: num(row.coupon_cap),
     dayCountConvention: (row.day_count_convention as string) ?? null,
     paymentFrequency: (row.payment_frequency as string) ?? null,
+    paymentFrequencyRaw: (row.payment_frequency_raw as string) ?? null,
+    paymentFrequencyCanonical: (row.payment_frequency_canonical as string) ?? null,
+    paymentFrequencySource: (row.payment_frequency_source as string) ?? null,
     isDeferrable: (row.is_deferrable as boolean) ?? null,
     isPik: (row.is_pik as boolean) ?? null,
     ratingMoodys: (row.rating_moodys as string) ?? null,
@@ -593,6 +608,9 @@ function rowToAccountBalance(row: Record<string, unknown>): CloAccountBalance {
     accountName: row.account_name as string,
     accountType: (row.account_type as CloAccountBalance["accountType"]) ?? null,
     currency: (row.currency as string) ?? null,
+    currencyRaw: (row.currency_raw as string) ?? null,
+    currencyCanonical: (row.currency_canonical as string) ?? null,
+    currencySource: (row.currency_source as string) ?? null,
     balanceAmount: num(row.balance_amount),
     requiredBalance: num(row.required_balance),
     excessDeficit: num(row.excess_deficit),
@@ -617,6 +635,9 @@ function rowToTrade(row: Record<string, unknown>): CloTrade {
     realizedGainLoss: num(row.realized_gain_loss),
     accruedInterestTraded: num(row.accrued_interest_traded),
     currency: (row.currency as string) ?? null,
+    currencyRaw: (row.currency_raw as string) ?? null,
+    currencyCanonical: (row.currency_canonical as string) ?? null,
+    currencySource: (row.currency_source as string) ?? null,
     counterparty: (row.counterparty as string) ?? null,
     isCreditRiskSale: (row.is_credit_risk_sale as boolean) ?? null,
     isCreditImproved: (row.is_credit_improved as boolean) ?? null,
@@ -630,6 +651,8 @@ function rowToTrade(row: Record<string, unknown>): CloTrade {
     figi: (row.figi as string) ?? null,
     nativeAmount: num(row.native_amount),
     nativeCurrency: (row.native_currency as string) ?? null,
+    nativeCurrencyRaw: (row.native_currency_raw as string) ?? null,
+    nativeCurrencyCanonical: (row.native_currency_canonical as string) ?? null,
     dataSource: (row.data_source as string) ?? null,
   };
 }
@@ -694,15 +717,18 @@ export async function getOrCreateDeal(profileId: string): Promise<{ id: string }
   const di = (ec.dealIdentity ?? {}) as Record<string, unknown>;
   const kd = (ec.keyDates ?? {}) as Record<string, unknown>;
   const cm = (ec.cmDetails ?? {}) as Record<string, unknown>;
+  const dealCurrencyRaw = (di.currency as string) ?? null;
+  const dealCurrencyCanonical = canonicalCurrency(dealCurrencyRaw);
 
   // Use INSERT ON CONFLICT to avoid TOCTOU race when concurrent requests
   // both try to create a deal for the same profile.
   const rows = await query<{ id: string }>(
     `INSERT INTO clo_deals (
       profile_id, deal_name, issuer_legal_entity, jurisdiction, deal_currency,
+      deal_currency_raw, deal_currency_canonical, deal_currency_source,
       closing_date, effective_date, reinvestment_period_end, non_call_period_end,
       stated_maturity_date, collateral_manager, governing_law, ppm_constraints
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
     ON CONFLICT (profile_id) DO NOTHING
     RETURNING id`,
     [
@@ -710,7 +736,10 @@ export async function getOrCreateDeal(profileId: string): Promise<{ id: string }
       (di.dealName as string) ?? null,
       (di.issuerLegalName as string) ?? null,
       (di.jurisdiction as string) ?? null,
-      (di.currency as string) ?? null,
+      dealCurrencyCanonical ?? dealCurrencyRaw,
+      dealCurrencyRaw,
+      dealCurrencyCanonical,
+      dealCurrencyRaw ? "ppm" : null,
       (kd.originalIssueDate as string) ?? null,
       (kd.currentIssueDate as string) ?? null,
       (kd.reinvestmentPeriodEnd as string) ?? null,

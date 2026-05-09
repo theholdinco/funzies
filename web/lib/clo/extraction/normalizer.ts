@@ -351,6 +351,7 @@ const POOL_METRIC_KEYS = new Set([
   "aggregatePrincipalBalance", "adjustedCollateralPrincipalAmount",
   "pctFixedRate", "pctFloatingRate", "pctCovLite", "pctSecondLien",
   "pctDefaulted", "pctCccAndBelow",
+  "pctEurDenominated", "pctGbpDenominated", "pctUsdDenominated", "pctNonBaseCurrency",
 ]);
 
 export function normalizeSectionResults(

@@ -15,18 +15,20 @@ function makeSimpleInputs(overrides: Partial<ProjectionInputs> = {}): Projection
     maturityDate: addQuarters(currentDate, 12 + i),
     ratingBucket: "B",
     spreadBps: 400,
+    currency: "EUR",
   }));
 
   return {
     initialPar: 100_000_000,
+    dealCurrency: "EUR",
     wacSpreadBps: 400,
     baseRatePct: 3.5,
     baseRateFloorPct: 0,
     seniorFeePct: 0.5,
     subFeePct: 0.2,
     tranches: [
-      { className: "A", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "J", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+      { className: "A", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false, paymentFrequency: "quarterly" },
+      { className: "J", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false, paymentFrequency: "quarterly" },
       { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
     ],
     ocTriggers: [{ className: "A", triggerLevel: 120, rank: 1 }, { className: "J", triggerLevel: 110, rank: 2 }],
@@ -224,9 +226,9 @@ describe("buildPeriodTraceLines — amortising-tranche source-pool split", () =>
   // `paid === paidFromInterest` so principal-pool portion is 0 → row hidden.
   const inputsWithAmort = makeSimpleInputs({
     tranches: [
-      { className: "X", currentBalance: 5_000_000, spreadBps: 50, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false, isAmortising: true, amortisationPerPeriod: 500_000 },
-      { className: "A", currentBalance: 60_000_000, spreadBps: 140, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "J", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: false },
+      { className: "X", currentBalance: 5_000_000, spreadBps: 50, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false, isAmortising: true, amortisationPerPeriod: 500_000, paymentFrequency: "quarterly" },
+      { className: "A", currentBalance: 60_000_000, spreadBps: 140, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false, paymentFrequency: "quarterly" },
+      { className: "J", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: false, paymentFrequency: "quarterly" },
       { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 4, isFloating: false, isIncomeNote: true, isDeferrable: false },
     ],
     ocTriggers: [

@@ -40,18 +40,20 @@ function makeStressInputs(seniorFeePct: number, overrides: Partial<ProjectionInp
     maturityDate: addQuarters("2026-03-09", 24 + i),
     ratingBucket: "B",
     spreadBps: 375,
+    currency: "EUR",
   }));
 
   return {
     initialPar: 100_000_000,
+    dealCurrency: "EUR",
     wacSpreadBps: 375,
     baseRatePct: 0,
     baseRateFloorPct: 0,
     seniorFeePct,
     subFeePct: 0,
     tranches: [
-      { className: "A", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "B", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+      { className: "A", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+      { className: "B", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
       { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
     ],
     ocTriggers: [
@@ -180,8 +182,8 @@ describe("non-deferrable senior interest shortfall — EoD trigger (PPM § 10(a)
     const inputs = makeStressInputs(30, {
       interestNonPaymentGracePeriods: 0,
       tranches: [
-        { className: "Senior-1", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "Senior-2", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "Senior-1", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "Senior-2", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Equity", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [
@@ -212,12 +214,12 @@ describe("non-deferrable senior interest shortfall — EoD trigger (PPM § 10(a)
     const inputs = makeStressInputs(2.5, {
       interestNonPaymentGracePeriods: 0,
       tranches: [
-        { className: "A", currentBalance: 60_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "B", currentBalance: 10_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 60_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "B", currentBalance: 10_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         // Rank 3 non-deferrable — outside `eodProtectedClassNames`. Shortfall
         // here MUST accrue to interestShortfall (for post-accel handoff
         // integrity if some other trigger fires) but MUST NOT drive EoD.
-        { className: "C", currentBalance: 20_000_000, spreadBps: 400, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "C", currentBalance: 20_000_000, spreadBps: 400, seniorityRank: 3, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 4, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],

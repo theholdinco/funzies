@@ -56,6 +56,8 @@ Check for these specific issues that affect the waterfall projection model:
 5. Zero spread (spreadBps=0 or NULL) on a rated floating-rate tranche (not an income note) — the model cannot calculate interest due
 6. Cross-reference PPM coverage test trigger LEVELS against compliance test trigger LEVELS for the same class — only flag if the numeric values disagree
 7. Missing compliance test data entirely (no OC or IC tests at all)
+8. Deal currency, collateral currency, and tranche payment frequency: deterministic model blockers are rendered elsewhere in the app. Use deterministicWarnings only to avoid contradicting those blockers; do NOT repeat them as AI warnings.
+9. Pool-level currency concentration evidence: if concentration tests or pool-summary currency fields indicate non-deal-currency exposure but loan currencies do not identify it, flag that loan-level currency data needs review only when it is not already covered by deterministicWarnings.
 
 Output a JSON array of warnings. Each warning must have:
 - "severity": "error" (blocking — model can't run), "warning" (model runs but may be wrong), or "info" (FYI)
@@ -123,6 +125,28 @@ function summarizeDealContext(ctx: Record<string, any>): string {
   parts.push(`Report Date: ${ctx.reportDate ?? "MISSING"}`);
   parts.push(`Maturity Date: ${ctx.maturityDate ?? "MISSING"}`);
   parts.push(`Reinvestment Period End: ${ctx.reinvestmentPeriodEnd ?? "MISSING"}`);
+  parts.push(`Deal Currency: ${ctx.dealCurrency ?? "MISSING"}`);
+
+  const deterministicWarnings = ctx.deterministicWarnings as any[] | undefined;
+  if (deterministicWarnings && deterministicWarnings.length > 0) {
+    parts.push(`\nDeterministic Projection Warnings (${deterministicWarnings.length}):`);
+    for (const w of deterministicWarnings) {
+      parts.push(`  ${w.severity ?? "warning"}${w.blocking ? " BLOCKING" : ""} ${w.field ?? "unknown"}: ${w.message ?? ""}`);
+    }
+  }
+
+  const collateralCurrencySummary = ctx.collateralCurrencySummary as Record<string, unknown> | undefined;
+  if (collateralCurrencySummary) {
+    parts.push(`\nCollateral Currency Summary: ${JSON.stringify(collateralCurrencySummary)}`);
+  }
+
+  const resolvedTranches = ctx.resolvedTranches as any[] | undefined;
+  if (resolvedTranches && resolvedTranches.length > 0) {
+    parts.push(`\nResolved Tranche Payment Frequencies (${resolvedTranches.length}):`);
+    for (const t of resolvedTranches) {
+      parts.push(`  ${t.className ?? "?"}: paymentFrequency=${t.paymentFrequency ?? "MISSING"}, incomeNote=${t.isIncomeNote ?? "?"}, floating=${t.isFloating ?? "?"}, spread=${t.spreadBps ?? "NULL"}bps`);
+    }
+  }
 
   // Pool summary — list non-null fields
   const pool = ctx.poolSummary;

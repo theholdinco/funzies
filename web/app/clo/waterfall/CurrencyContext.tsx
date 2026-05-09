@@ -63,9 +63,9 @@ export function useFormatAmount(): (val: number) => string {
 }
 
 /** Banner rendered when the resolver could not determine deal currency.
- *  Per CLAUDE.md § "Recurring failure modes" principle 3, the engine still
- *  runs (numbers are correct), but the UI surface is honest about the
- *  missing metadata so the partner can fix it. */
+ *  Projection is refused when active collateral exposure exists without
+ *  currency metadata; this banner still covers empty/loading and metadata
+ *  setup states where amounts may render before a projection is available. */
 export function MissingCurrencyBanner() {
   const currency = useDealCurrency();
   if (currency) return null;
@@ -82,10 +82,12 @@ export function MissingCurrencyBanner() {
       }}
     >
       <strong>Deal currency not set.</strong>{" "}
-      Could not determine the deal&apos;s currency from the deal record or
-      holdings native_currency. Amounts render with a <code>?</code> symbol
-      until the deal&apos;s <code>dealCurrency</code> field is populated.
-      Multi-currency deals remain unmodeled — see KI-38.
+      Could not determine the currency used for this deal&apos;s reporting and
+      projections. Projection is blocked for active collateral until the deal
+      currency and loan currencies are populated, so collateral balances can be
+      confirmed in the deal currency. Upload trustee collateral data with
+      currency columns or set the deal currency in the context editor. Amounts
+      may render with a <code>?</code> symbol while that metadata is missing.
     </div>
   );
 }

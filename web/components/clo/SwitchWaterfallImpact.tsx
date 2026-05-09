@@ -5,8 +5,10 @@ import type { ResolvedDealData, ResolvedLoan, ResolutionWarning } from "@/lib/cl
 import { runProjection } from "@/lib/clo/projection";
 import { applySwitch } from "@/lib/clo/switch-simulator";
 import { computeSwitchDeltas } from "@/lib/clo/services";
-import { DEFAULT_ASSUMPTIONS, type UserAssumptions } from "@/lib/clo/build-projection-inputs";
+import { DEFAULT_ASSUMPTIONS, IncompleteDataError, type UserAssumptions } from "@/lib/clo/build-projection-inputs";
 import { mapToRatingBucket } from "@/lib/clo/rating-mapping";
+import { canonicalCurrency } from "@/lib/clo/currency";
+import { parseFacilitySizeAmount } from "@/lib/clo/facility-size";
 import { formatAmount as helpersFormatAmount } from "@/app/clo/waterfall/helpers";
 
 interface LoanDescription {
@@ -15,6 +17,7 @@ interface LoanDescription {
   rating: string;
   maturity: string;
   facilitySize: string;
+  currency?: string | null;
 }
 
 interface Props {
@@ -32,24 +35,29 @@ function parseSpread(s: string): number {
   return m ? parseFloat(m[1]) : 0;
 }
 
-function parseFacilitySize(s: string): number {
-  const cleaned = s.replace(/[^0-9.]/g, "");
-  return parseFloat(cleaned) || 0;
-}
-
 function formatPct(v: number | null): string {
   if (v == null) return "—";
   return `${(v * 100).toFixed(1)}%`;
 }
 
-function formatDelta(before: number | null, after: number | null): { text: string; color: string } {
-  if (before == null || after == null) return { text: "—", color: "inherit" };
-  const delta = after - before;
+function formatIrrDelta(delta: number | null): { text: string; color: string } {
+  if (delta == null) return { text: "—", color: "inherit" };
   const sign = delta >= 0 ? "+" : "";
   return {
     text: `${sign}${(delta * 100).toFixed(2)}%`,
     color: delta > 0 ? "var(--color-high, #2a7)" : delta < 0 ? "var(--color-low, #c44)" : "inherit",
   };
+}
+
+function switchCurrencyRecoveryCopy(errors: { field: string; message: string }[]): string {
+  const text = errors.map((e) => `${e.field} ${e.message}`).join(" ");
+  if (/non-[A-Z]{3}|FX conversion|cross-currency/i.test(text)) {
+    return "The buy loan is not in the deal currency. Waterfall impact is unavailable until FX conversion and hedge cashflows are modeled.";
+  }
+  if (/currency/i.test(text)) {
+    return "Add the buy loan currency to the switch analysis or re-upload the buy list with a currency column.";
+  }
+  return "";
 }
 
 export default function SwitchWaterfallImpact({ resolved, sellLoan, buyLoan, assumptions, resolutionWarnings }: Props) {
@@ -70,37 +78,82 @@ export default function SwitchWaterfallImpact({ resolved, sellLoan, buyLoan, ass
   const buyResolvedLoan: ResolvedLoan = useMemo(() => {
     const spread = parseSpread(buyLoan.spreadCoupon);
     const rating = mapToRatingBucket(null, null, null, buyLoan.rating);
-    const par = parseFacilitySize(buyLoan.facilitySize) || resolved.loans[sellIndex]?.parBalance || 0;
+    const par = parseFacilitySizeAmount(buyLoan.facilitySize) || resolved.loans[sellIndex]?.parBalance || 0;
     return {
       parBalance: par,
       maturityDate: buyLoan.maturity || resolved.dates.maturity,
       ratingBucket: rating,
       spreadBps: spread > 0 ? (spread < 10 ? Math.round(spread * 100) : Math.round(spread)) : resolved.poolSummary.wacSpreadBps,
+      currency: (canonicalCurrency(buyLoan.currency) ?? buyLoan.currency?.trim().toUpperCase()) || undefined,
     };
   }, [buyLoan, resolved, sellIndex]);
 
-  const switchResult = useMemo(() => {
+  const switchComputation = useMemo(() => {
     if (sellIndex < 0 || !resolved.loans[sellIndex]) return null;
-    return applySwitch(
-      resolved,
-      { sellLoanIndex: sellIndex, sellParAmount: resolved.loans[sellIndex].parBalance, buyLoan: buyResolvedLoan, sellPrice, buyPrice },
-      assumptions ?? DEFAULT_ASSUMPTIONS,
-      resolutionWarnings,
-    );
+    try {
+      return {
+        switchResult: applySwitch(
+          resolved,
+          { sellLoanIndex: sellIndex, sellParAmount: resolved.loans[sellIndex].parBalance, buyLoan: buyResolvedLoan, sellPrice, buyPrice },
+          assumptions ?? DEFAULT_ASSUMPTIONS,
+          resolutionWarnings,
+        ),
+        dataErrors: null,
+      };
+    } catch (e) {
+      if (e instanceof IncompleteDataError) {
+        return { switchResult: null, dataErrors: e.errors };
+      }
+      throw e;
+    }
   }, [resolved, sellIndex, buyResolvedLoan, sellPrice, buyPrice, assumptions, resolutionWarnings]);
+  const switchResult = switchComputation?.switchResult ?? null;
+  const dataErrors = switchComputation?.dataErrors ?? null;
 
-  const baseResult = useMemo(() => (switchResult ? runProjection(switchResult.baseInputs) : null), [switchResult]);
-  const switchedResult = useMemo(() => (switchResult ? runProjection(switchResult.switchedInputs) : null), [switchResult]);
+  const projectionComputation = useMemo(() => {
+    if (!switchResult) return { baseResult: null, switchedResult: null, runtimeError: null };
+    try {
+      return {
+        baseResult: runProjection(switchResult.baseInputs),
+        switchedResult: runProjection(switchResult.switchedInputs),
+        runtimeError: null,
+      };
+    } catch (e) {
+      return {
+        baseResult: null,
+        switchedResult: null,
+        runtimeError: e instanceof Error ? e.message : "Projection failed.",
+      };
+    }
+  }, [switchResult]);
+  const baseResult = projectionComputation.baseResult;
+  const switchedResult = projectionComputation.switchedResult;
+
+  if (dataErrors && dataErrors.length > 0) {
+    return (
+      <p style={{ padding: "1rem", color: "var(--color-text-muted)" }}>
+        Unable to simulate switch — {switchCurrencyRecoveryCopy(dataErrors) || "Projection inputs are incomplete."}
+      </p>
+    );
+  }
+
+  if (projectionComputation.runtimeError) {
+    return (
+      <p style={{ padding: "1rem", color: "var(--color-text-muted)" }}>
+        Unable to simulate switch — {projectionComputation.runtimeError}
+      </p>
+    );
+  }
 
   if (!switchResult || !baseResult || !switchedResult) {
     return <p style={{ padding: "1rem", color: "var(--color-text-muted)" }}>Unable to simulate switch — loan matching failed.</p>;
   }
 
-  const irrDelta = formatDelta(baseResult.equityIrr, switchedResult.equityIrr);
   // All deltas come from the service helper — UI never subtracts engine
   // values inline. See web/lib/clo/services/switch-deltas.ts for the
   // single source of truth.
   const deltas = computeSwitchDeltas(baseResult, switchedResult);
+  const irrDelta = formatIrrDelta(deltas.equityIrrDelta);
 
   const cellStyle: React.CSSProperties = {
     padding: "0.5rem 0.75rem",
@@ -186,7 +239,9 @@ export default function SwitchWaterfallImpact({ resolved, sellLoan, buyLoan, ass
                 color:
                   deltas.totalEquityDistributionsDelta > 0
                     ? "var(--color-high, #2a7)"
-                    : "var(--color-low, #c44)",
+                    : deltas.totalEquityDistributionsDelta < 0
+                      ? "var(--color-low, #c44)"
+                      : "inherit",
               }}
             >
               {formatAmount(deltas.totalEquityDistributionsDelta)}
@@ -291,15 +346,20 @@ export default function SwitchWaterfallImpact({ resolved, sellLoan, buyLoan, ass
                     <tr key={d.className} style={{ borderBottom: "1px solid var(--color-border-light)" }}>
                       <td style={{ ...cellStyle, textAlign: "left" }}>{d.className}</td>
                       <td style={cellStyle}>{d.baseActual.toFixed(2)}%</td>
-                      <td style={cellStyle}>{d.switchedActual?.toFixed(2) ?? "—"}%</td>
+                      <td style={cellStyle}>{d.switchedActual == null ? "—" : `${d.switchedActual.toFixed(2)}%`}</td>
                       <td
                         style={{
                           ...cellStyle,
-                          color: d.delta > 0 ? "var(--color-high, #2a7)" : d.delta < 0 ? "var(--color-low, #c44)" : "inherit",
+                          color: d.switchedActual == null
+                            ? "inherit"
+                            : d.delta > 0
+                              ? "var(--color-high, #2a7)"
+                              : d.delta < 0
+                                ? "var(--color-low, #c44)"
+                                : "inherit",
                         }}
                       >
-                        {d.delta > 0 ? "+" : ""}
-                        {d.delta.toFixed(2)}%
+                        {d.switchedActual == null ? "—" : `${d.delta > 0 ? "+" : ""}${d.delta.toFixed(2)}%`}
                       </td>
                     </tr>
                   ))}
@@ -328,21 +388,19 @@ export default function SwitchWaterfallImpact({ resolved, sellLoan, buyLoan, ass
                 </tr>
               </thead>
               <tbody>
-                {baseResult.periods.slice(0, 12).map((p, i) => {
-                  const sp = switchedResult.periods[i];
-                  const delta = sp ? sp.equityDistribution - p.equityDistribution : 0;
+                {deltas.equityDistributionDeltasByPeriod.slice(0, 12).map((row) => {
                   return (
-                    <tr key={p.periodNum} style={{ borderBottom: "1px solid var(--color-border-light)" }}>
-                      <td style={{ ...cellStyle, textAlign: "left" }}>Q{p.periodNum}</td>
-                      <td style={cellStyle}>{formatAmount(p.equityDistribution)}</td>
-                      <td style={cellStyle}>{sp ? formatAmount(sp.equityDistribution) : "—"}</td>
+                    <tr key={row.period} style={{ borderBottom: "1px solid var(--color-border-light)" }}>
+                      <td style={{ ...cellStyle, textAlign: "left" }}>Q{row.period}</td>
+                      <td style={cellStyle}>{formatAmount(row.baseAmount)}</td>
+                      <td style={cellStyle}>{formatAmount(row.switchedAmount)}</td>
                       <td
                         style={{
                           ...cellStyle,
-                          color: delta > 0 ? "var(--color-high, #2a7)" : delta < 0 ? "var(--color-low, #c44)" : "inherit",
+                          color: row.delta > 0 ? "var(--color-high, #2a7)" : row.delta < 0 ? "var(--color-low, #c44)" : "inherit",
                         }}
                       >
-                        {delta !== 0 ? formatAmount(delta) : "—"}
+                        {row.delta !== 0 ? formatAmount(row.delta) : "—"}
                       </td>
                     </tr>
                   );

@@ -31,6 +31,7 @@ import { mapPpm } from "./ppm-mapper";
 import { mapCompliance } from "./compliance-mapper";
 import type { PpmJson, ComplianceJson } from "./types";
 import type { ExtractedConstraints } from "../../types/extraction";
+import { canonicalCurrency } from "../../currency";
 
 type SchemaLike = { safeParse: (v: unknown) => { success: boolean; error?: unknown } };
 
@@ -190,11 +191,24 @@ export async function ingestComplianceJson(
       ?? cmDetails.name
       ?? compliance.meta.collateral_manager
       ?? null;
+    const rawCurrency = compliance.meta.reporting_currency ?? null;
+    const canonicalDealCurrency = canonicalCurrency(rawCurrency);
 
     const inserted = await query<{ id: string }>(
-      `INSERT INTO clo_deals (profile_id, deal_name, collateral_manager)
-       VALUES ($1, $2, $3) RETURNING id`,
-      [profileId, dealName, collateralManager],
+      `INSERT INTO clo_deals (
+         profile_id, deal_name, collateral_manager,
+         deal_currency, deal_currency_raw, deal_currency_canonical, deal_currency_source
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [
+        profileId,
+        dealName,
+        collateralManager,
+        canonicalDealCurrency ?? rawCurrency,
+        rawCurrency,
+        canonicalDealCurrency,
+        rawCurrency ? "json_reporting_currency" : null,
+      ],
     );
     dealId = inserted[0].id;
     console.log(`[json-ingest] created clo_deals row ${dealId} for profile ${profileId} (no prior PPM)`);

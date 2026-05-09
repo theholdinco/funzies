@@ -28,9 +28,11 @@ function makeSplitBInputs(overrides: Partial<ProjectionInputs> = {}): Projection
     maturityDate: addQuarters("2026-03-09", 24 + (i % 8)),
     ratingBucket: i < 14 ? "B" : "B-",
     spreadBps: 410,
+    currency: "EUR",
   }));
   return {
     initialPar: 490_000_000,
+    dealCurrency: "EUR",
     wacSpreadBps: 410,
     baseRatePct: CLO_DEFAULTS.baseRatePct,
     baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
@@ -47,13 +49,13 @@ function makeSplitBInputs(overrides: Partial<ProjectionInputs> = {}): Projection
     callPriceMode: "par",
     reinvestmentOcTrigger: null,
     tranches: [
-      { className: "A",   currentBalance: 245_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+      { className: "A",   currentBalance: 245_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
       // B-1, B-2 share rank 2 — pari-passu pair. Different spreads so
       // pro-rata-by-due differs from pro-rata-by-balance. Class B is
       // non-deferrable per PPM (D1 rank-based predicate).
-      { className: "J-1", currentBalance: 50_000_000,  spreadBps: 165, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "J-2", currentBalance: 30_000_000,  spreadBps: 280, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "C",   currentBalance: 40_000_000,  spreadBps: 350, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: true  },
+      { className: "J-1", currentBalance: 50_000_000,  spreadBps: 165, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+      { className: "J-2", currentBalance: 30_000_000,  spreadBps: 280, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+      { className: "C",   currentBalance: 40_000_000,  spreadBps: 350, seniorityRank: 3, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
       { className: "Sub", currentBalance: 30_000_000,  spreadBps: 0,   seniorityRank: 4, isFloating: false, isIncomeNote: true,  isDeferrable: false },
     ],
     ocTriggers: [
@@ -141,11 +143,11 @@ describe("engine pari-passu absorption — interest waterfall", () => {
       icTriggers: [],
       ocTriggers: [],
       tranches: [
-        { className: "A",   currentBalance: 245_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "B",   currentBalance:  50_000_000, spreadBps: 165, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A",   currentBalance: 245_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "B",   currentBalance:  50_000_000, spreadBps: 165, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         // Pari-passu PIK pair at rank 3
-        { className: "J-1", currentBalance:  30_000_000, spreadBps: 280, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: true  },
-        { className: "J-2", currentBalance:  20_000_000, spreadBps: 280, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: true  },
+        { className: "J-1", currentBalance:  30_000_000, spreadBps: 280, seniorityRank: 3, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
+        { className: "J-2", currentBalance:  20_000_000, spreadBps: 280, seniorityRank: 3, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
         { className: "Sub", currentBalance:  30_000_000, spreadBps:   0, seniorityRank: 4, isFloating: false, isIncomeNote: true,  isDeferrable: false },
       ],
     });
@@ -197,20 +199,21 @@ describe("engine pari-passu absorption — principal waterfall", () => {
     // ~33.6M (~67%), J-2 paid ~20.2M (~67%) — same retention fraction.
     // The discriminator: post-fix end-balance ratio is exactly 50/30.
     const loans: LoanInput[] = [
-      { parBalance: 300_000_000, maturityDate: "2027-03-09", ratingBucket: "B", spreadBps: 410 },
+      { parBalance: 300_000_000, maturityDate: "2027-03-09", ratingBucket: "B", spreadBps: 410 , currency: "EUR" },
     ];
     const inputs: ProjectionInputs = {
-      initialPar: 300_000_000, wacSpreadBps: 410,
+      initialPar: 300_000_000,
+    dealCurrency: "EUR", wacSpreadBps: 410,
       baseRatePct: CLO_DEFAULTS.baseRatePct, baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
       seniorFeePct: 0, subFeePct: 0,
       trusteeFeeBps: 0, hedgeCostBps: 0, incentiveFeePct: 0, incentiveFeeHurdleIrr: 0,
       postRpReinvestmentPct: 0, callMode: "none", callDate: null, callPricePct: 100, callPriceMode: "par",
       reinvestmentOcTrigger: null,
       tranches: [
-        { className: "A",   currentBalance: 200_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A",   currentBalance: 200_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         // Class B-1 / B-2 pari-passu (non-deferrable per PPM)
-        { className: "J-1", currentBalance: 50_000_000,  spreadBps: 165, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "J-2", currentBalance: 30_000_000,  spreadBps: 165, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "J-1", currentBalance: 50_000_000,  spreadBps: 165, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "J-2", currentBalance: 30_000_000,  spreadBps: 165, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 20_000_000,  spreadBps: 0,   seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [], icTriggers: [],
@@ -274,21 +277,23 @@ describe("engine cure paydown — Class X exclusion", () => {
       maturityDate: addQuarters("2026-03-09", 24 + (i % 4)),
       ratingBucket: "B",
       spreadBps: 410,
+    currency: "EUR",
     }));
     const inputs: ProjectionInputs = {
-      initialPar: 240_000_000, wacSpreadBps: 410,
+      initialPar: 240_000_000,
+    dealCurrency: "EUR", wacSpreadBps: 410,
       baseRatePct: CLO_DEFAULTS.baseRatePct, baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
       seniorFeePct: 0, subFeePct: 0,
       trusteeFeeBps: 0, hedgeCostBps: 0, incentiveFeePct: 0, incentiveFeeHurdleIrr: 0,
       postRpReinvestmentPct: 0, callMode: "none", callDate: null, callPricePct: 100, callPriceMode: "par",
       reinvestmentOcTrigger: null,
       tranches: [
-        { className: "X",   currentBalance: 2_000_000,   spreadBps: 0,   seniorityRank: 1, isFloating: false, isIncomeNote: false, isDeferrable: false, isAmortising: true, amortisationPerPeriod: 400_000, amortStartDate: addQuarters("2026-03-09", 2) },
-        { className: "A",   currentBalance: 130_000_000, spreadBps: 110, seniorityRank: 2, isFloating: true,  isIncomeNote: false, isDeferrable: false },
+        { className: "X",   currentBalance: 2_000_000,   spreadBps: 0,   seniorityRank: 1, isFloating: false, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false, isAmortising: true, amortisationPerPeriod: 400_000, amortStartDate: addQuarters("2026-03-09", 2) },
+        { className: "A",   currentBalance: 130_000_000, spreadBps: 110, seniorityRank: 2, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         // Class B-1, B-2 pari-passu (non-deferrable per PPM)
-        { className: "J-1", currentBalance: 30_000_000,  spreadBps: 165, seniorityRank: 3, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "J-2", currentBalance: 18_000_000,  spreadBps: 165, seniorityRank: 3, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "C",   currentBalance: 20_000_000,  spreadBps: 350, seniorityRank: 4, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
+        { className: "J-1", currentBalance: 30_000_000,  spreadBps: 165, seniorityRank: 3, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "J-2", currentBalance: 18_000_000,  spreadBps: 165, seniorityRank: 3, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "C",   currentBalance: 20_000_000,  spreadBps: 350, seniorityRank: 4, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
         { className: "Sub", currentBalance: 40_000_000,  spreadBps: 0,   seniorityRank: 5, isFloating: false, isIncomeNote: true,  isDeferrable: false },
       ],
       // Failing Class B OC trigger — engineered to fail with the CDR below
@@ -347,9 +352,11 @@ describe("engine Step G — X amort fold-in atomicity on split senior", () => {
       maturityDate: addQuarters("2026-03-09", 24 + i),
       ratingBucket: "B",
       spreadBps: 410,
+    currency: "EUR",
     }));
     const inputs: ProjectionInputs = {
-      initialPar: 300_000_000, wacSpreadBps: 410,
+      initialPar: 300_000_000,
+    dealCurrency: "EUR", wacSpreadBps: 410,
       baseRatePct: CLO_DEFAULTS.baseRatePct, baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
       seniorFeePct: 0, subFeePct: 0,
       trusteeFeeBps: 0, hedgeCostBps: 0, incentiveFeePct: 0, incentiveFeeHurdleIrr: 0,
@@ -357,11 +364,11 @@ describe("engine Step G — X amort fold-in atomicity on split senior", () => {
       reinvestmentOcTrigger: null,
       tranches: [
         // Class X amortising 400K/period starting Q2.
-        { className: "X",   currentBalance: 4_000_000,   spreadBps: 0,   seniorityRank: 1, isFloating: false, isIncomeNote: false, isDeferrable: false, isAmortising: true, amortisationPerPeriod: 400_000, amortStartDate: addQuarters("2026-03-09", 2) },
+        { className: "X",   currentBalance: 4_000_000,   spreadBps: 0,   seniorityRank: 1, isFloating: false, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false, isAmortising: true, amortisationPerPeriod: 400_000, amortStartDate: addQuarters("2026-03-09", 2) },
         // Split senior — A-1 and A-2 share rank 2, the pari-passu shape
         // that exposed the Step G double-pay pre-fix.
-        { className: "A-1", currentBalance: 130_000_000, spreadBps: 110, seniorityRank: 2, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "A-2", currentBalance: 50_000_000,  spreadBps: 110, seniorityRank: 2, isFloating: true,  isIncomeNote: false, isDeferrable: false },
+        { className: "A-1", currentBalance: 130_000_000, spreadBps: 110, seniorityRank: 2, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "A-2", currentBalance: 50_000_000,  spreadBps: 110, seniorityRank: 2, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 40_000_000,  spreadBps: 0,   seniorityRank: 3, isFloating: false, isIncomeNote: true,  isDeferrable: false },
       ],
       ocTriggers: [],

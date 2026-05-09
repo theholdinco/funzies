@@ -12,6 +12,7 @@ function formatBuyList(items: BuyListItem[]): string {
         parts.push(`Rating: ${ratings}`);
       }
       if (item.spreadBps != null) parts.push(`Margin: ${item.spreadBps}bps`);
+      if (item.currency) parts.push(`Currency: ${item.currency}`);
       if (item.price != null) parts.push(`Price: ${item.price}`);
       if (item.maturityDate) parts.push(`Maturity: ${item.maturityDate}`);
       if (item.facilitySize != null) parts.push(`Max Size: ${item.facilitySize}`);
@@ -553,7 +554,7 @@ function formatMembers(members: PanelMember[]): string {
     .join("\n\n");
 }
 
-function formatAnalysis(analysis: Pick<LoanAnalysis, "title" | "analysisType" | "borrowerName" | "sector" | "loanType" | "spreadCoupon" | "rating" | "maturity" | "facilitySize" | "leverage" | "interestCoverage" | "covenantsSummary" | "ebitda" | "revenue" | "companyDescription" | "notes" | "switchBorrowerName" | "switchSector" | "switchLoanType" | "switchSpreadCoupon" | "switchRating" | "switchMaturity" | "switchFacilitySize" | "switchLeverage" | "switchInterestCoverage" | "switchCovenantsSummary" | "switchEbitda" | "switchRevenue" | "switchCompanyDescription" | "switchNotes">): string {
+function formatAnalysis(analysis: Pick<LoanAnalysis, "title" | "analysisType" | "borrowerName" | "sector" | "loanType" | "spreadCoupon" | "rating" | "maturity" | "currency" | "facilitySize" | "leverage" | "interestCoverage" | "covenantsSummary" | "ebitda" | "revenue" | "companyDescription" | "notes" | "switchBorrowerName" | "switchSector" | "switchLoanType" | "switchSpreadCoupon" | "switchRating" | "switchMaturity" | "switchCurrency" | "switchFacilitySize" | "switchLeverage" | "switchInterestCoverage" | "switchCovenantsSummary" | "switchEbitda" | "switchRevenue" | "switchCompanyDescription" | "switchNotes">): string {
   let result = `Title: ${analysis.title}
 Analysis Type: ${analysis.analysisType || "buy"}
 Borrower: ${analysis.borrowerName || "Not specified"}
@@ -562,6 +563,7 @@ Loan Type: ${analysis.loanType || "Not specified"}
 Spread/Coupon: ${analysis.spreadCoupon || "Not specified"}
 Rating: ${analysis.rating || "Not specified"}
 Maturity: ${analysis.maturity || "Not specified"}
+Currency: ${analysis.currency || "Not specified"}
 Facility Size: ${analysis.facilitySize || "Not specified"}
 Leverage: ${analysis.leverage || "Not specified"}
 Interest Coverage: ${analysis.interestCoverage || "Not specified"}
@@ -581,6 +583,7 @@ Switch Loan Type: ${analysis.switchLoanType || "Not specified"}
 Switch Spread/Coupon: ${analysis.switchSpreadCoupon || "Not specified"}
 Switch Rating: ${analysis.switchRating || "Not specified"}
 Switch Maturity: ${analysis.switchMaturity || "Not specified"}
+Switch Currency: ${analysis.switchCurrency || "Not specified"}
 Switch Facility Size: ${analysis.switchFacilitySize || "Not specified"}
 Switch Leverage: ${analysis.switchLeverage || "Not specified"}
 Switch Interest Coverage: ${analysis.switchInterestCoverage || "Not specified"}
@@ -958,7 +961,7 @@ ${members}`;
 // ─── Analysis ────────────────────────────────────────────────────────
 
 export function creditAnalysisPrompt(
-  analysis: Pick<LoanAnalysis, "title" | "analysisType" | "borrowerName" | "sector" | "loanType" | "spreadCoupon" | "rating" | "maturity" | "facilitySize" | "leverage" | "interestCoverage" | "covenantsSummary" | "ebitda" | "revenue" | "companyDescription" | "notes" | "switchBorrowerName" | "switchSector" | "switchLoanType" | "switchSpreadCoupon" | "switchRating" | "switchMaturity" | "switchFacilitySize" | "switchLeverage" | "switchInterestCoverage" | "switchCovenantsSummary" | "switchEbitda" | "switchRevenue" | "switchCompanyDescription" | "switchNotes">,
+  analysis: Pick<LoanAnalysis, "title" | "analysisType" | "borrowerName" | "sector" | "loanType" | "spreadCoupon" | "rating" | "maturity" | "currency" | "facilitySize" | "leverage" | "interestCoverage" | "covenantsSummary" | "ebitda" | "revenue" | "companyDescription" | "notes" | "switchBorrowerName" | "switchSector" | "switchLoanType" | "switchSpreadCoupon" | "switchRating" | "switchMaturity" | "switchCurrency" | "switchFacilitySize" | "switchLeverage" | "switchInterestCoverage" | "switchCovenantsSummary" | "switchEbitda" | "switchRevenue" | "switchCompanyDescription" | "switchNotes">,
   profile: CloProfile,
   reportPeriodContext?: string,
   buyList?: BuyListItem[]
@@ -1225,7 +1228,7 @@ Given the full PPM constraints, which failure scenarios would cause the most dam
 - Concentration limit breaches (single-name, industry, sector)
 - Event of Default triggers — would this default cause a Note Event of Default?
 - Reinvestment period interaction — does the failure occur during or post-reinvestment? How does that change the manager's ability to trade?
-- Hedging exposure — if the credit is non-EUR, is there counterparty risk on the currency hedge?
+- Hedging exposure — if the credit is not denominated in the CLO's deal currency, is there counterparty risk on the currency hedge?
 - Interest deferral cascades — would coverage test failure trigger deferral on junior classes?
 A single-name default that's manageable for a diversified portfolio may be catastrophic if it pushes the CLO past structural triggers.
 

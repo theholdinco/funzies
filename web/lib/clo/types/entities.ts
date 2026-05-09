@@ -9,6 +9,9 @@ export interface CloDeal {
   issuerLegalEntity: string | null;
   jurisdiction: string | null;
   dealCurrency: string | null;
+  dealCurrencyRaw?: string | null;
+  dealCurrencyCanonical?: string | null;
+  dealCurrencySource?: string | null;
   closingDate: string | null;
   effectiveDate: string | null;
   reinvestmentPeriodEnd: string | null;
@@ -76,6 +79,9 @@ export interface CloTranche {
   cusip: string | null;
   commonCode: string | null;
   currency: string | null;
+  currencyRaw?: string | null;
+  currencyCanonical?: string | null;
+  currencySource?: string | null;
   originalBalance: number | null;
   seniorityRank: number | null;
   isFloating: boolean | null;
@@ -86,6 +92,9 @@ export interface CloTranche {
   couponCap: number | null;
   dayCountConvention: string | null;
   paymentFrequency: string | null;
+  paymentFrequencyRaw?: string | null;
+  paymentFrequencyCanonical?: string | null;
+  paymentFrequencySource?: string | null;
   isDeferrable: boolean | null;
   isPik: boolean | null;
   ratingMoodys: string | null;
@@ -139,6 +148,9 @@ export interface CloHolding {
   lxid: string | null;
   assetType: string | null;
   currency: string | null;
+  currencyRaw?: string | null;
+  currencyCanonical?: string | null;
+  currencySource?: string | null;
   country: string | null;
   industryCode: string | null;
   industryDescription: string | null;
@@ -190,6 +202,8 @@ export interface CloHolding {
   unfundedCommitment: number | null;
   nativeCurrencyBalance: number | null;
   nativeCurrency: string | null;
+  nativeCurrencyRaw?: string | null;
+  nativeCurrencyCanonical?: string | null;
 
   // Dates
   issueDate: string | null;
@@ -396,6 +410,9 @@ export interface CloAccountBalance {
   accountName: string;
   accountType: AccountType | null;
   currency: string | null;
+  currencyRaw?: string | null;
+  currencyCanonical?: string | null;
+  currencySource?: string | null;
   balanceAmount: number | null;
   requiredBalance: number | null;
   excessDeficit: number | null;
@@ -434,6 +451,9 @@ export interface CloTrade {
   realizedGainLoss: number | null;
   accruedInterestTraded: number | null;
   currency: string | null;
+  currencyRaw?: string | null;
+  currencyCanonical?: string | null;
+  currencySource?: string | null;
   counterparty: string | null;
   isCreditRiskSale: boolean | null;
   isCreditImproved: boolean | null;
@@ -447,6 +467,8 @@ export interface CloTrade {
   figi: string | null;
   nativeAmount: number | null;
   nativeCurrency: string | null;
+  nativeCurrencyRaw?: string | null;
+  nativeCurrencyCanonical?: string | null;
   dataSource: string | null;
 }
 

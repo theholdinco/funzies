@@ -15,7 +15,10 @@
         "amortStartDate": null,
         "source": "snapshot",
         "dayCountConvention": "actual_360",
-        "paymentFrequency": "quarterly"
+        "paymentFrequency": "quarterly",
+        "paymentFrequencyRaw": "3 Months",
+        "paymentFrequencyCanonical": "quarterly",
+        "paymentFrequencySource": null
       },
       {
         "className": "Class B-1",
@@ -31,7 +34,10 @@
         "amortStartDate": null,
         "source": "snapshot",
         "dayCountConvention": "actual_360",
-        "paymentFrequency": "quarterly"
+        "paymentFrequency": "quarterly",
+        "paymentFrequencyRaw": "3 Months",
+        "paymentFrequencyCanonical": "quarterly",
+        "paymentFrequencySource": null
       },
       {
         "className": "Class B-2",
@@ -47,7 +53,10 @@
         "amortStartDate": null,
         "source": "snapshot",
         "dayCountConvention": "30e_360",
-        "paymentFrequency": "quarterly"
+        "paymentFrequency": "quarterly",
+        "paymentFrequencyRaw": "3 Months",
+        "paymentFrequencyCanonical": "quarterly",
+        "paymentFrequencySource": null
       },
       {
         "className": "Class C",
@@ -63,7 +72,10 @@
         "amortStartDate": null,
         "source": "snapshot",
         "dayCountConvention": "actual_360",
-        "paymentFrequency": "quarterly"
+        "paymentFrequency": "quarterly",
+        "paymentFrequencyRaw": "3 Months",
+        "paymentFrequencyCanonical": "quarterly",
+        "paymentFrequencySource": null
       },
       {
         "className": "Class D",
@@ -79,7 +91,10 @@
         "amortStartDate": null,
         "source": "snapshot",
         "dayCountConvention": "actual_360",
-        "paymentFrequency": "quarterly"
+        "paymentFrequency": "quarterly",
+        "paymentFrequencyRaw": "3 Months",
+        "paymentFrequencyCanonical": "quarterly",
+        "paymentFrequencySource": null
       },
       {
         "className": "Class E",
@@ -95,7 +110,10 @@
         "amortStartDate": null,
         "source": "snapshot",
         "dayCountConvention": "actual_360",
-        "paymentFrequency": "quarterly"
+        "paymentFrequency": "quarterly",
+        "paymentFrequencyRaw": "3 Months",
+        "paymentFrequencyCanonical": "quarterly",
+        "paymentFrequencySource": null
       },
       {
         "className": "Class F",
@@ -111,7 +129,10 @@
         "amortStartDate": null,
         "source": "snapshot",
         "dayCountConvention": "actual_360",
-        "paymentFrequency": "quarterly"
+        "paymentFrequency": "quarterly",
+        "paymentFrequencyRaw": "3 Months",
+        "paymentFrequencyCanonical": "quarterly",
+        "paymentFrequencySource": null
       },
       {
         "className": "Subordinated Notes",
@@ -126,7 +147,10 @@
         "amortisationPerPeriod": null,
         "amortStartDate": null,
         "source": "snapshot",
-        "dayCountConvention": "actual_360"
+        "dayCountConvention": "actual_360",
+        "paymentFrequencyRaw": "3 Months",
+        "paymentFrequencyCanonical": "quarterly",
+        "paymentFrequencySource": null
       }
     ],
     "poolSummary": {

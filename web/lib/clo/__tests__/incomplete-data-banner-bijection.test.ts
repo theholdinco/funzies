@@ -28,6 +28,7 @@ import {
   DEFAULT_ASSUMPTIONS,
   IncompleteDataError,
   selectBlockingWarnings,
+  selectNonBlockingWarnings,
 } from "../build-projection-inputs";
 import type { ResolutionWarning } from "../resolver-types";
 
@@ -49,6 +50,11 @@ interface DivergentFilterOffender {
   line: number;
   text: string;
 }
+
+const CURRENCY_TEST_ASSUMPTIONS = {
+  ...DEFAULT_ASSUMPTIONS,
+  reinvestmentPricePct: 100,
+};
 
 /**
  * Walk a source file's AST and surface every `<expr>.filter((<arg>) => ... .blocking ...)`
@@ -201,11 +207,31 @@ describe("buildFromResolved gate uses the same predicate", () => {
     }
   });
 
+  it("dedupes resolver/build payment-frequency blockers for the same tranche cause", () => {
+    const warnings: ResolutionWarning[] = [
+      {
+        field: "A.paymentFrequency",
+        message: "No payment frequency found for interest-bearing tranche A.",
+        severity: "error",
+        blocking: true,
+      },
+      {
+        field: "tranches.A.paymentFrequency",
+        message: "Tranche \"A\" is missing its payment frequency.",
+        severity: "error",
+        blocking: true,
+      },
+    ];
+
+    expect(selectBlockingWarnings(warnings)).toHaveLength(1);
+    expect(selectNonBlockingWarnings(warnings)).toEqual([]);
+  });
+
   it.each([
-    { name: "missing", paymentFrequency: undefined, firstPaymentDate: "2026-04-15", message: /missing paymentFrequency/ },
-    { name: "unsupported", paymentFrequency: "weekly", firstPaymentDate: "2026-04-15", message: /unsupported paymentFrequency/ },
-    { name: "monthly", paymentFrequency: "monthly", firstPaymentDate: "2026-04-15", message: /monthly paymentFrequency/ },
-    { name: "semi-annual without anchor", paymentFrequency: "semi_annual", firstPaymentDate: null, message: /semi_annual paymentFrequency/ },
+    { name: "missing", paymentFrequency: undefined, firstPaymentDate: "2026-04-15", message: /missing its payment frequency/ },
+    { name: "unsupported", paymentFrequency: "weekly", firstPaymentDate: "2026-04-15", message: /unsupported payment frequency/ },
+    { name: "monthly", paymentFrequency: "monthly", firstPaymentDate: "2026-04-15", message: /pays monthly/ },
+    { name: "semi-annual without anchor", paymentFrequency: "semi_annual", firstPaymentDate: null, message: /pays semi-annually/ },
   ])("build-only KI-36 $name payment-frequency blocker is selected exactly like buildFromResolved errors", ({ paymentFrequency, firstPaymentDate, message }) => {
     const resolved = structuredClone(EMPTY_RESOLVED);
     resolved.dates.firstPaymentDate = firstPaymentDate;
@@ -248,6 +274,811 @@ describe("buildFromResolved gate uses the same predicate", () => {
       expect(e).toBeInstanceOf(IncompleteDataError);
       expect((e as IncompleteDataError).errors).toEqual(selected);
     }
+  });
+
+  it("build-only currency blocker refuses non-deal-currency collateral with a plain-language message", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "EUR",
+        currentPrice: 99,
+      },
+      {
+        parBalance: 2_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "USD",
+        currentPrice: 99,
+      },
+    ];
+
+    const composed = composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+    const selected = selectBlockingWarnings(composed);
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/Collateral includes non-EUR currency exposure \(USD 2,000,000\)/),
+    })]);
+    expect(selected.find((w) => w.field === "loans.currency")?.message).not.toMatch(/KI-38/);
+    try {
+      buildFromResolved(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
+
+  it("build-only currency blocker refuses missing deal currency when loan exposure exists", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = null;
+    resolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "EUR",
+        currentPrice: 99,
+      },
+    ];
+
+    const composed = composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+    const selected = selectBlockingWarnings(composed);
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/Deal currency is missing/),
+    })]);
+    expect(selected.find((w) => w.field === "currency")?.message).not.toMatch(/KI-38/);
+    try {
+      buildFromResolved(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
+
+  it("build-only currency blocker includes unfunded foreign-currency commitments", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.loans = [
+      {
+        parBalance: 0,
+        undrawnCommitment: 3_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "GBP",
+      },
+    ];
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/non-EUR currency exposure \(GBP 3,000,000\)/),
+    })]);
+    expect(selected.find((w) => w.field === "loans.currency")?.message).not.toMatch(/KI-38/);
+    try {
+      buildFromResolved(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
+
+  it("build-only currency blocker refuses exposed loans with missing loan currency", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.loans = [
+      {
+        parBalance: 1_500_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currentPrice: 99,
+      },
+    ];
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/missing loan currency \(1,500,000\)/),
+    })]);
+    expect(selected.find((w) => w.field === "loans.currency")?.message).not.toMatch(/KI-38/);
+    try {
+      buildFromResolved(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
+
+  it("build-only currency blocker refuses aggregate pool currency evidence without loan-level currencies", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    resolved.concentrationTests = [
+      {
+        testName: "Currency concentration",
+        testClass: null,
+        actualValue: 5,
+        triggerLevel: 10,
+        cushion: 5,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "CURRENCY",
+      },
+    ];
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/Pool-level currency concentration data is present/),
+    })]);
+    expect(selected.find((w) => w.field === "loans.currency")?.message).not.toMatch(/KI-38/);
+    try {
+      buildFromResolved(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
+
+  it("build-only currency blocker recognizes name-only currency concentration evidence", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    resolved.concentrationTests = [
+      {
+        testName: "Non-Euro Obligations",
+        testClass: null,
+        actualValue: 2,
+        triggerLevel: 10,
+        cushion: 8,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "OTHER",
+      },
+    ];
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/Pool-level currency concentration data is present/),
+    })]);
+    expect(selected.find((w) => w.field === "loans.currency")?.message).not.toMatch(/KI-38/);
+    try {
+      buildFromResolved(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
+
+  it("build-only currency blocker recognizes Non-EUR aggregate concentration wording", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    resolved.concentrationTests = [
+      {
+        testName: "Non-EUR Obligations",
+        testClass: null,
+        actualValue: 2,
+        triggerLevel: 10,
+        cushion: 8,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "OTHER",
+      },
+    ];
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/Pool-level currency concentration data is present/),
+    })]);
+    expect(selected.find((w) => w.field === "loans.currency")?.message).not.toMatch(/KI-38/);
+    try {
+      buildFromResolved(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
+
+  it("build-only currency blocker refuses positive currency concentration even when loan-level par totals match", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    resolved.loans = [
+      {
+        parBalance: 25_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "EUR",
+        currentPrice: 99,
+      },
+    ];
+    resolved.concentrationTests = [
+      {
+        testName: "Non-Euro Obligations",
+        testClass: null,
+        actualValue: 2,
+        triggerLevel: 10,
+        cushion: 8,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "OTHER",
+      },
+    ];
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/currency concentration data indicates non-EUR exposure/),
+    })]);
+    try {
+      buildFromResolved(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
+
+  it("non-target aggregate concentration wording does not imply foreign exposure", () => {
+    const usdResolved = structuredClone(EMPTY_RESOLVED);
+    usdResolved.currency = "USD";
+    usdResolved.poolSummary.totalPar = 25_000_000;
+    usdResolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    usdResolved.loans = [
+      {
+        parBalance: 25_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "USD",
+        currentPrice: 99,
+      },
+    ];
+    usdResolved.concentrationTests = [
+      {
+        testName: "Non-Euro Obligations",
+        testClass: null,
+        actualValue: 100,
+        triggerLevel: 100,
+        cushion: 0,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "CURRENCY",
+      },
+    ];
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(usdResolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([]);
+
+    const eurResolved = structuredClone(usdResolved);
+    eurResolved.currency = "EUR";
+    eurResolved.loans = [{ ...usdResolved.loans[0], currency: "EUR" }];
+    eurResolved.concentrationTests = [{ ...usdResolved.concentrationTests[0], testName: "Non-USD Obligations" }];
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(eurResolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([]);
+  });
+
+  it("targeted non-deal aggregate concentration wording still blocks", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "USD";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    resolved.loans = [
+      {
+        parBalance: 25_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "USD",
+        currentPrice: 99,
+      },
+    ];
+    resolved.concentrationTests = [
+      {
+        testName: "Non-USD Obligations",
+        testClass: null,
+        actualValue: 2,
+        triggerLevel: 10,
+        cushion: 8,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "OTHER",
+      },
+    ];
+
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      message: expect.stringMatching(/currency concentration data indicates non-USD exposure/),
+    })]);
+  });
+
+  it("pool-summary currency percentage evidence blocks when loan currencies do not identify it", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    resolved.poolSummary.pctUsdDenominated = 2;
+    resolved.loans = [
+      {
+        parBalance: 25_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "EUR",
+        currentPrice: 99,
+      },
+    ];
+
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      message: expect.stringMatching(/currency concentration data indicates non-EUR exposure/),
+    })]);
+  });
+
+  it("build-only currency blocker refuses aggregate pool exposure even without parsed currency concentration evidence", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/Pool-level collateral exposure exceeds loan-level exposure/),
+    })]);
+    expect(selected.find((w) => w.field === "loans.currency")?.message).not.toMatch(/KI-38/);
+    try {
+      buildFromResolved(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
+
+  it("build-only currency blocker refuses aggregate residual exposure when placeholder loans have no par", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    resolved.loans = [
+      {
+        parBalance: 0,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+      },
+    ];
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/Pool-level collateral exposure exceeds loan-level exposure/),
+    })]);
+    try {
+      buildFromResolved(resolved, CURRENCY_TEST_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
+
+  it("currency comparison normalizes common EUR aliases without blocking same-currency collateral", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "Euro";
+    resolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "EUR",
+        currentPrice: 99,
+      },
+    ];
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([]);
+  });
+
+  it("currency comparison normalizes decorated EUR and GBP aliases without blocking same-currency collateral", () => {
+    const eurResolved = structuredClone(EMPTY_RESOLVED);
+    eurResolved.currency = "EUR";
+    eurResolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "EUR (Euro) denominated",
+        currentPrice: 99,
+      },
+    ];
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(eurResolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([]);
+
+    const gbpResolved = structuredClone(EMPTY_RESOLVED);
+    gbpResolved.currency = "GBP";
+    gbpResolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "British Pounds Sterling",
+        currentPrice: 99,
+      },
+    ];
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(gbpResolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([]);
+  });
+
+  it("currency comparison normalizes common USD symbols without blocking same-currency collateral", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "US$";
+    resolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "USD",
+        currentPrice: 99,
+      },
+    ];
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([]);
+  });
+
+  it("currency comparison does not map Canadian or Australian dollars to USD", () => {
+    const cadResolved = structuredClone(EMPTY_RESOLVED);
+    cadResolved.currency = "CAD";
+    cadResolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "Canadian Dollar",
+        currentPrice: 99,
+      },
+    ];
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(cadResolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([]);
+
+    const usdResolved = structuredClone(EMPTY_RESOLVED);
+    usdResolved.currency = "USD";
+    usdResolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "Australian Dollar",
+        currentPrice: 99,
+      },
+    ];
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(usdResolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      message: expect.stringMatching(/non-USD currency exposure \(AUD 1,000,000\)/),
+    })]);
+  });
+
+  it("same-currency aggregate concentration rows do not imply foreign exposure", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    resolved.loans = [
+      {
+        parBalance: 25_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "EUR",
+        currentPrice: 99,
+      },
+    ];
+    resolved.concentrationTests = [
+      {
+        testName: "EUR Obligations",
+        testClass: null,
+        actualValue: 100,
+        triggerLevel: 100,
+        cushion: 0,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "CURRENCY",
+      },
+      {
+        testName: "Base Currency Obligations",
+        testClass: null,
+        actualValue: 100,
+        triggerLevel: 100,
+        cushion: 0,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "CURRENCY",
+      },
+    ];
+
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([]);
+  });
+
+  it("same-currency aggregate concentration rows can support aggregate-only currency evidence", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    resolved.concentrationTests = [
+      {
+        testName: "EUR Obligations",
+        testClass: null,
+        actualValue: 100,
+        triggerLevel: 100,
+        cushion: 0,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "CURRENCY",
+      },
+      {
+        testName: "Base Currency Obligations",
+        testClass: null,
+        actualValue: 100,
+        triggerLevel: 100,
+        cushion: 0,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "CURRENCY",
+      },
+    ];
+
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([]);
+  });
+
+  it("deal-currency pool-summary percentage below 100 implies non-deal-currency exposure", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.poolSummary.totalPar = 25_000_000;
+    resolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    resolved.poolSummary.pctEurDenominated = 95;
+    resolved.loans = [
+      {
+        parBalance: 25_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "EUR",
+        currentPrice: 99,
+      },
+    ];
+
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      message: expect.stringMatching(/currency concentration data indicates non-EUR exposure/),
+    })]);
+  });
+
+  it("negated currency labels are not treated as same-currency scalar loan evidence", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "Non-Euro Obligations",
+        currentPrice: 99,
+      },
+    ];
+
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      message: expect.stringMatching(/missing loan currency/),
+    })]);
+  });
+
+  it("ambiguous multi-currency scalar labels are not treated as same-currency evidence", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "EUR";
+    resolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "EUR/USD",
+        currentPrice: 99,
+      },
+    ];
+
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([expect.objectContaining({
+      field: "loans.currency",
+      message: expect.stringMatching(/missing loan currency/),
+    })]);
+  });
+
+  it("regional European concentration wording is not treated as EUR currency evidence", () => {
+    const usdResolved = structuredClone(EMPTY_RESOLVED);
+    usdResolved.currency = "USD";
+    usdResolved.poolSummary.totalPar = 25_000_000;
+    usdResolved.poolSummary.totalPrincipalBalance = 25_000_000;
+    usdResolved.loans = [
+      {
+        parBalance: 25_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "USD",
+        currentPrice: 99,
+      },
+    ];
+    usdResolved.concentrationTests = [
+      {
+        testName: "European Obligations",
+        testClass: null,
+        actualValue: 30,
+        triggerLevel: 50,
+        cushion: 20,
+        isPassing: true,
+        canonicalType: "other",
+        concentrationType: "CURRENCY",
+      },
+    ];
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(usdResolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([]);
+
+    const eurResolved = structuredClone(usdResolved);
+    eurResolved.currency = "EUR";
+    eurResolved.loans = [{ ...usdResolved.loans[0], currency: "EUR" }];
+    eurResolved.concentrationTests = [{ ...usdResolved.concentrationTests[0], testName: "Non-European Obligations" }];
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(eurResolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([]);
+  });
+
+  it("currency comparison refuses unrecognized 3-letter pseudo-currencies", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "ABC";
+    resolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "ABC",
+        currentPrice: 99,
+      },
+    ];
+
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    );
+
+    expect(selected).toEqual([expect.objectContaining({
+      field: "currency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/Deal currency is missing/),
+    })]);
+  });
+
+  it("currency comparison accepts recognized ISO currencies beyond the common deal set", () => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.currency = "PLN";
+    resolved.loans = [
+      {
+        parBalance: 1_000_000,
+        maturityDate: "2030-01-15",
+        ratingBucket: "B",
+        spreadBps: 350,
+        currency: "PLN",
+        currentPrice: 99,
+      },
+    ];
+
+    expect(selectBlockingWarnings(
+      composeBuildWarnings(resolved, CURRENCY_TEST_ASSUMPTIONS, []),
+    )).toEqual([]);
   });
 });
 

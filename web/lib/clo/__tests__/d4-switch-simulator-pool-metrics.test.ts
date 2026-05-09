@@ -19,7 +19,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { applySwitch } from "@/lib/clo/switch-simulator";
-import { defaultsFromResolved } from "@/lib/clo/build-projection-inputs";
+import { defaultsFromResolved, IncompleteDataError } from "@/lib/clo/build-projection-inputs";
+import { runProjection } from "@/lib/clo/projection";
 import type { ResolvedDealData, ResolvedLoan } from "@/lib/clo/resolver-types";
 
 const FIXTURE_PATH = join(__dirname, "fixtures", "euro-xv-q1.json");
@@ -29,6 +30,7 @@ const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as {
 };
 
 const assumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+const dealCurrency = fixture.resolved.currency ?? "EUR";
 
 // Pick a mid-par B loan to swap away from (Euro XV pool is B-heavy).
 const sellIdx = fixture.resolved.loans.findIndex(
@@ -48,6 +50,7 @@ function engineBaseline(): ResolvedDealData["poolSummary"] {
     spreadBps: 0,
     obligorName: "",
     warfFactor: 2720,
+    currency: dealCurrency,
   };
   const result = applySwitch(
     fixture.resolved,
@@ -72,6 +75,212 @@ describe("D4 — top10ObligorsPct populated on engine-computed pool", () => {
 });
 
 describe("D4 — applySwitch recomputes pool quality metrics", () => {
+  it("blocks proposed buy loans with missing currency instead of assuming deal currency", () => {
+    const sellLoan = fixture.resolved.loans[sellIdx];
+    const buyLoan: ResolvedLoan = {
+      parBalance: sellLoan.parBalance,
+      maturityDate: sellLoan.maturityDate,
+      ratingBucket: sellLoan.ratingBucket,
+      spreadBps: sellLoan.spreadBps,
+      currentPrice: sellLoan.currentPrice,
+    };
+
+    try {
+      applySwitch(
+        fixture.resolved,
+        { sellLoanIndex: sellIdx, sellParAmount: sellLoan.parBalance, buyLoan, sellPrice: 95, buyPrice: 95 },
+        assumptions,
+      );
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual([expect.objectContaining({
+        field: "loans.currency",
+        severity: "error",
+        blocking: true,
+        message: expect.stringMatching(/missing loan currency/),
+      })]);
+    }
+  });
+
+  it("runProjection backstop blocks direct callers with deal currency but missing loan currency", () => {
+    const sellLoan = fixture.resolved.loans[sellIdx];
+    const inputs = applySwitch(
+      fixture.resolved,
+      {
+        sellLoanIndex: sellIdx,
+        sellParAmount: 0,
+        buyLoan: {
+          parBalance: 0,
+          maturityDate: sellLoan.maturityDate,
+          ratingBucket: sellLoan.ratingBucket,
+          spreadBps: sellLoan.spreadBps,
+          currency: dealCurrency,
+        },
+        sellPrice: 100,
+        buyPrice: 100,
+      },
+      assumptions,
+    ).baseInputs;
+
+    expect(() =>
+      runProjection({
+        ...inputs,
+        loans: [
+          ...inputs.loans,
+          {
+            parBalance: 1_000_000,
+            maturityDate: sellLoan.maturityDate,
+            ratingBucket: sellLoan.ratingBucket,
+            spreadBps: sellLoan.spreadBps,
+          },
+        ],
+      }),
+    ).toThrow(/without recognized loan currency/);
+  });
+
+  it("runProjection backstop blocks direct callers with loan exposure and no deal currency", () => {
+    const sellLoan = fixture.resolved.loans[sellIdx];
+    const inputs = applySwitch(
+      fixture.resolved,
+      {
+        sellLoanIndex: sellIdx,
+        sellParAmount: 0,
+        buyLoan: {
+          parBalance: 0,
+          maturityDate: sellLoan.maturityDate,
+          ratingBucket: sellLoan.ratingBucket,
+          spreadBps: sellLoan.spreadBps,
+          currency: dealCurrency,
+        },
+        sellPrice: 100,
+        buyPrice: 100,
+      },
+      assumptions,
+    ).baseInputs;
+
+    expect(() =>
+      runProjection({
+        ...inputs,
+        dealCurrency: null,
+        loans: [
+          {
+            parBalance: 1_000_000,
+            maturityDate: sellLoan.maturityDate,
+            ratingBucket: sellLoan.ratingBucket,
+            spreadBps: sellLoan.spreadBps,
+            currency: "EUR",
+          },
+          {
+            parBalance: 1_000_000,
+            maturityDate: sellLoan.maturityDate,
+            ratingBucket: sellLoan.ratingBucket,
+            spreadBps: sellLoan.spreadBps,
+            currency: "USD",
+          },
+        ],
+      }),
+    ).toThrow(/dealCurrency is missing/);
+  });
+
+  it("runProjection backstop blocks aggregate-only exposure with no deal currency", () => {
+    const sellLoan = fixture.resolved.loans[sellIdx];
+    const inputs = applySwitch(
+      fixture.resolved,
+      {
+        sellLoanIndex: sellIdx,
+        sellParAmount: 0,
+        buyLoan: {
+          parBalance: 0,
+          maturityDate: sellLoan.maturityDate,
+          ratingBucket: sellLoan.ratingBucket,
+          spreadBps: sellLoan.spreadBps,
+          currency: dealCurrency,
+        },
+        sellPrice: 100,
+        buyPrice: 100,
+      },
+      assumptions,
+    ).baseInputs;
+
+    expect(() =>
+      runProjection({
+        ...inputs,
+        dealCurrency: null,
+        initialPar: 1_000_000,
+        loans: [],
+      }),
+    ).toThrow(/dealCurrency is missing/);
+  });
+
+  it("applySwitch does not mutate caller-provided warning arrays", () => {
+    const sellLoan = fixture.resolved.loans[sellIdx];
+    const warnings: import("@/lib/clo/resolver-types").ResolutionWarning[] = [{
+      field: "probe",
+      message: "probe",
+      severity: "warn" as const,
+      blocking: false as const,
+    }];
+    applySwitch(
+      fixture.resolved,
+      {
+        sellLoanIndex: sellIdx,
+        sellParAmount: sellLoan.parBalance,
+        buyLoan: {
+          parBalance: sellLoan.parBalance,
+          maturityDate: sellLoan.maturityDate,
+          ratingBucket: sellLoan.ratingBucket,
+          spreadBps: sellLoan.spreadBps,
+          currentPrice: sellLoan.currentPrice,
+          currency: dealCurrency,
+        },
+        sellPrice: 95,
+        buyPrice: 95,
+      },
+      assumptions,
+      warnings,
+    );
+    expect(warnings).toHaveLength(1);
+  });
+
+  it("runProjection canonicalizes currency aliases before pool-quality metrics", () => {
+    const sellLoan = fixture.resolved.loans[sellIdx];
+    const inputs = applySwitch(
+      fixture.resolved,
+      {
+        sellLoanIndex: sellIdx,
+        sellParAmount: 0,
+        buyLoan: {
+          parBalance: 0,
+          maturityDate: sellLoan.maturityDate,
+          ratingBucket: sellLoan.ratingBucket,
+          spreadBps: sellLoan.spreadBps,
+          currency: dealCurrency,
+        },
+        sellPrice: 100,
+        buyPrice: 100,
+      },
+      assumptions,
+    ).baseInputs;
+
+    const canonical = runProjection({
+      ...inputs,
+      dealCurrency: "EUR",
+      loans: inputs.loans.map((loan) => ({ ...loan, currency: "EUR" })),
+    });
+    const alias = runProjection({
+      ...inputs,
+      dealCurrency: "Euro",
+      loans: inputs.loans.map((loan) => ({ ...loan, currency: "EUR (Euro) denominated" })),
+    });
+
+    expect(alias.periods[0].qualityMetrics.floatingWasBps).toBeGreaterThan(0);
+    expect(alias.periods[0].qualityMetrics.floatingWasBps).toBeCloseTo(
+      canonical.periods[0].qualityMetrics.floatingWasBps,
+      8,
+    );
+  });
+
   it("swapping B→CCC raises WARF monotonically", () => {
     const sellLoan = fixture.resolved.loans[sellIdx];
     const buyLoan: ResolvedLoan = {
@@ -81,6 +290,7 @@ describe("D4 — applySwitch recomputes pool quality metrics", () => {
       spreadBps: sellLoan.spreadBps + 200,
       obligorName: "Synthetic CCC Obligor",
       warfFactor: 6500, // Caa2
+      currency: dealCurrency,
     };
     const result = applySwitch(
       fixture.resolved,
@@ -100,6 +310,7 @@ describe("D4 — applySwitch recomputes pool quality metrics", () => {
       spreadBps: 600,
       obligorName: "Big CCC Position",
       warfFactor: 6500,
+      currency: dealCurrency,
     };
     const result = applySwitch(
       fixture.resolved,
@@ -119,6 +330,7 @@ describe("D4 — applySwitch recomputes pool quality metrics", () => {
       spreadBps: sellLoan.spreadBps + 100,
       obligorName: "Wider Spread",
       warfFactor: sellLoan.warfFactor,
+      currency: dealCurrency,
     };
     const result = applySwitch(
       fixture.resolved,
@@ -140,6 +352,7 @@ describe("D4 — applySwitch recomputes pool quality metrics", () => {
       spreadBps: sellLoan.spreadBps,
       obligorName: "Longer Mat",
       warfFactor: sellLoan.warfFactor,
+      currency: dealCurrency,
     };
     const result = applySwitch(
       fixture.resolved,
@@ -162,6 +375,7 @@ describe("D4 — top10ObligorsPct recomputed on switch", () => {
       spreadBps: sellLoan.spreadBps,
       obligorName: "Massive New Obligor",
       warfFactor: sellLoan.warfFactor,
+      currency: dealCurrency,
     };
     const result = applySwitch(
       fixture.resolved,
@@ -192,6 +406,7 @@ describe("D4 — pctCovLite delta-recompute", () => {
       spreadBps: sellLoan.spreadBps,
       obligorName: "Cov-Lite Replacement",
       warfFactor: sellLoan.warfFactor,
+      currency: dealCurrency,
       isCovLite: true,
     };
     const warnings: import("@/lib/clo/resolver-types").ResolutionWarning[] = [];
@@ -221,7 +436,7 @@ describe("D4 — pctCovLite delta-recompute", () => {
     expect(warnings.filter(w => w.field === "switched_pctCovLite")).toHaveLength(0);
   });
 
-  it("inherits + emits coverage warning when buy leg has unknown isCovLite", () => {
+  it("inherits without mutating caller warnings when buy leg has unknown isCovLite", () => {
     const sellLoan = fixture.resolved.loans[sellIdx];
     const buyLoan: ResolvedLoan = {
       parBalance: sellLoan.parBalance,
@@ -230,6 +445,7 @@ describe("D4 — pctCovLite delta-recompute", () => {
       spreadBps: sellLoan.spreadBps,
       obligorName: "Unknown Cov-Lite",
       warfFactor: sellLoan.warfFactor,
+      currency: dealCurrency,
       // isCovLite deliberately omitted — partner-supplied buy loan with no flag
     };
     const warnings: import("@/lib/clo/resolver-types").ResolutionWarning[] = [];
@@ -244,11 +460,7 @@ describe("D4 — pctCovLite delta-recompute", () => {
     expect(result.switchedResolved.poolSummary.pctCovLite).toBe(
       fixture.resolved.poolSummary.pctCovLite,
     );
-    // Coverage warning emitted.
-    const coverageWarn = warnings.find(w => w.field === "switched_pctCovLite");
-    expect(coverageWarn).toBeDefined();
-    expect(coverageWarn!.severity).toBe("warn");
-    expect(coverageWarn!.blocking).toBe(false);
+    expect(warnings.find(w => w.field === "switched_pctCovLite")).toBeUndefined();
   });
 
   // pctPik delta-recompute keys on `pikSpreadBps > 0` ("actively accreting
@@ -268,6 +480,7 @@ describe("D4 — pctCovLite delta-recompute", () => {
       spreadBps: sellLoan.spreadBps,
       obligorName: "PIK Replacement",
       warfFactor: sellLoan.warfFactor,
+      currency: dealCurrency,
       pikSpreadBps: 100,  // actively accreting at 1%
     };
     // Sell leg needs an explicit pikSpreadBps for the delta-recompute to
@@ -301,7 +514,7 @@ describe("D4 — pctCovLite delta-recompute", () => {
     }
   });
 
-  it("pctPik inherits base + emits coverage warning when buy leg has unknown pikSpreadBps", () => {
+  it("pctPik inherits without mutating caller warnings when buy leg has unknown pikSpreadBps", () => {
     const sellLoan = fixture.resolved.loans[sellIdx];
     const buyLoan: ResolvedLoan = {
       parBalance: sellLoan.parBalance,
@@ -310,6 +523,7 @@ describe("D4 — pctCovLite delta-recompute", () => {
       spreadBps: sellLoan.spreadBps,
       obligorName: "Unknown PIK",
       warfFactor: sellLoan.warfFactor,
+      currency: dealCurrency,
       // pikSpreadBps deliberately omitted
     };
     const warnings: import("@/lib/clo/resolver-types").ResolutionWarning[] = [];
@@ -322,9 +536,7 @@ describe("D4 — pctCovLite delta-recompute", () => {
     expect(result.switchedResolved.poolSummary.pctPik).toBe(
       fixture.resolved.poolSummary.pctPik,
     );
-    const coverageWarn = warnings.find(w => w.field === "switched_pctPik");
-    expect(coverageWarn).toBeDefined();
-    expect(coverageWarn!.severity).toBe("warn");
+    expect(warnings.find(w => w.field === "switched_pctPik")).toBeUndefined();
   });
 });
 
@@ -342,6 +554,7 @@ describe("Industry-cap — switch simulator industry-distribution delta", () => 
       spreadBps: sellLoan.spreadBps,
       obligorName: "TestObligor",
       warfFactor: sellLoan.warfFactor,
+      currency: dealCurrency,
     };
     const result = applySwitch(
       fixture.resolved,
@@ -359,9 +572,9 @@ describe("Industry-cap — switch simulator industry-distribution delta", () => 
     // a 1010-tagged loan for a 1020-tagged loan, and assert the
     // distribution shifts as expected.
     const taggedLoans: ResolvedLoan[] = [
-      { parBalance: 30_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, obligorName: "A", warfFactor: 2720, currentPrice: 99, industryCode: "1010", industryName: "Aerospace and Defense" },
-      { parBalance: 30_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, obligorName: "B", warfFactor: 2720, currentPrice: 99, industryCode: "1020", industryName: "Automotive" },
-      { parBalance: 40_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, obligorName: "C", warfFactor: 2720, currentPrice: 99, industryCode: "1030", industryName: "Banking" },
+      { parBalance: 30_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, obligorName: "A", warfFactor: 2720, currentPrice: 99, industryCode: "1010", industryName: "Aerospace and Defense", currency: dealCurrency },
+      { parBalance: 30_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, obligorName: "B", warfFactor: 2720, currentPrice: 99, industryCode: "1020", industryName: "Automotive", currency: dealCurrency },
+      { parBalance: 40_000_000, maturityDate: "2030-01-15", ratingBucket: "B", spreadBps: 350, obligorName: "C", warfFactor: 2720, currentPrice: 99, industryCode: "1030", industryName: "Banking", currency: dealCurrency },
     ];
     const taggedResolved: ResolvedDealData = {
       ...fixture.resolved,
@@ -381,6 +594,7 @@ describe("Industry-cap — switch simulator industry-distribution delta", () => 
           spreadBps: 350,
           obligorName: "D",
           warfFactor: 2720,
+          currency: dealCurrency,
           industryCode: "1030",
           industryName: "Banking",
         },

@@ -34,11 +34,12 @@ export default async function WaterfallPage({
     switch_spread_coupon: string | null;
     switch_rating: string | null;
     switch_maturity: string | null;
+    switch_currency: string | null;
     switch_facility_size: string | null;
   }>(
     `SELECT analysis_type, borrower_name, spread_coupon, rating,
             switch_borrower_name, switch_spread_coupon, switch_rating,
-            switch_maturity, switch_facility_size
+            switch_maturity, switch_currency, switch_facility_size
      FROM clo_analyses WHERE id = $1`,
     [id]
   );
@@ -60,6 +61,7 @@ export default async function WaterfallPage({
   if (buySpread) params2.set("buySpread", buySpread);
   if (a.switch_rating) params2.set("buyRating", a.switch_rating);
   if (a.switch_maturity) params2.set("buyMaturity", a.switch_maturity);
+  if (a.switch_currency) params2.set("buyCurrency", a.switch_currency);
   if (a.switch_facility_size) params2.set("buyPar", a.switch_facility_size);
 
   redirect(`/clo/waterfall?${params2.toString()}`);

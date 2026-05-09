@@ -1,6 +1,7 @@
 // web/lib/clo/extraction/json-ingest/persist-compliance.ts
 import { query } from "../../../db";
 import { normalizeClassName } from "../../api";
+import { canonicalCurrency } from "../../currency";
 import { normalizeSectionResults } from "../normalizer";
 
 // Only these five tables carry a `data_source` column (migration 008). Any
@@ -13,6 +14,17 @@ const SDF_GUARDED_TABLES = new Set([
   "clo_account_balances",
   "clo_trades",
 ]);
+
+const POOL_SUMMARY_CURRENCY_FIELDS = [
+  "pct_eur_denominated",
+  "pct_gbp_denominated",
+  "pct_usd_denominated",
+  "pct_non_base_currency",
+] as const;
+
+function hasValue(value: unknown): boolean {
+  return value != null && value !== "" && value !== "null" && value !== "NULL";
+}
 
 // Check whether SDF has already populated a table for this period.
 // Matches the runner's hasSdfData gate, including the early-return for
@@ -60,6 +72,29 @@ async function batchInsert(table: string, rows: Record<string, unknown>[]): Prom
   return rows.length;
 }
 
+async function preservePoolSummaryCurrencyEvidence(
+  row: Record<string, unknown>,
+  reportPeriodId: string,
+): Promise<Record<string, unknown>> {
+  const existingRows = await query<Record<string, unknown>>(
+    `SELECT ${POOL_SUMMARY_CURRENCY_FIELDS.join(", ")}
+     FROM clo_pool_summary
+     WHERE report_period_id = $1
+     LIMIT 1`,
+    [reportPeriodId],
+  );
+  const existing = existingRows[0];
+  if (!existing) return row;
+
+  const merged = { ...row };
+  for (const field of POOL_SUMMARY_CURRENCY_FIELDS) {
+    if (!hasValue(merged[field]) && hasValue(existing[field])) {
+      merged[field] = existing[field];
+    }
+  }
+  return merged;
+}
+
 async function replaceIfPresent(table: string, rows: Record<string, unknown>[], reportPeriodId: string): Promise<number> {
   if (rows.length === 0) return 0;
   if (await hasSdfData(table, reportPeriodId)) {
@@ -78,6 +113,34 @@ async function replaceIfPresent(table: string, rows: Record<string, unknown>[], 
   }
 }
 
+function withCurrencyProvenance(
+  row: Record<string, unknown>,
+  source: string,
+  options: { inferAccountName?: boolean; native?: boolean } = {},
+): Record<string, unknown> {
+  const rawCurrency =
+    row.currency_raw ??
+    row.currency ??
+    (options.inferAccountName ? row.account_name : null);
+  const canonical = canonicalCurrency(rawCurrency as string | null | undefined);
+  const next = {
+    ...row,
+    currency: canonical ?? row.currency ?? null,
+    currency_raw: rawCurrency ?? null,
+    currency_canonical: canonical,
+    currency_source: rawCurrency ? source : null,
+  };
+  if (options.native) {
+    const nativeRaw = row.native_currency_raw ?? row.native_currency ?? rawCurrency;
+    return {
+      ...next,
+      native_currency_raw: nativeRaw ?? null,
+      native_currency_canonical: canonicalCurrency(nativeRaw as string | null | undefined),
+    };
+  }
+  return next;
+}
+
 export async function persistComplianceSections(
   sections: Record<string, Record<string, unknown> | null>,
   reportPeriodId: string,
@@ -86,15 +149,44 @@ export async function persistComplianceSections(
   rawInput: unknown,
 ): Promise<{ counts: Record<string, number> }> {
   const normalized = normalizeSectionResults(sections, reportPeriodId, dealId);
+  normalized.holdings = normalized.holdings.map((r) => withCurrencyProvenance(r, "json_ingest", { native: true }));
+  normalized.trades = normalized.trades.map((r) => withCurrencyProvenance(r, "json_ingest", { native: true }));
+  normalized.accountBalances = normalized.accountBalances.map((r) => withCurrencyProvenance(r, "json_ingest", { inferAccountName: true }));
   const counts: Record<string, number> = {};
 
+  const reportingCurrencyRaw =
+    typeof rawInput === "object" && rawInput != null
+      ? ((rawInput as { meta?: { reporting_currency?: unknown } }).meta?.reporting_currency as string | undefined)
+      : undefined;
+  if (reportingCurrencyRaw && reportingCurrencyRaw.trim()) {
+    const canonical = canonicalCurrency(reportingCurrencyRaw);
+    await query(
+      `UPDATE clo_deals
+       SET deal_currency = $1,
+           deal_currency_raw = $2,
+           deal_currency_canonical = $3,
+           deal_currency_source = $4,
+           updated_at = now()
+       WHERE id = $5`,
+      [
+        canonical ?? reportingCurrencyRaw.trim(),
+        reportingCurrencyRaw.trim(),
+        canonical,
+        "json_reporting_currency",
+        dealId,
+      ],
+    );
+  }
+
   if (normalized.poolSummary) {
-    // NOTE: clo_pool_summary has no data_source column and therefore no SDF guard.
-    // This mirrors runner.ts, which also unconditionally replaces pool_summary on
-    // every compliance extraction. If SDF ever starts writing pool_summary, this
-    // will need a coexistence strategy.
+    // clo_pool_summary has no data_source column, so preserve previously extracted
+    // currency evidence when a later weaker extraction omits those fields.
+    const poolSummary = await preservePoolSummaryCurrencyEvidence(
+      normalized.poolSummary,
+      reportPeriodId,
+    );
     await query(`DELETE FROM clo_pool_summary WHERE report_period_id = $1`, [reportPeriodId]);
-    counts.pool_summary = await batchInsert("clo_pool_summary", [normalized.poolSummary]);
+    counts.pool_summary = await batchInsert("clo_pool_summary", [poolSummary]);
   }
   counts.compliance_tests = await replaceIfPresent("clo_compliance_tests", normalized.complianceTests, reportPeriodId);
   counts.holdings = await replaceIfPresent("clo_holdings", normalized.holdings, reportPeriodId);
@@ -130,6 +222,9 @@ export async function persistComplianceSections(
   const snapshotColumns = await getTableColumns("clo_tranche_snapshots");
 
   let snapshotCount = 0;
+  if (await hasSdfData("clo_tranche_snapshots", reportPeriodId)) {
+    console.log("[json-ingest] clo_tranche_snapshots: SDF data present, skipping overwrite");
+  } else {
   for (const ts of normalized.trancheSnapshots) {
     const wantedNorm = normalizeClassName(ts.className);
     let trancheId = allTranches.find((t) => normalizeClassName(t.class_name) === wantedNorm)?.id;
@@ -181,6 +276,7 @@ export async function persistComplianceSections(
       );
     }
     snapshotCount++;
+  }
   }
   counts.tranche_snapshots = snapshotCount;
 

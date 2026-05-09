@@ -3,12 +3,14 @@
 import React, { useState, useMemo, useCallback } from "react";
 import type { ResolvedDealData, ResolvedLoan, ResolutionWarning } from "@/lib/clo/resolver-types";
 import type { BuyListItem, CloHolding } from "@/lib/clo/types";
-import type { UserAssumptions } from "@/lib/clo/build-projection-inputs";
+import { IncompleteDataError, type UserAssumptions } from "@/lib/clo/build-projection-inputs";
 import { applySwitch } from "@/lib/clo/switch-simulator";
 import { computeSwitchDeltas } from "@/lib/clo/services";
 import { runProjection, type ProjectionResult } from "@/lib/clo/projection";
 import { RATING_BUCKETS, mapToRatingBucket } from "@/lib/clo/rating-mapping";
 import { buyListFiltersFromResolved, filterBuyList } from "@/lib/clo/buy-list-filter";
+import { canonicalCurrency } from "@/lib/clo/currency";
+import { parseFacilitySizeAmount } from "@/lib/clo/facility-size";
 import { formatPct } from "./helpers";
 import { useFormatAmount } from "./CurrencyContext";
 
@@ -18,6 +20,7 @@ interface SwitchPrefill {
   buySpread: string | null;
   buyRating: string | null;
   buyMaturity: string | null;
+  buyCurrency: string | null;
   buyPar: string | null;
 }
 
@@ -48,14 +51,28 @@ function formatIrrDelta(delta: number | null): { text: string; color: string } {
   };
 }
 
+function switchCurrencyRecoveryCopy(errors: { field: string; message: string }[]): string {
+  const text = errors.map((e) => `${e.field} ${e.message}`).join(" ");
+  if (/non-[A-Z]{3}|FX conversion|cross-currency/i.test(text)) {
+    return "The buy loan is not in the deal currency. This simulator is unavailable until FX conversion and hedge cashflows are modeled.";
+  }
+  if (/currency/i.test(text)) {
+    return "Enter the buy loan currency above or re-upload the buy list with a currency column.";
+  }
+  return "";
+}
+
 export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, prefill, resolutionWarnings }: Props) {
   const formatAmount = useFormatAmount();
+  const dealCurrency = canonicalCurrency(resolved.currency);
   const [sellLoanIndex, setSellLoanIndex] = useState<number | null>(null);
   const [sellParAmount, setSellParAmount] = useState(0);
   const [buySpreadBps, setBuySpreadBps] = useState(350);
   const [buyRating, setBuyRating] = useState("B");
   const [buyMaturity, setBuyMaturity] = useState(resolved.dates.maturity);
   const [buyParAmount, setBuyParAmount] = useState(0);
+  const [buyCurrency, setBuyCurrency] = useState("");
+  const [selectedBuyListCurrencyMissing, setSelectedBuyListCurrencyMissing] = useState(false);
   const [sellPrice, setSellPrice] = useState(100);
   const [buyPrice, setBuyPrice] = useState(100);
 
@@ -66,9 +83,9 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
     prefillApplied.current = true;
 
     if (prefill.sellName) {
-      const validHoldings = holdings.filter((h) => h.parBalance != null && h.parBalance > 0 && !h.isDefaulted);
-      const matchIdx = validHoldings.findIndex((h) =>
-        h.obligorName?.toLowerCase().includes(prefill.sellName!.toLowerCase())
+      const target = prefill.sellName.toLowerCase();
+      const matchIdx = resolved.loans.findIndex((loan) =>
+        loan.obligorName?.toLowerCase().includes(target)
       );
       if (matchIdx >= 0 && resolved.loans[matchIdx]) {
         setSellLoanIndex(matchIdx);
@@ -82,11 +99,18 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
     }
     if (prefill.buyRating) setBuyRating(mapToRatingBucket(null, null, null, prefill.buyRating));
     if (prefill.buyMaturity) setBuyMaturity(prefill.buyMaturity);
-    if (prefill.buyPar) {
-      const par = parseFloat(prefill.buyPar.replace(/[^0-9.]/g, ""));
-      if (!isNaN(par) && par > 0) setBuyParAmount(par);
+    if (prefill.buyCurrency) {
+      setBuyCurrency(canonicalCurrency(prefill.buyCurrency) ?? prefill.buyCurrency.trim().toUpperCase());
+      setSelectedBuyListCurrencyMissing(false);
+    } else if (prefill.buyName || prefill.buySpread || prefill.buyRating || prefill.buyMaturity || prefill.buyPar) {
+      setBuyCurrency("");
+      setSelectedBuyListCurrencyMissing(true);
     }
-  }, [prefill, holdings, resolved.loans]);
+    if (prefill.buyPar) {
+      const par = parseFacilitySizeAmount(prefill.buyPar);
+      if (par != null) setBuyParAmount(par);
+    }
+  }, [prefill, resolved.loans]);
 
   const sellLoan = sellLoanIndex !== null ? resolved.loans[sellLoanIndex] : null;
 
@@ -105,6 +129,11 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
     setBuyMaturity(resolved.dates.maturity);
   }, [resolved.dates.maturity]);
 
+  React.useEffect(() => {
+    if (prefill) return;
+    setBuyCurrency("");
+  }, [prefill]);
+
   const sellOptions = useMemo(() => {
     return resolved.loans.map((loan, idx) => {
       const name = loan.obligorName ?? `Loan ${idx + 1}`;
@@ -119,6 +148,9 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
     }
     if (item.maturityDate) setBuyMaturity(item.maturityDate);
     if (item.facilitySize) setBuyParAmount(item.facilitySize);
+    const itemCurrency = canonicalCurrency(item.currency) ?? item.currency?.trim().toUpperCase() ?? "";
+    setBuyCurrency(itemCurrency);
+    setSelectedBuyListCurrencyMissing(itemCurrency === "");
   }, []);
 
   const buyLoan: ResolvedLoan = useMemo(() => ({
@@ -126,19 +158,33 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
     maturityDate: buyMaturity,
     ratingBucket: buyRating,
     spreadBps: buySpreadBps,
-  }), [buyParAmount, buyMaturity, buyRating, buySpreadBps]);
+    currency: (canonicalCurrency(buyCurrency) ?? buyCurrency.trim().toUpperCase()) || undefined,
+  }), [buyParAmount, buyMaturity, buyRating, buySpreadBps, buyCurrency]);
 
-  const { switchResult, baseResult, switchedResult } = useMemo(() => {
-    if (sellLoanIndex === null) return { switchResult: null, baseResult: null, switchedResult: null };
-    const sr = applySwitch(
-      resolved,
-      { sellLoanIndex, sellParAmount, buyLoan, sellPrice, buyPrice },
-      userAssumptions,
-      resolutionWarnings,
-    );
-    const br = runProjection(sr.baseInputs);
-    const swr = runProjection(sr.switchedInputs);
-    return { switchResult: sr, baseResult: br, switchedResult: swr };
+  const { switchResult, baseResult, switchedResult, dataErrors, runtimeError } = useMemo(() => {
+    if (sellLoanIndex === null) return { switchResult: null, baseResult: null, switchedResult: null, dataErrors: null, runtimeError: null };
+    try {
+      const sr = applySwitch(
+        resolved,
+        { sellLoanIndex, sellParAmount, buyLoan, sellPrice, buyPrice },
+        userAssumptions,
+        resolutionWarnings,
+      );
+      const br = runProjection(sr.baseInputs);
+      const swr = runProjection(sr.switchedInputs);
+      return { switchResult: sr, baseResult: br, switchedResult: swr, dataErrors: null, runtimeError: null };
+    } catch (e) {
+      if (e instanceof IncompleteDataError) {
+        return { switchResult: null, baseResult: null, switchedResult: null, dataErrors: e.errors, runtimeError: null };
+      }
+      return {
+        switchResult: null,
+        baseResult: null,
+        switchedResult: null,
+        dataErrors: null,
+        runtimeError: e instanceof Error ? e.message : "Projection failed.",
+      };
+    }
   }, [resolved, sellLoanIndex, sellParAmount, buyLoan, sellPrice, buyPrice, userAssumptions, resolutionWarnings]);
 
   // Service-layer deltas — UI never subtracts engine values. See
@@ -229,11 +275,26 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
               Pre-filled from switch analysis. Adjust any field to override.
             </div>
           )}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.75rem" }}>
             <div><div style={labelStyle}>Spread (bps)</div><input type="number" value={buySpreadBps} onChange={(e) => setBuySpreadBps(parseFloat(e.target.value) || 0)} style={inputStyle} /></div>
             <div><div style={labelStyle}>Rating</div><select value={buyRating} onChange={(e) => setBuyRating(e.target.value)} style={inputStyle}>{RATING_BUCKETS.map((b) => <option key={b} value={b}>{b}</option>)}</select></div>
             <div><div style={labelStyle}>Maturity</div><input type="date" value={buyMaturity} onChange={(e) => setBuyMaturity(e.target.value)} style={inputStyle} /></div>
             <div><div style={labelStyle}>Par Amount</div><input type="number" value={buyParAmount} onChange={(e) => setBuyParAmount(parseFloat(e.target.value) || 0)} style={inputStyle} /></div>
+            <div>
+              <div style={labelStyle}>Currency</div>
+              <input
+                value={buyCurrency}
+                onChange={(e) => {
+                  setBuyCurrency(e.target.value.toUpperCase());
+                  setSelectedBuyListCurrencyMissing(false);
+                }}
+                placeholder={dealCurrency ?? "e.g. EUR"}
+                style={inputStyle}
+              />
+              <div style={{ fontSize: "0.62rem", color: selectedBuyListCurrencyMissing ? "var(--color-low)" : "var(--color-text-muted)", marginTop: "0.2rem" }}>
+                {selectedBuyListCurrencyMissing ? "Buy-list item has no currency. Enter a 3-letter code." : `3-letter code${dealCurrency ? `, e.g. ${dealCurrency}.` : "."}`}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -252,6 +313,18 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
       {sellLoanIndex === null && (
         <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-muted)", fontSize: "0.85rem", border: "1px dashed var(--color-border-light)", borderRadius: "var(--radius-sm)" }}>
           Select a loan to sell to see the switch impact
+        </div>
+      )}
+
+      {dataErrors && dataErrors.length > 0 && (
+        <div style={{ padding: "1rem", color: "var(--color-text-muted)", fontSize: "0.85rem", border: "1px dashed var(--color-border-light)", borderRadius: "var(--radius-sm)" }}>
+          Unable to simulate switch — {switchCurrencyRecoveryCopy(dataErrors) || "Projection inputs are incomplete."}
+        </div>
+      )}
+
+      {runtimeError && (
+        <div style={{ padding: "1rem", color: "var(--color-text-muted)", fontSize: "0.85rem", border: "1px dashed var(--color-border-light)", borderRadius: "var(--radius-sm)" }}>
+          Unable to simulate switch — {runtimeError}
         </div>
       )}
 
@@ -278,19 +351,46 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
                 <td style={{ ...cellStyle, textAlign: "left" }}>Total Equity Distributions</td>
                 <td style={cellStyle}>{formatAmount(baseResult.totalEquityDistributions)}</td>
                 <td style={cellStyle}>{formatAmount(switchedResult.totalEquityDistributions)}</td>
-                <td style={{ ...cellStyle, color: deltas && deltas.totalEquityDistributionsDelta >= 0 ? "var(--color-high)" : "var(--color-low)" }}>{deltas ? formatAmount(deltas.totalEquityDistributionsDelta) : "—"}</td>
+                <td
+                  style={{
+                    ...cellStyle,
+                    color: deltas && deltas.totalEquityDistributionsDelta > 0
+                      ? "var(--color-high)"
+                      : deltas && deltas.totalEquityDistributionsDelta < 0
+                        ? "var(--color-low)"
+                        : "inherit",
+                  }}
+                >
+                  {deltas ? formatAmount(deltas.totalEquityDistributionsDelta) : "—"}
+                </td>
               </tr>
               <tr style={{ borderBottom: "1px solid var(--color-border-light)" }}>
                 <td style={{ ...cellStyle, textAlign: "left" }}>Spread (swapped position)</td>
                 <td style={cellStyle}>{sellLoan?.spreadBps ?? "—"} bps</td>
                 <td style={cellStyle}>{buySpreadBps} bps</td>
-                <td style={{ ...cellStyle, color: switchResult.spreadDelta >= 0 ? "var(--color-high)" : "var(--color-low)" }}>{switchResult.spreadDelta >= 0 ? "+" : ""}{switchResult.spreadDelta} bps</td>
+                <td
+                  style={{
+                    ...cellStyle,
+                    color: switchResult.spreadDelta > 0
+                      ? "var(--color-high)"
+                      : switchResult.spreadDelta < 0
+                        ? "var(--color-low)"
+                        : "inherit",
+                  }}
+                >
+                  {switchResult.spreadDelta > 0 ? "+" : ""}
+                  {switchResult.spreadDelta} bps
+                </td>
               </tr>
               <tr style={{ borderBottom: "1px solid var(--color-border-light)" }}>
                 <td style={{ ...cellStyle, textAlign: "left" }}>Rating (swapped position)</td>
                 <td style={cellStyle}>{switchResult.ratingChange.from}</td>
                 <td style={cellStyle}>{switchResult.ratingChange.to}</td>
-                <td style={cellStyle}>{switchResult.ratingChange.from} → {switchResult.ratingChange.to}</td>
+                <td style={cellStyle}>
+                  {switchResult.ratingChange.from === switchResult.ratingChange.to
+                    ? "—"
+                    : switchResult.ratingChange.from + " → " + switchResult.ratingChange.to}
+                </td>
               </tr>
               <tr style={{ borderBottom: "1px solid var(--color-border-light)" }}>
                 <td style={{ ...cellStyle, textAlign: "left" }}>Par Impact</td>
@@ -332,8 +432,21 @@ function OcEquityDetail({ baseResult, switchedResult }: { baseResult: Projection
                   <tr key={d.className} style={{ borderBottom: "1px solid var(--color-border-light)" }}>
                     <td style={{ ...cellStyle, textAlign: "left", fontWeight: 500 }}>{d.className}</td>
                     <td style={cellStyle}>{d.baseActual.toFixed(2)}%</td>
-                    <td style={cellStyle}>{d.switchedActual?.toFixed(2) ?? "—"}%</td>
-                    <td style={{ ...cellStyle, color: d.delta >= 0 ? "var(--color-high)" : "var(--color-low)" }}>{d.delta >= 0 ? "+" : ""}{d.delta.toFixed(2)}%</td>
+                    <td style={cellStyle}>{d.switchedActual == null ? "—" : `${d.switchedActual.toFixed(2)}%`}</td>
+                    <td
+                      style={{
+                        ...cellStyle,
+                        color: d.switchedActual == null
+                          ? "inherit"
+                          : d.delta > 0
+                            ? "var(--color-high)"
+                            : d.delta < 0
+                              ? "var(--color-low)"
+                              : "inherit",
+                      }}
+                    >
+                      {d.switchedActual == null ? "—" : `${d.delta > 0 ? "+" : ""}${d.delta.toFixed(2)}%`}
+                    </td>
                   </tr>
                 ))}
             </tbody>
@@ -347,7 +460,9 @@ function OcEquityDetail({ baseResult, switchedResult }: { baseResult: Projection
                     <td style={{ ...cellStyle, textAlign: "left", fontWeight: 500 }}>Q{d.period}</td>
                     <td style={cellStyle}>{formatAmount(d.baseAmount)}</td>
                     <td style={cellStyle}>{formatAmount(d.switchedAmount)}</td>
-                    <td style={{ ...cellStyle, color: d.delta >= 0 ? "var(--color-high)" : "var(--color-low)" }}>{formatAmount(d.delta)}</td>
+                    <td style={{ ...cellStyle, color: d.delta > 0 ? "var(--color-high)" : d.delta < 0 ? "var(--color-low)" : "inherit" }}>
+                      {d.delta !== 0 ? formatAmount(d.delta) : "—"}
+                    </td>
                   </tr>
                 ))}
             </tbody>
@@ -490,7 +605,7 @@ function BuyLoanSelector({
           >
             <div style={{ fontWeight: 600 }}>{selected.obligorName}</div>
             <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginTop: "0.15rem" }}>
-              {[selected.sector, formatRating(selected), selected.spreadBps ? `${selected.spreadBps} bps` : null, formatSize(selected)].filter(Boolean).join(" · ")}
+              {[selected.sector, formatRating(selected), selected.spreadBps ? `${selected.spreadBps} bps` : null, selected.currency, formatSize(selected)].filter(Boolean).join(" · ")}
             </div>
           </button>
         ) : (
@@ -518,7 +633,7 @@ function BuyLoanSelector({
                   >
                     <div style={{ fontWeight: 600 }}>{item.obligorName}</div>
                     <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginTop: "0.15rem" }}>
-                      {[item.sector, formatRating(item), item.spreadBps ? `${item.spreadBps} bps` : null, formatSize(item)].filter(Boolean).join(" · ")}
+                      {[item.sector, formatRating(item), item.spreadBps ? `${item.spreadBps} bps` : null, item.currency, formatSize(item)].filter(Boolean).join(" · ")}
                     </div>
                   </button>
                 ))}

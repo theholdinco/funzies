@@ -43,6 +43,7 @@
  * automatically once the caller plumbs the resolver fields through.
  */
 
+import { canonicalCurrency } from "./currency";
 import { isMoodysCaaOrBelow, isFitchCccOrBelow } from "./rating-mapping";
 
 /** Portfolio-level quality metrics. Same shape used for forward-projected
@@ -204,7 +205,7 @@ export function aggregateQualityMetrics(
   loans: QualityMetricLoan[],
   opts: PoolQualityMetricsOpts = {},
 ): QualityMetricsAggregates {
-  const dealCurrency = opts.dealCurrency ?? null;
+  const dealCurrency = canonicalCurrency(opts.dealCurrency) ?? opts.dealCurrency ?? null;
 
   // Caller-side invariant — defaulted positions are EXCLUDED from `loans`
   // by `projection.ts` and `switch-simulator.ts` before this helper is
@@ -252,8 +253,9 @@ export function aggregateQualityMetrics(
     const isLML = l.isLossMitigationLoan === true;
     const isDeferring = l.isDeferring === true;
     const isFixed = l.isFixedRate === true;
+    const loanCurrency = canonicalCurrency(l.currency) ?? l.currency ?? null;
     const isNonDealCurrency =
-      dealCurrency != null && l.currency != null && l.currency !== dealCurrency;
+      dealCurrency != null && loanCurrency != null && loanCurrency !== dealCurrency;
 
     // Per-agency concentration: exclude LML only. Defaulted positions are
     // already absent because the caller filters by survivingPar / funded

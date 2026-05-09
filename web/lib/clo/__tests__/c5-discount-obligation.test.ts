@@ -22,9 +22,11 @@ import { runProjection } from "@/lib/clo/projection";
 import type { ResolvedDealData, ResolvedDiscountObligationRule, ResolvedLongDatedValuationRule, ResolvedLoan } from "@/lib/clo/resolver-types";
 import {
   buildFromResolved,
+  composeBuildWarnings,
   DEFAULT_ASSUMPTIONS,
   EMPTY_RESOLVED,
   IncompleteDataError,
+  selectBlockingWarnings,
 } from "@/lib/clo/build-projection-inputs";
 import { makeInputs } from "./test-helpers";
 
@@ -376,6 +378,7 @@ describe("reinvestmentPricePct provenance — engine emits pricing source for tr
   // loans the test wants to exercise.
   const buildResolvedWithLoans = (loans: ResolvedLoan[]): ResolvedDealData => ({
     ...EMPTY_RESOLVED,
+    currency: "EUR",
     poolSummary: {
       ...EMPTY_RESOLVED.poolSummary,
       totalPar: loans.reduce((s, l) => s + l.parBalance, 0),
@@ -400,7 +403,7 @@ describe("reinvestmentPricePct provenance — engine emits pricing source for tr
         deferredInterestBalance: null,
       },
     ],
-    loans,
+    loans: loans.map((loan) => ({ ...loan, currency: loan.currency ?? "EUR" })),
   });
 
   it("integration: buildFromResolved derives pool_was_derived (par-weighted) from priced pool", () => {
@@ -435,9 +438,23 @@ describe("reinvestmentPricePct provenance — engine emits pricing source for tr
       { parBalance: 60_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
       { parBalance: 40_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 375 },
     ];
-    expect(() =>
-      buildFromResolved(buildResolvedWithLoans(loans), DEFAULT_ASSUMPTIONS),
-    ).toThrow(IncompleteDataError);
+    const resolved = buildResolvedWithLoans(loans);
+    const selected = selectBlockingWarnings(
+      composeBuildWarnings(resolved, DEFAULT_ASSUMPTIONS, []),
+    );
+    expect(selected).toEqual([expect.objectContaining({
+      field: "reinvestmentPricePct",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(/No priced positions in the pool/),
+    })]);
+    try {
+      buildFromResolved(resolved, DEFAULT_ASSUMPTIONS);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
   });
 
   it("integration: blocking gate is cleared by user override even when no pool prices exist", () => {

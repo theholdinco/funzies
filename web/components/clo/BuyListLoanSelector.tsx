@@ -99,6 +99,7 @@ export default function BuyListLoanSelector({ onSelect }: BuyListLoanSelectorPro
                 item.sector,
                 formatRating(item),
                 item.spreadBps != null ? `${item.spreadBps}bps` : null,
+                item.currency,
                 item.price != null ? `@${item.price}` : null,
               ]
                 .filter(Boolean)

@@ -81,13 +81,28 @@ export default async function WaterfallPage() {
   // Build deal context for AI features
   const dealContext = {
     dealName,
+    dealCurrency: resolved.currency,
     maturityDate,
     reinvestmentPeriodEnd,
     poolSummary: periodData?.poolSummary ?? null,
     complianceTests: periodData?.complianceTests ?? [],
+    concentrationTests: resolved.concentrationTests,
     tranches,
+    resolvedTranches: resolved.tranches.map((t) => ({
+      className: t.className,
+      paymentFrequency: t.paymentFrequency ?? null,
+      isIncomeNote: t.isIncomeNote,
+      spreadBps: t.spreadBps,
+      isFloating: t.isFloating,
+    })),
     trancheSnapshots,
     accountBalances,
+    collateralCurrencySummary: {
+      totalLoans: resolved.loans.length,
+      missingCurrencyCount: resolved.loans.filter((loan) => loan.parBalance > 0 && !loan.currency).length,
+      currencies: Array.from(new Set(resolved.loans.map((loan) => loan.currency).filter(Boolean))).sort(),
+    },
+    deterministicWarnings: resolutionWarnings,
     constraints,
     reportDate: reportPeriod?.reportDate ?? null,
   };

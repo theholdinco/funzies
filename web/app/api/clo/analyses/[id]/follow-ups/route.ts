@@ -32,6 +32,8 @@ function buildFollowUpPrompt(
     borrower_name: string;
     raw_files: Record<string, string>;
     parsed_data: Record<string, unknown>;
+    currency?: string | null;
+    switch_currency?: string | null;
   },
   members: PanelMember[],
   profile: FullProfile,
@@ -84,6 +86,8 @@ ${memberProfiles}
 
 CREDIT ANALYSIS: ${analysis.title}
 Borrower: ${analysis.borrower_name}
+Currency: ${analysis.currency || "Not specified"}
+Switch candidate currency: ${analysis.switch_currency || "Not specified"}
 
 CONTEXT (prior analysis):
 ${memoContent ? `CREDIT MEMO:\n${memoContent}\n` : ""}
@@ -203,8 +207,10 @@ export async function POST(
     raw_files: Record<string, string>;
     parsed_data: Record<string, unknown>;
     dynamic_specialists: PanelMember[];
+    currency: string | null;
+    switch_currency: string | null;
   }>(
-    "SELECT title, borrower_name, panel_id, raw_files, parsed_data, dynamic_specialists FROM clo_analyses WHERE id = $1",
+    "SELECT title, borrower_name, panel_id, raw_files, parsed_data, dynamic_specialists, currency, switch_currency FROM clo_analyses WHERE id = $1",
     [id]
   );
 

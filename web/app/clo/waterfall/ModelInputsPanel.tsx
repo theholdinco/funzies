@@ -18,9 +18,16 @@ export function ModelInputsPanel({ resolved, inputs }: { resolved: ResolvedDealD
       ppm: "var(--color-warning, #d97706)",
       default: "var(--color-low)",
     };
+    const labels: Record<string, string> = {
+      snapshot: "Trustee report",
+      compliance: "Trustee report",
+      db_tranche: "Deal database",
+      ppm: "PPM",
+      default: "Model fallback",
+    };
     return (
       <span style={{ fontSize: "0.6rem", fontWeight: 600, padding: "0.1rem 0.35rem", borderRadius: "3px", background: `${colors[source] ?? "var(--color-text-muted)"}18`, color: colors[source] ?? "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.03em" }}>
-        {source}
+        {labels[source] ?? source}
       </span>
     );
   };

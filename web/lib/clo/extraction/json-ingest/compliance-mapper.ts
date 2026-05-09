@@ -12,6 +12,7 @@ import {
   extractLxid,
   extractIsin,
 } from "./utils";
+import { canonicalCurrency } from "../../currency";
 
 export type ComplianceSections = Record<string, Record<string, unknown>>;
 
@@ -91,6 +92,10 @@ export function splitDescription(desc: string): [string, string] {
 function mapAssetSchedule(c: ComplianceJson): Record<string, unknown> {
   return {
     holdings: c.schedule_of_investments.map((h: ComplianceJsonHolding) => {
+      const rawCurrency = (h as ComplianceJsonHolding & { ccy?: string; currency?: string }).currency
+        ?? (h as ComplianceJsonHolding & { ccy?: string }).ccy
+        ?? null;
+      const canonical = canonicalCurrency(rawCurrency);
       const lxid = extractLxid(h.security_id);
       const isin = extractIsin(h.security_id);
       const [obligorName, facilityName] = splitDescription(h.description);
@@ -113,6 +118,10 @@ function mapAssetSchedule(c: ComplianceJson): Record<string, unknown> {
           : null,
         currentPrice: h.market_price ?? null,
         isDelayedDraw,
+        currency: canonical ?? rawCurrency,
+        currencyRaw: rawCurrency,
+        currencyCanonical: canonical,
+        currencySource: rawCurrency ? "json_holding" : null,
       };
     }),
   };
@@ -303,6 +312,7 @@ function mapWaterfall(c: ComplianceJson): Record<string, unknown> {
 function mapTradingActivity(c: ComplianceJson): Record<string, unknown> {
   const makeTrade = (t: any, tradeType: string) => {
     const [obligorName, facilityName] = splitDescription(t.description);
+    const canonical = canonicalCurrency(t.ccy);
     return {
       tradeType,
       obligorName,
@@ -312,7 +322,10 @@ function mapTradingActivity(c: ComplianceJson): Record<string, unknown> {
       parAmount: t.par ?? null,
       settlementPrice: t.price ?? null,
       settlementAmount: t.total ?? null,
-      currency: t.ccy ?? null,
+      currency: canonical ?? t.ccy ?? null,
+      currencyRaw: t.ccy ?? null,
+      currencyCanonical: canonical,
+      currencySource: t.ccy ? "json_trade" : null,
     };
   };
   const purchases = (c.purchases ?? []).map((t) => makeTrade(t, "PURCHASE"));
@@ -353,10 +366,16 @@ function mapAccountBalances(c: ComplianceJson): Record<string, unknown> {
     // from the payment_date used by waterfall executions. Stamp the date so
     // downstream consumers don't conflate the two.
     asOfDate: c.meta?.determination_date ?? null,
-    accounts: c.account_balances.accounts.map((a) => ({
+    accounts: c.account_balances.accounts.map((a) => {
+      const rawCurrency = a.ccy ?? a.name;
+      const canonical = canonicalCurrency(rawCurrency);
+      return {
       accountName: a.name,
       accountType: normalizeAccountType(a.group, a.name),
-      currency: a.ccy ?? null,
+      currency: canonical ?? a.ccy ?? null,
+      currencyRaw: rawCurrency,
+      currencyCanonical: canonical,
+      currencySource: rawCurrency ? "json_account" : null,
       // BNY reports deal_received_eur as the ending balance in EUR (confirmed
       // against account_balances.principal_funding_account_received_basis_eur
       // subtotal). deal_trade_eur is the trade-basis balance; native_received
@@ -365,7 +384,8 @@ function mapAccountBalances(c: ComplianceJson): Record<string, unknown> {
       balanceAmount: a.deal_received_eur ?? a.deal_trade_eur ?? a.native_received ?? null,
       requiredBalance: null,
       excessDeficit: null,
-    })),
+      };
+    }),
   };
 }
 

@@ -68,7 +68,7 @@ export default function BuyListUpload({ initialItems }: { initialItems: BuyListI
   }
 
   function handleDownload() {
-    const headers = ["obligor","facility","sector","industry_taxonomy","industry_code","moodys","sp","spread_bps","reference_rate","price","maturity","facility_size","leverage","interest_coverage","cov_lite","average_life","recovery","notes"];
+    const headers = ["obligor","facility","sector","industry_taxonomy","industry_code","moodys","sp","spread_bps","reference_rate","currency","price","maturity","facility_size","leverage","interest_coverage","cov_lite","average_life","recovery","notes"];
     const escapeField = (val: string | null | undefined) => {
       if (val == null || val === "") return "";
       const s = String(val);
@@ -84,6 +84,7 @@ export default function BuyListUpload({ initialItems }: { initialItems: BuyListI
       item.spRating,
       item.spreadBps,
       item.referenceRate,
+      item.currency,
       item.price,
       item.maturityDate,
       item.facilitySize,

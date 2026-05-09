@@ -31,10 +31,12 @@ describe("harness step-(G) merge", () => {
       maturityDate: addQuarters("2026-03-09", 24 + i),
       ratingBucket: "B",
       spreadBps: 410,
+    currency: "EUR",
     }));
 
     const inputs: ProjectionInputs = {
       initialPar: 150_000_000,
+    dealCurrency: "EUR",
       wacSpreadBps: 410,
       baseRatePct: CLO_DEFAULTS.baseRatePct,
       baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
@@ -58,7 +60,8 @@ describe("harness step-(G) merge", () => {
           seniorityRank: 1,
           isFloating: false,
           isIncomeNote: false,
-          isDeferrable: false,
+          paymentFrequency: "quarterly" as const,
+        isDeferrable: false,
           isAmortising: true,
           amortisationPerPeriod: 400_000,
         },
@@ -69,7 +72,8 @@ describe("harness step-(G) merge", () => {
           seniorityRank: 2,
           isFloating: true,
           isIncomeNote: false,
-          isDeferrable: false,
+          paymentFrequency: "quarterly" as const,
+        isDeferrable: false,
         },
         {
           className: "Subordinated Notes",

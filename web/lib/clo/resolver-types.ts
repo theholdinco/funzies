@@ -58,6 +58,16 @@ export interface ResolvedComplianceTest {
    *  Display + cross-reference only — engine enforcement uses per-loan
    *  `industryCode` against `industryCapRules`, not these aggregate rows. */
   bucketName?: string | null;
+  /** Optional provenance for appended compliance-backed evidence rows, most
+   *  notably currency concentration rows added for fail-closed FX review.
+   *  Projection math ignores it. */
+  source?: {
+    dataSource?: string | null;
+    testDate?: string | null;
+    vendorId?: string | null;
+    testMethodology?: string | null;
+    adjustmentDescription?: string | null;
+  } | null;
 }
 
 export interface ResolvedMetadata {
@@ -973,8 +983,8 @@ export interface ResolvedDealData {
   baseRateFloorPct: number | null; // extracted reference rate floor (null = not extracted, use default)
   /** ISO 4217 currency code for the deal (e.g. "EUR", "USD", "GBP"). Sourced
    *  from `CloDeal.dealCurrency` when populated, otherwise derived as the
-   *  modal `nativeCurrency` across non-defaulted holdings. Null when neither
-   *  source can be determined. UI uses this to render currency symbols and to
+   *  par-weighted modal holding `currency`/`nativeCurrency` across
+   *  non-defaulted holdings. Null when neither source can be determined. UI uses this to render currency symbols and to
    *  surface a "Set deal currency" banner when null. See CLAUDE.md §
    *  "Recurring failure modes" principle 1 (don't overfit) — formatting code
    *  must read this field, never hardcode `€` or `$`. */
@@ -1066,6 +1076,9 @@ export interface ResolvedTranche {
    *  when resolver emitted a blocking warning and must preserve fail-closed
    *  state through buildFromResolved. */
   paymentFrequency?: PaymentFrequency | string;
+  paymentFrequencyRaw?: string | null;
+  paymentFrequencyCanonical?: PaymentFrequency | string | null;
+  paymentFrequencySource?: ResolvedSource | string | null;
 }
 
 export interface ResolvedPool {
@@ -1090,6 +1103,10 @@ export interface ResolvedPool {
   pctSeniorSecured: number | null;
   pctSecondLien: number | null;
   pctCurrentPay: number | null;
+  pctEurDenominated: number | null;
+  pctGbpDenominated: number | null;
+  pctUsdDenominated: number | null;
+  pctNonBaseCurrency: number | null;
   // D4 (Sprint 4): par share held by the top 10 obligors, computed from
   // loans grouped by obligorName. Populated by the resolver for the base
   // pool; recomputed by `applySwitch` for the post-trade pool so the UI
@@ -1215,8 +1232,9 @@ export interface ResolvedLoan {
   warfFactor?: number;
   /** ISO 4217 currency code (EUR/USD/GBP). Sourced from holding's `currency`
    *  or `nativeCurrency`. Used by the Floating WAS denominator to exclude
-   *  Non-Euro Obligations per PPM Condition 1 (PDF p. 302). When undefined,
-   *  the loan is assumed deal-currency-denominated. */
+   *  Non-Euro Obligations per PPM Condition 1 (PDF p. 302). Missing currency
+   *  on exposed loans blocks projection in the build gate because the engine
+   *  must prove balances are in deal currency before summing them. */
   currency?: string;
   /** Whether the obligation is currently deferring its current cash interest
    *  payment per PPM "Deferring Security" definition (PDF p. 120). Excluded

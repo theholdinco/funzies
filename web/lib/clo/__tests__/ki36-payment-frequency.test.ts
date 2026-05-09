@@ -29,12 +29,21 @@ describe("KI-36 tranche payment frequency", () => {
     expect(normalizePaymentFrequency("semi-annual in arrears")).toBe("semi_annual");
     expect(normalizePaymentFrequency("6-month")).toBe("semi_annual");
     expect(normalizePaymentFrequency("every three months")).toBe("quarterly");
+    expect(normalizePaymentFrequency("every 3 months")).toBe("quarterly");
+    expect(normalizePaymentFrequency("each quarter")).toBe("quarterly");
     expect(normalizePaymentFrequency("3M")).toBe("quarterly");
     expect(normalizePaymentFrequency("N/A")).toBeNull();
     expect(normalizePaymentFrequency("None")).toBeNull();
     expect(normalizePaymentFrequency("weekly")).toBeNull();
     expect(normalizePaymentFrequency("not monthly")).toBeNull();
-    expect(normalizePaymentFrequency("Quarterly prior to the Frequency Switch Event and semi-annually thereafter")).toBeNull();
+    expect(normalizePaymentFrequency("Quarterly prior to the Frequency Switch Event and semi-annually thereafter")).toBe("quarterly");
+    expect(normalizePaymentFrequency("Prior to the Frequency Switch Event, quarterly; thereafter semi-annually")).toBe("quarterly");
+    expect(normalizePaymentFrequency("Quarterly until the Frequency Switch Event and semi-annually thereafter")).toBe("quarterly");
+    expect(normalizePaymentFrequency("Quarterly prior to conversion to semi-annual payments")).toBe("quarterly");
+    expect(normalizePaymentFrequency("No Frequency Switch Event has occurred. Deal continues on quarterly payments.")).toBe("quarterly");
+    expect(normalizePaymentFrequency("Semi-annually prior to the Frequency Switch Event and quarterly thereafter")).toBe("semi_annual");
+    expect(normalizePaymentFrequency("Quarterly prior to the Frequency Switch Event and monthly thereafter")).toBeNull();
+    expect(normalizePaymentFrequency("prior to the Frequency Switch Event and quarterly thereafter")).toBeNull();
   });
 
   it("blocks monthly tranche frequency while deal waterfall dates are quarterly", () => {
@@ -79,6 +88,13 @@ describe("KI-36 tranche payment frequency", () => {
         }),
       ),
     ).toThrow(/unsupported paymentFrequency/);
+  });
+
+  it("blocks missing hand-constructed interest-bearing tranche frequency values", () => {
+    const inputs = makeInputs();
+    delete inputs.tranches[0].paymentFrequency;
+
+    expect(() => runProjection(inputs)).toThrow(/missing payment frequency/);
   });
 
   it("buildFromResolved blocks monthly tranche frequency with IncompleteDataError", () => {
@@ -757,6 +773,8 @@ describe("KI-36 tranche payment frequency", () => {
     expect(result.periods[0].date).toBe("2026-04-30");
     expect(result.periods[0].defaults).toBeCloseTo(expectedDefaults, 0);
     expect(result.periods[0].endingPar).toBeCloseTo(100_000_000 - expectedDefaults, 0);
+    expect(result.periods[1].date).toBe("2026-07-31");
+    expect(result.periods[1].defaults).toBeCloseTo((100_000_000 - expectedDefaults) * (1 - Math.pow(1 - annualCdr / 100, 0.25)), 0);
   });
 
   it("end-of-month payment rows stay anchored after the first clamped quarter", () => {

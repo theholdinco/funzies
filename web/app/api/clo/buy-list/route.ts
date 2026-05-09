@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-helpers";
 import { getProfileForUser } from "@/lib/clo/access";
 import { getBuyListForProfile, replaceBuyList, clearBuyList } from "@/lib/clo/buy-list";
+import { canonicalCurrency } from "@/lib/clo/currency";
 import type { BuyListItem } from "@/lib/clo/types";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -44,6 +45,9 @@ const COLUMN_MAP: Record<string, string> = {
   spread_bps: "spreadBps",
   reference_rate: "referenceRate",
   ref_rate: "referenceRate",
+  currency: "currency",
+  ccy: "currency",
+  currency_code: "currency",
   price: "price",
   offer_price: "price",
   current_price: "price",
@@ -149,6 +153,7 @@ function parseCsv(text: string): ParsedItem[] {
       spRating: null,
       spreadBps: null,
       referenceRate: null,
+      currency: null,
       price: null,
       maturityDate: null,
       facilitySize: null,
@@ -175,6 +180,11 @@ function parseCsv(text: string): ParsedItem[] {
         // rather than silently propagating ill-formed taxonomy strings
         // that the D5 filter's lookup helpers would reject downstream.
         item[field] = val === "moodys_33" || val === "sp" || val === "deal_specific" ? val : null;
+      } else if (field === "currency") {
+        item.currencyRaw = val;
+        item.currencyCanonical = canonicalCurrency(val);
+        item.currencySource = "buy_list_upload";
+        item[field] = canonicalCurrency(val) ?? val.toUpperCase();
       } else {
         item[field] = val;
       }

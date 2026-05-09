@@ -40,10 +40,12 @@ describe("harness extractEngineBuckets — rank-based class identity", () => {
       maturityDate: addQuarters("2026-03-09", 24 + i),
       ratingBucket: "B",
       spreadBps: 410,
+    currency: "EUR",
     }));
 
     const inputs: ProjectionInputs = {
       initialPar: 120_000_000,
+    dealCurrency: "EUR",
       wacSpreadBps: 410,
       baseRatePct: CLO_DEFAULTS.baseRatePct,
       baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
@@ -60,11 +62,11 @@ describe("harness extractEngineBuckets — rank-based class identity", () => {
       callPriceMode: "par",
       reinvestmentOcTrigger: null,
       tranches: [
-        { className: "Class A-1", currentBalance: 50_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "Class A-2", currentBalance: 30_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "Class B",   currentBalance: 15_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "M-1",       currentBalance: 10_000_000, spreadBps: 350, seniorityRank: 3, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
-        { className: "M-2",       currentBalance:  5_000_000, spreadBps: 500, seniorityRank: 4, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
+        { className: "Class A-1", currentBalance: 50_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "Class A-2", currentBalance: 30_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "Class B",   currentBalance: 15_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "M-1",       currentBalance: 10_000_000, spreadBps: 350, seniorityRank: 3, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
+        { className: "M-2",       currentBalance:  5_000_000, spreadBps: 500, seniorityRank: 4, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
         { className: "Equity",    currentBalance: 10_000_000, spreadBps:   0, seniorityRank: 5, isFloating: false, isIncomeNote: true,  isDeferrable: false },
       ],
       ocTriggers: [],
@@ -161,10 +163,12 @@ describe("harness extractEngineBuckets — rank-based class identity", () => {
       maturityDate: addQuarters("2026-03-09", 24 + i),
       ratingBucket: "B",
       spreadBps: 410,
+    currency: "EUR",
     }));
 
     const inputs: ProjectionInputs = {
       initialPar: 100_000_000,
+    dealCurrency: "EUR",
       wacSpreadBps: 410,
       baseRatePct: CLO_DEFAULTS.baseRatePct,
       baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
@@ -181,9 +185,9 @@ describe("harness extractEngineBuckets — rank-based class identity", () => {
       callPriceMode: "par",
       reinvestmentOcTrigger: null,
       tranches: [
-        { className: "Class A", currentBalance: 60_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "Class B", currentBalance: 15_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
-        { className: "Class C", currentBalance: 10_000_000, spreadBps: 350, seniorityRank: 3, isFloating: true, isIncomeNote: false, isDeferrable: true  },
+        { className: "Class A", currentBalance: 60_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "Class B", currentBalance: 15_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "Class C", currentBalance: 10_000_000, spreadBps: 350, seniorityRank: 3, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
         { className: "Subordinated Notes", currentBalance: 15_000_000, spreadBps: 0, seniorityRank: 4, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       // A/B trigger trivially passes; C trigger forced to fail.
@@ -259,10 +263,12 @@ describe("harness extractEngineBuckets — rank-based class identity", () => {
       maturityDate: addQuarters("2026-03-09", 24 + i),
       ratingBucket: "B",
       spreadBps: 410,
+    currency: "EUR",
     }));
 
     const inputs: ProjectionInputs = {
       initialPar: 100_000_000,
+    dealCurrency: "EUR",
       wacSpreadBps: 410,
       baseRatePct: CLO_DEFAULTS.baseRatePct,
       baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
@@ -280,13 +286,13 @@ describe("harness extractEngineBuckets — rank-based class identity", () => {
       reinvestmentOcTrigger: null,
       // 7 non-amortising debt tiers (one too many).
       tranches: [
-        { className: "A",      currentBalance: 40_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "B",      currentBalance: 15_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true,  isIncomeNote: false, isDeferrable: false },
-        { className: "C",      currentBalance: 12_000_000, spreadBps: 300, seniorityRank: 3, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
-        { className: "D",      currentBalance: 10_000_000, spreadBps: 400, seniorityRank: 4, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
-        { className: "E",      currentBalance:  8_000_000, spreadBps: 500, seniorityRank: 5, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
-        { className: "F",      currentBalance:  5_000_000, spreadBps: 600, seniorityRank: 6, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
-        { className: "G",      currentBalance:  3_000_000, spreadBps: 700, seniorityRank: 7, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
+        { className: "A",      currentBalance: 40_000_000, spreadBps: 110, seniorityRank: 1, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "B",      currentBalance: 15_000_000, spreadBps: 200, seniorityRank: 2, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+        { className: "C",      currentBalance: 12_000_000, spreadBps: 300, seniorityRank: 3, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
+        { className: "D",      currentBalance: 10_000_000, spreadBps: 400, seniorityRank: 4, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
+        { className: "E",      currentBalance:  8_000_000, spreadBps: 500, seniorityRank: 5, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
+        { className: "F",      currentBalance:  5_000_000, spreadBps: 600, seniorityRank: 6, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
+        { className: "G",      currentBalance:  3_000_000, spreadBps: 700, seniorityRank: 7, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
         { className: "Equity", currentBalance:  7_000_000, spreadBps:   0, seniorityRank: 8, isFloating: false, isIncomeNote: true,  isDeferrable: false },
       ],
       ocTriggers: [],

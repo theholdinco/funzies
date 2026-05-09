@@ -29,10 +29,12 @@ function makeFullDealInputs(overrides: Partial<ProjectionInputs> = {}): Projecti
     maturityDate: addQuarters(currentDate, 10 + i),
     ratingBucket: "B",
     spreadBps: 375,
+    currency: "EUR",
   }));
 
   return {
     initialPar: 100_000_000,
+    dealCurrency: "EUR",
     wacSpreadBps: 375,
     baseRatePct: CLO_DEFAULTS.baseRatePct,        // 3.5%
     baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct, // 0%
@@ -57,22 +59,23 @@ function makeFullDealInputs(overrides: Partial<ProjectionInputs> = {}): Projecti
         seniorityRank: 0,
         isFloating: true,
         isIncomeNote: false,
+        paymentFrequency: "quarterly" as const,
         isDeferrable: false,
         isAmortising: true,
         amortisationPerPeriod: 550_000,
         amortStartDate: "2024-10-15", // already past currentDate → active from Q1
       },
       // Class A: senior, floating
-      { className: "A",  currentBalance: 60_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true,  isIncomeNote: false, isDeferrable: false },
+      { className: "A",  currentBalance: 60_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
       // Class B-1: floating (non-deferrable per PPM)
-      { className: "J-1", currentBalance: 6_000_000,  spreadBps: 225, seniorityRank: 3, isFloating: true,  isIncomeNote: false, isDeferrable: false },
+      { className: "J-1", currentBalance: 6_000_000,  spreadBps: 225, seniorityRank: 3, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
       // Class B-2: fixed coupon (spreadBps = full coupon in bps; non-deferrable per PPM)
-      { className: "J-2", currentBalance: 4_000_000,  spreadBps: 550, seniorityRank: 3, isFloating: false, isIncomeNote: false, isDeferrable: false },
+      { className: "J-2", currentBalance: 4_000_000,  spreadBps: 550, seniorityRank: 3, isFloating: false, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
       // Class C through F: deferrable junior tranches
-      { className: "C",  currentBalance: 6_000_000,  spreadBps: 330, seniorityRank: 4, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
-      { className: "D",  currentBalance: 5_000_000,  spreadBps: 420, seniorityRank: 5, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
-      { className: "E",  currentBalance: 4_000_000,  spreadBps: 540, seniorityRank: 6, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
-      { className: "F",  currentBalance: 3_000_000,  spreadBps: 700, seniorityRank: 7, isFloating: true,  isIncomeNote: false, isDeferrable: true  },
+      { className: "C",  currentBalance: 6_000_000,  spreadBps: 330, seniorityRank: 4, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
+      { className: "D",  currentBalance: 5_000_000,  spreadBps: 420, seniorityRank: 5, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
+      { className: "E",  currentBalance: 4_000_000,  spreadBps: 540, seniorityRank: 6, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
+      { className: "F",  currentBalance: 3_000_000,  spreadBps: 700, seniorityRank: 7, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: true  },
       // Subordinated notes: equity
       { className: "Sub", currentBalance: 9_250_000, spreadBps: 0,   seniorityRank: 8, isFloating: false, isIncomeNote: true,  isDeferrable: false },
     ],
@@ -140,7 +143,7 @@ describe("Class X amortisation", () => {
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
       // No loans mature during RP, so principal proceeds are minimal — X must be paid from interest
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
       reinvestmentPeriodEnd: null, // disable RP to ensure no reinvestment confusion
     }));
 
@@ -248,14 +251,14 @@ describe("Fixed vs floating rate coupon", () => {
     const result = runProjection(makeFullDealInputs({
       baseRatePct: 3.5,
       tranches: [
-        { className: "A", currentBalance: 80_000_000, spreadBps: 147, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 80_000_000, spreadBps: 147, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
       icTriggers: [],
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     const q1 = result.periods[0];
@@ -269,14 +272,14 @@ describe("Fixed vs floating rate coupon", () => {
   it("fixed tranche at 550bps produces 5.50% annual coupon", () => {
     const result = runProjection(makeFullDealInputs({
       tranches: [
-        { className: "A", currentBalance: 80_000_000, spreadBps: 550, seniorityRank: 1, isFloating: false, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 80_000_000, spreadBps: 550, seniorityRank: 1, isFloating: false, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
       icTriggers: [],
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     const q1 = result.periods[0];
@@ -291,27 +294,27 @@ describe("Fixed vs floating rate coupon", () => {
     const floatingResult = runProjection(makeFullDealInputs({
       baseRatePct: 3.5,
       tranches: [
-        { className: "A", currentBalance: 80_000_000, spreadBps: 350, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 80_000_000, spreadBps: 350, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
       icTriggers: [],
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     const fixedResult = runProjection(makeFullDealInputs({
       baseRatePct: 3.5,
       tranches: [
-        { className: "A", currentBalance: 80_000_000, spreadBps: 350, seniorityRank: 1, isFloating: false, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 80_000_000, spreadBps: 350, seniorityRank: 1, isFloating: false, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
       icTriggers: [],
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     const floatingDue = floatingResult.periods[0].trancheInterest.find((t) => t.className === "A")!.due;
@@ -333,7 +336,7 @@ describe("EURIBOR floor", () => {
       baseRateFloorPct: 0,
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     const positive = runProjection(makeFullDealInputs({
@@ -341,7 +344,7 @@ describe("EURIBOR floor", () => {
       baseRateFloorPct: 0,
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     // With -1% base floored at 0%, interest collected should be > 0 (spread still applies)
@@ -353,7 +356,7 @@ describe("EURIBOR floor", () => {
       baseRateFloorPct: 0,
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     // Floored at 0%: both -1% and 0% produce identical interest collected
@@ -368,28 +371,28 @@ describe("EURIBOR floor", () => {
       baseRatePct: -1.0,
       baseRateFloorPct: 0,
       tranches: [
-        { className: "A", currentBalance: 90_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 90_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
       icTriggers: [],
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     const zeroBase = runProjection(makeFullDealInputs({
       baseRatePct: 0,
       baseRateFloorPct: 0,
       tranches: [
-        { className: "A", currentBalance: 90_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 90_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
       icTriggers: [],
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     const aDue_neg = negativeBase.periods[0].trancheInterest.find((t) => t.className === "A")!.due;
@@ -405,28 +408,28 @@ describe("EURIBOR floor", () => {
       baseRatePct: 0,
       baseRateFloorPct: 0.5,
       tranches: [
-        { className: "A", currentBalance: 90_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 90_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
       icTriggers: [],
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     const atZero = runProjection(makeFullDealInputs({
       baseRatePct: 0,
       baseRateFloorPct: 0,
       tranches: [
-        { className: "A", currentBalance: 90_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
+        { className: "A", currentBalance: 90_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
       ocTriggers: [],
       icTriggers: [],
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
     }));
 
     // 0.5% floor applied on top of 0% base → more interest than with 0% floor
@@ -455,7 +458,7 @@ describe("Deferrable tranches (PIK) on OC failure", () => {
         { className: "J-1", triggerLevel: 999, rank: 3 }, // always fails → diverts all junior interest
       ],
       icTriggers: [],
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
       reinvestmentPeriodEnd: null,
     });
   }
@@ -519,7 +522,7 @@ describe("Deferrable tranches (PIK) on OC failure", () => {
         { className: "J-1", triggerLevel: 999, rank: 3 },
       ],
       icTriggers: [],
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "CCC", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "CCC", spreadBps: 375 , currency: "EUR" }],
       reinvestmentPeriodEnd: null,
     }));
 
@@ -604,6 +607,7 @@ describe("Fee waterfall order", () => {
   function makeFeeTestInputs(feeOverrides: Partial<ProjectionInputs>): ProjectionInputs {
     return {
       initialPar: 100_000_000,
+    dealCurrency: "EUR",
       wacSpreadBps: 375,
       baseRatePct: CLO_DEFAULTS.baseRatePct,
       baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
@@ -620,7 +624,7 @@ describe("Fee waterfall order", () => {
       callPriceMode: "par",
       reinvestmentOcTrigger: null,
       tranches: [
-        { className: "A",   currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true,  isIncomeNote: false, isDeferrable: false },
+        { className: "A",   currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true,  isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
         { className: "Sub", currentBalance: 35_000_000, spreadBps: 0,   seniorityRank: 2, isFloating: false, isIncomeNote: true,  isDeferrable: false },
       ],
       ocTriggers: [],
@@ -628,7 +632,7 @@ describe("Fee waterfall order", () => {
       reinvestmentPeriodEnd: null,
       maturityDate: addQuarters("2025-01-15", 36),
       currentDate: "2025-01-15",
-      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 }],
+      loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" }],
       defaultRatesByRating: zeroCdrs(),
       cprPct: 0,
       recoveryPct: CLO_DEFAULTS.recoveryPct,
@@ -729,8 +733,8 @@ describe("Post-RP reinvestment", () => {
   const rpEnd = addQuarters("2025-01-15", 4); // RP ends after Q4
   // Single loan matures in Q8 (post-RP) to produce principal proceeds
   const postRpLoans: LoanInput[] = [
-    { parBalance: 20_000_000, maturityDate: addQuarters("2025-01-15", 8), ratingBucket: "B", spreadBps: 375 },
-    { parBalance: 80_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 },
+    { parBalance: 20_000_000, maturityDate: addQuarters("2025-01-15", 8), ratingBucket: "B", spreadBps: 375 , currency: "EUR" },
+    { parBalance: 80_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" },
   ];
 
   it("30% of principal proceeds are reinvested post-RP when postRpReinvestmentPct=30", () => {
@@ -796,8 +800,8 @@ describe("Post-RP reinvestment", () => {
       cprPct: 0,
       // Loan matures in Q2 (inside RP)
       loans: [
-        { parBalance: 10_000_000, maturityDate: addQuarters("2025-01-15", 2), ratingBucket: "B", spreadBps: 375 },
-        { parBalance: 90_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 },
+        { parBalance: 10_000_000, maturityDate: addQuarters("2025-01-15", 2), ratingBucket: "B", spreadBps: 375 , currency: "EUR" },
+        { parBalance: 90_000_000, maturityDate: addQuarters("2025-01-15", 30), ratingBucket: "B", spreadBps: 375 , currency: "EUR" },
       ],
       ocTriggers: [],
       icTriggers: [],

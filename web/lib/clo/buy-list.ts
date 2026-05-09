@@ -22,6 +22,10 @@ function rowToBuyListItem(row: Record<string, unknown>): BuyListItem {
     spRating: (row.sp_rating as string) ?? null,
     spreadBps: num(row.spread_bps),
     referenceRate: (row.reference_rate as string) ?? null,
+    currency: (row.currency as string) ?? null,
+    currencyRaw: (row.currency_raw as string) ?? null,
+    currencyCanonical: (row.currency_canonical as string) ?? null,
+    currencySource: (row.currency_source as string) ?? null,
     price: num(row.price),
     maturityDate: (row.maturity_date as string) ?? null,
     facilitySize: num(row.facility_size),
@@ -69,7 +73,7 @@ export async function replaceBuyList(
   for (const item of items) {
     const start = paramIndex;
     placeholders.push(
-      `($${start},$${start + 1},$${start + 2},$${start + 3},$${start + 4},$${start + 5},$${start + 6},$${start + 7},$${start + 8},$${start + 9},$${start + 10},$${start + 11},$${start + 12},$${start + 13},$${start + 14},$${start + 15},$${start + 16},$${start + 17},$${start + 18})`
+      `($${start},$${start + 1},$${start + 2},$${start + 3},$${start + 4},$${start + 5},$${start + 6},$${start + 7},$${start + 8},$${start + 9},$${start + 10},$${start + 11},$${start + 12},$${start + 13},$${start + 14},$${start + 15},$${start + 16},$${start + 17},$${start + 18},$${start + 19},$${start + 20},$${start + 21},$${start + 22})`
     );
     values.push(
       profileId,
@@ -80,6 +84,10 @@ export async function replaceBuyList(
       item.spRating,
       item.spreadBps,
       item.referenceRate,
+      item.currency,
+      item.currencyRaw ?? item.currency,
+      item.currencyCanonical ?? null,
+      item.currencySource ?? (item.currency ? "buy_list_upload" : null),
       item.price,
       item.maturityDate,
       item.facilitySize,
@@ -92,13 +100,15 @@ export async function replaceBuyList(
       item.industryTaxonomy,
       item.industryCode
     );
-    paramIndex += 19;
+    paramIndex += 23;
   }
 
   const rows = await query<Record<string, unknown>>(
     `INSERT INTO clo_buy_list_items (
       profile_id, obligor_name, facility_name, sector, moodys_rating,
-      sp_rating, spread_bps, reference_rate, price, maturity_date,
+      sp_rating, spread_bps, reference_rate, currency,
+      currency_raw, currency_canonical, currency_source,
+      price, maturity_date,
       facility_size, leverage, interest_coverage, is_cov_lite,
       average_life_years, recovery_rate, notes,
       industry_taxonomy, industry_code
@@ -126,6 +136,7 @@ export function formatBuyList(items: BuyListItem[]): string {
         parts.push(`Rating: ${ratings}`);
       }
       if (item.spreadBps != null) parts.push(`Spread: ${item.spreadBps}bps`);
+      if (item.currency) parts.push(`Currency: ${item.currency}`);
       if (item.price != null) parts.push(`Price: ${item.price}`);
       if (item.maturityDate) parts.push(`Maturity: ${item.maturityDate}`);
       if (item.facilitySize != null) parts.push(`Max Size: ${item.facilitySize}`);

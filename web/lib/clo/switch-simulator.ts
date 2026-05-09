@@ -79,8 +79,9 @@ export function applySwitch(
 ): SwitchResult {
   const { sellLoanIndex, sellParAmount, buyLoan, sellPrice: _sellPrice, buyPrice: _buyPrice } = params;
   const sellLoan = resolved.loans[sellLoanIndex];
+  const localWarnings = warnings ? [...warnings] : undefined;
 
-  const baseInputs = buildFromResolved(resolved, assumptions, warnings);
+  const baseInputs = buildFromResolved(resolved, assumptions, localWarnings);
 
   // Build switched loan pool
   const switchedLoans = [...resolved.loans];
@@ -148,8 +149,8 @@ export function applySwitch(
     const sellFlag = flagFor(sellLoan);
     const buyFlag = flagFor(buyLoan);
     if (baseValue == null || sellFlag == null || buyFlag == null) {
-      if (warnings != null) {
-        warnings.push({
+      if (localWarnings != null) {
+        localWarnings.push({
           field: `switched_${field}`,
           message:
             `applySwitch: cannot delta-recompute ${field} — at least one swap leg has unknown ${field} flag ` +
@@ -231,7 +232,7 @@ export function applySwitch(
     },
   };
 
-  const switchedInputs = buildFromResolved(switchedResolved, assumptions, warnings);
+  const switchedInputs = buildFromResolved(switchedResolved, assumptions, localWarnings);
 
   return {
     baseInputs,

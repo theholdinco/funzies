@@ -11,10 +11,10 @@ const Q1_ACTUAL = dayCountFraction("actual_360", "2026-03-09", "2026-06-09");
 const Q2_ACTUAL = dayCountFraction("actual_360", "2026-06-09", "2026-09-09");
 // Q3: 2026-09-09 → 2026-12-09 = 91 days.
 const Q3_ACTUAL = dayCountFraction("actual_360", "2026-09-09", "2026-12-09");
-// KI-36: drawQuarter remains a user-facing quarter assumption, but the engine
-// fires it on the monthly internal clock at the first month of that projected
-// quarter.
-const STUB_DRAW_Q2_START_ACTUAL = dayCountFraction("actual_360", "2026-06-09", "2026-07-09");
+// KI-36: drawQuarter remains a user-facing projected-quarter assumption. A
+// short first stub must not push the quarter-2 draw to the third month of the
+// second payment row.
+const STUB_Q2_ACTUAL = dayCountFraction("actual_360", "2026-04-09", "2026-07-09");
 
 describe("Fixed-rate loan projection", () => {
   it("earns flat coupon regardless of base rate", () => {
@@ -190,7 +190,7 @@ describe("DDTL projection", () => {
     );
   });
 
-  it("drawQuarter converts to an internal draw month under a stub first period", () => {
+  it("drawQuarter fires at the start of projected quarter 2 even after a short stub first period", () => {
     const ddtl = {
       parBalance: 0,
       undrawnCommitment: 500_000,
@@ -220,7 +220,7 @@ describe("DDTL projection", () => {
     expect(result.periods[1].date).toBe("2026-07-09");
     expect(result.periods[1].beginningPar).toBeCloseTo(0, 0);
     expect(result.periods[1].interestCollected).toBeCloseTo(
-      500_000 * (2.5 + 3.5) / 100 * STUB_DRAW_Q2_START_ACTUAL,
+      500_000 * (2.5 + 3.5) / 100 * STUB_Q2_ACTUAL,
       0,
     );
     expect(result.periods[2].date).toBe("2026-10-09");

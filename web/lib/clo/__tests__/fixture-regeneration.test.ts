@@ -20,7 +20,7 @@ const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
 
 describe("fixture regeneration probe", () => {
   const raw = fixture.raw;
-  const { resolved } = resolveWaterfallInputs(
+  const { resolved, warnings } = resolveWaterfallInputs(
     raw.constraints,
     raw.complianceData,
     raw.tranches,
@@ -30,6 +30,20 @@ describe("fixture regeneration probe", () => {
     raw.accountBalances,
     raw.parValueAdjustments,
   );
+
+  it("fresh Euro XV resolver output has no KI-36/KI-38 blocking warnings", () => {
+    const relevantBlockingWarnings = warnings.filter((w) => {
+      if (!w.blocking) return false;
+      return (
+        w.field === "currency" ||
+        w.field === "loans.currency" ||
+        w.field === "accountBalances.currency" ||
+        w.field.includes("paymentFrequency")
+      );
+    });
+
+    expect(relevantBlockingWarnings).toEqual([]);
+  });
 
   it("regenerated principalAccountCash matches fixture-patched value", () => {
     expect(resolved.principalAccountCash).toBeCloseTo(fixture.resolved.principalAccountCash, 2);

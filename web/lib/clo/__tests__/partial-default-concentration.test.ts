@@ -56,12 +56,14 @@ function buildPartialDefaultInputs(): ProjectionInputs {
       maturityDate: addQuarters("2026-03-09", 20),
       ratingBucket: "CCC",
       spreadBps: 500,
+    currency: "EUR",
     },
     {
       parBalance: 50_000_000,
       maturityDate: addQuarters("2026-03-09", 20),
       ratingBucket: "B",
       spreadBps: 375,
+    currency: "EUR",
     },
   ];
 
@@ -73,14 +75,15 @@ function buildPartialDefaultInputs(): ProjectionInputs {
 
   return {
     initialPar: 100_000_000,
+    dealCurrency: "EUR",
     wacSpreadBps: 437,
     baseRatePct: CLO_DEFAULTS.baseRatePct,
     baseRateFloorPct: CLO_DEFAULTS.baseRateFloorPct,
     seniorFeePct: CLO_DEFAULTS.seniorFeePct,
     subFeePct: CLO_DEFAULTS.subFeePct,
     tranches: [
-      { className: "A", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
-      { className: "J", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false },
+      { className: "A", currentBalance: 65_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
+      { className: "J", currentBalance: 15_000_000, spreadBps: 250, seniorityRank: 2, isFloating: true, isIncomeNote: false, paymentFrequency: "quarterly" as const, isDeferrable: false },
       { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
     ],
     ocTriggers: [

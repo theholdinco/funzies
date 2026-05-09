@@ -29,6 +29,7 @@ const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as {
   resolved: ResolvedDealData;
   raw: Parameters<typeof defaultsFromResolved>[1];
 };
+const dealCurrency = fixture.resolved.currency ?? "EUR";
 
 // Deterministic default-draw: always returns `survivingPar × hazard` (no
 // stochastic noise). Lets tests assert on exact expected defaults instead
@@ -77,6 +78,7 @@ describe("per-position hazard differentiates within a bucket", () => {
       spreadBps: 400,
       warfFactor: 4770,
       currentPrice: 100,
+      currency: dealCurrency,
     };
     const caa3: LoanInput = {
       parBalance: 10_000_000,
@@ -85,6 +87,7 @@ describe("per-position hazard differentiates within a bucket", () => {
       spreadBps: 400,
       warfFactor: 8070,
       currentPrice: 100,
+      currency: dealCurrency,
     };
     return {
       ...baseInputs,
@@ -120,6 +123,7 @@ describe("LoanInput.warfFactor boundary guard", () => {
       ratingBucket: "B",
       spreadBps: 400,
       warfFactor: 0,
+      currency: dealCurrency,
     };
     expect(() =>
       runProjection({ ...baseInputs, loans: [malformed] }, expectationDraw),
@@ -134,6 +138,7 @@ describe("LoanInput.warfFactor boundary guard", () => {
       ratingBucket: "B",
       spreadBps: 400,
       warfFactor: -1,
+      currency: dealCurrency,
     };
     expect(() =>
       runProjection({ ...baseInputs, loans: [malformed] }, expectationDraw),
@@ -148,6 +153,7 @@ describe("LoanInput.warfFactor boundary guard", () => {
       ratingBucket: "B",
       spreadBps: 400,
       warfFactor: null,
+      currency: dealCurrency,
     };
     expect(() =>
       runProjection({ ...baseInputs, loans: [wellFormed] }, expectationDraw),
@@ -167,6 +173,7 @@ describe("LoanInput.warfFactor boundary guard", () => {
       ratingBucket: "B",
       spreadBps: 400,
       warfFactor: NaN,
+      currency: dealCurrency,
     };
     expect(() =>
       runProjection({ ...baseInputs, loans: [malformed] }, expectationDraw),
@@ -185,6 +192,7 @@ describe("LoanInput.warfFactor boundary guard", () => {
       ratingBucket: "B",
       spreadBps: 400,
       warfFactor: Infinity,
+      currency: dealCurrency,
     };
     expect(() =>
       runProjection({ ...baseInputs, loans: [malformed] }, expectationDraw),
@@ -223,6 +231,7 @@ describe("hazard upper-bound clamp (per-position × cdrMultiplierPathFn stress)"
       ratingBucket: "CCC",
       spreadBps: 400,
       warfFactor: 10000, // hazard=1.0 from per-position formula alone
+      currency: dealCurrency,
     };
     const result = runProjection({
       ...baseInputs,
