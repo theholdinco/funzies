@@ -3,8 +3,10 @@ import {
   validateInputs,
   runProjection,
   calculateIrr,
+  calculateIrrFromDatedCashflows,
   addQuarters,
   computeSensitivity,
+  resolveIncentiveFeeFromDatedCashflows,
 } from "../projection";
 import { uniformRates, makeInputs, noDefaults } from "./test-helpers";
 
@@ -112,6 +114,29 @@ describe("calculateIrr", () => {
     expect(irr).not.toBeNull();
     expect(irr!).toBeGreaterThan(0.05);
     expect(irr!).toBeLessThan(1.0);
+  });
+
+  it("date-aware IRR uses actual elapsed time between payment dates", () => {
+    const oneYear = calculateIrrFromDatedCashflows([
+      { date: "2026-01-01", amount: -100 },
+      { date: "2027-01-01", amount: 110 },
+    ]);
+    const halfYear = calculateIrrFromDatedCashflows([
+      { date: "2026-01-01", amount: -100 },
+      { date: "2026-07-02", amount: 110 },
+    ]);
+
+    expect(oneYear).toBeCloseTo(0.10, 3);
+    expect(halfYear).toBeGreaterThan(oneYear!);
+  });
+
+  it("date-aware IRR handles high but valid annualized returns", () => {
+    const irr = calculateIrrFromDatedCashflows([
+      { date: "2026-01-01", amount: -1 },
+      { date: "2027-01-01", amount: 20 },
+    ]);
+
+    expect(irr).toBeCloseTo(19, 6);
   });
 });
 
@@ -444,6 +469,19 @@ describe("recovery pipeline at maturity", () => {
 });
 
 describe("incentive fee IRR gate", () => {
+  it("date-aware incentive fee solver annualizes against payment dates, not a hardcoded quarterly cadence", () => {
+    const fee = resolveIncentiveFeeFromDatedCashflows(
+      [-100],
+      ["2026-01-01"],
+      112,
+      "2027-01-01",
+      50,
+      0.10,
+    );
+
+    expect(fee).toBeCloseTo(2, 1);
+  });
+
   it("deducts incentive fee when equity IRR exceeds hurdle", () => {
     const withFee = runProjection(makeInputs({
       incentiveFeePct: 20,

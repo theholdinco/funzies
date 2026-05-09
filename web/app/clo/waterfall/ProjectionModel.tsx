@@ -41,7 +41,7 @@ import {
   applyOptionalRedemptionCall,
 } from "@/lib/clo/services";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
-import { buildFromResolved, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED, selectBlockingWarnings, defaultsFromResolved, defaultsFromIntex, diagnoseFeePrefill, diagnoseCarryforwardSeed } from "@/lib/clo/build-projection-inputs";
+import { buildFromResolved, composeBuildWarnings, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED, selectBlockingWarnings, defaultsFromResolved, defaultsFromIntex, diagnoseFeePrefill, diagnoseCarryforwardSeed } from "@/lib/clo/build-projection-inputs";
 import type { IntexAssumptions } from "@/lib/clo/intex/parse-past-cashflows";
 import { DEFAULT_RATES_BY_RATING, RATING_BUCKETS, type RatingBucket, warfFactorToAnnualCDRPct } from "@/lib/clo/rating-mapping";
 import { BUCKET_WARF_FALLBACK } from "@/lib/clo/pool-metrics";
@@ -415,6 +415,91 @@ export default function ProjectionModel({
     };
   }, [resolved?.loans]);
 
+  const projectionAssumptions = useMemo(() => ({
+    baseRatePct,
+    baseRateFloorPct,
+    defaultRates: defaultRates,
+    overriddenBuckets: Array.from(overriddenBuckets),
+    cprPct,
+    recoveryPct,
+    recoveryLagMonths,
+    reinvestmentSpreadBps,
+    reinvestmentTenorYears,
+    reinvestmentRating: reinvestmentRating === "auto" ? null : reinvestmentRating,
+    reinvestmentPricePct: null,
+    cccBucketLimitPct,
+    cccMarketValuePct,
+    deferredInterestCompounds: resolved?.deferredInterestCompounds ?? true,
+    postRpReinvestmentPct,
+    hedgeCostBps,
+    callMode,
+    callDate,
+    callPricePct,
+    callPriceMode,
+    seniorFeePct,
+    subFeePct,
+    taxesBps,
+    issuerProfitAmount,
+    trusteeFeeBps,
+    adminFeeBps,
+    seniorExpensesCapBps,
+    // Cap mechanics: pass-through from resolver, fall back to
+    // `DEFAULT_ASSUMPTIONS` (the same neutral defaults
+    // `defaultsFromResolved` produces when extraction is missing).
+    // Earlier ternaries hard-coded `"sequential_b_first"` /
+    // `"sequential_y_first"` as the null-fallback, diverging from the
+    // harness path that calls `defaultsFromResolved` and gets
+    // `"pro_rata"` — silent cap-allocation drift on greenfield deals.
+    seniorExpensesCapAbsoluteFloorPerYear:
+      resolved?.seniorExpensesCap?.absoluteFloorEurPerYear
+        ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapAbsoluteFloorPerYear,
+    seniorExpensesCapAllocationWithinCap:
+      resolved?.seniorExpensesCap?.allocationWithinCap
+        ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapAllocationWithinCap,
+    seniorExpensesCapOverflowAllocation:
+      resolved?.seniorExpensesCap?.overflowAllocation
+        ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapOverflowAllocation,
+    seniorExpensesCapComponentADayCount:
+      resolved?.seniorExpensesCap?.componentADayCount
+        ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapComponentADayCount,
+    seniorExpensesCapBaseMode:
+      resolved?.seniorExpensesCap?.capBase
+        ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapBaseMode,
+    seniorExpensesCapCarryforwardPeriods:
+      resolved?.seniorExpensesCap?.carryforwardPeriods
+        ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapCarryforwardPeriods,
+    seniorExpensesCapVatIncluded:
+      resolved?.seniorExpensesCap?.vatIncluded
+        ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapVatIncluded,
+    seniorExpensesCapVatRatePct:
+      resolved?.seniorExpensesCap?.vatRatePct
+        ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapVatRatePct,
+    incentiveFeePct,
+    incentiveFeeHurdleIrr,
+    ddtlDrawAssumption,
+    ddtlDrawQuarter,
+    ddtlDrawPercent,
+    equityEntryPriceCents,
+    supplementalReserveDisposition,
+    expenseReserveDepositAmount,
+    supplementalReserveDepositAmount,
+    seniorExpensesCapCarryforwardSeedAmount: effectiveSeniorExpensesCapCarryforwardSeedAmount,
+    // KI-66 Special Redemption + Reinvesting Holder amounts. Default 0
+    // (no-op) — UI sliders not yet wired. Engine consumes via the
+    // schema-driven principal-POP pass-2 dispatch.
+    specialRedemptionAmount: 0,
+    reinvestingHolderRedemptionAmount: 0,
+  }), [
+    resolved,
+    baseRatePct, baseRateFloorPct, defaultRates, overriddenBuckets, cprPct, recoveryPct, recoveryLagMonths,
+    reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating, cccBucketLimitPct, cccMarketValuePct,
+    seniorFeePct, subFeePct, taxesBps, issuerProfitAmount, trusteeFeeBps, adminFeeBps, seniorExpensesCapBps,
+    hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr, postRpReinvestmentPct,
+    callMode, callDate, callPricePct, callPriceMode, ddtlDrawAssumption, ddtlDrawQuarter, ddtlDrawPercent, equityEntryPriceCents,
+    supplementalReserveDisposition, expenseReserveDepositAmount, supplementalReserveDepositAmount,
+    effectiveSeniorExpensesCapCarryforwardSeedAmount,
+  ]);
+
   // Partner-facing surface for the buildFromResolved gate. Any
   // resolution warning marked `blocking: true` (e.g. missing
   // `diversionPct`, missing `maturity`, sentinel `seniorFeePct = 0`)
@@ -426,8 +511,10 @@ export default function ProjectionModel({
   // disagree on what counts as blocking. Asserted via AST by
   // `incomplete-data-banner-bijection.test.ts`.
   const incompleteDataErrors = useMemo<ResolutionWarning[]>(
-    () => selectBlockingWarnings(resolutionWarnings ?? []),
-    [resolutionWarnings],
+    () => selectBlockingWarnings(
+      composeBuildWarnings(resolved ?? EMPTY_RESOLVED, projectionAssumptions, resolutionWarnings ?? []),
+    ),
+    [resolved, projectionAssumptions, resolutionWarnings],
   );
 
   const inputs: ProjectionInputs = useMemo(
@@ -443,93 +530,12 @@ export default function ProjectionModel({
       const resolvedData = resolved ?? EMPTY_RESOLVED;
       return buildFromResolved(
         resolvedData,
-        {
-          baseRatePct,
-          baseRateFloorPct,
-          defaultRates: defaultRates,
-          overriddenBuckets: Array.from(overriddenBuckets),
-          cprPct,
-          recoveryPct,
-          recoveryLagMonths,
-          reinvestmentSpreadBps,
-          reinvestmentTenorYears,
-          reinvestmentRating: reinvestmentRating === "auto" ? null : reinvestmentRating,
-          reinvestmentPricePct: null,
-          cccBucketLimitPct,
-          cccMarketValuePct,
-          deferredInterestCompounds: resolved?.deferredInterestCompounds ?? true,
-          postRpReinvestmentPct,
-          hedgeCostBps,
-          callMode,
-          callDate,
-          callPricePct,
-          callPriceMode,
-          seniorFeePct,
-          subFeePct,
-          taxesBps,
-          issuerProfitAmount,
-          trusteeFeeBps,
-          adminFeeBps,
-          seniorExpensesCapBps,
-          // Cap mechanics: pass-through from resolver, fall back to
-          // `DEFAULT_ASSUMPTIONS` (the same neutral defaults
-          // `defaultsFromResolved` produces when extraction is missing).
-          // Earlier ternaries hard-coded `"sequential_b_first"` /
-          // `"sequential_y_first"` as the null-fallback, diverging from the
-          // harness path that calls `defaultsFromResolved` and gets
-          // `"pro_rata"` — silent cap-allocation drift on greenfield deals.
-          seniorExpensesCapAbsoluteFloorPerYear:
-            resolved?.seniorExpensesCap?.absoluteFloorEurPerYear
-              ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapAbsoluteFloorPerYear,
-          seniorExpensesCapAllocationWithinCap:
-            resolved?.seniorExpensesCap?.allocationWithinCap
-              ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapAllocationWithinCap,
-          seniorExpensesCapOverflowAllocation:
-            resolved?.seniorExpensesCap?.overflowAllocation
-              ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapOverflowAllocation,
-          seniorExpensesCapComponentADayCount:
-            resolved?.seniorExpensesCap?.componentADayCount
-              ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapComponentADayCount,
-          seniorExpensesCapBaseMode:
-            resolved?.seniorExpensesCap?.capBase
-              ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapBaseMode,
-          seniorExpensesCapCarryforwardPeriods:
-            resolved?.seniorExpensesCap?.carryforwardPeriods
-              ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapCarryforwardPeriods,
-          seniorExpensesCapVatIncluded:
-            resolved?.seniorExpensesCap?.vatIncluded
-              ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapVatIncluded,
-          seniorExpensesCapVatRatePct:
-            resolved?.seniorExpensesCap?.vatRatePct
-              ?? DEFAULT_ASSUMPTIONS.seniorExpensesCapVatRatePct,
-          incentiveFeePct,
-          incentiveFeeHurdleIrr,
-          ddtlDrawAssumption,
-          ddtlDrawQuarter,
-          ddtlDrawPercent,
-          equityEntryPriceCents,
-          supplementalReserveDisposition,
-          expenseReserveDepositAmount,
-          supplementalReserveDepositAmount,
-          seniorExpensesCapCarryforwardSeedAmount: effectiveSeniorExpensesCapCarryforwardSeedAmount,
-          // KI-66 Special Redemption + Reinvesting Holder amounts. Default 0
-          // (no-op) — UI sliders not yet wired. Engine consumes via the
-          // schema-driven principal-POP pass-2 dispatch.
-          specialRedemptionAmount: 0,
-          reinvestingHolderRedemptionAmount: 0,
-        },
+        projectionAssumptions,
         resolutionWarnings,
       );
     },
     [
-      resolved, resolutionWarnings, incompleteDataErrors,
-      baseRatePct, baseRateFloorPct, defaultRates, overriddenBuckets, cprPct, recoveryPct, recoveryLagMonths,
-      reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating, cccBucketLimitPct, cccMarketValuePct,
-      seniorFeePct, subFeePct, taxesBps, issuerProfitAmount, trusteeFeeBps, adminFeeBps, seniorExpensesCapBps,
-      hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr, postRpReinvestmentPct,
-      callMode, callDate, callPricePct, callPriceMode, ddtlDrawAssumption, ddtlDrawQuarter, ddtlDrawPercent, equityEntryPriceCents,
-      supplementalReserveDisposition, expenseReserveDepositAmount, supplementalReserveDepositAmount,
-      effectiveSeniorExpensesCapCarryforwardSeedAmount,
+      resolved, resolutionWarnings, incompleteDataErrors, projectionAssumptions,
     ]
   );
 

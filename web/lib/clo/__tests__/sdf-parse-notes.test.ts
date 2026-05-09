@@ -63,6 +63,11 @@ describe("parseNotes", () => {
     expect(row.accrual_end_date).toBe("2026-04-03");
   });
 
+  it("parses payment frequency", () => {
+    const result = parseNotes(makeCsv(ROW_CLASS_A));
+    expect(result.rows[0].payment_frequency).toBe("3 Months");
+  });
+
   it('trims ratings with trailing whitespace ("AAA " → "AAA", "Aaa " → "Aaa")', () => {
     const result = parseNotes(makeCsv(ROW_CLASS_A));
     const row = result.rows[0];

@@ -14,7 +14,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { runProjection } from "@/lib/clo/projection";
+import { dayCountFraction, runProjection } from "@/lib/clo/projection";
 import { buildFromResolved, defaultsFromResolved, diagnoseCarryforwardSeed } from "@/lib/clo/build-projection-inputs";
 import type { ResolvedDealData } from "@/lib/clo/resolver-types";
 
@@ -534,8 +534,11 @@ describe("Senior Expenses Cap — T=0 dispatch parity with in-period site", () =
     };
     const cpa = runProjection({ ...stress, seniorExpensesCapBaseMode: "CPA" as const });
     const apb = runProjection({ ...stress, seniorExpensesCapBaseMode: "APB" as const });
-    // Delta = (5M + 3M) × 1 bps × 0.25 = €200.
-    const expectedDelta = 8_000_000 * (1 / 10000) * 0.25;
+    // Delta = (5M + 3M) × 1 bps × first projected payment-window day fraction.
+    const expectedDelta =
+      8_000_000 *
+      (1 / 10000) *
+      dayCountFraction("actual_360", baseInputs.currentDate, cpa.periods[0].date);
     expect(
       cpa.initialState.seniorExpensesCapAmountT0 -
         apb.initialState.seniorExpensesCapAmountT0,

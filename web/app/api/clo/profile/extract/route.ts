@@ -43,8 +43,16 @@ export async function POST() {
      SET ppm_extraction_status = 'queued',
          ppm_extraction_error = NULL,
          ppm_extraction_progress = NULL,
+         extracted_constraints = NULL,
          updated_at = now()
      WHERE id = $1`,
+    [profile.id]
+  );
+  await query(
+    `UPDATE clo_deals
+     SET ppm_constraints = NULL,
+         updated_at = now()
+     WHERE profile_id = $1`,
     [profile.id]
   );
 

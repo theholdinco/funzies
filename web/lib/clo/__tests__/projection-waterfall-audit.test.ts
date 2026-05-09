@@ -97,7 +97,7 @@ describe("Incentive fee three-regime behavior", () => {
     const withFee = runProjection(makeInputs({
       incentiveFeePct: 20,
       incentiveFeeHurdleIrr: 0.99,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: "2026-01-01",
       ocTriggers: [],
@@ -106,7 +106,7 @@ describe("Incentive fee three-regime behavior", () => {
 
     const noFee = runProjection(makeInputs({
       incentiveFeePct: 0,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: "2026-01-01",
       ocTriggers: [],
@@ -170,7 +170,7 @@ describe("Incentive fee three-regime behavior", () => {
   it("Regime 3: full fee would breach hurdle → bisect to preserve hurdle IRR", () => {
     const noFee = runProjection(makeInputs({
       incentiveFeePct: 0,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 10,
       reinvestmentPeriodEnd: "2026-01-01",
       ocTriggers: [],
@@ -185,7 +185,7 @@ describe("Incentive fee three-regime behavior", () => {
     const withFee = runProjection(makeInputs({
       incentiveFeePct: 20,
       incentiveFeeHurdleIrr: hurdle,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 10,
       reinvestmentPeriodEnd: "2026-01-01",
       ocTriggers: [],
@@ -200,7 +200,7 @@ describe("Incentive fee three-regime behavior", () => {
     const fullFeeResult = runProjection(makeInputs({
       incentiveFeePct: 20,
       incentiveFeeHurdleIrr: 0.001,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 10,
       reinvestmentPeriodEnd: "2026-01-01",
       ocTriggers: [],
@@ -253,7 +253,7 @@ describe("Principal paydown is sequential (senior-first), not pro-rata", () => {
   it("Class B receives zero principal until Class A is fully retired", () => {
     const inputs = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       loans: Array.from({ length: 8 }, (_, i) => ({
@@ -289,7 +289,7 @@ describe("Fee waterfall priority order", () => {
   it("trustee fee is senior to tranche interest (paid even when interest barely covers fees)", () => {
     const highTrustee = runProjection(makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       trusteeFeeBps: 400,
       seniorFeePct: 0,
@@ -301,7 +301,7 @@ describe("Fee waterfall priority order", () => {
 
     const noTrustee = runProjection(makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       trusteeFeeBps: 0,
       seniorFeePct: 0,
@@ -324,7 +324,7 @@ describe("Fee waterfall priority order", () => {
   it("senior fee is deducted before tranche interest calculation (reduces IC numerator)", () => {
     const withFee = runProjection(makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       seniorFeePct: 1.0,
       trusteeFeeBps: 0,
@@ -335,7 +335,7 @@ describe("Fee waterfall priority order", () => {
 
     const noFee = runProjection(makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       seniorFeePct: 0,
       trusteeFeeBps: 0,
@@ -353,7 +353,7 @@ describe("Fee waterfall priority order", () => {
   it("sub fee is junior to tranche interest (tranches paid first)", () => {
     const result = runProjection(makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       seniorFeePct: 0,
       subFeePct: 5.0,
@@ -365,7 +365,7 @@ describe("Fee waterfall priority order", () => {
 
     const noSubFee = runProjection(makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       seniorFeePct: 0,
       subFeePct: 0,
@@ -478,7 +478,7 @@ describe("PIK catch-up: deferred interest paid when deal recovers", () => {
     const inputs = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
       maturityDate: addQuarters("2026-01-15", 8),
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       deferredInterestCompounds: true,
@@ -521,7 +521,7 @@ describe("OC + IC cure uses max (not sum) of cure amounts", () => {
       reinvestmentPeriodEnd: "2026-01-01",
       cprPct: 0,
       recoveryPct: 0,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       baseRatePct: 0.5,
       seniorFeePct: 1.0,
       icTriggers: [{ className: "J", triggerLevel: 300, rank: 2 }],
@@ -589,7 +589,7 @@ describe("Absolute-value verification (hand-computed)", () => {
     const result = runProjection(makeInputs({
       baseRatePct: 3.5,
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-03-09", 20), ratingBucket: "B", spreadBps: 400 }],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: null,
       ocTriggers: [],
@@ -615,7 +615,7 @@ describe("Absolute-value verification (hand-computed)", () => {
         { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false},
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: null,
       ocTriggers: [],
@@ -643,7 +643,7 @@ describe("Absolute-value verification (hand-computed)", () => {
         { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false},
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: null,
       ocTriggers: [],
@@ -741,7 +741,7 @@ describe("Absolute-value verification (hand-computed)", () => {
         { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false},
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: null,
       seniorFeePct: 0.5,
@@ -774,7 +774,7 @@ describe("Absolute-value verification (hand-computed)", () => {
         { className: "A", currentBalance: 80_000_000, spreadBps: 500, seniorityRank: 1, isFloating: false, isIncomeNote: false, isDeferrable: false },
         { className: "Sub", currentBalance: 20_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: null,
       ocTriggers: [],
@@ -802,7 +802,7 @@ describe("Absolute-value verification (hand-computed)", () => {
         { className: "A", currentBalance: 70_000_000, spreadBps: 140, seniorityRank: 1, isFloating: true, isIncomeNote: false, isDeferrable: false },
         { className: "Sub", currentBalance: 30_000_000, spreadBps: 0, seniorityRank: 2, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: null,
       cccBucketLimitPct: 7.5,
@@ -835,7 +835,7 @@ describe("Absolute-value verification (hand-computed)", () => {
         { className: "J", currentBalance: 20_000_000, spreadBps: 300, seniorityRank: 2, isFloating: true, isIncomeNote: false, isDeferrable: false},
         { className: "Sub", currentBalance: 10_000_000, spreadBps: 0, seniorityRank: 3, isFloating: false, isIncomeNote: true, isDeferrable: false },
       ],
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       reinvestmentPeriodEnd: null,
       trusteeFeeBps: 100,

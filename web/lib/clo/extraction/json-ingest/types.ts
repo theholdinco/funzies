@@ -17,6 +17,8 @@ export interface PpmJsonTranche {
   margin_decimal?: number;          // e.g. 0.0095 (decimal)
   fixed_coupon_pct?: number;
   fixed_coupon_decimal?: number;
+  payment_frequency?: string;
+  paymentFrequency?: string;
   alt_rate_post_freq_switch?: string;
   fitch?: string;
   moodys?: string;
@@ -91,6 +93,7 @@ export interface PpmJson {
     first_payment_date?: string;
     payment_dates_standard?: string[];
     payment_frequency?: string;
+    paymentFrequency?: string;
     determination_date?: string;
     non_call_period_end?: string;
     reinvestment_period_end?: string;

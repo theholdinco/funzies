@@ -26,7 +26,6 @@ const DATE_AUTHORITY: Record<string, "ppm" | "compliance" | "ppm_only" | "compli
   non_call_period_end: "ppm_only",
   stated_maturity_date: "ppm",
   first_payment_date: "ppm_only",
-  payment_frequency: "ppm",
   report_date: "compliance_only",
   payment_date: "compliance_only",
 };

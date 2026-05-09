@@ -19,6 +19,7 @@
 
 import { describe, it, expect } from "vitest";
 import { resolveWaterfallInputs } from "@/lib/clo/resolver";
+import { buildFromResolved, DEFAULT_ASSUMPTIONS, IncompleteDataError } from "@/lib/clo/build-projection-inputs";
 import type { ExtractedConstraints, CloTranche } from "@/lib/clo/types";
 
 const baseConstraints = {
@@ -188,5 +189,97 @@ describe("resolver — day-count-convention propagation (DB-tranche branch)", ()
       (w) => w.field === "dayCountConvention" && w.blocking && w.message.includes("Class B-2"),
     );
     expect(blockingDcc).toHaveLength(1);
+  });
+
+  it("PPM/deal paymentFrequency wins over conflicting DB/SDF tranche value", () => {
+    const dbTranches: CloTranche[] = [
+      makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 140, paymentFrequency: "1 Month" }),
+      makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
+    ];
+    const constraints = {
+      ...baseConstraints,
+      keyDates: { firstPaymentDate: "2026-04-15", paymentFrequency: "Quarterly" },
+    } as unknown as ExtractedConstraints;
+
+    const { resolved, warnings } = resolveWaterfallInputs(constraints, null, dbTranches, [], []);
+    const a = resolved.tranches.find((t) => t.className === "Class A");
+    expect(a?.paymentFrequency).toBe("quarterly");
+    expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(false);
+    expect(warnings.some((w) => w.message.includes("using PPM/deal value"))).toBe(true);
+  });
+
+  it("falls back to PPM/deal paymentFrequency when DB/SDF value is null-like", () => {
+    const dbTranches: CloTranche[] = [
+      makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 140, paymentFrequency: "N/A" }),
+      makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
+    ];
+    const constraints = {
+      ...baseConstraints,
+      keyDates: { firstPaymentDate: "2026-04-15", paymentFrequency: "Quarterly" },
+    } as unknown as ExtractedConstraints;
+
+    const { resolved, warnings } = resolveWaterfallInputs(constraints, null, dbTranches, [], []);
+    const a = resolved.tranches.find((t) => t.className === "Class A");
+    expect(a?.paymentFrequency).toBe("quarterly");
+    expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(false);
+  });
+
+  it("normalizes supported semi-annual DB/SDF tranche paymentFrequency", () => {
+    const dbTranches: CloTranche[] = [
+      makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 140, paymentFrequency: "6 Months" }),
+      makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
+    ];
+    const constraints = {
+      ...baseConstraints,
+      keyDates: { firstPaymentDate: "2026-04-15" },
+    } as unknown as ExtractedConstraints;
+
+    const { resolved, warnings } = resolveWaterfallInputs(constraints, null, dbTranches, [], []);
+    const a = resolved.tranches.find((t) => t.className === "Class A");
+    expect(a?.paymentFrequency).toBe("semi_annual");
+    expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(false);
+  });
+
+  it("unsupported DB/SDF tranche paymentFrequency is preserved through resolver so build cannot silently fall back to PPM quarterly", () => {
+    const dbTranches: CloTranche[] = [
+      makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 140, paymentFrequency: "2 Months" }),
+      makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
+    ];
+    const constraints = {
+      ...baseConstraints,
+      keyDates: { firstPaymentDate: "2026-04-15" },
+    } as unknown as ExtractedConstraints;
+
+    const { resolved, warnings } = resolveWaterfallInputs(constraints, null, dbTranches, [], []);
+    const a = resolved.tranches.find((t) => t.className === "Class A");
+    expect(a?.paymentFrequency).toBe("2 Months");
+    expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(true);
+    expect(() => buildFromResolved(resolved, DEFAULT_ASSUMPTIONS, [])).toThrow(IncompleteDataError);
+  });
+
+  it("missing DB/SDF tranche paymentFrequency is preserved as blocking so build cannot silently assume quarterly", () => {
+    const dbTranches: CloTranche[] = [
+      makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 140, paymentFrequency: null }),
+      makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
+    ];
+
+    const { resolved, warnings } = resolveWaterfallInputs(minimalConstraints, null, dbTranches, [], []);
+    const a = resolved.tranches.find((t) => t.className === "Class A");
+    expect(a?.paymentFrequency).toBe("__missing_payment_frequency__");
+    expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(true);
+    expect(() => buildFromResolved(resolved, DEFAULT_ASSUMPTIONS, [])).toThrow(IncompleteDataError);
+  });
+
+  it("missing DB/SDF paymentFrequency blocks on floating zero-spread debt", () => {
+    const dbTranches: CloTranche[] = [
+      makeDbTranche({ className: "Class A", isFloating: true, spreadBps: 0, paymentFrequency: null }),
+      makeDbTranche({ className: "Subordinated Notes", isFloating: false, spreadBps: 0, isSubordinate: true, isIncomeNote: true, seniorityRank: 99 }),
+    ];
+
+    const { resolved, warnings } = resolveWaterfallInputs(minimalConstraints, null, dbTranches, [], []);
+    const a = resolved.tranches.find((t) => t.className === "Class A");
+    expect(a?.paymentFrequency).toBe("__missing_payment_frequency__");
+    expect(warnings.some((w) => w.field === "Class A.paymentFrequency" && w.blocking)).toBe(true);
+    expect(() => buildFromResolved(resolved, DEFAULT_ASSUMPTIONS, [])).toThrow(IncompleteDataError);
   });
 });

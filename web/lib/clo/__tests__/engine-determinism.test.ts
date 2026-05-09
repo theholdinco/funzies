@@ -7,8 +7,9 @@
  * non-deterministic state — even if the engine-purity test misses the
  * source-level marker (e.g., via an indirect import).
  *
- * 100 iterations is the size the plan calls for. Each run takes <10ms,
- * so the whole suite stays well under 1s.
+ * 100 iterations is the size the plan calls for. The full CLO suite can run
+ * this file under CPU contention, so the property test gets an explicit
+ * timeout instead of relying on Vitest's 5s default.
  */
 
 import { describe, it, expect } from "vitest";
@@ -30,7 +31,7 @@ describe("Engine determinism (post-v6 plan §7.2)", () => {
       // matches every nested field across periods, stepTrace, initialState.
       expect(next).toEqual(baseline);
     }
-  });
+  }, 15_000);
 
   it("identical inputs across stub-period mode produce identical outputs", () => {
     const inputs = makeInputs({

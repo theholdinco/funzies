@@ -8,6 +8,7 @@ import { CLO_DEFAULTS } from "./defaults";
 import { computeTopNObligorsPct } from "./pool-metrics";
 import { assignDenseSeniorityRanks, classOrderBucket } from "./seniority-rank";
 import { canonicalizeDayCount, type DayCountConvention } from "./day-count-canonicalize";
+import { normalizePaymentFrequency, type PaymentFrequency } from "./payment-frequency";
 import { quartersBetween } from "./projection";
 import { resolveAgencyRecovery } from "./recovery-rate";
 import { normalizeClassName as normClass } from "./normalize-class-name";
@@ -120,6 +121,64 @@ function parseAmount(s: string | undefined | null): number {
   const rangeMatch = s.match(/^[^0-9]*?([\d,._]+)\s*[-–—]\s*([\d,._]+)/);
   if (rangeMatch) return parseNumeric(rangeMatch[1]) ?? 0;
   return parseDecoratedAmount(s) ?? 0;
+}
+
+function resolveTranchePaymentFrequency(
+  raw: string | null | undefined,
+  className: string,
+  isInterestBearing: boolean,
+  firstPaymentDate: string | null | undefined,
+  warnings: ResolutionWarning[],
+): PaymentFrequency | string | undefined {
+  if (!isInterestBearing) return undefined;
+  const normalized = normalizePaymentFrequency(raw);
+  if (normalized === "monthly") {
+    warnings.push({
+      field: `${className}.paymentFrequency`,
+      message: `Monthly tranche payment frequency for ${className} is not supported until monthly deal waterfall payment dates and cash routing are modeled.`,
+      severity: "error",
+      blocking: true,
+    });
+    return normalized;
+  }
+  if (normalized === "semi_annual" && !firstPaymentDate) {
+    warnings.push({
+      field: `${className}.paymentFrequency`,
+      message: `Semi-annual tranche payment frequency for ${className} requires firstPaymentDate to anchor the payment phase.`,
+      severity: "error",
+      blocking: true,
+    });
+    return normalized;
+  }
+  if (normalized) return normalized;
+  if (raw != null && raw.trim() !== "") {
+    warnings.push({
+      field: `${className}.paymentFrequency`,
+      message: `Unsupported tranche payment frequency "${raw}" for ${className}; supported values are monthly, quarterly, and semi-annual.`,
+      severity: "error",
+      blocking: true,
+    });
+    return raw.trim();
+  }
+  warnings.push({
+    field: `${className}.paymentFrequency`,
+    message: `No payment frequency found for interest-bearing tranche ${className}. KI-36 requires an explicit tranche or deal payment frequency; refusing to default to quarterly.`,
+    severity: "error",
+    blocking: true,
+  });
+  return "__missing_payment_frequency__";
+}
+
+function isNullLikePaymentFrequency(raw: string | null | undefined): boolean {
+  if (raw == null) return true;
+  const s = raw.trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+  return s === "" ||
+    s === "n/a" ||
+    s === "na" ||
+    s === "none" ||
+    s === "null" ||
+    s === "not applicable" ||
+    /^not\s+/.test(s);
 }
 
 /** Classifies a compliance-test row into one of the canonical types the
@@ -237,6 +296,8 @@ function resolveTranches(
   const ppmSubByClass = new Map<string, boolean>();
   const ppmAmortByClass = new Map<string, number>();
   const ppmAmortStartByClass = new Map<string, string>();
+  const ppmPaymentFrequencyByClass = new Map<string, string>();
+  const dealPaymentFrequency = constraints.keyDates?.paymentFrequency ?? null;
 
   for (const e of constraints.capitalStructure ?? []) {
     if (!e.class) continue; // skip malformed entries lacking a class identifier
@@ -251,6 +312,7 @@ function resolveTranches(
       if (amt > 0) ppmAmortByClass.set(key, amt);
     }
     if (e.amortStartDate) ppmAmortStartByClass.set(key, e.amortStartDate);
+    if (e.paymentFrequency) ppmPaymentFrequencyByClass.set(key, e.paymentFrequency);
   }
 
   // If DB tranches exist, use them as the primary source
@@ -299,6 +361,7 @@ function resolveTranches(
             resolvedFrom: "ppm_constraints",
           });
         }
+        const isInterestBearing = !isSub && (spreadBps !== 0 || t.isFloating === true);
 
         // Per-tranche accrual convention. Two-axis decision:
         //   1. carveOut = isSub || hasAmort. Income notes don't accrue a
@@ -366,6 +429,32 @@ function resolveTranches(
           // values under compounding PPMs.
           deferredInterestBalance: snap?.deferredInterestBalance ?? null,
           dayCountConvention: trancheDayCountConvention,
+          paymentFrequency: resolveTranchePaymentFrequency(
+            (() => {
+              const dbRaw = t.paymentFrequency;
+              const ppmRaw = ppmPaymentFrequencyByClass.get(key) ?? dealPaymentFrequency;
+              const dbNorm = normalizePaymentFrequency(dbRaw);
+              const ppmNorm = normalizePaymentFrequency(ppmRaw);
+              if (dbNorm && ppmNorm && dbNorm !== ppmNorm) {
+                warnings.push({
+                  field: `${t.className}.paymentFrequency`,
+                  message: `DB/SDF tranche payment frequency (${dbRaw}) differs from PPM/deal frequency (${ppmRaw}) — using PPM/deal value.`,
+                  severity: "warn",
+                  blocking: false,
+                  resolvedFrom: "ppm_constraints",
+                });
+                return ppmRaw;
+              }
+              if (ppmNorm) return ppmRaw;
+              if (dbNorm) return dbRaw;
+              if (dbRaw != null && dbRaw.trim() !== "" && !isNullLikePaymentFrequency(dbRaw)) return dbRaw;
+              return ppmRaw;
+            })(),
+            t.className,
+            isInterestBearing,
+            firstPayment,
+            warnings,
+          ),
           source: snap ? "snapshot" as const : "db_tranche" as const,
         };
       });
@@ -406,6 +495,7 @@ function resolveTranches(
     const amortPerPeriod = ppmAmortByClass.get(key) ?? null;
     const hasAmort = amortPerPeriod != null;
     const spreadBps = parseSpreadToBps(e.spreadBps, e.spread) ?? 0;
+    const isInterestBearing = !isSub && (spreadBps !== 0 || isFloating);
 
     if (spreadBps === 0 && !isSub) {
       warnings.push({
@@ -458,6 +548,13 @@ function resolveTranches(
       // No trustee snapshot available on this PPM-fallback path → null.
       deferredInterestBalance: null,
       dayCountConvention: ppmTrancheDayCountConvention,
+      paymentFrequency: resolveTranchePaymentFrequency(
+        e.paymentFrequency ?? dealPaymentFrequency,
+        className,
+        isInterestBearing,
+        firstPayment,
+        warnings,
+      ),
       source: "ppm" as const,
     };
   });

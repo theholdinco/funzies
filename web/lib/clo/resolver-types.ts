@@ -1,4 +1,5 @@
 import type { DayCountConvention } from "./day-count-canonicalize";
+import type { PaymentFrequency } from "./payment-frequency";
 
 export interface ResolvedReinvestmentOcTrigger {
   triggerLevel: number;
@@ -1061,6 +1062,10 @@ export interface ResolvedTranche {
    *  gate (resolver) refuses on `null + isFixedRate` because fixed-rate
    *  tranches have no safe market default. */
   dayCountConvention?: DayCountConvention;
+  /** Canonical liability interest payment frequency, or a raw/sentinel value
+   *  when resolver emitted a blocking warning and must preserve fail-closed
+   *  state through buildFromResolved. */
+  paymentFrequency?: PaymentFrequency | string;
 }
 
 export interface ResolvedPool {

@@ -387,7 +387,7 @@ export function ppmCapitalStructurePrompt(): Prompt {
     system: `You are extracting the capital structure from a CLO private placement memorandum's markdown text.
 
 CRITICAL: Extract ALL tranches from Class A through subordinated/equity notes.
-For each tranche: class, designation, principalAmount, rateType, referenceRate, spreadBps, spread, rating (fitch, moodys, sp — populate ALL agencies present; European CLOs are commonly Moody's/Fitch-rated without S&P), deferrable, maturityDate, isSubordinated.
+For each tranche: class, designation, principalAmount, rateType, referenceRate, spreadBps, spread, rating (fitch, moodys, sp — populate ALL agencies present; European CLOs are commonly Moody's/Fitch-rated without S&P), deferrable, maturityDate, isSubordinated, paymentFrequency.
 
 spreadBps MUST be a NUMBER in basis points. Convert from percentage: "EURIBOR + 1.50%" = spreadBps: 150. Convert from string: "E + 150bps" = spreadBps: 150.
 principalAmount should include the full string with currency, e.g., "EUR 248,000,000".
@@ -403,6 +403,7 @@ CLO TRANCHE PATTERNS:
 - "class" = the short name (e.g., "Class A"), "designation" = the full name
 - All amounts in EUR with comma thousands separator.
 - For European CLOs, reference rate is "3-month EURIBOR".
+- paymentFrequency is the tranche's interest payment cadence when stated (e.g., "quarterly", "semi-annually", "monthly"). If the PPM only states a deal-level Payment Date frequency and no per-class override, use that same frequency for rated interest-bearing classes and omit it for Subordinated Notes.
 
 PPM CAPITAL STRUCTURE FORMAT:
 - IMPORTANT: In PPMs, the capital structure on the overview pages is often rendered as FORMATTED TEXT, not a PDF table. extract_tables() may return nothing.

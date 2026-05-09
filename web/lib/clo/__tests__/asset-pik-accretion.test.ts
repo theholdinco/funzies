@@ -28,6 +28,49 @@ import { makeInputs, uniformRates, noDefaults } from "./test-helpers";
 const PERIOD_START = "2026-03-09";
 const PERIOD_END = "2026-06-09";
 const FRAC_360 = dayCountFraction("actual_360", PERIOD_START, PERIOD_END);
+const MONTHLY_TICKS_Q1 = ["2026-04-09", "2026-05-09", "2026-06-09"] as const;
+
+function monthlyPikAccrual(par: number, cashRate: number, pikRate: number): { cash: number; pik: number } {
+  let balance = par;
+  let cash = 0;
+  let pik = 0;
+  let start = PERIOD_START;
+  for (const end of MONTHLY_TICKS_Q1) {
+    const frac = dayCountFraction("actual_360", start, end);
+    cash += balance * cashRate * frac;
+    const accretion = balance * pikRate * frac;
+    balance += accretion;
+    pik += accretion;
+    start = end;
+  }
+  return { cash, pik };
+}
+
+function monthlyPikWithDefaults(
+  par: number,
+  cashRate: number,
+  pikRate: number,
+  monthlyHazard: number,
+): { cash: number; defaults: number; endingPar: number; pik: number } {
+  let balance = par;
+  let cash = 0;
+  let defaults = 0;
+  let pik = 0;
+  let start = PERIOD_START;
+  for (const end of MONTHLY_TICKS_Q1) {
+    const frac = dayCountFraction("actual_360", start, end);
+    const beginningPar = balance;
+    const tickDefaults = balance * monthlyHazard;
+    balance -= tickDefaults;
+    defaults += tickDefaults;
+    cash += beginningPar * cashRate * frac;
+    const accretion = beginningPar * pikRate * frac;
+    balance += accretion;
+    pik += accretion;
+    start = end;
+  }
+  return { cash, defaults, endingPar: balance, pik };
+}
 
 describe("asset-side additive PIK accretion", () => {
   it("split-margin baseline: cash leg unchanged + par grows by PIK rate × par × dayFrac", () => {
@@ -51,12 +94,15 @@ describe("asset-side additive PIK accretion", () => {
       })
     );
 
-    // Cash interest: par × 7.5% × FRAC_360 (additive PIK does NOT subtract)
-    const expectedCash = 100_000_000 * (2.5 + 5.0) / 100 * FRAC_360;
+    // Cash interest accrues monthly on beginning-tick balance. Additive PIK
+    // does not subtract from the cash leg, but once PIK accretes it becomes
+    // part of the next monthly tick's cash accrual base.
+    const expected = monthlyPikAccrual(100_000_000, (2.5 + 5.0) / 100, 0.01);
+    const expectedCash = expected.cash;
     expect(result.periods[0].interestCollected).toBeCloseTo(expectedCash, 0);
 
-    // PIK accretion: par × 1% × FRAC_360 added to ending par
-    const expectedAccretion = 100_000_000 * 0.01 * FRAC_360;
+    // PIK accretion is also monthly and compounds inside the quarter.
+    const expectedAccretion = expected.pik;
     const parDelta = (result.periods[0].endingPar ?? 0) - 100_000_000;
     // No defaults / prepayments — par delta should equal PIK accretion to
     // within rounding.
@@ -141,7 +187,7 @@ describe("asset-side additive PIK accretion", () => {
         initialPar: 100_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
         // Kill reinvestment so the matured par actually drops out of the pool.
         reinvestmentPeriodEnd: addQuarters(PERIOD_START, 1),
@@ -152,6 +198,38 @@ describe("asset-side additive PIK accretion", () => {
     // Q3 ending par: zero (loan redeemed, no zombie PIK, no reinvestment).
     const q3 = result.periods[2];
     expect(q3.endingPar ?? 0).toBeCloseTo(0, -1);
+  });
+
+  it("intra-month maturity earns partial PIK through the actual maturity date", () => {
+    const activeFrac = dayCountFraction("actual_360", "2026-03-09", "2026-04-01");
+    const result = runProjection(
+      makeInputs({
+        loans: [
+          {
+            parBalance: 1_000_000,
+            maturityDate: "2026-04-01",
+            ratingBucket: "B",
+            spreadBps: 360,
+            pikSpreadBps: 200,
+          },
+        ],
+        initialPar: 1_000_000,
+        baseRatePct: 0,
+        baseRateFloorPct: 0,
+        ...noDefaults,
+        cprPct: 0,
+        reinvestmentPeriodEnd: null,
+        postRpReinvestmentPct: 0,
+        ocTriggers: [],
+        icTriggers: [],
+      }),
+    );
+
+    const expectedCash = 1_000_000 * 0.036 * activeFrac;
+    const expectedPik = 1_000_000 * 0.02 * activeFrac;
+    expect(result.periods[0].interestCollected).toBeCloseTo(expectedCash, 0);
+    expect(result.periods[0].scheduledMaturities).toBeCloseTo(1_000_000 + expectedPik, 0);
+    expect(result.periods[0].endingPar).toBeCloseTo(0, 0);
   });
 
   it("default ordering: PIK loan partial-default — PIK accretes on pre-default par, lands on surviving par", () => {
@@ -168,19 +246,18 @@ describe("asset-side additive PIK accretion", () => {
       spreadBps: 500,
       pikSpreadBps: 200,  // 2% per annum
     };
-    // Per-position WARF B-bucket warfHazard = 0.0079/q (~3.13%/y). To produce
-    // a substantial partial default in Q1, scale via cdrMultiplierPathFn:
-    // baseline B = 1 (set via override), path B = 70 → multiplier = 70 →
-    // hazard = 0.0079 × 70 ≈ 0.55/q (≈ 55% Q1 default). Surviving ~45M leaves
-    // both partial-default observability AND visible PIK accretion (~514K).
+    const annualCdr = 60;
+    const quarterlyHazard = 1 - Math.pow(1 - annualCdr / 100, 0.25);
+    const monthlyHazard = 1 - Math.pow(1 - quarterlyHazard, 1 / 3);
+    const expected = monthlyPikWithDefaults(100_000_000, (2.5 + 5.0) / 100, 0.02, monthlyHazard);
     const result = runProjection(
       makeInputs({
         loans: [partialDefaultingPik],
         initialPar: 100_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: { ...uniformRates(0), B: 1 },
-        cdrMultiplierPathFn: () => ({ ...uniformRates(0), B: 70 }),
+        defaultRatesByRating: uniformRates(annualCdr),
+        overriddenBuckets: ["B"],
         cprPct: 0,
         // Long recovery lag so defaulted par stays "pending" (not recovered
         // back into pool) — keeps the surviving-par observable cleanly.
@@ -188,30 +265,13 @@ describe("asset-side additive PIK accretion", () => {
         // Kill reinvestment so reinvested loans don't pollute the par count.
         reinvestmentPeriodEnd: PERIOD_START,
         postRpReinvestmentPct: 0,
-      })
+      }),
+      (survivingPar, hazardRate) => survivingPar * hazardRate,
     );
 
-    // Period 1 cash interest: par × 7.5% × FRAC_360 (uses loanBegPar, the
-    // pre-default capture). This is the strongest assertion — full-period
-    // cash interest accrues on the pre-default 100M.
-    const expectedCash = 100_000_000 * (2.5 + 5.0) / 100 * FRAC_360;
-    expect(result.periods[0].interestCollected).toBeCloseTo(expectedCash, 0);
-
-    // Period 1 ending par: surviving par after default + PIK accretion.
-    // PIK accretion = 100M × 2% × FRAC_360 ≈ €514K. Surviving par after
-    // ~94% default = ~6M. Sum ≈ 6.5M. The ABSENCE of the PIK accretion
-    // would give ~6M flat; PRESENCE pushes it 514K higher. We assert
-    // ending par > expected default-only value, which proves PIK accreted.
-    const pikAccretion = 100_000_000 * 0.02 * FRAC_360;
-    const endingPar = result.periods[0].endingPar ?? 0;
-    // Sanity: at least some par defaulted (heavy CDR).
-    expect(endingPar).toBeLessThan(50_000_000);
-    // PIK accretion is visible: ending par > (expected post-default par
-    // alone). Without PIK: ending par ≈ surviving from default. With PIK:
-    // ending par = surviving + pikAccretion. We don't know the exact
-    // surviving share (depends on prorate), so we assert the gap.
-    const survivingFromDefaultsAlone = endingPar - pikAccretion;
-    expect(survivingFromDefaultsAlone).toBeGreaterThan(0);
-    expect(survivingFromDefaultsAlone).toBeLessThan(endingPar);
+    expect(result.periods[0].defaults).toBeCloseTo(expected.defaults, 0);
+    expect(result.periods[0].interestCollected).toBeCloseTo(expected.cash, 0);
+    expect(result.periods[0].endingPar ?? 0).toBeCloseTo(expected.endingPar, 0);
+    expect((result.periods[0].endingPar ?? 0) - (100_000_000 - result.periods[0].defaults)).toBeCloseTo(expected.pik, 0);
   });
 });

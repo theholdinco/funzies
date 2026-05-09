@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   InlineText,
   InlineNumber,
@@ -298,6 +299,7 @@ export default function ContextEditor({
   overflow,
   dealId,
 }: ContextEditorProps) {
+  const router = useRouter();
   const [constraints, setConstraints] = useState<ExtractedConstraints>(initialConstraints);
   const [fundProfile, setFundProfile] = useState(initialProfile);
   const [complianceData, setComplianceData] = useState(initialCompliance);
@@ -398,7 +400,10 @@ export default function ContextEditor({
       body: JSON.stringify({ extractedConstraints: constraints }),
     });
     setSavingConstraints(false);
-    if (res.ok) setConstraintsDirty(false);
+    if (res.ok) {
+      setConstraintsDirty(false);
+      router.refresh();
+    }
   }
 
   async function saveProfile() {
@@ -436,16 +441,14 @@ export default function ContextEditor({
     if (res.ok) setInceptionDirty(false);
   }
 
-  async function saveCompliance() {
-    if (!complianceData) return;
-    setSavingCompliance(true);
-    const res = await fetch("/api/clo/compliance", {
+  async function persistCompliance(data: NonNullable<typeof complianceData>) {
+    return fetch("/api/clo/compliance", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        reportPeriodId: complianceData.reportPeriodId,
-        poolSummary: complianceData.poolSummary,
-        complianceTests: complianceData.complianceTests?.map((t) => ({
+        reportPeriodId: data.reportPeriodId,
+        poolSummary: data.poolSummary,
+        complianceTests: data.complianceTests?.map((t) => ({
           id: t.id,
           updates: {
             testName: t.testName,
@@ -458,7 +461,7 @@ export default function ContextEditor({
             cushionAmount: t.cushionAmount,
           },
         })),
-        concentrations: complianceData.concentrations?.map((c) => ({
+        concentrations: data.concentrations?.map((c) => ({
           id: c.id,
           updates: {
             concentrationType: c.concentrationType,
@@ -470,6 +473,12 @@ export default function ContextEditor({
         })),
       }),
     });
+  }
+
+  async function saveCompliance() {
+    if (!complianceData) return;
+    setSavingCompliance(true);
+    const res = await persistCompliance(complianceData);
     setSavingCompliance(false);
     if (res.ok) setComplianceDirty(false);
   }
@@ -846,7 +855,9 @@ export default function ContextEditor({
         }
         if (source.complianceData) {
           setComplianceData(source.complianceData);
-          setComplianceDirty(false);
+          const res = await persistCompliance(source.complianceData);
+          setComplianceDirty(!res.ok);
+          if (res.ok) router.refresh();
         }
       } catch { /* ignore parse errors */ }
     };

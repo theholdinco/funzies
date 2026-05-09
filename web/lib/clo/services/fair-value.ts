@@ -39,35 +39,85 @@ export interface FairValueResult {
 const MAX_CENTS = 200;
 const TOLERANCE_CENTS = 0.05;
 const MAX_ITERATIONS = 30;
-// Probe ladder: used to find a finite-IRR lower-bracket anchor. Newton-Raphson
-// can fail to converge at near-free entry (IRR asymptotically large) or at
-// very high entry on impaired deals (all flows negative). We walk a fixed
-// ladder of probe prices and pick the lowest one whose IRR is finite as the
-// bisection lower bracket.
+// Probe ladder: used to find a finite-IRR lower-bracket anchor. IRR becomes
+// asymptotically large at near-free entry and can be undefined at very high
+// entry on impaired deals (all flows negative). We walk a fixed ladder of
+// probe prices and pick the lowest one whose IRR is finite as the bisection
+// lower bracket.
 const PROBE_LADDER = [0.1, 0.5, 1, 2, 5, 10, 20, 50, 100, 200];
+
+interface FairValueRunCache {
+  calibrationWipedOut?: boolean;
+  irrByPriceCents: Map<string, number | null>;
+}
+
+const SHARED_RUN_CACHE = new WeakMap<ProjectionInputs, Map<string, { signature: string; cache: FairValueRunCache }>>();
+const FUNCTION_IDS = new WeakMap<Function, number>();
+let nextFunctionId = 1;
+
+function inputSignature(inputs: ProjectionInputs): string {
+  return JSON.stringify(inputs, (_key, value: unknown) => {
+    if (typeof value !== "function") return value;
+    let id = FUNCTION_IDS.get(value);
+    if (id == null) {
+      id = nextFunctionId++;
+      FUNCTION_IDS.set(value, id);
+    }
+    return `[Function:${id}]`;
+  });
+}
+
+function priceKey(priceCents: number): string {
+  return priceCents.toFixed(8);
+}
+
+function cacheForInputs(inputs: ProjectionInputs, subNotePar: number): FairValueRunCache {
+  let bySubPar = SHARED_RUN_CACHE.get(inputs);
+  if (!bySubPar) {
+    bySubPar = new Map();
+    SHARED_RUN_CACHE.set(inputs, bySubPar);
+  }
+  const key = subNotePar.toFixed(2);
+  const signature = inputSignature(inputs);
+  let entry = bySubPar.get(key);
+  if (!entry || entry.signature !== signature) {
+    entry = { signature, cache: { irrByPriceCents: new Map() } };
+    bySubPar.set(key, entry);
+  }
+  return entry.cache;
+}
 
 function irrAtPrice(
   inputs: ProjectionInputs,
   subNotePar: number,
   priceCents: number,
+  cache: FairValueRunCache,
 ): number | null {
+  const key = priceKey(priceCents);
+  if (cache.irrByPriceCents.has(key)) return cache.irrByPriceCents.get(key) ?? null;
   const equityEntryPrice = subNotePar * (priceCents / 100);
   const result = runProjection({ ...inputs, equityEntryPrice });
+  cache.irrByPriceCents.set(key, result.equityIrr);
   return result.equityIrr;
 }
 
-export function computeFairValueAtHurdle(
+function computeFairValueAtHurdleCached(
   inputs: ProjectionInputs,
   subNotePar: number,
   targetIrr: number,
+  cache: FairValueRunCache,
 ): FairValueResult {
   if (subNotePar <= 0) {
     return { hurdle: targetIrr, priceCents: null, status: "wiped_out", iterations: 0 };
   }
 
   // Short-circuit on balance-sheet-insolvent deals before bracket sweeps.
-  const calibration = runProjection({ ...inputs, equityEntryPrice: subNotePar });
-  if (calibration.initialState.equityWipedOut) {
+  if (cache.calibrationWipedOut == null) {
+    const calibration = runProjection({ ...inputs, equityEntryPrice: subNotePar });
+    cache.calibrationWipedOut = calibration.initialState.equityWipedOut;
+    cache.irrByPriceCents.set(priceKey(100), calibration.equityIrr);
+  }
+  if (cache.calibrationWipedOut) {
     return { hurdle: targetIrr, priceCents: null, status: "wiped_out", iterations: 0 };
   }
 
@@ -75,7 +125,7 @@ export function computeFairValueAtHurdle(
   // anchors the bisection lower bracket; the highest anchors the upper.
   const probes: { priceCents: number; irr: number }[] = [];
   for (const p of PROBE_LADDER) {
-    const irr = irrAtPrice(inputs, subNotePar, p);
+    const irr = irrAtPrice(inputs, subNotePar, p, cache);
     if (irr !== null && Number.isFinite(irr)) {
       probes.push({ priceCents: p, irr });
     }
@@ -104,7 +154,7 @@ export function computeFairValueAtHurdle(
   let iterations = probes.length;
   while (hi - lo > TOLERANCE_CENTS && iterations < MAX_ITERATIONS) {
     const mid = (lo + hi) / 2;
-    const irr = irrAtPrice(inputs, subNotePar, mid);
+    const irr = irrAtPrice(inputs, subNotePar, mid, cache);
     iterations++;
     // Null IRR mid-bisection: treat as above-target (search higher prices).
     // The bracket boundaries above guarantee the search stays inside
@@ -122,10 +172,19 @@ export function computeFairValueAtHurdle(
   };
 }
 
+export function computeFairValueAtHurdle(
+  inputs: ProjectionInputs,
+  subNotePar: number,
+  targetIrr: number,
+): FairValueResult {
+  return computeFairValueAtHurdleCached(inputs, subNotePar, targetIrr, cacheForInputs(inputs, subNotePar));
+}
+
 export function computeFairValuesAtHurdles(
   inputs: ProjectionInputs,
   subNotePar: number,
   targetIrrs: number[],
 ): FairValueResult[] {
-  return targetIrrs.map((t) => computeFairValueAtHurdle(inputs, subNotePar, t));
+  const cache = cacheForInputs(inputs, subNotePar);
+  return targetIrrs.map((t) => computeFairValueAtHurdleCached(inputs, subNotePar, t, cache));
 }

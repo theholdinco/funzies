@@ -115,7 +115,7 @@ describe("A3 — integration: Euro XV call at MtM vs at par", () => {
   // The ~€23.5M difference flows through the waterfall; equity (sub note) is
   // the residual bucket so most of the swing hits totalEquityDistributions.
 
-  const callDate = "2026-07-15"; // one quarter out
+  const callDate = "2026-07-01"; // one regular payment row out
   const assumptionsMarket = {
     ...DEFAULT_ASSUMPTIONS,
     callMode: "optionalRedemption" as const,
@@ -138,7 +138,7 @@ describe("A3 — integration: Euro XV call at MtM vs at par", () => {
   });
 
   it("par − market equity delta ≈ €23.98M (empirical anchor)", () => {
-    // Empirical measurement: Euro XV at callDate=2026-07-15, default other
+    // Empirical measurement: Euro XV at callDate=2026-07-01, default other
     // assumptions. The raw pool par-vs-MtM gap is ~€23.5M (€491.4M − €467.9M),
     // and the engine's equity-side delta ends up slightly higher at €23.98M
     // — the difference flows partly through incentive-fee mechanics before
@@ -189,5 +189,19 @@ describe("A3 — callMode gate (post-v6 plan §4.1)", () => {
       }),
     );
     expect(withCall.periods.length).toBeLessThan(noCall.periods.length);
+  });
+
+  it("off-grid optional redemption emits the terminal row on the actual call date", () => {
+    const result = runProjection(
+      buildFromResolved(fixture.resolved, {
+        ...DEFAULT_ASSUMPTIONS,
+        callMode: "optionalRedemption",
+        callDate: "2026-05-15",
+        callPriceMode: "par",
+      }),
+    );
+
+    expect(result.periods).toHaveLength(1);
+    expect(result.periods[0].date).toBe("2026-05-15");
   });
 });

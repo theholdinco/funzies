@@ -13,7 +13,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { runProjection, addQuarters, dayCountFraction, LoanInput } from "../projection";
-import { makeInputs, uniformRates } from "./test-helpers";
+import { makeInputs, noDefaults } from "./test-helpers";
 
 // makeInputs default currentDate = 2026-03-09. Period 1 ends 2026-06-09 = 92 days.
 const PERIOD_START = "2026-03-09";
@@ -39,7 +39,7 @@ describe("asset-side per-loan day-count convention", () => {
         loans: [fixed30E],
         initialPar: 10_000_000,
         baseRatePct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -69,7 +69,7 @@ describe("asset-side per-loan day-count convention", () => {
         initialPar: 10_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -112,7 +112,7 @@ describe("asset-side per-loan day-count convention", () => {
         initialPar: 110_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -143,7 +143,7 @@ describe("asset-side per-loan day-count convention", () => {
         initialPar: 10_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );

@@ -417,6 +417,7 @@ export const ppmCapitalStructureSchema = z.object({
     isSubordinated: z.boolean().optional(),
     amortisationPerPeriod: z.string().optional(),
     amortStartDate: z.string().optional(),
+    paymentFrequency: z.string().optional(),
   }).passthrough()).optional(),
   dealSizing: z.object({
     targetParAmount: z.string().optional(),

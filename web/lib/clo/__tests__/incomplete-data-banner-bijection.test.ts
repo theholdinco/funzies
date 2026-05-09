@@ -23,6 +23,7 @@ import { Node, Project } from "ts-morph";
 import { resolve } from "path";
 import {
   buildFromResolved,
+  composeBuildWarnings,
   EMPTY_RESOLVED,
   DEFAULT_ASSUMPTIONS,
   IncompleteDataError,
@@ -199,10 +200,59 @@ describe("buildFromResolved gate uses the same predicate", () => {
       expect(err.errors).toEqual(selectBlockingWarnings(ws));
     }
   });
+
+  it.each([
+    { name: "missing", paymentFrequency: undefined, firstPaymentDate: "2026-04-15", message: /missing paymentFrequency/ },
+    { name: "unsupported", paymentFrequency: "weekly", firstPaymentDate: "2026-04-15", message: /unsupported paymentFrequency/ },
+    { name: "monthly", paymentFrequency: "monthly", firstPaymentDate: "2026-04-15", message: /monthly paymentFrequency/ },
+    { name: "semi-annual without anchor", paymentFrequency: "semi_annual", firstPaymentDate: null, message: /semi_annual paymentFrequency/ },
+  ])("build-only KI-36 $name payment-frequency blocker is selected exactly like buildFromResolved errors", ({ paymentFrequency, firstPaymentDate, message }) => {
+    const resolved = structuredClone(EMPTY_RESOLVED);
+    resolved.dates.firstPaymentDate = firstPaymentDate;
+    resolved.tranches = [
+      {
+        className: "A",
+        currentBalance: 100_000_000,
+        originalBalance: 100_000_000,
+        spreadBps: 150,
+        seniorityRank: 1,
+        isFloating: true,
+        isIncomeNote: false,
+        isDeferrable: false,
+        isAmortising: false,
+        amortisationPerPeriod: null,
+        amortStartDate: null,
+        source: "manual",
+        priorInterestShortfall: null,
+        priorShortfallCount: null,
+        deferredInterestBalance: null,
+        paymentFrequency: paymentFrequency as never,
+      },
+    ];
+    if (paymentFrequency === undefined) delete resolved.tranches[0].paymentFrequency;
+
+    const composed = composeBuildWarnings(resolved, DEFAULT_ASSUMPTIONS, []);
+    const selected = selectBlockingWarnings(composed);
+
+    expect(selected).toHaveLength(1);
+    expect(selected[0]).toEqual(expect.objectContaining({
+      field: "tranches.A.paymentFrequency",
+      severity: "error",
+      blocking: true,
+      message: expect.stringMatching(message),
+    }));
+    try {
+      buildFromResolved(resolved, DEFAULT_ASSUMPTIONS, []);
+      throw new Error("expected IncompleteDataError to be thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(IncompleteDataError);
+      expect((e as IncompleteDataError).errors).toEqual(selected);
+    }
+  });
 });
 
 describe("UI surfaces drive the banner from the same predicate", () => {
-  it("ProjectionModel.tsx imports selectBlockingWarnings (no inline replacement)", () => {
+  it("ProjectionModel.tsx imports composeBuildWarnings + selectBlockingWarnings (no inline replacement)", () => {
     // Distinct from the divergent-filter scan below: this confirms the file
     // actually wires the helper in. The cross-file scan would pass if a UI
     // had no `.blocking` filter AT ALL (and rendered no banner) — that
@@ -212,6 +262,10 @@ describe("UI surfaces drive the banner from the same predicate", () => {
     expect(
       sf.getFullText().includes("selectBlockingWarnings"),
       "ProjectionModel.tsx must import + call selectBlockingWarnings to keep the banner aligned with the engine-side gate. If this fails, the banner is using its own filter and can silently disagree with what buildFromResolved actually refuses.",
+    ).toBe(true);
+    expect(
+      sf.getFullText().includes("composeBuildWarnings"),
+      "ProjectionModel.tsx must compose resolver warnings with build-time warnings before selecting blocking warnings, or DATA INCOMPLETE can miss buildFromResolved-only gates.",
     ).toBe(true);
   });
 

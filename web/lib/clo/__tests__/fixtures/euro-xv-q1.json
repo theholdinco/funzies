@@ -14,7 +14,8 @@
         "amortisationPerPeriod": null,
         "amortStartDate": null,
         "source": "snapshot",
-        "dayCountConvention": "actual_360"
+        "dayCountConvention": "actual_360",
+        "paymentFrequency": "quarterly"
       },
       {
         "className": "Class B-1",
@@ -29,7 +30,8 @@
         "amortisationPerPeriod": null,
         "amortStartDate": null,
         "source": "snapshot",
-        "dayCountConvention": "actual_360"
+        "dayCountConvention": "actual_360",
+        "paymentFrequency": "quarterly"
       },
       {
         "className": "Class B-2",
@@ -44,7 +46,8 @@
         "amortisationPerPeriod": null,
         "amortStartDate": null,
         "source": "snapshot",
-        "dayCountConvention": "30e_360"
+        "dayCountConvention": "30e_360",
+        "paymentFrequency": "quarterly"
       },
       {
         "className": "Class C",
@@ -59,7 +62,8 @@
         "amortisationPerPeriod": null,
         "amortStartDate": null,
         "source": "snapshot",
-        "dayCountConvention": "actual_360"
+        "dayCountConvention": "actual_360",
+        "paymentFrequency": "quarterly"
       },
       {
         "className": "Class D",
@@ -74,7 +78,8 @@
         "amortisationPerPeriod": null,
         "amortStartDate": null,
         "source": "snapshot",
-        "dayCountConvention": "actual_360"
+        "dayCountConvention": "actual_360",
+        "paymentFrequency": "quarterly"
       },
       {
         "className": "Class E",
@@ -89,7 +94,8 @@
         "amortisationPerPeriod": null,
         "amortStartDate": null,
         "source": "snapshot",
-        "dayCountConvention": "actual_360"
+        "dayCountConvention": "actual_360",
+        "paymentFrequency": "quarterly"
       },
       {
         "className": "Class F",
@@ -104,7 +110,8 @@
         "amortisationPerPeriod": null,
         "amortStartDate": null,
         "source": "snapshot",
-        "dayCountConvention": "actual_360"
+        "dayCountConvention": "actual_360",
+        "paymentFrequency": "quarterly"
       },
       {
         "className": "Subordinated Notes",

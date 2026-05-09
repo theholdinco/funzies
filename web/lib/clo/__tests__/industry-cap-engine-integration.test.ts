@@ -127,11 +127,14 @@ describe("Industry-cap engine-integration — synthesis with industry-cap rules"
     const result = runProjection(inputs);
     expect(result.periods.length).toBeGreaterThan(0);
 
-    // For every period where the pool has tagged loans, largestIndustryPct
-    // must stay ≤ 22% (with small tolerance for per-period rounding).
+    // For periods where the allocator is actually synthesizing reinvestment,
+    // largestIndustryPct must stay ≤ 22% (with small tolerance for per-period
+    // rounding). Post-RP runoff can breach as loans amortize without any new
+    // reinvestment allocation to constrain.
     // This invariant FAILS if the allocator doesn't enforce the rank-1 cap.
     let assertedPeriods = 0;
     for (const period of result.periods) {
+      if (period.reinvestment <= 0) continue;
       const largestPct = period.qualityMetrics.largestIndustryPct;
       if (largestPct == null) continue;
       expect(largestPct).toBeLessThanOrEqual(22.1);

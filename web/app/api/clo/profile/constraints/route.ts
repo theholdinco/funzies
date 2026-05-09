@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-helpers";
-import { query } from "@/lib/db";
+import { getPool, query } from "@/lib/db";
+import { syncPpmToRelationalTables } from "@/lib/clo/extraction/persist-ppm";
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
        WHERE profile_id = $2`,
       [JSON.stringify(extractedConstraints), rows[0].id]
     );
+    await syncPpmToRelationalTables(getPool(), rows[0].id, extractedConstraints);
   } catch {
     // Non-fatal — deal may not exist yet
   }

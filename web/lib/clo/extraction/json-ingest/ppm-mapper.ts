@@ -16,6 +16,13 @@ export type PpmSections = Record<string, Record<string, unknown>>;
 // must be coerced with `?? undefined` before being placed into a PPM-schema field.
 const u = <T>(v: T | null | undefined): T | undefined => (v == null ? undefined : v);
 
+function nonBlank(...values: Array<string | null | undefined>): string | undefined {
+  for (const value of values) {
+    if (value != null && value.trim() !== "") return value;
+  }
+  return undefined;
+}
+
 function mapTransactionOverview(ppm: PpmJson): Record<string, unknown> {
   const di = ppm.section_1_deal_identity;
   const cm = di.transaction_parties.find((p) => p.role === "Collateral Manager");
@@ -76,6 +83,7 @@ function mapCapitalStructure(ppm: PpmJson): Record<string, unknown> {
         rateType: t.rate_type ?? undefined,   // ppmCapitalStructure schema is string | undefined (not nullable)
         referenceRate: t.rate_type === "floating" ? "EURIBOR" : undefined,
         spreadBps: spreadBps ?? undefined,
+        paymentFrequency: nonBlank(t.payment_frequency, t.paymentFrequency),
         rating: {
           fitch: t.fitch ?? undefined,
           moodys: t.moodys ?? undefined,
@@ -111,7 +119,7 @@ function mapKeyDates(ppm: PpmJson): Record<string, unknown> {
     nonCallPeriodEnd: u(parseFlexibleDate(kd.non_call_period_end)),
     reinvestmentPeriodEnd: u(parseFlexibleDate(kd.reinvestment_period_end)),
     firstPaymentDate: u(parseFlexibleDate(kd.first_payment_date)),
-    paymentFrequency: u(kd.payment_frequency),
+    paymentFrequency: nonBlank(kd.payment_frequency, kd.paymentFrequency),
   };
 }
 

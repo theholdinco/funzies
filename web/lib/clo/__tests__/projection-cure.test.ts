@@ -763,6 +763,32 @@ describe("Multiple OC tests cascade (E + F both fail)", () => {
       expect(p.ocTests.map((t) => t.className)).toEqual(["A", "J-1", "C", "D", "E", "F"]);
     }
   });
+
+  it("senior OC cure can make a junior pre-measurement failure pass before its boundary", () => {
+    // Natural ratios in this fixture are close enough that a small E-rank
+    // reinvestment cure lifts the OC numerator above F's trigger too. The
+    // emitted ocTests remain the pre-cure measurement, but waterfall gating
+    // must recompute at each rank so F does not divert stale.
+    const inputs = makeRealisticInputs({
+      currentDate: "2026-03-09",
+      reinvestmentPeriodEnd: "2030-06-15",
+      cdrMultiplierPathFn: noDefaultsPath,
+      cprPct: 0,
+      recoveryPct: 0,
+      icTriggers: [],
+      ocTriggers: [
+        { className: "E", triggerLevel: 117.0, rank: 5 },
+        { className: "F", triggerLevel: 112.0, rank: 6 },
+      ],
+    });
+
+    const result = runProjection(inputs);
+    const p1 = result.periods[0];
+    expect(p1.ocTests.find((t) => t.className === "E")?.passing).toBe(false);
+    expect(p1.ocTests.find((t) => t.className === "F")?.passing).toBe(false);
+    expect(p1.stepTrace.ocCureDiversions.find((d) => d.rank === 5)?.amount ?? 0).toBeGreaterThan(0);
+    expect(p1.stepTrace.ocCureDiversions.find((d) => d.rank === 6)).toBeUndefined();
+  });
 });
 
 // ─── Test 7: Split-tranche diversion (B-1 and B-2 at same rank) ──────────────

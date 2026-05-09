@@ -1289,6 +1289,8 @@ export async function runSectionExtraction(
           setClauses.push(`is_floating = COALESCE(is_floating, $${pi++})`);
           values.push(false);
         }
+        setClauses.push(`payment_frequency = $${pi++}`);
+        values.push(String(entry.paymentFrequency ?? "").trim() || null);
 
         // Set seniority_rank — overwrite (matches persist-ppm.ts). The
         // previous COALESCE preserved a wrong stored value when re-ingest
@@ -1356,7 +1358,6 @@ export async function runSectionExtraction(
             non_call_period_end: (ppmKeyDates as Record<string, string | null>).nonCallPeriodEnd ?? null,
             stated_maturity_date: (ppmKeyDates as Record<string, string | null>).maturityDate ?? null,
             first_payment_date: (ppmKeyDates as Record<string, string | null>).firstPaymentDate ?? null,
-            payment_frequency: (ppmKeyDates as Record<string, string | null>).paymentFrequency ?? null,
           };
 
           const reconciliation = reconcileDates({ ppmDates, complianceDates });

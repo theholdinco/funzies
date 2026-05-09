@@ -11,6 +11,10 @@ const Q1_ACTUAL = dayCountFraction("actual_360", "2026-03-09", "2026-06-09");
 const Q2_ACTUAL = dayCountFraction("actual_360", "2026-06-09", "2026-09-09");
 // Q3: 2026-09-09 → 2026-12-09 = 91 days.
 const Q3_ACTUAL = dayCountFraction("actual_360", "2026-09-09", "2026-12-09");
+// KI-36: drawQuarter remains a user-facing quarter assumption, but the engine
+// fires it on the monthly internal clock at the first month of that projected
+// quarter.
+const STUB_DRAW_Q2_START_ACTUAL = dayCountFraction("actual_360", "2026-06-09", "2026-07-09");
 
 describe("Fixed-rate loan projection", () => {
   it("earns flat coupon regardless of base rate", () => {
@@ -28,7 +32,7 @@ describe("Fixed-rate loan projection", () => {
         loans: [loan],
         initialPar: 10_000_000,
         baseRatePct: 2.5,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -38,7 +42,7 @@ describe("Fixed-rate loan projection", () => {
         loans: [loan],
         initialPar: 10_000_000,
         baseRatePct: 5.0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -74,7 +78,7 @@ describe("Fixed-rate loan projection", () => {
         loans: [loan],
         initialPar: 10_000_000,
         baseRatePct: 2.5,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -105,7 +109,7 @@ describe("Fixed-rate loan projection", () => {
         initialPar: 10_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -143,7 +147,7 @@ describe("DDTL projection", () => {
         initialPar: 500_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -171,15 +175,60 @@ describe("DDTL projection", () => {
         initialPar: 500_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
 
     // Q1: not drawn yet → 0
     expect(result.periods[0].interestCollected).toBeCloseTo(0, 2);
-    // Q2: drawn at beginning of Q2 → 500K × (2.5 + 3.5)% × 92/360
-    expect(result.periods[1].interestCollected).toBeCloseTo(500_000 * (2.5 + 3.5) / 100 * Q2_ACTUAL, 0);
+    // drawQuarter=2 fires at the start of projected quarter 2, so period 2
+    // earns the full Jun 9 → Sep 9 quarter.
+    expect(result.periods[1].interestCollected).toBeCloseTo(
+      500_000 * (2.5 + 3.5) / 100 * Q2_ACTUAL,
+      0,
+    );
+  });
+
+  it("drawQuarter converts to an internal draw month under a stub first period", () => {
+    const ddtl = {
+      parBalance: 0,
+      undrawnCommitment: 500_000,
+      maturityDate: "2031-04-09",
+      ratingBucket: "B",
+      spreadBps: 0,
+      isDelayedDraw: true,
+      ddtlSpreadBps: 350,
+      drawQuarter: 2,
+    };
+
+    const result = runProjection(
+      makeInputs({
+        loans: [ddtl],
+        initialPar: 500_000,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        stubPeriod: true,
+        firstPeriodEndDate: "2026-04-09",
+        ...noDefaults,
+        cprPct: 0,
+      })
+    );
+
+    expect(result.periods[0].date).toBe("2026-04-09");
+    expect(result.periods[0].interestCollected).toBeCloseTo(0, 2);
+    expect(result.periods[1].date).toBe("2026-07-09");
+    expect(result.periods[1].beginningPar).toBeCloseTo(0, 0);
+    expect(result.periods[1].interestCollected).toBeCloseTo(
+      500_000 * (2.5 + 3.5) / 100 * STUB_DRAW_Q2_START_ACTUAL,
+      0,
+    );
+    expect(result.periods[2].date).toBe("2026-10-09");
+    expect(result.periods[2].beginningPar).toBeCloseTo(500_000, 0);
+    expect(result.periods[2].interestCollected).toBeCloseTo(
+      500_000 * (2.5 + 3.5) / 100 * dayCountFraction("actual_360", "2026-07-09", "2026-10-09"),
+      0,
+    );
   });
 
   it("never_draw (drawQuarter <= 0) removes par at Q1", () => {
@@ -206,7 +255,7 @@ describe("DDTL projection", () => {
         initialPar: 10_500_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -235,14 +284,17 @@ describe("DDTL projection", () => {
         initialPar: 500_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
         ddtlDrawPercent: 60,
       })
     );
 
-    // Q2: 60% of 500K = 300K funded. Interest = 300K × (2.5 + 3.5)% × 92/360
-    expect(result.periods[1].interestCollected).toBeCloseTo(300_000 * (2.5 + 3.5) / 100 * Q2_ACTUAL, 0);
+    // Q2: 60% of 500K = 300K funded at the start of projected quarter 2.
+    expect(result.periods[1].interestCollected).toBeCloseTo(
+      300_000 * (2.5 + 3.5) / 100 * Q2_ACTUAL,
+      0,
+    );
   });
 
   it("DDTL not subject to defaults/prepay before draw", () => {
@@ -299,7 +351,7 @@ describe("DDTL projection", () => {
         initialPar: 10_500_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -310,7 +362,7 @@ describe("DDTL projection", () => {
         initialPar: 10_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -371,7 +423,7 @@ describe("DDTL projection", () => {
         impliedOcAdjustment: 1_000_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -426,7 +478,7 @@ describe("DDTL convention: facility tag vs. unfunded state", () => {
         initialPar: 500_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -474,8 +526,9 @@ describe("DDTL convention: facility tag vs. unfunded state", () => {
     expect(result.periods[0].endingUndrawnCommitment).toBeCloseTo(500_000, 0);
     expect(result.periods[0].interestCollected).toBeCloseTo(0, 2);
 
-    // Q2 — partial draw: 60% × 500K = 300K funded (accrues at parent spread);
-    // the 40% × 500K = 200K residual is PRESERVED, not discarded.
+    // Q2 — partial draw fires at the start of projected quarter 2:
+    // 60% × 500K = 300K funded for the quarter; the 40% × 500K =
+    // 200K residual is PRESERVED, not discarded.
     expect(result.periods[1].endingUndrawnCommitment).toBeCloseTo(200_000, 0);
     expect(result.periods[1].interestCollected).toBeCloseTo(
       300_000 * (2.5 + 3.5) / 100 * Q2_ACTUAL,
@@ -517,7 +570,7 @@ describe("DDTL convention: facility tag vs. unfunded state", () => {
         initialPar: 300_000,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
-        defaultRatesByRating: uniformRates(0),
+        ...noDefaults,
         cprPct: 0,
       })
     );
@@ -585,11 +638,10 @@ describe("DDTL convention: facility tag vs. unfunded state", () => {
     );
     expect(result.periods[0].endingUndrawnCommitment).toBeCloseTo(1_000_000, 0);
 
-    // Q2: future-draw DDTL fires (100% draw). Both DDTLs now funded.
-    // Beginning par includes both. Interest accrues on both at their
-    // respective spreads (350 bps fully-drawn, 400 bps post-draw via
-    // ddtlSpreadBps promotion).
-    expect(result.periods[1].beginningPar).toBeCloseTo(1_500_000, 0);
+    // Q2: future-draw DDTL fires at the start of projected quarter 2.
+    // Beginning par is still the period-start funded balance; by period end
+    // both DDTLs are funded.
+    expect(result.periods[1].beginningPar).toBeCloseTo(500_000, 0);
     const q2Interest =
       500_000 * (2.5 + 3.5) / 100 * Q2_ACTUAL +
       1_000_000 * (2.5 + 4.0) / 100 * Q2_ACTUAL;

@@ -383,6 +383,9 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
   // Taxes cascade — baselines re-baselined from
   // pre-cascade 6.600/5.865/5.117 to post-cascade 3.960/3.525/3.070,
   // confirming both closures moved observed drift by the expected ~2–3 pp.
+  // KI-36's T=0 first-payment-window cleanup moved A/B to 4.03pp by replacing
+  // a flat /4 denominator/numerator approximation with the actual first
+  // projected payment window.
   // When KI-12a closes, these three markers
   // need re-baselining again.
   {
@@ -415,7 +418,7 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
       {
         ki: "KI-IC-AB",
         closesIn: "Progressively as KI-12a closes (re-baseline on each)",
-        expectedDrift: 3.960,
+        expectedDrift: 4.030,
         tolerance: 0.05,
         // closeThreshold = tolerance is intentional and safe here: |expectedDrift|
         // is 3.96pp and tolerance is 0.05pp, so the "partial-fix masks as close"
@@ -493,4 +496,3 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
     }
   });
 });
-

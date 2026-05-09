@@ -165,6 +165,8 @@ export async function syncPpmToRelationalTables(
       setClauses.push(`is_floating = $${pi++}`);
       values.push(false);
     }
+    setClauses.push(`payment_frequency = $${pi++}`);
+    values.push(entry.paymentFrequency?.trim() || null);
     setClauses.push(`is_subordinate = $${pi++}`);
     values.push(!!isSub);
     setClauses.push(`is_income_note = $${pi++}`);

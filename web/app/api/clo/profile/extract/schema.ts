@@ -24,6 +24,7 @@ const capitalStructureEntry = z.object({
   clearing: z.string().optional(),
   amortisationPerPeriod: z.string().optional(),
   amortStartDate: z.string().optional(),
+  paymentFrequency: z.string().optional(),
 }).passthrough();
 
 export const extractedConstraintsSchema = z.object({

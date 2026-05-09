@@ -70,6 +70,25 @@ describe("CDR sample-path fn (post-v6 plan §7.5)", () => {
     }
   });
 
+  it("time-varying path also drives aggregate no-loan default timing", () => {
+    const inputs = makeInputs({
+      loans: [],
+      initialPar: 100_000_000,
+      defaultRatesByRating: uniformRates(5),
+      cprPct: 0,
+    });
+    const flat = runProjection(inputs);
+    const stressed = runProjection({
+      ...inputs,
+      cdrMultiplierPathFn: (q) => uniformRates(q <= 4 ? 0 : 10),
+    });
+
+    expect(stressed.periods[0].defaults).toBeLessThan(flat.periods[0].defaults);
+    if (stressed.periods.length >= 5 && flat.periods.length >= 5) {
+      expect(stressed.periods[4].defaults).toBeGreaterThan(flat.periods[4].defaults);
+    }
+  });
+
   it("path fn is called with quarter index q (1-indexed)", () => {
     const observed: number[] = [];
     runProjection({

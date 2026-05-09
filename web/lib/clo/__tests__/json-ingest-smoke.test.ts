@@ -80,6 +80,43 @@ describe("A8 — JSON-ingest smoke (Euro XV compliance + ppm)", () => {
     }
   });
 
+  it("maps camelCase deal-level paymentFrequency from JSON key dates", () => {
+    const mapped = mapPpm({
+      ...ppm,
+      section_2_key_dates: {
+        ...ppm.section_2_key_dates,
+        payment_frequency: undefined,
+        paymentFrequency: "Semi-annually",
+      },
+    });
+
+    expect((mapped.key_dates as Record<string, unknown>).paymentFrequency).toBe("Semi-annually");
+  });
+
+  it("falls back to camelCase paymentFrequency when snake_case JSON fields are blank", () => {
+    const mapped = mapPpm({
+      ...ppm,
+      section_2_key_dates: {
+        ...ppm.section_2_key_dates,
+        payment_frequency: " ",
+        paymentFrequency: "Semi-annually",
+      },
+      section_3_capital_structure: {
+        ...ppm.section_3_capital_structure,
+        tranches: [
+          {
+            ...ppm.section_3_capital_structure.tranches[0],
+            payment_frequency: "",
+            paymentFrequency: "Quarterly",
+          },
+        ],
+      },
+    });
+
+    expect((mapped.key_dates as Record<string, unknown>).paymentFrequency).toBe("Semi-annually");
+    expect(((mapped.capital_structure as Record<string, unknown>).capitalStructure as Array<Record<string, unknown>>)[0].paymentFrequency).toBe("Quarterly");
+  });
+
   it("compliance mapper does not emit dead orphan sections (F12, F13)", () => {
     // F12 — interest_accrual section was an orphan production; should be gone.
     expect(compSections).not.toHaveProperty("interest_accrual");

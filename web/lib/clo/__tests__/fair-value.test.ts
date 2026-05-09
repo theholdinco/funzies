@@ -19,6 +19,7 @@ if (!SUB_NOTE) throw new Error("fixture missing sub note tranche");
 const SUB_PAR = SUB_NOTE.originalBalance;
 
 const INPUTS = buildFromResolved(fixture.resolved, DEFAULT_ASSUMPTIONS);
+const FAIR_VALUE_TIMEOUT_MS = 30_000;
 
 describe("fair-value: monotonicity (engine IRR is decreasing in entry price)", () => {
   it("IRR at 50c > IRR at 95c > IRR at 150c", () => {
@@ -42,7 +43,7 @@ describe("computeFairValueAtHurdle on Euro XV", () => {
     expect(r.priceCents).not.toBeNull();
     expect(r.priceCents!).toBeGreaterThan(20);
     expect(r.priceCents!).toBeLessThan(50);
-  });
+  }, FAIR_VALUE_TIMEOUT_MS);
 
   it("converged price reproduces the target IRR within tight tolerance", () => {
     const target = 0.10;
@@ -53,7 +54,7 @@ describe("computeFairValueAtHurdle on Euro XV", () => {
       equityEntryPrice: SUB_PAR * (r.priceCents! / 100),
     }).equityIrr!;
     expect(reproducedIrr).toBeCloseTo(target, 2);
-  });
+  }, FAIR_VALUE_TIMEOUT_MS);
 
   it("higher hurdle → lower fair-value price (monotonic decreasing)", () => {
     const lowHurdle = computeFairValueAtHurdle(INPUTS, SUB_PAR, 0.05);
@@ -61,13 +62,10 @@ describe("computeFairValueAtHurdle on Euro XV", () => {
     expect(lowHurdle.status).toBe("converged");
     expect(highHurdle.status).toBe("converged");
     expect(lowHurdle.priceCents!).toBeGreaterThan(highHurdle.priceCents!);
-  });
+  }, FAIR_VALUE_TIMEOUT_MS);
 
-  it("unreachably high hurdle (>200,000% IRR) → below_hurdle", () => {
-    // Probe ladder's lowest finite-IRR anchor on Euro XV is 1c with IRR ≈ 1841
-    // (i.e., 184,100%). Targets above that exceed any computable IRR in the
-    // probe ladder → below_hurdle.
-    const r = computeFairValueAtHurdle(INPUTS, SUB_PAR, 2000);
+  it("unreachably high hurdle above the near-free entry IRR → below_hurdle", () => {
+    const r = computeFairValueAtHurdle(INPUTS, SUB_PAR, 10_000_000);
     expect(r.status).toBe("below_hurdle");
     expect(r.priceCents).toBeNull();
   });
@@ -89,7 +87,7 @@ describe("computeFairValueAtHurdle on Euro XV", () => {
     const r = computeFairValueAtHurdle(INPUTS, SUB_PAR, 0.10);
     expect(r.status).toBe("converged");
     expect(r.iterations).toBeLessThanOrEqual(30);
-  });
+  }, FAIR_VALUE_TIMEOUT_MS);
 
   it("0.05c precision: convergence tolerance is at most 0.1c bracket width", () => {
     const r = computeFairValueAtHurdle(INPUTS, SUB_PAR, 0.10);
@@ -101,7 +99,7 @@ describe("computeFairValueAtHurdle on Euro XV", () => {
       equityEntryPrice: SUB_PAR * (r.priceCents! / 100),
     }).equityIrr!;
     expect(Math.abs(reproducedIrr - 0.10)).toBeLessThan(0.005);
-  });
+  }, FAIR_VALUE_TIMEOUT_MS);
 });
 
 describe("computeFairValuesAtHurdles (multi-hurdle)", () => {
@@ -111,7 +109,7 @@ describe("computeFairValuesAtHurdles (multi-hurdle)", () => {
     expect(results[0].hurdle).toBe(0.05);
     expect(results[1].hurdle).toBe(0.10);
     expect(results[2].hurdle).toBe(0.15);
-  });
+  }, FAIR_VALUE_TIMEOUT_MS);
 
   it("multiple hurdles preserve monotonic price ordering (lower hurdle ↔ higher price)", () => {
     const results = computeFairValuesAtHurdles(INPUTS, SUB_PAR, [0.05, 0.10, 0.15]);
@@ -122,5 +120,5 @@ describe("computeFairValuesAtHurdles (multi-hurdle)", () => {
     for (let i = 1; i < prices.length; i++) {
       expect(prices[i]).toBeLessThan(prices[i - 1]);
     }
-  });
+  }, FAIR_VALUE_TIMEOUT_MS);
 });

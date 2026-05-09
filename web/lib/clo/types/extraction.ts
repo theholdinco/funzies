@@ -51,6 +51,7 @@ export interface CapitalStructureEntry {
   clearing?: string;
   amortisationPerPeriod?: string;
   amortStartDate?: string;
+  paymentFrequency?: string;
 }
 
 export interface DealSizing {

@@ -214,7 +214,7 @@ describe("B. Call date × loan maturity interactions", () => {
     const result95 = runProjection(makeInputs({
       callDate: null,
       callPricePct: 95, // should be ignored
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       reinvestmentPeriodEnd: "2026-01-01",
@@ -223,7 +223,7 @@ describe("B. Call date × loan maturity interactions", () => {
     const result100 = runProjection(makeInputs({
       callDate: null,
       callPricePct: 100,
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
       reinvestmentPeriodEnd: "2026-01-01",
@@ -1037,13 +1037,13 @@ describe("J. Loan rating & spread edge cases", () => {
   it("J3: loan with spreadBps = 0 — earns only base rate interest", () => {
     // Branch: line 339: interest = par * (flooredBaseRate + spreadBps/100) / 100 / 4
     const zeroSpread = runProjection(makeInputs({
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 20), ratingBucket: "B", spreadBps: 0 }],
     }));
 
     const withSpread = runProjection(makeInputs({
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       loans: [{ parBalance: 100_000_000, maturityDate: addQuarters("2026-01-15", 20), ratingBucket: "B", spreadBps: 400 }],
     }));
@@ -1406,13 +1406,13 @@ describe("N. Initial principal cash and pre-existing defaults", () => {
 
     const result = runProjection(inputs);
 
-    // Q1-Q4: no recovery yet (4 quarter lag)
-    for (let i = 0; i < 4; i++) {
+    // Q1-Q3: no recovery yet (12-month lag arrives during Q4)
+    for (let i = 0; i < 3; i++) {
       expect(result.periods[i].recoveries).toBe(0);
     }
 
-    // Q5: recovery arrives = 1.5M * 60% = 900K
-    expect(result.periods[4].recoveries).toBeCloseTo(900_000, -2);
+    // Q4: recovery arrives = 1.5M * 60% = 900K
+    expect(result.periods[3].recoveries).toBeCloseTo(900_000, -2);
   });
 
   it("N4: preExistingDefaultedPar with zero recovery produces nothing", () => {
@@ -1456,11 +1456,11 @@ describe("N. Initial principal cash and pre-existing defaults", () => {
     const result = runProjection(inputs);
     const baseResult = runProjection(baseline);
 
-    // Q1 principal paydown higher (cash goes to senior tranche), Q3 has recovery
+    // Q1 principal paydown higher (cash goes to senior tranche), Q2 has recovery
     const q1Principal = result.periods[0].tranchePrincipal.reduce((s, t) => s + t.paid, 0);
     const baseQ1Principal = baseResult.periods[0].tranchePrincipal.reduce((s, t) => s + t.paid, 0);
     expect(q1Principal).toBeGreaterThan(baseQ1Principal);
-    expect(result.periods[2].recoveries).toBeCloseTo(1_200_000, -2);
+    expect(result.periods[1].recoveries).toBeCloseTo(1_200_000, -2);
     expect(result.totalEquityDistributions).toBeGreaterThan(
       baseResult.totalEquityDistributions
     );
@@ -1481,13 +1481,13 @@ describe("N. Initial principal cash and pre-existing defaults", () => {
 
     const result = runProjection(inputs);
 
-    // Q3: total recovery = 300K (priced) + 1M × 60% (unpriced) = 900K
-    expect(result.periods[2].recoveries).toBeCloseTo(900_000, -2);
+    // Q2: total recovery = 300K (priced) + 1M × 60% (unpriced) = 900K
+    expect(result.periods[1].recoveries).toBeCloseTo(900_000, -2);
   });
 
   it("N7: quartersSinceReport adjusts recovery timing — arrives earlier for stale reports", () => {
     // 12-month recovery lag (4 quarters), report is 2 quarters old.
-    // Adjusted arrival = max(1, 1 + 4 - 2) = Q3 instead of Q5.
+    // Adjusted arrival = max(1, 12 - 6) months = Q2 instead of Q4.
     const staleReport = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
       ...noDefaults,
@@ -1513,21 +1513,20 @@ describe("N. Initial principal cash and pre-existing defaults", () => {
     const staleResult = runProjection(staleReport);
     const freshResult = runProjection(freshReport);
 
-    // Stale: recovery at Q3 (1 + 4 - 2 = 3)
-    expect(staleResult.periods[2].recoveries).toBeCloseTo(900_000, -2);
+    // Stale: recovery at Q2
+    expect(staleResult.periods[1].recoveries).toBeCloseTo(900_000, -2);
     expect(staleResult.periods[0].recoveries).toBe(0);
-    expect(staleResult.periods[1].recoveries).toBe(0);
 
-    // Fresh: recovery at Q5 (1 + 4 - 0 = 5)
-    expect(freshResult.periods[4].recoveries).toBeCloseTo(900_000, -2);
-    for (let i = 0; i < 4; i++) {
+    // Fresh: recovery at Q4
+    expect(freshResult.periods[3].recoveries).toBeCloseTo(900_000, -2);
+    for (let i = 0; i < 3; i++) {
       expect(freshResult.periods[i].recoveries).toBe(0);
     }
   });
 
   it("N8: quartersSinceReport exceeds recoveryLag — recovery arrives Q1", () => {
     // Report is 6 quarters old, lag is 4 quarters. Default happened long ago.
-    // Adjusted arrival = max(1, 1 + 4 - 6) = max(1, -1) = Q1.
+    // Adjusted arrival = max(1, 12 - 18) months = Q1.
     const inputs = makeInputs({
       reinvestmentPeriodEnd: "2026-01-01",
       defaultRatesByRating: uniformRates(0),

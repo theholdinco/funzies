@@ -1,8 +1,42 @@
 import type { ResolvedDealData, ResolutionWarning } from "./resolver-types";
 import type { ProjectionInputs } from "./projection";
 import type { IntexAssumptions } from "./intex/parse-past-cashflows";
+import type { PaymentFrequency } from "./payment-frequency";
 import { CLO_DEFAULTS } from "./defaults";
 import { DEFAULT_RATES_BY_RATING } from "./rating-mapping";
+
+function addMonthsAnchoredForBuild(dateIso: string, months: number, anchorDay: number): string {
+  const d = new Date(dateIso);
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(anchorDay, lastDay));
+  return d.toISOString().slice(0, 10);
+}
+
+function nextAlignedPaymentDateAfterBuild(asOfIso: string, anchorDateIso: string, frequencyMonths: number): string {
+  const asOfDate = new Date(asOfIso);
+  const anchorDate = new Date(anchorDateIso);
+  const rawMonthDelta =
+    (asOfDate.getUTCFullYear() - anchorDate.getUTCFullYear()) * 12 +
+    (asOfDate.getUTCMonth() - anchorDate.getUTCMonth());
+  const alignedMonthDelta = Math.floor(rawMonthDelta / frequencyMonths) * frequencyMonths;
+  const anchorDay = anchorDate.getUTCDate();
+  let candidate = addMonthsAnchoredForBuild(anchorDateIso, alignedMonthDelta, anchorDay);
+  while (candidate <= asOfIso) {
+    candidate = addMonthsAnchoredForBuild(candidate, frequencyMonths, anchorDay);
+  }
+  return candidate;
+}
+
+function canonicalPaymentFrequencyForProjection(
+  frequency: ResolvedDealData["tranches"][number]["paymentFrequency"],
+): PaymentFrequency | undefined {
+  if (frequency === "monthly" || frequency === "quarterly" || frequency === "semi_annual") {
+    return frequency;
+  }
+  return undefined;
+}
 
 // Empty resolved data — used when no deal data has been loaded yet.
 // Produces a ProjectionInputs that will fail validation (initialPar = 0)
@@ -679,6 +713,58 @@ export function composeBuildWarnings(
     userAssumptions.deferredInterestCompounds ?? resolved.deferredInterestCompounds;
   for (const t of resolved.tranches) {
     const dib = t.deferredInterestBalance;
+    const paymentFrequency = t.paymentFrequency as string | undefined;
+
+    const isInterestBearing = !t.isIncomeNote && (t.isFloating || t.spreadBps !== 0);
+
+    if (isInterestBearing && (paymentFrequency == null || paymentFrequency === "__missing_payment_frequency__")) {
+      composedWarnings.push({
+        field: `tranches.${t.className}.paymentFrequency`,
+        message:
+          `Tranche "${t.className}" is missing paymentFrequency. KI-36 requires an explicit ` +
+          `tranche or deal payment frequency; refusing to default to quarterly.`,
+        severity: "error",
+        blocking: true,
+      });
+    } else if (
+      !t.isIncomeNote &&
+      paymentFrequency != null &&
+      !["monthly", "quarterly", "semi_annual"].includes(paymentFrequency)
+    ) {
+      composedWarnings.push({
+        field: `tranches.${t.className}.paymentFrequency`,
+        message:
+          `Tranche "${t.className}" has unsupported paymentFrequency "${paymentFrequency}". ` +
+          `Supported values are monthly, quarterly, and semi_annual.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+
+    if (!t.isIncomeNote && t.paymentFrequency === "monthly") {
+      composedWarnings.push({
+        field: `tranches.${t.className}.paymentFrequency`,
+        message:
+          `Tranche "${t.className}" has monthly paymentFrequency. KI-36 v1 supports a monthly ` +
+          `internal accrual clock, but waterfall rows are still deal payment dates; monthly ` +
+          `liability cash-routing is blocked until the deal PPM route is reviewed.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+
+    if (!t.isIncomeNote && t.paymentFrequency === "semi_annual") {
+      if (!resolved.dates.firstPaymentDate) {
+        composedWarnings.push({
+          field: `tranches.${t.className}.paymentFrequency`,
+          message:
+            `Tranche "${t.className}" has semi_annual paymentFrequency but resolved.dates.firstPaymentDate ` +
+            `is missing. The engine needs the first deal payment date to anchor the liability payment phase.`,
+          severity: "error",
+          blocking: true,
+        });
+      }
+    }
 
     // (a) and (a') are INDEPENDENT — a non-deferrable tranche with a
     // negative dib violates two invariants (wrong tranche assignment AND
@@ -1039,6 +1125,12 @@ export function buildFromResolved(
     }
   }
 
+  const requiresPaymentDateStub = resolved.tranches.some((t) => t.paymentFrequency === "semi_annual");
+  const firstProjectedPaymentDate =
+    requiresPaymentDateStub && resolved.dates.firstPaymentDate
+      ? nextAlignedPaymentDateAfterBuild(resolved.dates.currentDate, resolved.dates.firstPaymentDate, 3)
+      : null;
+
   return {
     initialPar: resolved.poolSummary.totalPar,
     wacSpreadBps: resolved.poolSummary.wacSpreadBps,
@@ -1064,6 +1156,12 @@ export function buildFromResolved(
     seniorExpensesCapVatIncluded: userAssumptions.seniorExpensesCapVatIncluded,
     seniorExpensesCapVatRatePct: userAssumptions.seniorExpensesCapVatRatePct,
     firstPaymentDate: resolved.dates.firstPaymentDate,
+    ...(firstProjectedPaymentDate
+      ? {
+          stubPeriod: true,
+          firstPeriodEndDate: firstProjectedPaymentDate,
+        }
+      : {}),
     hedgeCostBps: userAssumptions.hedgeCostBps,
     incentiveFeePct: userAssumptions.incentiveFeePct,
     incentiveFeeHurdleIrr: userAssumptions.incentiveFeeHurdleIrr / 100, // convert from % to decimal
@@ -1090,6 +1188,7 @@ export function buildFromResolved(
       priorShortfallCount: t.priorShortfallCount,
       deferredInterestBalance: t.deferredInterestBalance,
       dayCountConvention: t.dayCountConvention,
+      paymentFrequency: canonicalPaymentFrequencyForProjection(t.paymentFrequency),
     })),
     ocTriggers: resolved.ocTriggers.map(t => ({
       className: t.className,

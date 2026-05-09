@@ -85,11 +85,11 @@ describe("engine pari-passu absorption — interest waterfall", () => {
   it("B-1 + B-2 split available interest pro-rata by interest-due under shortfall", () => {
     // Senior mgmt fee tuned so available interest reaches the J-group with
     // strictly less than total J-group due — the discriminating shortfall
-    // scenario. At 4.5% senior mgmt fee on this fixture, J-1 receives
-    // ~€70K of €479K due, J-2 ~€55K of €376K due. Both partial; pro-rata
+    // scenario. Under KI-36 monthly asset timing, 4.2% senior mgmt fee leaves
+    // J-1 with ~€204K of €479K due and J-2 with ~€160K of €376K due. Both partial; pro-rata
     // by interest-due holds (paid_J1/paid_J2 == due_J1/due_J2 to ~1e-4).
     const inputs = makeSplitBInputs({
-      seniorFeePct: 4.5,
+      seniorFeePct: 4.2,
       icTriggers: [],
       ocTriggers: [],
     });

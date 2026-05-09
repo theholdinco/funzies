@@ -174,6 +174,23 @@ describe("Engine accepts callDate beyond maturity (deal matures naturally)", () 
       expect(callResult.equityIrr).toBeCloseTo(noCallResult.equityIrr, 10);
     }
   });
+
+  it("callDate after legal maturity in the same regular payment bucket does not extend maturity", () => {
+    const inputs: ProjectionInputs = {
+      ...makeInputs({
+        defaultRatesByRating: uniformRates(0),
+        cprPct: 0,
+        maturityDate: "2026-05-09",
+      }),
+      callMode: "optionalRedemption",
+      callDate: "2026-06-01",
+      nonCallPeriodEnd: null,
+    };
+
+    const result = runProjection(inputs);
+    expect(result.periods).toHaveLength(1);
+    expect(result.periods[0].date).toBe("2026-05-09");
+  });
 });
 
 // =============================================================================
@@ -271,4 +288,3 @@ describe("Priority: past wins over preNcp when both apply", () => {
     expect((captured as InvalidCallDateError).reason).toBe("past");
   });
 });
-

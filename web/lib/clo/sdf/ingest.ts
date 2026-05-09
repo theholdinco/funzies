@@ -612,7 +612,7 @@ async function processNotes(
            spread_bps = COALESCE($4, spread_bps),
            reference_rate = COALESCE($5, reference_rate),
            original_balance = COALESCE($6, original_balance),
-           payment_frequency = COALESCE($7, payment_frequency),
+           payment_frequency = $7,
            day_count_convention = COALESCE($8, day_count_convention),
            cusip = COALESCE($9, cusip),
            isin = COALESCE($10, isin),

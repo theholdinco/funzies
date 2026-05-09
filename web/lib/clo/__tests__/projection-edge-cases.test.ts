@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { runProjection, addQuarters, ProjectionInputs, LoanInput } from "../projection";
 import { RATING_BUCKETS } from "../rating-mapping";
 import { CLO_DEFAULTS } from "../defaults";
-import { noDefaultsPath } from "./test-helpers";
+import { noDefaults, noDefaultsPath } from "./test-helpers";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -237,7 +237,7 @@ describe("1. Partial Cure Precision", () => {
     // Interest income just under required multiple of interest due.
     const inputs = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01", // outside RP
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
 
@@ -551,7 +551,7 @@ describe("3. Boundary Conditions", () => {
     // par/denom < 1.10. With denom=90M, par = 90M * 1.09999 = 98_999_100
     const inputs = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
 
@@ -758,7 +758,7 @@ describe("5. Class X / Amortising Edge Cases", () => {
     // Class X amort + Class A interest share pro rata in the shortfall.
     const inputs = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
 
@@ -1116,7 +1116,7 @@ describe("8. Principal Waterfall / Preliminary Paydown", () => {
     // Excess should become equity distribution.
     const inputs = makeSimpleInputs({
       reinvestmentPeriodEnd: "2026-01-01",
-      defaultRatesByRating: uniformRates(0),
+      ...noDefaults,
       cprPct: 0,
       recoveryPct: 0,
 

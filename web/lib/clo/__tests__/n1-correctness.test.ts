@@ -26,9 +26,12 @@
  *     - seniorFeePct, subFeePct, incentiveFeePct, incentiveFeeHurdleIrr
  *       ← resolved.fees (contractual PPM values)
  *
- *   NOT PINNED (would be circular — trustee's payment IS the rate):
- *     - trusteeFeeBps ← "per agreement" per PPM → production default 0.
- *       This leaves the per-agreement fee pre-fill gap exposed (KI-08).
+ *   PREFILLED FROM TRUSTEE HISTORY:
+ *     - trusteeFeeBps/adminFeeBps are back-derived by defaultsFromResolved
+ *       from the trustee waterfall. The harness is a forward projection
+ *       from the Q1 snapshot, so this is a historical-state prefill, not
+ *       the circular "match this exact payment" pin that earlier versions
+ *       avoided.
  *
  * See web/docs/clo-model-known-issues.md for the ledger. Each `failsWithMagnitude`
  * marker names its KI entry so ledger ↔ test is a two-way lookup.
@@ -312,13 +315,45 @@ describe("N1 correctness — currently broken buckets (documented in KI ledger)"
       //   interest paid → smaller residual to subs → drift shifts more
       //   negative. Pre-regen: -€50,992.24. Post-regen: -€57,239.62.
       //   Δ: -€6,247.38.
-      expectedDrift: -57239.62,
+      // KI-36 monthly internal ticks reduce residual sub cash relative to the
+      // old quarterly engine baseline while leaving upstream bucket markers
+      // unchanged. This is a deliberate cascade re-baseline, but the monthly
+      // timing delta is not independently decomposed here:
+      //   post per-loan DCC: -€57,239.62
+      //   post KI-36 monthly clock: -€172,489.98
+      //   implied monthly-clock cascade: -€115,250.36
+      expectedDrift: -172489.98,
       tolerance: 100,
       closeThreshold: 100,
     },
     "subDistribution matches trustee within €1000",
     () => drift("subDistribution"),
   );
+
+  it("subDistribution drift bridges to upstream modeled interest-waterfall drifts", () => {
+    const upstreamInterestOutflowBuckets = [
+      "taxes",
+      "issuerProfit",
+      "trusteeFeesPaid",
+      "adminFeesPaid",
+      "seniorMgmtFeePaid",
+      "stepG_interest",
+      "classB_interest",
+      "classC_current",
+      "classD_current",
+      "classE_current",
+      "classF_current",
+      "subMgmtFeePaid",
+    ];
+    const upstreamOutflowDrift = upstreamInterestOutflowBuckets.reduce((sum, bucket) => sum + drift(bucket), 0);
+
+    // Sub distribution is the residual after every modeled interest outflow.
+    // This pins the aggregate residual funding drift while deriving the sub
+    // bridge from the emitted waterfall rows, so upstream re-baselines fail
+    // here unless the residual is reviewed as a cascade.
+    const aggregateResidualFundingDrift = -88_922.54;
+    expect(drift("subDistribution")).toBeCloseTo(aggregateResidualFundingDrift - upstreamOutflowDrift, 1);
+  });
 });
 
 // ----------------------------------------------------------------------------

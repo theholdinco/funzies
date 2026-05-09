@@ -485,6 +485,38 @@ describe("Supplemental Reserve opening balance — PPM 3(j)(vi) manager discreti
 });
 
 describe("openingAccountBalances on initialState — canonical T=0 emission", () => {
+  it("Unused Proceeds Account credits equity book value, T=0 OC, and Q1 principal cash", () => {
+    const baseline = runProjection({
+      ...BASE_INPUTS(),
+      reinvestmentPeriodEnd: null,
+      postRpReinvestmentPct: 0,
+    });
+    const withUnused = runProjection({
+      ...BASE_INPUTS(),
+      reinvestmentPeriodEnd: null,
+      postRpReinvestmentPct: 0,
+      initialUnusedProceedsCash: 600,
+    });
+
+    const principalPaid = withUnused.periods[0].tranchePrincipal.reduce((s, p) => s + p.paid, 0);
+    const baselinePrincipalPaid = baseline.periods[0].tranchePrincipal.reduce((s, p) => s + p.paid, 0);
+
+    expect(withUnused.initialState.equityBookValue - baseline.initialState.equityBookValue).toBeCloseTo(600, 6);
+    expect(withUnused.initialState.ocNumerator - baseline.initialState.ocNumerator).toBeCloseTo(600, 6);
+    expect(principalPaid - baselinePrincipalPaid).toBeCloseTo(600, 6);
+  });
+
+  it("Unused Proceeds Account earns Q1 account yield like Principal Account cash", () => {
+    const baseline = runProjection(BASE_INPUTS());
+    const withUnused = runProjection({
+      ...BASE_INPUTS(),
+      initialUnusedProceedsCash: 1_000_000,
+    });
+    const delta = withUnused.periods[0].interestCollected - baseline.periods[0].interestCollected;
+    expect(delta).toBeGreaterThan(0);
+    expect(delta).toBeLessThan(15_000);
+  });
+
   it("echoes input balances field-by-field; reads as the partner-facing T=0 row", () => {
     const result = runProjection({
       ...BASE_INPUTS(),
@@ -503,6 +535,19 @@ describe("openingAccountBalances on initialState — canonical T=0 emission", ()
       supplementalReserveBalance: 400,
       expenseReserveBalance: 500,
     });
+  });
+
+  it("emits Q1 beginning period account balances for modeled opening account cash", () => {
+    const result = runProjection({
+      ...BASE_INPUTS(),
+      initialPrincipalCash: 100,
+      initialUnusedProceedsCash: 600,
+      initialInterestAccountCash: 200,
+      initialInterestSmoothingBalance: 300,
+    });
+
+    expect(result.periods[0].beginningPrincipalAccount).toBeCloseTo(700, 6);
+    expect(result.periods[0].beginningInterestAccount).toBeCloseTo(500, 6);
   });
 
   it("zero by default (no inputs set)", () => {

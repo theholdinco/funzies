@@ -298,6 +298,21 @@ describe("non-deferrable senior interest shortfall — EoD trigger (PPM § 10(a)
     expect(a2.due).toBeGreaterThan(1_100_000);
   });
 
+  it("priorInterestShortfall carry does not itself consume a new grace period when current interest is paid", () => {
+    const inputs = makeStressInputs(0.15, { interestNonPaymentGracePeriods: 0 });
+    inputs.tranches = inputs.tranches.map((t) =>
+      t.className === "A"
+        ? { ...t, priorInterestShortfall: 1_000_000 }
+        : t,
+    );
+
+    const result = runProjection(inputs);
+    expect(result.periods[0].isAccelerated).toBe(false);
+    expect(result.periods[1].isAccelerated).toBe(false);
+    expect(result.periods[0].interestShortfall.A).toBeCloseTo(1_000_000, 0);
+    expect(result.periods[0].interestShortfallCount.A ?? 0).toBe(0);
+  });
+
   it("post-EoD handoff: pre-accel shortfall folds into post-accel interestDueByTranche", () => {
     const result = runProjection(makeStressInputs(30, { interestNonPaymentGracePeriods: 1 }));
     // Period 1: shortfall accrues, count=1 (1>1=false). Period 2: shortfall

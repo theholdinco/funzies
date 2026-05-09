@@ -120,7 +120,8 @@ describe("A1 — integration: equityEntryPriceCents flows through to engine IRR"
     // through `buildFromResolved` from the pool-WAS-derived current price
     // (~96c on Euro XV vs the prior par-purchase assumption of 100); the
     // resulting cure leverage on synthesised reinvestment loans nudges the
-    // gap to −16.23pp.
+    // gap to −16.23pp. KI-36's monthly internal asset/accrual timing
+    // re-baselines the same plumbing anchor to −15.28pp.
     const inputs95 = buildFromResolved(fixture.resolved, {
       ...DEFAULT_ASSUMPTIONS,
       equityEntryPriceCents: 95,
@@ -138,6 +139,6 @@ describe("A1 — integration: equityEntryPriceCents flows through to engine IRR"
     // Magnitude: within ±1pp of the documented −16.23pp anchor. If this moves,
     // a material engine change happened — either A1's plumbing or downstream
     // IRR / cashflow logic.
-    expect(gapPp).toBeCloseTo(-16.23, 0);
+    expect(gapPp).toBeCloseTo(-15.28, 0);
   });
 });
