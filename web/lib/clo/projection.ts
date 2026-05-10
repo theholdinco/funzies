@@ -153,6 +153,24 @@ export interface LoanInput {
    *  PoolQualityMetrics, and the switch-simulator's industry-delta
    *  recompute. Undefined when the deal has no clause (t). */
   industryCode?: string;
+  /** Raw asset interest payment period text from holdings/accrual detail
+   *  (for example "1 Month", "Quarterly", "6 Months"). Informational and
+   *  used for validation when an anchored but unsupported schedule arrives. */
+  assetPaymentPeriodRaw?: string | null;
+  /** Normalized asset interest payment interval in months. Supported values:
+   *  1, 2, 3, and 6. When absent, the loan stays in compatibility mode and
+   *  accrued interest is collected monthly as before. */
+  assetPaymentIntervalMonths?: number | null;
+  assetPaymentScheduleSource?: "holding" | "accrual" | null;
+  /** Next borrower interest payment date anchor. Frequency alone is not
+   *  enough to move to schedule mode. */
+  nextPaymentDate?: string | null;
+  accrualBeginDate?: string | null;
+  accrualEndDate?: string | null;
+  /** Opening asset interest receivable at projection start. Prefer extracted
+   *  accrued interest; when absent, the engine can compute opening receivable
+   *  from accrualBeginDate to currentDate only for complete schedules. */
+  openingAccruedInterest?: number | null;
 }
 
 // C2 — Coarse RatingBucket → Moody's WARF factor. Imported from pool-metrics.ts
@@ -805,6 +823,10 @@ export interface PeriodResult {
   beginningInterestAccount: number;
   endingInterestAccount: number;
   interestCollected: number;
+  /** Asset interest accrued but not yet cash-received because scheduled asset
+   *  payment dates fall after this period end. Zero for compatibility-mode
+   *  loans whose interest is collected as accrued. */
+  endingAssetInterestReceivable: number;
   beginningLiabilities: number;
   endingLiabilities: number;
   trancheInterest: { className: string; due: number; paid: number }[];
@@ -1616,6 +1638,28 @@ export function addMonths(dateIso: string, months: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+function isValidIsoDate(value: string | null | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const d = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
+}
+
+export function normalizeAssetPaymentIntervalMonths(raw: string | null | undefined): number | null {
+  if (raw == null) return null;
+  const text = String(raw).trim().toLowerCase();
+  if (!text) return null;
+  if (/^(monthly|1\s*m(?:onth)?s?)$/.test(text)) return 1;
+  if (/^(bi[-\s]?monthly|bimonthly|2\s*m(?:onth)?s?)$/.test(text)) return 2;
+  if (/^(quarterly|qtrly|3\s*m(?:onth)?s?)$/.test(text)) return 3;
+  if (/^(semi[-\s]?annual|semiannually|semi[-\s]?annually|6\s*m(?:onth)?s?)$/.test(text)) return 6;
+  const m = text.match(/^(\d+)\s*(?:m|month|months)$/);
+  if (m) {
+    const months = Number(m[1]);
+    return months === 1 || months === 2 || months === 3 || months === 6 ? months : null;
+  }
+  return null;
+}
+
 function addMonthsAnchored(dateIso: string, months: number, anchorDay: number): string {
   const d = new Date(dateIso);
   d.setUTCDate(1);
@@ -1623,6 +1667,12 @@ function addMonthsAnchored(dateIso: string, months: number, anchorDay: number): 
   const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
   d.setUTCDate(Math.min(anchorDay, lastDay));
   return d.toISOString().slice(0, 10);
+}
+
+function anchorDayForAssetPaymentDate(dateIso: string): number {
+  const d = new Date(`${dateIso}T00:00:00.000Z`);
+  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  return d.getUTCDate() === lastDay ? 31 : d.getUTCDate();
 }
 
 export function monthsBetween(startIso: string, endIso: string): number {
@@ -1815,6 +1865,47 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     if (exposedCurrencySet.size > 0 || unknownCurrencyExposure > 0 || initialPar > 0) {
       throw new Error(
         `ProjectionInputs dealCurrency is missing; refuse to sum collateral balances without a verified deal currency.`,
+      );
+    }
+  }
+  for (const loan of loans) {
+    if (
+      loan.openingAccruedInterest != null &&
+      (!Number.isFinite(loan.openingAccruedInterest) || loan.openingAccruedInterest < 0)
+    ) {
+      throw new Error(
+        `Loan maturing ${loan.maturityDate} has invalid opening accrued interest ` +
+          `${loan.openingAccruedInterest}; expected a finite non-negative receivable.`,
+      );
+    }
+    const exposure = Math.max(0, loan.parBalance ?? 0) + Math.max(0, loan.undrawnCommitment ?? 0);
+    if (exposure <= 0) continue;
+    const hasAnchor = isValidIsoDate(loan.nextPaymentDate);
+    const rawAssetInterval = normalizeAssetPaymentIntervalMonths(loan.assetPaymentPeriodRaw);
+    if (
+      hasAnchor &&
+      rawAssetInterval != null &&
+      loan.assetPaymentIntervalMonths != null &&
+      loan.assetPaymentIntervalMonths !== rawAssetInterval
+    ) {
+      throw new Error(
+        `Loan maturing ${loan.maturityDate} has conflicting asset payment interval evidence: ` +
+          `"${loan.assetPaymentPeriodRaw}" implies ${rawAssetInterval} months but ` +
+          `assetPaymentIntervalMonths is ${loan.assetPaymentIntervalMonths}.`,
+      );
+    }
+    const normalizedInterval =
+      loan.assetPaymentIntervalMonths ?? rawAssetInterval;
+    if (hasAnchor && loan.assetPaymentPeriodRaw && rawAssetInterval == null) {
+      throw new Error(
+        `Loan maturing ${loan.maturityDate} has unsupported anchored asset payment period ` +
+          `"${loan.assetPaymentPeriodRaw}". Supported asset interest intervals are 1, 2, 3, and 6 months.`,
+      );
+    }
+    if (hasAnchor && normalizedInterval != null && ![1, 2, 3, 6].includes(normalizedInterval)) {
+      throw new Error(
+        `Loan maturing ${loan.maturityDate} has unsupported anchored asset payment interval ` +
+          `${normalizedInterval} months. Supported values are 1, 2, 3, and 6.`,
       );
     }
   }
@@ -2169,6 +2260,14 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
      *  clause (t) or when the position was synthesised pre-industry-cap
      *  (legacy fixture path). */
     industryCode?: string;
+    assetPaymentPeriodRaw?: string | null;
+    assetPaymentIntervalMonths?: number | null;
+    assetPaymentScheduleSource?: "holding" | "accrual" | null;
+    nextPaymentDate?: string | null;
+    assetPaymentAnchorDay?: number | null;
+    accrualBeginDate?: string | null;
+    accrualEndDate?: string | null;
+    assetInterestReceivable: number;
   }
 
   // Per-deal Rating Agencies subset is required. Production callers via
@@ -2195,52 +2294,218 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     );
   }
 
-  const loanStates: LoanState[] = loans.map((l) => ({
-    survivingPar: l.parBalance,
-    maturityDate: l.maturityDate,
-    // Don't clamp to totalQuarters — loans with maturity beyond the call/maturity date
-    // should NOT be treated as maturing at par. Instead, they remain as surviving par
-    // that gets liquidated at callPricePct on the final period.
-    maturityQuarter: Math.max(1, quartersBetween(currentDate, l.maturityDate)),
-    maturityMonth: Math.max(1, monthsBetween(currentDate, l.maturityDate)),
-    ratingBucket: l.ratingBucket,
-    spreadBps: l.spreadBps,
-    warfFactor: resolveWarfFactor(l.warfFactor, l.ratingBucket),
-    isFixedRate: l.isFixedRate,
-    fixedCouponPct: l.fixedCouponPct,
-    isDeferring: l.isDeferring,
-    isLossMitigationLoan: l.isLossMitigationLoan,
-    currency: canonicalCurrency(l.currency) ?? l.currency,
-    moodysRatingFinal: l.moodysRatingFinal,
-    fitchRatingFinal: l.fitchRatingFinal,
-    moodysRatingSource: l.moodysRatingSource,
-    isCreditEstimateOrPrivateRating: l.isCreditEstimateOrPrivateRating,
-    isDelayedDraw: l.isDelayedDraw,
-    isRevolving: l.isRevolving,
-    undrawnCommitment: l.undrawnCommitment ?? 0,
-    ddtlSpreadBps: l.ddtlSpreadBps,
-    drawQuarter: l.drawQuarter,
-    currentPrice: l.currentPrice,
-    defaultedParPending: 0,
-    defaultEvents: [],
-    dayCountConvention: l.dayCountConvention,
-    floorRate: l.floorRate,
-    recoveryRateAgency: resolveAgencyRecovery(
-      { moodys: l.recoveryRateMoodys, sp: l.recoveryRateSp, fitch: l.recoveryRateFitch },
-      ratingAgencies,
-      // No mvFloor at the forward-default site: at default-time the trustee-
-      // reported `currentPrice` is a stale pre-default snapshot, not informative
-      // about post-default workout recovery. The PPM's `min(MV, RR)` per-agency
-      // construction governs the T=0 OC numerator (Adjusted CPA paragraph (e),
-      // oc.txt:7120-7124), not the modeled cash recovery upon a forward default.
-    ),
-    pikSpreadBps: l.pikSpreadBps,
-    purchasePricePct: l.purchasePricePct,
-    acquisitionDate: l.acquisitionDate,
-    isDiscountObligation: l.isDiscountObligation,
-    isLongDated: l.isLongDated,
-    industryCode: l.industryCode,
-  }));
+  const computeLoanInterestAccrual = (
+    loan: Pick<LoanState, "isFixedRate" | "fixedCouponPct" | "floorRate" | "spreadBps" | "dayCountConvention">,
+    par: number,
+    startIso: string,
+    endIso: string,
+  ): number => {
+    if (par <= 0 || endIso <= startIso) return 0;
+    const convention = loan.dayCountConvention ?? "actual_360";
+    const frac = dayCountFraction(convention, startIso, endIso);
+    if (loan.isFixedRate) return par * (loan.fixedCouponPct ?? 0) / 100 * frac;
+    const loanFlooredBase = Math.max(loan.floorRate ?? baseRateFloorPct, baseRatePct);
+    return par * (loanFlooredBase + loan.spreadBps / 100) / 100 * frac;
+  };
+  const releaseAssetReceivableForPrepay = (loan: LoanState, prepay: number, parBeforePrepay: number): number => {
+    if (prepay <= 0 || parBeforePrepay <= 0 || loan.assetInterestReceivable <= 0) return 0;
+    const releasedReceivable = loan.assetInterestReceivable * Math.min(1, prepay / parBeforePrepay);
+    loan.assetInterestReceivable = Math.max(0, loan.assetInterestReceivable - releasedReceivable);
+    return releasedReceivable;
+  };
+  const writeOffAssetReceivableForDefault = (loan: LoanState, defaulted: number, parBeforeDefault: number) => {
+    if (defaulted <= 0 || parBeforeDefault <= 0 || loan.assetInterestReceivable <= 0) return;
+    const writtenOffReceivable = loan.assetInterestReceivable * Math.min(1, defaulted / parBeforeDefault);
+    loan.assetInterestReceivable = Math.max(0, loan.assetInterestReceivable - writtenOffReceivable);
+  };
+
+  const rollAssetPaymentDateAfter = (
+    dateIso: string | null | undefined,
+    intervalMonths: number | null | undefined,
+    asOfIso: string,
+    anchorDay?: number | null,
+  ): string | null => {
+    if (!isValidIsoDate(dateIso) || intervalMonths == null || ![1, 2, 3, 6].includes(intervalMonths)) return null;
+    let candidate = dateIso;
+    const paymentAnchorDay = anchorDay ?? new Date(`${dateIso}T00:00:00.000Z`).getUTCDate();
+    while (candidate <= asOfIso) {
+      candidate = addMonthsAnchored(candidate, intervalMonths, paymentAnchorDay);
+    }
+    return candidate;
+  };
+  const rollAssetPaymentDateAfterWithPrevious = (
+    dateIso: string | null | undefined,
+    intervalMonths: number | null | undefined,
+    asOfIso: string,
+    anchorDay?: number | null,
+  ): { next: string | null; previous: string | null } => {
+    if (!isValidIsoDate(dateIso) || intervalMonths == null || ![1, 2, 3, 6].includes(intervalMonths)) {
+      return { next: null, previous: null };
+    }
+    let candidate = dateIso;
+    let previous: string | null = null;
+    const paymentAnchorDay = anchorDay ?? new Date(`${dateIso}T00:00:00.000Z`).getUTCDate();
+    while (candidate <= asOfIso) {
+      previous = candidate;
+      candidate = addMonthsAnchored(candidate, intervalMonths, paymentAnchorDay);
+    }
+    return { next: candidate, previous };
+  };
+
+  const scheduledAssetCashAndReceivableThrough = (
+    loan: LoanState,
+    startIso: string,
+    endIso: string,
+  ): { cashDue: number; receivable: number } => {
+    if (loan.survivingPar <= 0 || loan.assetPaymentIntervalMonths == null || loan.nextPaymentDate == null) {
+      return { cashDue: 0, receivable: 0 };
+    }
+    let nextPaymentDate = rollAssetPaymentDateAfter(
+      loan.nextPaymentDate,
+      loan.assetPaymentIntervalMonths,
+      startIso,
+      loan.assetPaymentAnchorDay,
+    );
+    let cursor = startIso;
+    let receivable = loan.assetInterestReceivable;
+    let cashDue = 0;
+    while (nextPaymentDate != null && nextPaymentDate <= endIso) {
+      receivable += computeLoanInterestAccrual(loan, loan.survivingPar, cursor, nextPaymentDate);
+      cashDue += receivable;
+      receivable = 0;
+      cursor = nextPaymentDate;
+      nextPaymentDate = rollAssetPaymentDateAfter(
+        nextPaymentDate,
+        loan.assetPaymentIntervalMonths,
+        nextPaymentDate,
+        loan.assetPaymentAnchorDay,
+      );
+    }
+    receivable += computeLoanInterestAccrual(loan, loan.survivingPar, cursor, endIso);
+    return { cashDue, receivable };
+  };
+
+  const scheduledAssetCashDueThrough = (loan: LoanState, startIso: string, endIso: string): number => {
+    return scheduledAssetCashAndReceivableThrough(loan, startIso, endIso).cashDue;
+  };
+
+  const scheduledAssetCashDueThroughActiveEnd = (
+    loan: LoanState,
+    startIso: string,
+    endIso: string,
+    forceReleaseAtEnd = false,
+  ): number => {
+    if (loan.survivingPar <= 0 || loan.assetPaymentIntervalMonths == null || loan.nextPaymentDate == null) return 0;
+    if (loan.maturityDate <= startIso) return loan.assetInterestReceivable;
+    const activeEndDate = loan.maturityDate > startIso && loan.maturityDate < endIso ? loan.maturityDate : endIso;
+    const due = scheduledAssetCashAndReceivableThrough(loan, startIso, activeEndDate);
+    const releasesReceivableAtEnd =
+      forceReleaseAtEnd || (loan.maturityDate > startIso && loan.maturityDate <= endIso);
+    return due.cashDue + (releasesReceivableAtEnd ? due.receivable : 0);
+  };
+
+  const loanStates: LoanState[] = loans.map((l) => {
+    const normalizedAssetInterval =
+      l.assetPaymentIntervalMonths ?? normalizeAssetPaymentIntervalMonths(l.assetPaymentPeriodRaw);
+    const validNextPaymentDate = isValidIsoDate(l.nextPaymentDate) ? l.nextPaymentDate : null;
+    const assetPaymentAnchorDay = validNextPaymentDate == null
+      ? null
+      : anchorDayForAssetPaymentDate(validNextPaymentDate);
+    const rolledAssetPayment = validNextPaymentDate == null
+      ? { next: null, previous: null }
+      : rollAssetPaymentDateAfterWithPrevious(
+          validNextPaymentDate,
+          normalizedAssetInterval,
+          currentDate,
+          assetPaymentAnchorDay,
+        );
+    const scheduledAssetPayment =
+      Math.max(0, l.parBalance ?? 0) + Math.max(0, l.undrawnCommitment ?? 0) > 0 &&
+      normalizedAssetInterval != null &&
+      [1, 2, 3, 6].includes(normalizedAssetInterval) &&
+      validNextPaymentDate != null;
+    const state: LoanState = {
+      survivingPar: l.parBalance,
+      maturityDate: l.maturityDate,
+      // Don't clamp to totalQuarters — loans with maturity beyond the call/maturity date
+      // should NOT be treated as maturing at par. Instead, they remain as surviving par
+      // that gets liquidated at callPricePct on the final period.
+      maturityQuarter: Math.max(1, quartersBetween(currentDate, l.maturityDate)),
+      maturityMonth: Math.max(1, monthsBetween(currentDate, l.maturityDate)),
+      ratingBucket: l.ratingBucket,
+      spreadBps: l.spreadBps,
+      warfFactor: resolveWarfFactor(l.warfFactor, l.ratingBucket),
+      isFixedRate: l.isFixedRate,
+      fixedCouponPct: l.fixedCouponPct,
+      isDeferring: l.isDeferring,
+      isLossMitigationLoan: l.isLossMitigationLoan,
+      currency: canonicalCurrency(l.currency) ?? l.currency,
+      moodysRatingFinal: l.moodysRatingFinal,
+      fitchRatingFinal: l.fitchRatingFinal,
+      moodysRatingSource: l.moodysRatingSource,
+      isCreditEstimateOrPrivateRating: l.isCreditEstimateOrPrivateRating,
+      isDelayedDraw: l.isDelayedDraw,
+      isRevolving: l.isRevolving,
+      undrawnCommitment: l.undrawnCommitment ?? 0,
+      ddtlSpreadBps: l.ddtlSpreadBps,
+      drawQuarter: l.drawQuarter,
+      currentPrice: l.currentPrice,
+      defaultedParPending: 0,
+      defaultEvents: [],
+      dayCountConvention: l.dayCountConvention,
+      floorRate: l.floorRate,
+      recoveryRateAgency: resolveAgencyRecovery(
+        { moodys: l.recoveryRateMoodys, sp: l.recoveryRateSp, fitch: l.recoveryRateFitch },
+        ratingAgencies,
+        // No mvFloor at the forward-default site: at default-time the trustee-
+        // reported `currentPrice` is a stale pre-default snapshot, not informative
+        // about post-default workout recovery. The PPM's `min(MV, RR)` per-agency
+        // construction governs the T=0 OC numerator (Adjusted CPA paragraph (e),
+        // oc.txt:7120-7124), not the modeled cash recovery upon a forward default.
+      ),
+      pikSpreadBps: l.pikSpreadBps,
+      purchasePricePct: l.purchasePricePct,
+      acquisitionDate: l.acquisitionDate,
+      isDiscountObligation: l.isDiscountObligation,
+      isLongDated: l.isLongDated,
+      industryCode: l.industryCode,
+      assetPaymentPeriodRaw: l.assetPaymentPeriodRaw,
+      assetPaymentIntervalMonths: scheduledAssetPayment ? normalizedAssetInterval : null,
+      assetPaymentScheduleSource: l.assetPaymentScheduleSource ?? null,
+      nextPaymentDate: scheduledAssetPayment ? rolledAssetPayment.next : null,
+      assetPaymentAnchorDay: scheduledAssetPayment ? assetPaymentAnchorDay : null,
+      accrualBeginDate: l.accrualBeginDate,
+      accrualEndDate: l.accrualEndDate,
+      assetInterestReceivable: 0,
+    };
+    if (l.openingAccruedInterest != null) {
+      state.assetInterestReceivable = Math.max(0, l.openingAccruedInterest);
+    } else if (scheduledAssetPayment) {
+      if (isValidIsoDate(l.accrualBeginDate) && l.accrualBeginDate < currentDate) {
+        const openingAccrualStart =
+          rolledAssetPayment.previous != null && rolledAssetPayment.previous > l.accrualBeginDate
+            ? rolledAssetPayment.previous
+            : l.accrualBeginDate;
+        state.assetInterestReceivable = computeLoanInterestAccrual(state, l.parBalance, openingAccrualStart, currentDate);
+      } else if (rolledAssetPayment.next != null && normalizedAssetInterval != null && assetPaymentAnchorDay != null) {
+        const inferredPreviousPaymentDate = addMonthsAnchored(
+          rolledAssetPayment.next,
+          -normalizedAssetInterval,
+          assetPaymentAnchorDay,
+        );
+        if (inferredPreviousPaymentDate < currentDate) {
+          state.assetInterestReceivable = computeLoanInterestAccrual(
+            state,
+            l.parBalance,
+            inferredPreviousPaymentDate,
+            currentDate,
+          );
+        }
+      }
+    }
+    return state;
+  });
+  const openingAssetInterestReceivable = loanStates.reduce((sum, loan) => sum + loan.assetInterestReceivable, 0);
 
   // Remove never-draw DDTL/revolver commitments (drawQuarter <= 0) — the un-
   // drawn notional terminates without funding, so it shouldn't sit on the OC
@@ -2263,6 +2528,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   }
 
   const hasLoans = loanStates.length > 0;
+  const hasScheduledAssetPayments = hasLoans && loanStates.some(
+    (l) => l.assetPaymentIntervalMonths != null && l.nextPaymentDate != null,
+  );
   // Average loan size — used to chunk reinvestment into realistic individual
   // loans for Monte Carlo. "Funded" = currently-drawn par > 0 — independent
   // of the isDelayedDraw facility-type tag (a fully-drawn DDTL is funded).
@@ -2712,7 +2980,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     initialSupplementalReserveBalance +
     initialExpenseReserveBalance;
   const totalAssets = hasLoans
-    ? loanTotal + initialPrincipalCash + initialUnusedProceedsCash + reserveAccountTotal
+    ? loanTotal + openingAssetInterestReceivable + initialPrincipalCash + initialUnusedProceedsCash + reserveAccountTotal
     : initialPar + initialPrincipalCash + initialUnusedProceedsCash + reserveAccountTotal;
   // The Math.max(0, totalAssets - totalDebtOutstanding) here is an
   // ACCOUNTING-CONVENTION floor (Phase 8 triage category β): negative
@@ -2981,7 +3249,28 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // including taxes (A.i) and admin (C), which were missing pre-Sprint-3
     // and broke the KI-IC-AB/C/D cascade (closures of KI-08 and the taxes/issuerProfit upstream didn't
     // move observed drift because this computation wasn't deducting them).
-    const scheduledInterestOnCollateral = poolPar * (wacSpreadBps / 10000 + baseRatePct / 100) * t0DayFracActual;
+    const scheduledInterestOnCollateral = hasScheduledAssetPayments
+      ? loanStates.reduce((sum, loan) => {
+          if (loan.survivingPar <= 0) return sum;
+          if (loan.assetPaymentIntervalMonths == null || loan.nextPaymentDate == null) {
+            const activeEndDate =
+              loan.maturityDate <= currentDate
+                ? currentDate
+                : loan.maturityDate < firstProjectedPaymentDateT0
+                ? loan.maturityDate
+                : firstProjectedPaymentDateT0;
+            if (activeEndDate <= currentDate) return sum;
+            const activeDayFrac = dayCountFraction("actual_360", currentDate, activeEndDate);
+            return sum + loan.assetInterestReceivable + loan.survivingPar * (wacSpreadBps / 10000 + baseRatePct / 100) * activeDayFrac;
+          }
+          return sum + scheduledAssetCashDueThroughActiveEnd(
+            loan,
+            currentDate,
+            firstProjectedPaymentDateT0,
+            totalQuarters === 1,
+          );
+        }, 0)
+      : openingAssetInterestReceivable + poolPar * (wacSpreadBps / 10000 + baseRatePct / 100) * t0DayFracActual;
     const taxesAmountT0 = poolPar * (taxesBps / 10000) * t0DayFracActual;
     // Issuer Profit is a fixed € per period (not par-scaled), same
     // absolute value at T=0 as in the forward loop. Deducting at T=0 keeps
@@ -3411,6 +3700,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           bopTrancheBalances[t.className] * trancheCouponRate(t, baseRatePct, baseRateFloorPct) * frac;
       }
       const loanBeginningPar = hasLoans ? loanStates.map((l) => l.survivingPar) : [];
+      const defaultsThisTick = hasScheduledAssetPayments ? loanStates.map(() => 0) : [];
+      const parBeforeDefaultThisTick = hasScheduledAssetPayments ? loanStates.map(() => 0) : [];
+      const prepaymentsThisTick = hasScheduledAssetPayments ? loanStates.map(() => 0) : [];
+      const parBeforePrepayThisTick = hasScheduledAssetPayments ? loanStates.map(() => 0) : [];
       const loanActiveEndDate = (loan: LoanState): string => {
         if (loan.maturityDate <= tickStartDate) return tickStartDate;
         return loan.maturityDate < tickEndDate ? loan.maturityDate : tickEndDate;
@@ -3419,6 +3712,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         for (const loan of loanStates) {
           if (loan.survivingPar <= 0) continue;
           if (loan.maturityDate <= tickStartDate) {
+            if (loan.assetInterestReceivable > 0) {
+              interestCollected += loan.assetInterestReceivable;
+              loan.assetInterestReceivable = 0;
+            }
             totalMaturities += loan.survivingPar;
             loan.survivingPar = 0;
           }
@@ -3448,6 +3745,11 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           }
           const hazard = prorateMonthly(toMonthlyRate(Math.min(quarterHazard, 1)), activeDayFracActual, activeFullMonth);
           const loanDefaults = draw(loan.survivingPar, hazard);
+          const parBeforeDefault = loan.survivingPar;
+          if (hasScheduledAssetPayments) {
+            defaultsThisTick[idx] = loanDefaults;
+            parBeforeDefaultThisTick[idx] = parBeforeDefault;
+          }
           loan.survivingPar -= loanDefaults;
           totalDefaults += loanDefaults;
           if (loanDefaults > 0) {
@@ -3468,13 +3770,19 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           }
         }
 
-        for (const loan of loanStates) {
+        for (let idx = 0; idx < loanStates.length; idx++) {
+          const loan = loanStates[idx];
           if (loan.survivingPar > 0) {
             const activeEndDate = loanActiveEndDate(loan);
             if (activeEndDate <= tickStartDate) continue;
             const activeDayFracActual = dayCountFraction("actual_360", tickStartDate, activeEndDate);
             const activeFullMonth = isFullMonthTick && activeEndDate === tickEndDate;
             const prepay = loan.survivingPar * prorateMonthly(monthlyPrepayRate, activeDayFracActual, activeFullMonth);
+            const parBeforePrepay = loan.survivingPar;
+            if (hasScheduledAssetPayments) {
+              prepaymentsThisTick[idx] = prepay;
+              parBeforePrepayThisTick[idx] = parBeforePrepay;
+            }
             loan.survivingPar -= prepay;
             totalPrepayments += prepay;
           }
@@ -3498,7 +3806,17 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         for (let i = 0; i < loanStates.length; i++) {
           const loan = loanStates[i];
           const loanBegPar = loanBeginningPar[i];
-          if (loanBegPar <= 0) continue;
+          if (loanBegPar <= 0) {
+            if (loan.assetPaymentIntervalMonths != null && loan.nextPaymentDate != null) {
+              loan.nextPaymentDate = rollAssetPaymentDateAfter(
+                loan.nextPaymentDate,
+                loan.assetPaymentIntervalMonths,
+                tickEndDate,
+                loan.assetPaymentAnchorDay,
+              );
+            }
+            continue;
+          }
           const activeEndDate = loanActiveEndDate(loan);
           if (activeEndDate <= tickStartDate) continue;
           const activeDayFracByConvention: Record<DayCountConvention, number> = {
@@ -3508,22 +3826,45 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
             actual_365: dayCountFraction("actual_365", tickStartDate, activeEndDate),
           };
           const loanDayFrac = loan.dayCountConvention != null
-          ? activeDayFracByConvention[loan.dayCountConvention]
-          : activeDayFracByConvention.actual_360;
-          if (loan.isFixedRate) {
-            interestCollected += loanBegPar * (loan.fixedCouponPct ?? 0) / 100 * loanDayFrac;
+            ? activeDayFracByConvention[loan.dayCountConvention]
+            : activeDayFracByConvention.actual_360;
+          if (loan.assetPaymentIntervalMonths != null && loan.nextPaymentDate != null) {
+            writeOffAssetReceivableForDefault(loan, defaultsThisTick[i], parBeforeDefaultThisTick[i]);
+            const accrualPar = parBeforePrepayThisTick[i];
+            let accrualCursor = tickStartDate;
+            while (loan.nextPaymentDate > accrualCursor && loan.nextPaymentDate <= activeEndDate) {
+              loan.assetInterestReceivable += computeLoanInterestAccrual(loan, accrualPar, accrualCursor, loan.nextPaymentDate);
+              interestCollected += loan.assetInterestReceivable;
+              loan.assetInterestReceivable = 0;
+              const paidDate = loan.nextPaymentDate;
+              accrualCursor = paidDate;
+              loan.nextPaymentDate = rollAssetPaymentDateAfter(
+                paidDate,
+                loan.assetPaymentIntervalMonths,
+                paidDate,
+                loan.assetPaymentAnchorDay,
+              );
+              if (loan.nextPaymentDate == null) break;
+            }
+            loan.assetInterestReceivable += computeLoanInterestAccrual(loan, accrualPar, accrualCursor, activeEndDate);
+            interestCollected += releaseAssetReceivableForPrepay(loan, prepaymentsThisTick[i], parBeforePrepayThisTick[i]);
           } else {
-            const loanFlooredBase = Math.max(loan.floorRate ?? baseRateFloorPct, baseRatePct);
-            interestCollected += loanBegPar * (loanFlooredBase + loan.spreadBps / 100) / 100 * loanDayFrac;
+            const accruedInterest = computeLoanInterestAccrual(loan, loanBegPar, tickStartDate, activeEndDate);
+            interestCollected += loan.assetInterestReceivable + accruedInterest;
+            loan.assetInterestReceivable = 0;
           }
-        if (loan.pikSpreadBps != null && loan.pikSpreadBps > 0) {
-          const pikAccretion = loanBegPar * (loan.pikSpreadBps / 10000) * loanDayFrac;
-          loan.survivingPar += pikAccretion;
+          if (loan.pikSpreadBps != null && loan.pikSpreadBps > 0) {
+            const pikAccretion = loanBegPar * (loan.pikSpreadBps / 10000) * loanDayFrac;
+            loan.survivingPar += pikAccretion;
+          }
         }
-      }
         for (const loan of loanStates) {
           if (loan.survivingPar <= 0) continue;
           if (loan.maturityDate > tickStartDate && loan.maturityDate <= tickEndDate) {
+            if (loan.assetInterestReceivable > 0) {
+              interestCollected += loan.assetInterestReceivable;
+              loan.assetInterestReceivable = 0;
+            }
             totalMaturities += loan.survivingPar;
             loan.survivingPar = 0;
           }
@@ -3569,6 +3910,13 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       for (const loan of loanStates) {
         loan.defaultedParPending = 0;
         loan.defaultEvents = [];
+      }
+    }
+    if (isMaturity && hasLoans) {
+      for (const loan of loanStates) {
+        if (loan.assetInterestReceivable <= 0) continue;
+        interestCollected += loan.assetInterestReceivable;
+        loan.assetInterestReceivable = 0;
       }
     }
 
@@ -3836,6 +4184,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         undrawnCommitment: 0,
         defaultedParPending: 0,
         defaultEvents: [],
+        assetPaymentAnchorDay: null,
+        assetInterestReceivable: 0,
         purchasePricePct: reinvestmentPricePct,
         acquisitionDate: periodDate,
         isDiscountObligation: reinvIsSubThreshold,
@@ -4290,6 +4640,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         reinvestment: 0,
         endingPar,
         interestCollected,
+        endingAssetInterestReceivable: hasLoans
+          ? loanStates.reduce((s, l) => s + l.assetInterestReceivable, 0)
+          : 0,
         beginningLiabilities,
         endingLiabilities: endingLiabilitiesAccel,
         trancheInterest: accelResult.trancheDistributions.map((d) => ({
@@ -5253,6 +5606,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
                 undrawnCommitment: 0,
                 defaultedParPending: 0,
                 defaultEvents: [],
+                assetPaymentAnchorDay: null,
+                assetInterestReceivable: 0,
                 purchasePricePct: reinvestmentPricePct,
                 acquisitionDate: periodDate,
                 isDiscountObligation: reinvIsSubThreshold,
@@ -5450,6 +5805,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
             undrawnCommitment: 0,
             defaultedParPending: 0,
             defaultEvents: [],
+            assetPaymentAnchorDay: null,
+            assetInterestReceivable: 0,
             purchasePricePct: reinvestmentPricePct,
             acquisitionDate: periodDate,
             isDiscountObligation: reinvIsSubThreshold,
@@ -5691,6 +6048,9 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       beginningLiabilities,
       endingLiabilities,
       interestCollected,
+      endingAssetInterestReceivable: hasLoans
+        ? loanStates.reduce((s, l) => s + l.assetInterestReceivable, 0)
+        : 0,
       trancheInterest,
       tranchePrincipal,
       // Snapshot end-of-period interestShortfall (cumulative carry) so the

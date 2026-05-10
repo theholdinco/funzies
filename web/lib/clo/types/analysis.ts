@@ -205,6 +205,12 @@ export interface BuyListItem {
   isCovLite: boolean | null;
   averageLifeYears: number | null;
   recoveryRate: number | null;
+  assetPaymentPeriodRaw?: string | null;
+  assetPaymentIntervalMonths?: number | null;
+  nextPaymentDate?: string | null;
+  accrualBeginDate?: string | null;
+  accrualEndDate?: string | null;
+  openingAccruedInterest?: number | null;
   notes: string | null;
   createdAt: string;
 }

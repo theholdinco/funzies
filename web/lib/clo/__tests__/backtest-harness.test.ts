@@ -1,9 +1,8 @@
 /**
  * Harness infrastructure + N6 compliance parity.
  *
- * Per-bucket engine correctness (N1) lives in two dedicated siblings:
+ * Per-bucket engine correctness (N1) lives in a dedicated sibling:
  *   - n1-correctness.test.ts     — legit-pinned engine arithmetic vs trustee
- *   - n1-production-path.test.ts — unpinned DEFAULT_ASSUMPTIONS path a user sees
  *
  * What this file retains:
  *   - Step-map integrity (guards vocabulary drift in ppm-step-map.ts)
@@ -378,16 +377,10 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
   // construction wouldn't surface in per-bucket cash-flow checks.
   //
   // Under legit pins (defaultsFromResolved — production path), remaining IC
-  // drift is driven by issuer profit (€250) + KI-12a (fee-base
-  // over-payment) + KI-12b (day-count residuals) net. KI-08 admin share +
-  // Taxes cascade — baselines re-baselined from
-  // pre-cascade 6.600/5.865/5.117 to post-cascade 3.960/3.525/3.070,
-  // confirming both closures moved observed drift by the expected ~2–3 pp.
-  // KI-36's T=0 first-payment-window cleanup moved A/B to 4.03pp by replacing
-  // a flat /4 denominator/numerator approximation with the actual first
-  // projected payment window.
-  // When KI-12a closes, these three markers
-  // need re-baselining again.
+  // drift now includes schedule-aware asset interest receipts in the T=0
+  // collateral numerator. The markers still intentionally move when upstream
+  // fee/day-count or asset-cash timing fixes land, but the current baselines
+  // are schedule-driven rather than the old flat quarterly accrual estimate.
   {
     // Use defaultsFromResolved (production path) so taxesBps / trusteeFeeBps /
     // adminFeeBps are populated from observed Q1 data — matches the flow in
@@ -418,12 +411,8 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
       {
         ki: "KI-IC-AB",
         closesIn: "Progressively as KI-12a closes (re-baseline on each)",
-        expectedDrift: 4.030,
+        expectedDrift: -5.66,
         tolerance: 0.05,
-        // closeThreshold = tolerance is intentional and safe here: |expectedDrift|
-        // is 3.96pp and tolerance is 0.05pp, so the "partial-fix masks as close"
-        // window is 0.05/3.96 ≈ 1.3% of the expected magnitude — narrow enough
-        // that a real partial fix won't be misclassified as full closure.
         closeThreshold: 0.05,
       },
       "Class A/B IC compositional parity at T=0 (pp)",
@@ -433,7 +422,7 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
       {
         ki: "KI-IC-C",
         closesIn: "Progressively as KI-12a closes (re-baseline on each)",
-        expectedDrift: 3.525,
+        expectedDrift: -5.05,
         tolerance: 0.05,
         closeThreshold: 0.05,
       },
@@ -444,7 +433,7 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
       {
         ki: "KI-IC-D",
         closesIn: "Progressively as KI-12a closes (re-baseline on each)",
-        expectedDrift: 3.070,
+        expectedDrift: -4.40,
         tolerance: 0.05,
         closeThreshold: 0.05,
       },

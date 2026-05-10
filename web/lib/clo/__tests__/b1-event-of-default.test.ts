@@ -236,18 +236,29 @@ describe("B1 — computeEventOfDefaultTest (pure helper)", () => {
       AAA: 0, AA: 0, A: 0, BBB: 0, BB: 10, B: 10, CCC: 10, NR: 10,
     };
     const recoveryPct = 50;
-    const inputs = buildFromResolved(fixture.resolved, {
+    const inputsWithAgencyRecoveries = buildFromResolved(fixture.resolved, {
       ...defaultsFromResolved(fixture.resolved, fixture.raw),
       defaultRates: uniformRates,
       recoveryLagMonths: 6,
       recoveryPct,
       cprPct: 0,
     });
+    const inputs = {
+      ...inputsWithAgencyRecoveries,
+      loans: inputsWithAgencyRecoveries.loans.map((loan) => ({
+        ...loan,
+        recoveryRateMoodys: undefined,
+        recoveryRateSp: undefined,
+        recoveryRateFitch: undefined,
+      })),
+    };
     const result = runProjection(inputs);
     const totalDefaults = result.periods.reduce((s, p) => s + p.defaults, 0);
     const totalRecoveries = result.periods.reduce((s, p) => s + p.recoveries, 0);
     const expectedRecoveries = totalDefaults * (recoveryPct / 100);
-    // Lag tail near maturity may not land — expect ≥ 95% of theoretical.
+    // Agency-specific recovery rates override the global recoveryPct on the
+    // loan-level path. Clear them above so this aggregate-path canary isolates
+    // the global recoveryPct identity.
     expect(totalRecoveries).toBeGreaterThan(expectedRecoveries * 0.95);
     expect(totalRecoveries).toBeLessThanOrEqual(expectedRecoveries * 1.01);
   });

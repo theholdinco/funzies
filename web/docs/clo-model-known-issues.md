@@ -23,13 +23,13 @@ Updated per sprint. Entries are closed by deleting the entry, its index pointer,
 Categorized so a partner reading cold can separate "what's still wrong" from "what we decided." Section membership is authoritative; the numerical KI order is historical (sprint-chronological).
 
 ### Open — currently wrong, path to close documented
-- [KI-08 — `trusteeFeesPaid` bundled steps B+C (PARTIAL: pre-fill D3 + cap mechanics C3 + 2026-05-04 PPM verifications cleared; day-count residuals remain blocked on KI-12a)](#ki-08)
+- [KI-08 — Trustee/admin fee split residuals (PARTIAL: pre-fill D3 + cap mechanics C3 + 2026-05-04 PPM verifications cleared; day-count residuals remain blocked on KI-12a)](#ki-08)
 - [KI-12a — Senior / sub management fee base discrepancy](#ki-12a) — **BLOCKED ON DATA ACQUISITION** (Q4 2025 historical SDF + trustee-report bundles)
 
 ### Latent / Scoped — inactive for Euro XV liability schedule, active only where noted
 *Distinct from "Deferred" (those are intentional design choices about mechanics that exist in the indenture but the model elects not to simulate). "Latent" entries are unmodeled or hardcoded paths whose current Euro XV magnitude happens to be zero, but which will produce wrong numbers the moment a deal hits the triggering condition (different deal structure, different PPM, non-zero balance, FX exposure, etc.). Treat each as a real bug whose materiality is data-dependent, not a deliberate scope decision.*
 
-- [KI-36 — Per-tranche `payment_frequency` consumed for liability interest schedule; monthly liabilities and asset schedules remain out of scope](#ki-36)
+- [KI-36 — Per-tranche `payment_frequency` consumed for liability interest schedule; monthly liability waterfalls remain out of scope](#ki-36)
 - [KI-38 — FX / multi-currency cashflows blocked unless same-currency can be proven](#ki-38)
 - [KI-45 — Senior Expenses Cap carryforward seed is user-supplied; automatic historical ingest not wired](#ki-45)
 - [KI-46 — DDTL draw event inflates forward OC numerator; impliedOcAdjustment frozen at T=0 calibration](#ki-46) — **BLOCKED ON DATA ACQUISITION** (deal with active DDTL draws + non-zero `impliedOcAdjustment`)
@@ -74,7 +74,7 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 **PPM reference:** Condition 1 (Frequency Switch Event), pp.127–128.
 **Current engine behavior:** Trigger evaluation modeled in C4 Phase 2 (once it ships); warning fires if both (b) concentration and (c) interest-shortfall conditions cross their thresholds. Manual post-switch what-if support is not currently wired into the projection engine. **Automatic mid-projection cadence/rate switching is not modeled.**
 **PPM-correct behavior:** On trigger, switch quarterly → semi-annual payment dates, 3M → 6M EURIBOR, Issuer Profit €250 → €500. One-time and irreversible.
-**Quantitative magnitude:** Euro XV's liability tranches are quarterly, so the liability-cadence impact is zero on the current fixture. The current asset fixture does contain monthly, quarterly, and semi-annual loan payment-frequency fields, but KI-36 v1 intentionally does not model per-loan payment schedules. Automatic Frequency Switch remains theoretical for this deal unless the switch trigger is hit by a structural pool change.
+**Quantitative magnitude:** Euro XV's liability tranches are quarterly, so the liability-cadence impact is zero on the current fixture. The current asset fixture contains monthly, two-month, quarterly, and semi-annual loan payment-frequency fields; recognized anchored asset schedules are now modeled as loan-level interest receivable timing. Automatic Frequency Switch remains theoretical for this deal unless the switch trigger is hit by a structural pool change.
 **Deferral rationale:** Engine rework to support variable periods-per-year mid-simulation (day-count, period calendar, OC/IC cadence, DDTL timing, call quantization). Rarely-hit scenario, but closure still requires actual post-switch engine behavior rather than a documentation-only assumption.
 
 **Blocked-on-new-data boundary:** KI-04 closure needs either (a) a fixture/deal where the Frequency Switch Event actually fires, including the post-switch payment-date/rate/issuer-profit treatment, or (b) a partner-approved synthetic fixture encoding those post-switch economics. Without that data, the engine can only preserve the current quarterly Euro XV behavior and the documented warning path; it cannot validate the switched calendar against trustee or PPM cash-routing evidence.
@@ -106,7 +106,7 @@ These were originally tracked as "A10" and "A11" in the 2026-04-30 audit. They a
 ---
 
 <a id="ki-08"></a>
-### [KI-08] `trusteeFeesPaid` bundled steps B+C — **PARTIALLY CLOSED (pre-fill D3 + cap mechanics C3 + 2026-05-04 PPM verifications)**
+### [KI-08] Trustee/admin fee split residuals — **PARTIALLY CLOSED (pre-fill D3 + cap mechanics C3 + 2026-05-04 PPM verifications)**
 
 **Status (2026-05-04, PPM verifications + cap-completion shipped):** Mechanics shipped + four PPM design assumptions verified against Ares European CLO XV Offering Circular pp. 150-151 (Condition 1 "Senior Expenses Cap") + pp. 159-161 (Pre-Acceleration POP steps B/C/Y/Z). All four assumptions were CONTRADICTED and the engine has been amended to PPM-correct behavior. Four additional structural cap defects surfaced during the verification (component (a) mixed day-count, CPA-vs-APB cap base, 3-period rolling carryforward, VAT inclusion) all closed in the same PR — engine now dispatches on `seniorExpensesCapComponentADayCount`, `seniorExpensesCapBaseMode`, `seniorExpensesCapCarryforwardPeriods`, and `seniorExpensesCapVatRatePct`. Only the KI-08 day-count residuals remain open (gated on KI-12a data).
 
@@ -121,7 +121,7 @@ These were originally tracked as "A10" and "A11" in the 2026-04-30 audit. They a
    - Y/Z overflow allocation switched from pro-rata to sequential Y-first per POP convention. Engine block at `projection.ts:4715` dispatches on `seniorExpensesCapOverflowAllocation`.
    - Resolver emits `severity: "error", blocking: true` when a deal has fee rows but no PPM cap extracted.
 
-**Partner-visible behavior on Euro XV**: observed combined ~5.24 bps well below the PPM cap (~5.43 bps composite at €107K/quarter on €493M beginPar × 91/360 day-count, vs observed €64K/quarter) → no overflow fires, N1 harness bit-identical pre/post the 2026-05-04 amendments. `trusteeFeesPaid` ties to trustee within €722 (day-count residual from 91/360 engine vs 90/360 trustee). Stress scenarios with observed > cap now produce sequential B-first / Y-first per PPM.
+**Partner-visible behavior on Euro XV**: observed combined ~5.24 bps well below the PPM cap (~5.43 bps composite at €107K/quarter on €493M beginPar × 91/360 day-count, vs observed €64K/quarter) → no overflow fires, N1 harness bit-identical pre/post the 2026-05-04 amendments in aggregate. The N1 harness now reads the split buckets directly: `trusteeFeesPaid` is PPM step (B) and `adminFeesPaid` is PPM step (C). Their remaining drifts are the small split day-count residuals below (91/360 engine vs 90/360 trustee), not a bundled B+C gap. Stress scenarios with observed > cap now produce sequential B-first / Y-first per PPM.
 
 **Tests (7 new C3 tests):**
 - `c3-senior-expenses-cap.test.ts` — base case (no overflow), high-fee overflow (50 bps + 20 bps cap → 30 bps overflow), extreme cap (1 bps), overflow-limited-by-residual, backward-compatibility (undefined cap = unbounded).
@@ -136,7 +136,7 @@ Both markers track the 91/360-vs-90/360 day-count residual exposed by the harnes
 
 **Blocked on KI-12a data acquisition (added 2026-05-02).** Closure of these two day-count residual markers (the only KI-08 sub-component still moving) waits on KI-12a's harness fix, which itself is blocked on re-ingesting Q4 2025 (or earlier) historical SDF + trustee-report bundles for Euro XV — see [KI-12a's blocker note](#ki-12a). Don't attempt closure work on these markers until that data lands.
 
-**Cascade re-baselines**: KI-13a adjusted by the C3 split preserving aggregate behavior; `stepTrace.trusteeFeesPaid` currently bundles steps (B)+(C)+(Y)+(Z) to preserve the N1 harness bucket semantics. Split-out fields (`adminFeesPaid`, `trusteeOverflowPaid`, `adminOverflowPaid`) are additive diagnostic fields — the harness will be un-aggregated in a follow-up (see task #48).
+**Cascade re-baselines**: KI-13a adjusted when the fee model split PPM step (B) trustee from step (C) admin while preserving aggregate cash behavior. Current N1 bucket semantics are unaggregated for the ordinary fee steps (`trusteeFeesPaid` = B, `adminFeesPaid` = C); overflow fields remain separate diagnostics for stressed cases. Any future fee-bucket change must re-run the KI-13a total residual marker and the KI-13a bridge marker because the residual is downstream of both fee rows.
 
 **Ledger disposition**: remain OPEN (partial) until the day-count residual markers close (gated on KI-12a data acquisition).
 
@@ -190,7 +190,7 @@ Both markers track the 91/360-vs-90/360 day-count residual exposed by the harnes
 **Day-count is NOT the cause on Q1 2026:** Accrual window Jan 15 → Apr 15 = 31+28+31 = 90 days; Actual/360 = 90/360 = 1/4 — identical to engine's periods-per-year proxy. Day-count drift on non-90-day periods is tracked separately as KI-12b.
 
 **Under interpretation B, the scope widens:** Any N1 bucket that depends on pool balance at time T has the same structural mismatch. Fields to re-audit after the harness fix:
-- `trusteeFeesPaid` (KI-08) — the €64,660 drift magnitude reflects trustee's Q1 fee; engine emits 0 because `trusteeFeeBps=0` default. The "expected magnitude" is period-mismatch-contaminated: after KI-08 pre-fill, the residual fee drift will be whatever Q2's fee base implies, not Q1's.
+- `trusteeFeesPaid` / `adminFeesPaid` (KI-08) — the old €64,660 bundled drift was closed by trustee/admin pre-fill and split bucket emission. The only live KI-08 markers are the split day-count residuals: ~€13 on trustee step (B) and ~€709 on admin step (C), both period-mismatch-contaminated and removed or re-baselined with KI-12a.
 - `subDistribution` cascade — residual of everything above. Period-mismatch drift sits underneath every component drift.
 - `initialState.ocTests` (passes ~0.01%): OC matches because trustee OC and engine initialState both anchor on the Q1 Determination Date balance (~= current fixture snapshot); the fee clause anchors on the prior Determination Date. Different mechanics, same report.
 
@@ -276,21 +276,26 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 <a id="ki-13"></a>
 ### [KI-13] Sub distribution cascade residual
 
-**Blocked on KI-12a data acquisition (added 2026-05-02).** This residual moves only as upstream KIs close. The largest open upstream — KI-12a — is blocked on re-ingesting Q4 2025 historical SDF + trustee-report bundles; see [KI-12a's blocker note](#ki-12a). Re-baselining `KI-13a-engineMath` is gated on that data landing. Don't attempt re-baseline work here until then.
+**Blocked on KI-12a data acquisition (added 2026-05-02).** This residual moves as upstream KIs close and as the asset-cash timing model becomes more faithful. The largest open upstream — KI-12a — is blocked on re-ingesting Q4 2025 historical SDF + trustee-report bundles; see [KI-12a's blocker note](#ki-12a). Re-baselining both KI-13a markers is expected when upstream fee/day-count components or scheduled asset-cash treatment changes.
 
 **PPM reference:** Step (DD) — residual to sub (equity) note.
 **Current engine behavior:** `subDistribution` is the residual bucket; every upstream drift (taxes, trustee fee, mgmt fees, fee-base) cascades into it. Direction depends on the net sign of those drifts.
 **PPM-correct behavior:** N/A — this is a cascade, not an independent mechanic. Closes automatically as upstream KIs close.
 **Quantitative magnitude:**
-- Engine-math (legit pins, post-KI-36 monthly-clock cascade re-baseline): **−€172,489.98/quarter** (±€100 tolerance). Counter-intuitive negative sign: KI-12b class-interest day-count drifts (+€48,019) + KI-12a fee-base day-count drifts (+€34,792) + current trustee/admin/tax/issuer-profit residual components, shifted further negative first by −€6,247.38 from per-loan day-count fixture propagation and then by an implied **−€115,250.36** KI-36 monthly internal asset/accrual timing cascade. Multiple drifts compound or cancel; the sign is not a stable indicator. Current total is verified live by N1 harness (`subDistribution | dd | … delta -172489.98`); the pre-KI-36 components are broken down in `n1-correctness.test.ts:267-314`, while the monthly-clock share is inferred from the historical baseline, not independently decomposed by a separate bucket trace.
+- Engine-math total residual (legit pins, post same-tick defaulted-share asset-interest writeoff re-baseline): **−€254,223.24/quarter** (±€100 tolerance). Counter-intuitive negative sign: KI-12b class-interest day-count drifts (+€48,019) + KI-12a fee-base day-count drifts (+€34,792) + current trustee/admin/tax/issuer-profit residual components, shifted further by per-loan day-count fixture propagation, KI-36 monthly internal timing, scheduled asset cash receipts, duplicate-accrual asset-schedule consistency review, holding-level accrualEndDate anchor recovery, inferred opening asset-interest receivable from prior scheduled payment dates, and same-tick defaulted-share asset-interest writeoff. Multiple drifts compound or cancel; the sign is not a stable indicator. Current total is verified live by N1 harness (`subDistribution | dd | ... delta -254223.24`); asset cash timing is separately pinned by `fixture-regeneration.test.ts` on `interestCollected`, `endingAssetInterestReceivable`, and the non-blocking asset-schedule warning inventory.
+- Engine-math bridge residual after modeled upstream interest-waterfall drift: **−€170,655.81/quarter** (±€100 tolerance). This second KI-13a marker intentionally uses the same KI id because it is not a separate issue; it pins the residual bridge after summing emitted upstream outflow drift buckets. It catches stale cascade re-baselines where `subDistribution.expectedDrift` moves but the modeled upstream bridge is not reviewed.
 - Production path (no pins): historically reported as +€617,122/quarter. **No `KI-13b-productionPath` marker currently exists in the codebase** (no `n1-production-path.test.ts` file); the +€617K number originated as a one-time measurement and has not been pinned by an active assertion. Either re-instate the production-path harness with a marker, or drop the production-path number from this entry. Until then, treat the +€617K figure as historical context, not as a verified live drift.
 **Deferral rationale:** Structural — residual that tracks the sum of upstream corrections.
 **Path to close:** Closes progressively as the remaining open upstream fee-base/day-count residuals close, especially KI-12a / KI-12b. No standalone work.
-**Test:** `n1-correctness.test.ts > "currently broken buckets" > subDistribution` (ki: `KI-13a-engineMath`, expectedDrift **−€172,489.98** ± €100). The production-path counterpart referenced in prior versions of this entry was never landed; if the production-path drift is judged worth tracking, write a new `n1-production-path.test.ts` and pin a fresh `KI-13b-productionPath` marker before referencing it here. The `expectedDrift` on `KI-13a-engineMath` must be re-baselined (or the marker removed if drift closes) whenever an upstream KI moves.
+**Test:** `n1-correctness.test.ts > "currently broken buckets"` has two explicit `KI-13a-engineMath` markers:
+- `subDistribution total residual matches trustee within €1000` - expectedDrift **−€254,223.24** ± €100.
+- `subDistribution upstream bridge residual after modeled waterfall drifts` - expectedDrift **−€170,655.81** ± €100.
+
+The production-path counterpart referenced in prior versions of this entry was never landed; if the production-path drift is judged worth tracking, write a new `n1-production-path.test.ts` and pin a fresh `KI-13b-productionPath` marker before referencing it here. Both `KI-13a-engineMath` expected drifts must be re-baselined (or removed if drift closes) whenever an upstream KI or asset-cash schedule treatment moves.
 
 **⚠ Maintenance checklist** — include in every PR that closes or moves an upstream residual feeding the sub-distribution cascade (currently KI-12a / KI-12b, plus any newly opened N1 bucket residual):
 - [ ] Did this PR close or modify an upstream KI's expected drift magnitude?
-- [ ] If yes: re-run the harness and update `KI-13a-engineMath.expectedDrift` in `n1-correctness.test.ts`.
+- [ ] If yes: re-run the harness and update both `KI-13a-engineMath` markers in `n1-correctness.test.ts` (total residual and upstream bridge).
 - [ ] If yes and a production-path harness has been re-instated: update `KI-13b-productionPath.expectedDrift` in `n1-production-path.test.ts`; no such file exists today (see entry body).
 - [ ] If the cascade drift dropped below tolerance, remove the failsWithMagnitude marker and move KI-13 to Closed.
 - [ ] Note: signs can flip during the close sequence — re-check the sign, not just the magnitude.
@@ -300,15 +305,15 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 <a id="ki-14"></a>
 ### [KI-14] IC compositional parity at T=0 (cascade residual)
 
-**Blocked on KI-12a data acquisition (added 2026-05-02).** The remaining ~3 pp drift across Classes A/B, C, D is the KI-12a fee-base mismatch flowing into the IC numerator at T=0. Closes when KI-12a closes, which is blocked on re-ingesting Q4 2025 historical SDF + trustee-report bundles; see [KI-12a's blocker note](#ki-12a). Don't attempt re-baseline of `KI-IC-AB` / `KI-IC-C` / `KI-IC-D` until then.
+**Blocked on KI-12a data acquisition (added 2026-05-02).** The remaining IC drift across Classes A/B, C, D is a cascade residual after scheduled asset-cash timing and the current fee/day-count model. It closes progressively when KI-12a and related upstream residuals close, which is blocked on re-ingesting Q4 2025 historical SDF + trustee-report bundles; see [KI-12a's blocker note](#ki-12a).
 
 **PPM reference:** Condition 12 (Interest Coverage Test); §(A)(i), (A)(ii), (B), (C), (E)(1) components in the numerator.
-**Current engine behavior:** Engine computes IC at T=0 (`initialState.icTests`) by deducting PPM §(A)(i) taxes, §(B) trustee, §(C) admin, §(E) senior mgmt, §(F) hedge from the scheduled interest base. Under legit pins (production path via `defaultsFromResolved`), engine IC ratios still sit slightly above trustee because residual fee-base/day-count drift remains open, mainly KI-12a — net residual drift ~3 pp per class.
+**Current engine behavior:** Engine computes IC at T=0 (`initialState.icTests`) by deducting PPM §(A)(i) taxes, §(B) trustee, §(C) admin, §(E) senior mgmt, §(F) hedge from the scheduled interest base. Under legit pins (production path via `defaultsFromResolved`), the collateral interest base now uses scheduled asset cash receipts through the first projected payment date. Engine IC ratios sit below trustee by the active residual amounts below.
 **PPM-correct behavior:** IC numerator includes the full set of §(A)–§(F) deductions correctly attributed.
-**Quantitative magnitude (post-Sprint-3 KI-08 admin + KI-09 taxes closure, Q1 2026):**
-  - Class A/B: +4.030 pp drift (was +6.600 pre-cascade; Δ −2.57 pp from admin+taxes deductions landing in initialState, then KI-36 T=0 first-payment-window cleanup replacing flat /4)
-  - Class C: +3.525 pp drift (was +5.865; Δ −2.34 pp)
-  - Class D: +3.070 pp drift (was +5.117; Δ −2.05 pp)
+**Quantitative magnitude (post asset-interest schedule re-baseline, Q1 2026):**
+  - Class A/B: −5.660 pp drift
+  - Class C: −5.050 pp drift
+  - Class D: −4.400 pp drift
 **Deferral rationale:** Cascade — not an independent formula bug. The IC parity test exists because the component cash-flow checks in n1-correctness don't exercise the aggregation/denominator logic of the IC formula itself; a mis-aggregation would slip through.
 
 **Important — test input path correctness (fixed Sprint 3):** The prior test setup spread `DEFAULT_ASSUMPTIONS` with `taxesBps: 0, adminFeeBps: 0, trusteeFeeBps: 0`, meaning the markers could not move when KI-08 admin or KI-09 taxes closed (the input path zeroed the very fields those closures would add to the numerator). Swapped to `defaultsFromResolved(fixture.resolved, fixture.raw)` — the production path used by `ProjectionModel.tsx` — so the cascade actually cascades. Closure of admin/taxes then shifted the observed drift by the expected ~2-3 pp per class, confirming both the fix and the cascade wiring.
@@ -337,7 +342,7 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 ---
 
 <a id="ki-36"></a>
-### [KI-36] Per-tranche `payment_frequency` consumed for liability interest schedule; monthly liabilities and asset schedules remain out of scope
+### [KI-36] Per-tranche `payment_frequency` consumed for liability interest schedule; monthly liabilities remain out of scope
 
 **PPM reference:** Per-tranche indenture term. Each tranche's payment frequency (Quarterly / Semi-Annual / Monthly) is PPM-specified per class.
 
@@ -347,11 +352,11 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 
 **Quantitative magnitude:** Zero on Euro XV liability-tranche frequency because all Euro XV liability tranches are quarterly. The monthly internal asset/accrual clock is active and contributes to the KI-13 sub-distribution cascade; that live N1 residual is tracked under KI-13, not as a liability-frequency mismatch. Semi-annual and mixed quarterly/semi-annual liability structures are covered by synthetic tests. Monthly liability structures remain blocked rather than silently modeled as quarterly.
 
-**Deferral rationale:** Remaining open scope is not the tranche frequency field itself; it is monthly deal waterfall routing and asset per-loan payment-frequency scheduling. Exact monthly liability cash routing requires deal-level monthly payment dates/account routing review. Asset payment schedules require per-loan payment-calendar modeling and were explicitly outside KI-36 v1.
+**Deferral rationale:** Remaining open scope is not the tranche frequency field itself; it is monthly deal waterfall routing. Exact monthly liability cash routing requires deal-level monthly payment dates/account routing review. Asset interest receipt scheduling is now modeled at loan level when the resolver has complete, non-contradictory interval + anchor evidence; incomplete asset schedule evidence remains compatibility mode.
 
 **Blocked-on-new-data/model boundary:**
 - **Monthly liability waterfalls:** requires a deal/PPM section with monthly liability payment dates and the exact account-routing language for cash accumulated between monthly payment dates. KI-36 v1 blocks monthly liability tranches rather than guessing how quarterly-reporting rows should route monthly payments.
-- **Asset per-loan payment schedules:** requires an explicit asset cash-flow calendar model and source data for each loan's payment dates/frequency. The current engine accrues asset interest monthly into accounts as a compatibility approximation; it does not attempt loan-level monthly/quarterly/semi-annual payment-date cash routing.
+- **Asset per-loan payment schedules:** implemented for recognized 1-, 2-, 3-, and 6-month intervals when a valid next payment anchor is present. Scheduled loans accrue to a loan-level receivable and release cash on borrower payment/payoff dates; missing, invalid, unsupported, or contradictory schedule evidence stays compatibility mode or blocks as appropriate.
 - **DDTL exact draw date under stub periods:** `drawQuarter` remains a coarse user assumption and maps to the first monthly tick of that projected quarter. Exact stub-period draw behavior needs an explicit draw month/date input or trustee draw-event data; the engine should not infer a real draw date from a quarter-only assumption.
 - **Exact account yield:** opening account cash currently earns the engine's existing money-market proxy. Exact account yield would require account-level rate/source fields by account and currency; no such projection input is available today.
 - **Tranche frequency provenance:** closed for fresh ingestion. Reingest writes raw/canonical/source columns for liability payment frequency and the resolver treats trustee/SDF frequency evidence as stronger than PPM-synced DB frequency. Older rows should be rebuilt by reingest rather than interpreted without provenance.
@@ -359,7 +364,7 @@ The Class A/B/C/D/E/F interest tie-outs currently pass at |drift| < €1 under l
 
 **Path to close:**
 1. Add deal-level monthly waterfall row generation and account routing once a monthly liability deal/PPM route is reviewed.
-2. Add per-loan asset payment scheduling if/when asset-level timing is scoped in.
+2. Extend asset scheduling only if future source data supports additional intervals or explicit amortization calendars.
 3. Keep KI-04 separate for automatic Frequency Switch deal-calendar changes.
 
 **Test:** `ki36-payment-frequency.test.ts` covers normalization, fail-closed unsupported/missing/monthly cases, semi-annual due/skip/shortfall behavior, mixed quarterly + semi-annual tranches, monthly internal default/prepay/recovery timing, and the compatibility grid for the current all-quarterly Euro XV harness.

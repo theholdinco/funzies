@@ -586,6 +586,7 @@ export function normalizeSectionResults(
           setIfMissing("index_rate", match.indexRatePct);
           setIfMissing("reference_rate", match.baseIndex);
           setIfMissing("floor_rate", match.indexFloorPct);
+          setIfMissing("payment_period", match.paymentPeriod);
           // is_fixed_rate: derive from rateType if asset_schedule didn't tag
           if (h.is_fixed_rate == null && match.rateType != null) {
             h.is_fixed_rate = String(match.rateType).toLowerCase() === "fixed";

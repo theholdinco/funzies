@@ -5,6 +5,7 @@ import type { PaymentFrequency } from "./payment-frequency";
 import { canonicalCurrency } from "./currency";
 import { CLO_DEFAULTS } from "./defaults";
 import { DEFAULT_RATES_BY_RATING } from "./rating-mapping";
+import { normalizeAssetPaymentIntervalMonths } from "./projection";
 
 function addMonthsAnchoredForBuild(dateIso: string, months: number, anchorDay: number): string {
   const d = new Date(dateIso);
@@ -28,6 +29,12 @@ function nextAlignedPaymentDateAfterBuild(asOfIso: string, anchorDateIso: string
     candidate = addMonthsAnchoredForBuild(candidate, frequencyMonths, anchorDay);
   }
   return candidate;
+}
+
+function isValidIsoDateForBuild(value: string | null | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const d = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
 
 function canonicalPaymentFrequencyForProjection(
@@ -803,6 +810,117 @@ export function composeBuildWarnings(
       currencyExposureByCurrency.set(c, (currencyExposureByCurrency.get(c) ?? 0) + exposure);
     } else {
       unknownCurrencyExposure += exposure;
+    }
+  }
+  for (const loan of resolved.loans) {
+    if (
+      loan.openingAccruedInterest != null &&
+      (!Number.isFinite(loan.openingAccruedInterest) || loan.openingAccruedInterest < 0)
+    ) {
+      composedWarnings.push({
+        field: "loans.openingAccruedInterest",
+        message:
+          `Loan "${loan.obligorName ?? loan.maturityDate}" has invalid opening accrued interest ` +
+          `${loan.openingAccruedInterest}; expected a finite non-negative receivable.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+    const exposure = loanParExposureForCurrencyGate(loan);
+    if (exposure <= 0) continue;
+    const hasAnchor = isValidIsoDateForBuild(loan.nextPaymentDate);
+    const rawInterval = normalizeAssetPaymentIntervalMonths(loan.assetPaymentPeriodRaw);
+    const interval = loan.assetPaymentIntervalMonths ?? rawInterval;
+    if (
+      hasAnchor &&
+      rawInterval != null &&
+      loan.assetPaymentIntervalMonths != null &&
+      loan.assetPaymentIntervalMonths !== rawInterval
+    ) {
+      composedWarnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          `Loan "${loan.obligorName ?? loan.maturityDate}" has conflicting asset payment interval evidence: ` +
+          `"${loan.assetPaymentPeriodRaw}" implies ${rawInterval} months but ` +
+          `assetPaymentIntervalMonths is ${loan.assetPaymentIntervalMonths}.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+    const warningMentionsLoan = (message: string): boolean => {
+      const labels = [
+        loan.obligorName,
+        loan.obligorName == null ? "unknown" : null,
+        loan.maturityDate,
+      ].filter((label): label is string => label != null && label.length > 0);
+      return labels.some((label) => message.includes(`"${label}"`));
+    };
+    const warningMentionsRawPeriod = (message: string): boolean => {
+      if (!loan.assetPaymentPeriodRaw) return true;
+      return message.includes(`"${loan.assetPaymentPeriodRaw}"`) ||
+        message.includes(`paymentPeriod ${loan.assetPaymentPeriodRaw}`);
+    };
+    const hasExistingUnusableScheduleWarning = composedWarnings.some((w) =>
+      w.field === "loans.assetPaymentSchedule" &&
+      !w.blocking &&
+      warningMentionsLoan(w.message) &&
+      warningMentionsRawPeriod(w.message) &&
+      /(?:no valid nextPaymentDate anchor|contradictory asset schedule evidence)/i.test(w.message)
+    );
+    if (
+      (loan.assetPaymentPeriodRaw || loan.assetPaymentIntervalMonths != null) &&
+      !hasAnchor &&
+      !hasExistingUnusableScheduleWarning
+    ) {
+      composedWarnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          `Loan "${loan.obligorName ?? loan.maturityDate}" has asset payment period ` +
+          `"${loan.assetPaymentPeriodRaw ?? `${loan.assetPaymentIntervalMonths} months`}" but no valid nextPaymentDate anchor. Frequency alone is insufficient ` +
+          `to time borrower interest receipts; loan remains in compatibility mode.`,
+        severity: "warn",
+        blocking: false,
+      });
+    }
+    const unsupportedPeriodMessage =
+      `Loan "${loan.obligorName ?? loan.maturityDate}" has unsupported anchored asset payment period ` +
+      `"${loan.assetPaymentPeriodRaw}". Supported intervals are 1, 2, 3, and 6 months.`;
+    const hasResolverUnsupportedPeriodWarning = composedWarnings.some((w) =>
+      w.field === "loans.assetPaymentSchedule" &&
+      w.blocking &&
+      (
+        w.message === unsupportedPeriodMessage ||
+        (
+          loan.obligorName != null &&
+          w.message.includes(`"${loan.obligorName}"`) &&
+          w.message.includes(`"${loan.assetPaymentPeriodRaw}"`) &&
+          /unsupported anchored asset payment period/i.test(w.message)
+        ) ||
+        (
+          loan.obligorName == null &&
+          warningMentionsLoan(w.message) &&
+          w.message.includes(`"${loan.assetPaymentPeriodRaw}"`) &&
+          /unsupported anchored asset payment period/i.test(w.message)
+        )
+      )
+    );
+    if (hasAnchor && loan.assetPaymentPeriodRaw && rawInterval == null && !hasResolverUnsupportedPeriodWarning) {
+      composedWarnings.push({
+        field: "loans.assetPaymentSchedule",
+        message: unsupportedPeriodMessage,
+        severity: "error",
+        blocking: true,
+      });
+    }
+    if (hasAnchor && interval != null && ![1, 2, 3, 6].includes(interval)) {
+      composedWarnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          `Loan "${loan.obligorName ?? loan.maturityDate}" has unsupported anchored asset payment interval ` +
+          `${interval} months. Supported intervals are 1, 2, 3, and 6 months.`,
+        severity: "error",
+        blocking: true,
+      });
     }
   }
   const aggregatePoolExposure = Math.max(0, resolved.poolSummary.totalPar ?? 0);

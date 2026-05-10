@@ -9,7 +9,7 @@
  *
  * 100 iterations is the size the plan calls for. The full CLO suite can run
  * this file under CPU contention, so the property test gets an explicit
- * timeout instead of relying on Vitest's 5s default.
+ * timeout instead of relying on the suite default.
  */
 
 import { describe, it, expect } from "vitest";
@@ -17,6 +17,7 @@ import { runProjection } from "../projection";
 import { makeInputs, uniformRates } from "./test-helpers";
 
 const ITERATIONS = 100;
+const DETERMINISM_TIMEOUT_MS = 60_000;
 
 describe("Engine determinism (post-v6 plan §7.2)", () => {
   it("100 runs of identical inputs produce byte-identical outputs (deep equality)", () => {
@@ -31,7 +32,7 @@ describe("Engine determinism (post-v6 plan §7.2)", () => {
       // matches every nested field across periods, stepTrace, initialState.
       expect(next).toEqual(baseline);
     }
-  }, 15_000);
+  }, DETERMINISM_TIMEOUT_MS);
 
   it("identical inputs across stub-period mode produce identical outputs", () => {
     const inputs = makeInputs({

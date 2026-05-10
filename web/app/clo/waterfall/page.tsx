@@ -12,6 +12,7 @@ import {
   getParValueAdjustments,
   getHoldings,
   getTrades,
+  getAccruals,
   getPanelForUser,
   getHistoricalSubNoteDistributions,
   getIntexPositionsByReportPeriod,
@@ -41,7 +42,7 @@ export default async function WaterfallPage() {
   // Fetch report-level data if a deal record exists
   const reportPeriod = deal ? await getLatestReportPeriod(deal.id) : null;
 
-  const [waterfallSteps, tranches, trancheSnapshots, periodData, accountBalances, parValueAdjustments, holdings, trades, extractedDistributions, intexPositions] =
+  const [waterfallSteps, tranches, trancheSnapshots, periodData, accountBalances, parValueAdjustments, holdings, trades, accruals, extractedDistributions, intexPositions] =
     await Promise.all([
       reportPeriod ? getWaterfallSteps(reportPeriod.id) : Promise.resolve([]),
       deal ? getTranches(deal.id) : Promise.resolve([]),
@@ -51,6 +52,7 @@ export default async function WaterfallPage() {
       reportPeriod ? getParValueAdjustments(reportPeriod.id) : Promise.resolve([]),
       reportPeriod ? getHoldings(reportPeriod.id) : Promise.resolve([]),
       reportPeriod ? getTrades(reportPeriod.id) : Promise.resolve([]),
+      reportPeriod ? getAccruals(reportPeriod.id) : Promise.resolve([]),
       deal ? getHistoricalSubNoteDistributions(deal.id) : Promise.resolve([]),
       reportPeriod ? getIntexPositionsByReportPeriod(reportPeriod.id) : Promise.resolve(new Map()),
     ]);
@@ -76,10 +78,12 @@ export default async function WaterfallPage() {
     accountBalances,
     parValueAdjustments,
     intexPositions,
+    accruals,
   );
 
   // Build deal context for AI features
   const dealContext = {
+    reportPeriodId: reportPeriod?.id ?? null,
     dealName,
     dealCurrency: resolved.currency,
     maturityDate,
@@ -101,6 +105,36 @@ export default async function WaterfallPage() {
       totalLoans: resolved.loans.length,
       missingCurrencyCount: resolved.loans.filter((loan) => loan.parBalance > 0 && !loan.currency).length,
       currencies: Array.from(new Set(resolved.loans.map((loan) => loan.currency).filter(Boolean))).sort(),
+    },
+    assetInterestScheduleSummary: {
+      totalLoans: resolved.loans.length,
+      scheduledLoans: resolved.loans.filter((loan) =>
+        loan.assetPaymentIntervalMonths != null && loan.nextPaymentDate != null
+      ).length,
+      scheduleEvidenceWithoutActiveSchedule: resolved.loans.filter((loan) =>
+        loan.assetPaymentPeriodRaw != null &&
+        (loan.assetPaymentIntervalMonths == null || loan.nextPaymentDate == null)
+      ).length,
+      scheduleSources: {
+        holding: resolved.loans.filter((loan) => loan.assetPaymentScheduleSource === "holding").length,
+        accrual: resolved.loans.filter((loan) => loan.assetPaymentScheduleSource === "accrual").length,
+      },
+      warnings: resolutionWarnings
+        .filter((w) => w.field === "loans.assetPaymentSchedule")
+        .map((w) => ({ severity: w.severity, blocking: w.blocking, message: w.message })),
+      sampleScheduledLoans: resolved.loans
+        .filter((loan) => loan.assetPaymentPeriodRaw != null || loan.nextPaymentDate != null)
+        .slice(0, 12)
+        .map((loan) => ({
+          obligorName: loan.obligorName ?? null,
+          assetPaymentPeriodRaw: loan.assetPaymentPeriodRaw ?? null,
+          assetPaymentIntervalMonths: loan.assetPaymentIntervalMonths ?? null,
+          assetPaymentScheduleSource: loan.assetPaymentScheduleSource ?? null,
+          nextPaymentDate: loan.nextPaymentDate ?? null,
+          accrualBeginDate: loan.accrualBeginDate ?? null,
+          accrualEndDate: loan.accrualEndDate ?? null,
+          openingAccruedInterest: loan.openingAccruedInterest ?? null,
+        })),
     },
     deterministicWarnings: resolutionWarnings,
     constraints,

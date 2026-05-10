@@ -95,11 +95,19 @@ export function applySwitch(
     switchedLoans[sellLoanIndex] = { ...sellLoan, parBalance: sellLoan.parBalance - actualSellPar };
   }
 
-  // Add buy loan with its specified par amount
-  switchedLoans.push(buyLoan);
+  const switchedBuyLoan: ResolvedLoan = {
+    ...buyLoan,
+    accrualBeginDate: undefined,
+    openingAccruedInterest: 0,
+  };
+
+  // Add buy loan with its specified par amount. Opening accrued interest is
+  // reset because switch purchases do not model the dirty-price/accrued cash
+  // leg that would offset a pre-owned borrower receivable.
+  switchedLoans.push(switchedBuyLoan);
 
   // Par delta = buy par - sell par (straightforward, prices don't change par)
-  const parDelta = buyLoan.parBalance - actualSellPar;
+  const parDelta = switchedBuyLoan.parBalance - actualSellPar;
 
   // D4 — Recompute portfolio quality + concentration metrics so partner sees
   // compliance impact of the proposed trade. Uses the same `computePoolQualityMetrics`
@@ -147,7 +155,7 @@ export function applySwitch(
   ): number | null {
     const baseValue = resolved.poolSummary[field];
     const sellFlag = flagFor(sellLoan);
-    const buyFlag = flagFor(buyLoan);
+    const buyFlag = flagFor(switchedBuyLoan);
     if (baseValue == null || sellFlag == null || buyFlag == null) {
       if (localWarnings != null) {
         localWarnings.push({
@@ -166,7 +174,7 @@ export function applySwitch(
     }
     const basePar = (baseValue / 100) * resolved.poolSummary.totalPar;
     const removed = sellFlag === true ? actualSellPar : 0;
-    const added = buyFlag === true ? buyLoan.parBalance : 0;
+    const added = buyFlag === true ? switchedBuyLoan.parBalance : 0;
     const newPar = basePar - removed + added;
     return switchedTotalPar > 0 ? (newPar / switchedTotalPar) * 100 : 0;
   }
@@ -239,7 +247,7 @@ export function applySwitch(
     switchedInputs,
     switchedResolved,
     parDelta,
-    spreadDelta: buyLoan.spreadBps - sellLoan.spreadBps,
-    ratingChange: { from: sellLoan.ratingBucket, to: buyLoan.ratingBucket },
+    spreadDelta: switchedBuyLoan.spreadBps - sellLoan.spreadBps,
+    ratingChange: { from: sellLoan.ratingBucket, to: switchedBuyLoan.ratingBucket },
   };
 }

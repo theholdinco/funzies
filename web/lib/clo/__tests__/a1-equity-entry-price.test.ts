@@ -102,11 +102,11 @@ describe("A1 — equityEntryPriceCents → equityEntryPrice conversion", () => {
 });
 
 describe("A1 — integration: equityEntryPriceCents flows through to engine IRR", () => {
-  it("setting equityEntryPriceCents shifts equityIrr by the expected ~−13pp vs default (book)", () => {
+  it("setting equityEntryPriceCents shifts equityIrr by the expected ~−15pp vs default (book)", () => {
     // Empirical anchor. With DEFAULT_ASSUMPTIONS, Euro XV's engine produces:
     //   - 95c cost basis (€42.56M) → equityIrr ≈ lower
     //   - book-value default → equityIrr ≈ higher (because lower cost basis)
-    //   - gap ≈ −16.23pp
+    //   - gap ≈ −15.26pp
     //
     // History: pre-B1 this gap was −12.92pp; B1's resolver fix corrected
     // `principalAccountCash` from 0 to −€1.82M and widened the gap to
@@ -121,7 +121,11 @@ describe("A1 — integration: equityEntryPriceCents flows through to engine IRR"
     // (~96c on Euro XV vs the prior par-purchase assumption of 100); the
     // resulting cure leverage on synthesised reinvestment loans nudges the
     // gap to −16.23pp. KI-36's monthly internal asset/accrual timing
-    // re-baselines the same plumbing anchor to −15.28pp.
+    // re-baselines the same plumbing anchor to −15.28pp. Asset interest
+    // receipt scheduling then re-baselines the anchor to roughly −16.17pp.
+    // T0 balance-sheet treatment for opening asset-interest receivable moved it
+    // to −12.02pp; stricter duplicate-accrual schedule suppression re-baselines
+    // the same plumbing anchor to −15.26pp.
     const inputs95 = buildFromResolved(fixture.resolved, {
       ...DEFAULT_ASSUMPTIONS,
       equityEntryPriceCents: 95,
@@ -136,9 +140,9 @@ describe("A1 — integration: equityEntryPriceCents flows through to engine IRR"
     const gapPp = (result95.equityIrr! - resultDefault.equityIrr!) * 100;
     // Direction: higher cost basis → lower IRR (gap is negative).
     expect(gapPp).toBeLessThan(0);
-    // Magnitude: within ±1pp of the documented −16.23pp anchor. If this moves,
+    // Magnitude: within ±1pp of the documented −15.26pp anchor. If this moves,
     // a material engine change happened — either A1's plumbing or downstream
     // IRR / cashflow logic.
-    expect(gapPp).toBeCloseTo(-15.28, 0);
+    expect(gapPp).toBeCloseTo(-15.26, 0);
   });
 });

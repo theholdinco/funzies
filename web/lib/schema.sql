@@ -398,6 +398,7 @@ ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS documents JSONB DEFAULT '[]';
 
 -- Add extracted constraints from PPM
 ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS extracted_constraints JSONB DEFAULT '{}';
+ALTER TABLE clo_profiles ADD COLUMN IF NOT EXISTS equity_inception_data JSONB DEFAULT NULL;
 
 -- CLO-level conversations (analyst chat)
 CREATE TABLE IF NOT EXISTS clo_conversations (
@@ -468,6 +469,7 @@ CREATE TABLE IF NOT EXISTS clo_deals (
   collateral_administrator TEXT,
   governing_document TEXT,
   governing_law TEXT,
+  intex_assumptions JSONB,
   ppm_constraints JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -900,6 +902,12 @@ CREATE TABLE IF NOT EXISTS clo_buy_list_items (
   is_cov_lite BOOLEAN,
   average_life_years NUMERIC,
   recovery_rate NUMERIC,
+  asset_payment_period_raw TEXT,
+  asset_payment_interval_months NUMERIC,
+  next_payment_date TEXT,
+  accrual_begin_date TEXT,
+  accrual_end_date TEXT,
+  opening_accrued_interest NUMERIC,
   notes TEXT,
   -- Industry-cap: canonical industry classification (free-text `sector` retained for display).
   industry_taxonomy TEXT

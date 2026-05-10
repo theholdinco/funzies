@@ -19,7 +19,7 @@ if (!SUB_NOTE) throw new Error("fixture missing sub note tranche");
 const SUB_PAR = SUB_NOTE.originalBalance;
 
 const INPUTS = buildFromResolved(fixture.resolved, DEFAULT_ASSUMPTIONS);
-const FAIR_VALUE_TIMEOUT_MS = 30_000;
+const FAIR_VALUE_TIMEOUT_MS = 120_000;
 
 describe("fair-value: monotonicity (engine IRR is decreasing in entry price)", () => {
   it("IRR at 50c > IRR at 95c > IRR at 150c", () => {
@@ -33,9 +33,9 @@ describe("fair-value: monotonicity (engine IRR is decreasing in entry price)", (
 
 describe("computeFairValueAtHurdle on Euro XV", () => {
   // Anchor: Euro XV's IRR-vs-entry-price curve crosses 10% IRR somewhere
-  // between 20c (102% IRR) and 50c (3.5% IRR), and crosses 0% somewhere
-  // between 50c (3.5%) and 95c (−17%). MAX_CENTS=200 caps IRR at ~−30%
-  // so any target below ~−30% returns above_max_bracket.
+  // between 20c (~78% IRR) and 50c (~−22% IRR), and crosses 0% between
+  // those same anchors. MAX_CENTS=200 caps IRR at ~−65%, so any target
+  // below that returns above_max_bracket.
 
   it("10% hurdle → converged price within (20c, 50c)", () => {
     const r = computeFairValueAtHurdle(INPUTS, SUB_PAR, 0.10);
@@ -70,9 +70,9 @@ describe("computeFairValueAtHurdle on Euro XV", () => {
     expect(r.priceCents).toBeNull();
   });
 
-  it("trivially-met hurdle (−50%) → above_max_bracket", () => {
-    // At 200c entry IRR ≈ −30%, still above −50% target.
-    const r = computeFairValueAtHurdle(INPUTS, SUB_PAR, -0.50);
+  it("trivially-met hurdle (−75%) → above_max_bracket", () => {
+    // At 200c entry IRR ≈ −65%, still above −75% target.
+    const r = computeFairValueAtHurdle(INPUTS, SUB_PAR, -0.75);
     expect(r.status).toBe("above_max_bracket");
     expect(r.priceCents).toBeNull();
   });

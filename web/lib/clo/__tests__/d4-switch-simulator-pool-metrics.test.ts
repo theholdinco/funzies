@@ -243,6 +243,39 @@ describe("D4 — applySwitch recomputes pool quality metrics", () => {
     expect(warnings).toHaveLength(1);
   });
 
+  it("switch buy loans do not import pre-purchase accrued-interest receivables", () => {
+    const sellLoan = fixture.resolved.loans[sellIdx];
+    const result = applySwitch(
+      fixture.resolved,
+      {
+        sellLoanIndex: sellIdx,
+        sellParAmount: 0,
+        buyLoan: {
+          parBalance: 1_000_000,
+          maturityDate: sellLoan.maturityDate,
+          ratingBucket: sellLoan.ratingBucket,
+          spreadBps: sellLoan.spreadBps,
+          currency: dealCurrency,
+          assetPaymentPeriodRaw: "3 Months",
+          assetPaymentIntervalMonths: 3,
+          nextPaymentDate: "2026-07-01",
+          accrualBeginDate: "2026-04-01",
+          accrualEndDate: "2026-07-01",
+          openingAccruedInterest: 100_000,
+        },
+        sellPrice: 100,
+        buyPrice: 100,
+      },
+      assumptions,
+    );
+
+    const addedLoan = result.switchedInputs.loans[result.switchedInputs.loans.length - 1];
+    expect(addedLoan.nextPaymentDate).toBe("2026-07-01");
+    expect(addedLoan.accrualEndDate).toBe("2026-07-01");
+    expect(addedLoan.accrualBeginDate).toBeUndefined();
+    expect(addedLoan.openingAccruedInterest).toBe(0);
+  });
+
   it("runProjection canonicalizes currency aliases before pool-quality metrics", () => {
     const sellLoan = fixture.resolved.loans[sellIdx];
     const inputs = applySwitch(
@@ -469,7 +502,7 @@ describe("D4 — pctCovLite delta-recompute", () => {
   // to fire.
   it("pctPik delta-recompute fires when both legs have known pikSpreadBps", () => {
     const sellNonPikIdx = fixture.resolved.loans.findIndex(
-      (l) => l.pikSpreadBps === undefined && l.parBalance > 500_000 && !l.isDelayedDraw,
+      (l) => l.pikSpreadBps === 0 && l.parBalance > 500_000 && !l.isDelayedDraw,
     );
     expect(sellNonPikIdx).toBeGreaterThan(-1);
     const sellLoan = fixture.resolved.loans[sellNonPikIdx];

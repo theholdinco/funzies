@@ -38,6 +38,32 @@ interface Props {
   resolutionWarnings?: ResolutionWarning[];
 }
 
+type BuyLoanScheduleFields = Pick<
+  ResolvedLoan,
+  | "assetPaymentPeriodRaw"
+  | "assetPaymentIntervalMonths"
+  | "assetPaymentScheduleSource"
+  | "nextPaymentDate"
+  | "accrualBeginDate"
+  | "accrualEndDate"
+  | "openingAccruedInterest"
+>;
+
+function pickBuyLoanScheduleFields(item: BuyListItem): Partial<BuyLoanScheduleFields> | null {
+  const candidate = item as BuyListItem & Partial<BuyLoanScheduleFields>;
+  const scheduleFields: Partial<BuyLoanScheduleFields> = {};
+
+  if (candidate.assetPaymentPeriodRaw !== undefined) scheduleFields.assetPaymentPeriodRaw = candidate.assetPaymentPeriodRaw;
+  if (candidate.assetPaymentIntervalMonths !== undefined) scheduleFields.assetPaymentIntervalMonths = candidate.assetPaymentIntervalMonths;
+  if (candidate.assetPaymentScheduleSource !== undefined) scheduleFields.assetPaymentScheduleSource = candidate.assetPaymentScheduleSource;
+  if (candidate.nextPaymentDate !== undefined) scheduleFields.nextPaymentDate = candidate.nextPaymentDate;
+  if (candidate.accrualBeginDate !== undefined) scheduleFields.accrualBeginDate = candidate.accrualBeginDate;
+  if (candidate.accrualEndDate !== undefined) scheduleFields.accrualEndDate = candidate.accrualEndDate;
+  if (candidate.openingAccruedInterest !== undefined) scheduleFields.openingAccruedInterest = candidate.openingAccruedInterest;
+
+  return Object.keys(scheduleFields).length > 0 ? scheduleFields : null;
+}
+
 // Pure formatter — takes a pre-computed delta from the service layer and
 // renders it as a percentage string with sign + color. No arithmetic on
 // engine values here (UI layering rule). The pre-fix `formatDelta` and
@@ -73,6 +99,7 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
   const [buyParAmount, setBuyParAmount] = useState(0);
   const [buyCurrency, setBuyCurrency] = useState("");
   const [selectedBuyListCurrencyMissing, setSelectedBuyListCurrencyMissing] = useState(false);
+  const [selectedBuyScheduleFields, setSelectedBuyScheduleFields] = useState<Partial<BuyLoanScheduleFields> | null>(null);
   const [sellPrice, setSellPrice] = useState(100);
   const [buyPrice, setBuyPrice] = useState(100);
 
@@ -126,8 +153,9 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
 
   // Sync buyMaturity when deal changes
   React.useEffect(() => {
+    if (prefill?.buyMaturity) return;
     setBuyMaturity(resolved.dates.maturity);
-  }, [resolved.dates.maturity]);
+  }, [prefill?.buyMaturity, resolved.dates.maturity]);
 
   React.useEffect(() => {
     if (prefill) return;
@@ -151,6 +179,7 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
     const itemCurrency = canonicalCurrency(item.currency) ?? item.currency?.trim().toUpperCase() ?? "";
     setBuyCurrency(itemCurrency);
     setSelectedBuyListCurrencyMissing(itemCurrency === "");
+    setSelectedBuyScheduleFields(pickBuyLoanScheduleFields(item));
   }, []);
 
   const buyLoan: ResolvedLoan = useMemo(() => ({
@@ -159,7 +188,8 @@ export function SwitchSimulator({ resolved, holdings, buyList, userAssumptions, 
     ratingBucket: buyRating,
     spreadBps: buySpreadBps,
     currency: (canonicalCurrency(buyCurrency) ?? buyCurrency.trim().toUpperCase()) || undefined,
-  }), [buyParAmount, buyMaturity, buyRating, buySpreadBps, buyCurrency]);
+    ...(selectedBuyScheduleFields ?? {}),
+  }), [buyParAmount, buyMaturity, buyRating, buySpreadBps, buyCurrency, selectedBuyScheduleFields]);
 
   const { switchResult, baseResult, switchedResult, dataErrors, runtimeError } = useMemo(() => {
     if (sellLoanIndex === null) return { switchResult: null, baseResult: null, switchedResult: null, dataErrors: null, runtimeError: null };

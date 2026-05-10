@@ -1,4 +1,4 @@
-import type { ExtractedConstraints, CloPoolSummary, CloComplianceTest, CloTranche, CloTrancheSnapshot, CloHolding, CloAccountBalance, CloParValueAdjustment } from "./types";
+import type { ExtractedConstraints, CloPoolSummary, CloComplianceTest, CloTranche, CloTrancheSnapshot, CloHolding, CloAccountBalance, CloParValueAdjustment, CloAccrual } from "./types";
 import type { Citation, ComplianceTestType, ResolvedDealData, ResolvedTranche, ResolvedPool, ResolvedTrigger, ResolvedReinvestmentOcTrigger, ResolvedDates, ResolvedFees, ResolvedLoan, ResolvedComplianceTest, ResolvedEodTest, ResolvedMetadata, ResolvedSeniorExpensesCap, ResolvedDiscountObligationRule, ResolvedLongDatedValuationRule, ResolvedPrincipalPop, ResolvedPrincipalClause, ResolvedInterestWaterfallShape, ResolutionWarning } from "./resolver-types";
 import { parseSpreadToBps, normalizeWacSpread } from "./ingestion-gate";
 import { isHigherBetter } from "./test-direction";
@@ -10,7 +10,7 @@ import { assignDenseSeniorityRanks, classOrderBucket } from "./seniority-rank";
 import { canonicalizeDayCount, type DayCountConvention } from "./day-count-canonicalize";
 import { normalizePaymentFrequency, type PaymentFrequency } from "./payment-frequency";
 import { canonicalCurrency } from "./currency";
-import { quartersBetween } from "./projection";
+import { normalizeAssetPaymentIntervalMonths, quartersBetween } from "./projection";
 import { resolveAgencyRecovery } from "./recovery-rate";
 import { normalizeClassName as normClass } from "./normalize-class-name";
 import { resolveMoodysRating, resolveFitchRating, type IntexPositionRow } from "./resolve-rating";
@@ -31,6 +31,22 @@ function stripNulls<T extends Record<string, unknown>>(obj: T): T {
     if (v != null) result[k] = v;
   }
   return result as T;
+}
+
+function trimToNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function isValidIsoDateForResolver(value: string | null | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const d = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
+}
+
+function normalizeScheduleIdentifier(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toLowerCase().replace(/[\s-]+/g, "");
+  return normalized ? normalized : null;
 }
 
 /** E1 (Sprint 5) — convert a raw provenance source (carrying `source_pages`
@@ -1827,6 +1843,7 @@ export function resolveWaterfallInputs(
   accountBalances?: CloAccountBalance[],
   parValueAdjustments?: CloParValueAdjustment[],
   intexPositions?: Map<string, IntexPositionRow>,
+  accruals: CloAccrual[] = [],
 ): { resolved: ResolvedDealData; warnings: ResolutionWarning[] } {
   const warnings: ResolutionWarning[] = [];
 
@@ -2365,6 +2382,67 @@ export function resolveWaterfallInputs(
     (h.lxid ? intexLookup.get(h.lxid) : undefined)
     ?? (h.isin ? intexLookup.get(h.isin) : undefined)
     ?? (h.facilityId ? intexLookup.get(h.facilityId) : undefined);
+  const accrualLookup = new Map<string, CloAccrual>();
+  const ambiguousAccrualKeys = new Set<string>();
+  const normalizedAccrualFrequencyEvidence = (raw: string | null | undefined): string | null => {
+    const trimmed = trimToNull(raw);
+    if (!trimmed) return null;
+    const interval = normalizeAssetPaymentIntervalMonths(trimmed);
+    return interval == null ? trimmed.toLowerCase() : `${interval}m`;
+  };
+  const sameAccrualScheduleEvidence = (a: CloAccrual, b: CloAccrual): boolean =>
+    normalizedAccrualFrequencyEvidence(a.paymentFrequency) === normalizedAccrualFrequencyEvidence(b.paymentFrequency) &&
+    trimToNull(a.accrualBeginDate) === trimToNull(b.accrualBeginDate) &&
+    trimToNull(a.accrualEndDate) === trimToNull(b.accrualEndDate);
+  const addAccrualKey = (key: string | null | undefined, row: CloAccrual) => {
+    const normalized = normalizeScheduleIdentifier(key);
+    if (!normalized) return;
+    const existing = accrualLookup.get(normalized);
+    if (existing && existing !== row && existing.id !== row.id) {
+      if (sameAccrualScheduleEvidence(existing, row)) return;
+      ambiguousAccrualKeys.add(normalized);
+      return;
+    }
+    if (!existing) accrualLookup.set(normalized, row);
+  };
+  for (const row of accruals) {
+    addAccrualKey(row.loanxId, row);
+    addAccrualKey(row.securityId, row);
+    addAccrualKey(row.figi, row);
+  }
+  const getAccrualByKey = (key: string | null | undefined): CloAccrual | undefined => {
+    const normalized = normalizeScheduleIdentifier(key);
+    if (!normalized || ambiguousAccrualKeys.has(normalized)) return undefined;
+    return accrualLookup.get(normalized);
+  };
+  const hasAmbiguousAccrualKey = (h: CloHolding): boolean =>
+    [h.lxid, h.isin, h.cusip, h.facilityId, h.figi].some((key) => {
+      const normalized = normalizeScheduleIdentifier(key);
+      return normalized ? ambiguousAccrualKeys.has(normalized) : false;
+    });
+  const accrualMatchesForHolding = (h: CloHolding): CloAccrual[] => {
+    const matches: CloAccrual[] = [];
+    const seen = new Set<string>();
+    for (const key of [h.lxid, h.isin, h.cusip, h.facilityId, h.figi]) {
+      const match = getAccrualByKey(key);
+      if (!match) continue;
+      const id = match.id ?? `${trimToNull(match.loanxId) ?? ""}:${trimToNull(match.securityId) ?? ""}:${trimToNull(match.figi) ?? ""}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      matches.push(match);
+    }
+    return matches;
+  };
+  const hasConflictingAccrualMatches = (h: CloHolding): boolean => {
+    const matches = accrualMatchesForHolding(h);
+    return matches.length > 1 && matches.some((match) => !sameAccrualScheduleEvidence(matches[0], match));
+  };
+  const hasAmbiguousAccrualMatch = (h: CloHolding): boolean =>
+    hasAmbiguousAccrualKey(h) || hasConflictingAccrualMatches(h);
+  const lookupAccrual = (h: CloHolding): CloAccrual | undefined => {
+    if (hasAmbiguousAccrualKey(h) || hasConflictingAccrualMatches(h)) return undefined;
+    return accrualMatchesForHolding(h)[0];
+  };
 
   // Collected per-position absent-rating obligors. Aggregated into one
   // blocking warning per agency after the loop — each absent position would
@@ -2470,6 +2548,7 @@ export function resolveWaterfallInputs(
     const fitchResolution = resolveFitchRating(h, intex, { ratingAgencies, ratingDefinitions: undefined });
     const moodysFinal = moodysResolution.rating;
     const fitchFinal = fitchResolution.rating;
+    const accrual = lookupAccrual(h);
     if (moodysResolution.source === "absent" && ratingAgencies.includes("moodys")) {
       moodysAbsentObligors.push(h.obligorName ?? h.lxid ?? h.isin ?? h.facilityId ?? "unknown");
     }
@@ -2682,6 +2761,203 @@ export function resolveWaterfallInputs(
       }
     }
 
+    const scheduleExposure = Math.max(0, holdingPar(h)) + Math.max(0, h.unfundedCommitment ?? 0);
+    const hasPositiveScheduleExposure = scheduleExposure > 0;
+    const holdingPaymentPeriod = trimToNull(h.paymentPeriod);
+    const accrualPaymentFrequency = trimToNull(accrual?.paymentFrequency);
+    const assetPaymentPeriodRaw = holdingPaymentPeriod ?? accrualPaymentFrequency;
+    const assetPaymentIntervalMonths = normalizeAssetPaymentIntervalMonths(assetPaymentPeriodRaw);
+    const assetPaymentScheduleSource: ResolvedLoan["assetPaymentScheduleSource"] =
+      holdingPaymentPeriod ? "holding" : accrualPaymentFrequency ? "accrual" : undefined;
+    const holdingNextPaymentDate = trimToNull(h.nextPaymentDate);
+    const holdingAccrualEndDate = trimToNull(h.accrualEndDate);
+    const accrualRowAccrualEndDate = trimToNull(accrual?.accrualEndDate);
+    const holdingNextPaymentDateValid = isValidIsoDateForResolver(holdingNextPaymentDate);
+    const holdingAccrualEndDateValid = isValidIsoDateForResolver(holdingAccrualEndDate);
+    const accrualRowAccrualEndDateValid = isValidIsoDateForResolver(accrualRowAccrualEndDate);
+    const fallbackPaymentAnchor = holdingAccrualEndDateValid
+      ? holdingAccrualEndDate
+      : accrualRowAccrualEndDateValid
+        ? accrualRowAccrualEndDate
+        : null;
+    const nextPaymentDate = holdingNextPaymentDateValid
+      ? holdingNextPaymentDate
+      : assetPaymentPeriodRaw
+        ? fallbackPaymentAnchor
+        : null;
+    const hasAssetPaymentAnchor = isValidIsoDateForResolver(nextPaymentDate);
+    const accrualBeginDate = trimToNull(h.accrualBeginDate) ?? trimToNull(accrual?.accrualBeginDate) ?? undefined;
+    const accrualEndDate = holdingAccrualEndDateValid
+      ? holdingAccrualEndDate
+      : accrualRowAccrualEndDateValid
+        ? accrualRowAccrualEndDate
+        : undefined;
+    const holdingIntervalMonths = normalizeAssetPaymentIntervalMonths(holdingPaymentPeriod);
+    const accrualIntervalMonths = normalizeAssetPaymentIntervalMonths(accrualPaymentFrequency);
+    const hasHoldingAccrualFrequencyConflict =
+      hasPositiveScheduleExposure &&
+      holdingIntervalMonths != null &&
+      accrualIntervalMonths != null &&
+      holdingIntervalMonths !== accrualIntervalMonths;
+    const hasHoldingAccrualAnchorConflict =
+      hasPositiveScheduleExposure &&
+      isValidIsoDateForResolver(holdingNextPaymentDate) &&
+      isValidIsoDateForResolver(accrualRowAccrualEndDate) &&
+      holdingNextPaymentDate !== accrualRowAccrualEndDate;
+    const hasHoldingAccrualEndConflict =
+      hasPositiveScheduleExposure &&
+      isValidIsoDateForResolver(holdingAccrualEndDate) &&
+      isValidIsoDateForResolver(accrualRowAccrualEndDate) &&
+      holdingAccrualEndDate !== accrualRowAccrualEndDate;
+    const hasScheduleAccrualEndMismatch =
+      hasPositiveScheduleExposure &&
+      hasAssetPaymentAnchor &&
+      isValidIsoDateForResolver(accrualEndDate) &&
+      accrualEndDate !== nextPaymentDate;
+    const hasHoldingScheduleEvidence = Boolean(
+      holdingPaymentPeriod ||
+      holdingNextPaymentDate ||
+      holdingAccrualEndDate ||
+      trimToNull(h.accrualBeginDate) ||
+      h.accruedInterest != null,
+    );
+    const hasHoldingPaymentAnchor = holdingNextPaymentDateValid || holdingAccrualEndDateValid;
+    const hasCompleteHoldingScheduleEvidence = Boolean(
+      holdingPaymentPeriod &&
+      hasHoldingPaymentAnchor,
+    );
+    const hasAmbiguousHoldingAccrualEvidence =
+      hasPositiveScheduleExposure &&
+      hasHoldingScheduleEvidence &&
+      !hasCompleteHoldingScheduleEvidence &&
+      hasAmbiguousAccrualMatch(h);
+    const hasScheduleEvidenceConflict =
+      hasHoldingAccrualFrequencyConflict ||
+      hasHoldingAccrualAnchorConflict ||
+      hasHoldingAccrualEndConflict ||
+      hasScheduleAccrualEndMismatch ||
+      hasAmbiguousHoldingAccrualEvidence;
+    if (hasPositiveScheduleExposure && assetPaymentPeriodRaw && !hasAssetPaymentAnchor) {
+      warnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          `Holding "${h.obligorName ?? "unknown"}" has asset payment period "${assetPaymentPeriodRaw}" ` +
+          `but no valid nextPaymentDate anchor. Frequency alone is insufficient to time borrower interest receipts; ` +
+          `loan remains in compatibility mode with interest collected as accrued.`,
+        severity: "warn",
+        blocking: false,
+      });
+    }
+    if (
+      hasPositiveScheduleExposure &&
+      holdingNextPaymentDate &&
+      !holdingNextPaymentDateValid &&
+      assetPaymentPeriodRaw
+    ) {
+      warnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          `Holding "${h.obligorName ?? "unknown"}" has invalid nextPaymentDate "${holdingNextPaymentDate}" ` +
+          (hasAssetPaymentAnchor
+            ? `but resolver used ${nextPaymentDate} as the asset payment anchor.`
+            : `and no valid fallback payment anchor; loan remains in compatibility mode.`),
+        severity: "warn",
+        blocking: false,
+      });
+    }
+    if (
+      hasPositiveScheduleExposure &&
+      holdingAccrualEndDate &&
+      !holdingAccrualEndDateValid &&
+      assetPaymentPeriodRaw
+    ) {
+      warnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          `Holding "${h.obligorName ?? "unknown"}" has invalid accrualEndDate "${holdingAccrualEndDate}". ` +
+          (accrualRowAccrualEndDateValid
+            ? `Resolver used matched accrualEndDate ${accrualRowAccrualEndDate} for schedule evidence.`
+            : `Resolver ignored that accrual end date for borrower interest timing.`),
+        severity: "warn",
+        blocking: false,
+      });
+    }
+    if (
+      hasPositiveScheduleExposure &&
+      accrualRowAccrualEndDate &&
+      !accrualRowAccrualEndDateValid &&
+      assetPaymentPeriodRaw
+    ) {
+      warnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          `Matched accrual row for holding "${h.obligorName ?? "unknown"}" has invalid accrualEndDate ` +
+          `"${accrualRowAccrualEndDate}". Resolver ignored that accrual end date for borrower interest timing.`,
+        severity: "warn",
+        blocking: false,
+      });
+    }
+    if (hasPositiveScheduleExposure && hasAssetPaymentAnchor && assetPaymentPeriodRaw && assetPaymentIntervalMonths == null) {
+      warnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          `Holding "${h.obligorName ?? "unknown"}" has unsupported anchored asset payment period ` +
+          `"${assetPaymentPeriodRaw}" with nextPaymentDate ${nextPaymentDate}. Supported intervals are 1, 2, 3, and 6 months.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+    if (hasScheduleEvidenceConflict) {
+      warnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          hasAmbiguousHoldingAccrualEvidence
+            ? `Holding "${h.obligorName ?? "unknown"}" has duplicate or conflicting accrual rows for its identifiers. ` +
+              `Resolver ignored the asset schedule rather than attach contradictory borrower interest timing; ` +
+              `loan remains in compatibility mode.`
+            : `Holding "${h.obligorName ?? "unknown"}" has contradictory asset schedule evidence ` +
+              `(paymentPeriod ${assetPaymentPeriodRaw ?? "missing"}, nextPaymentDate ${nextPaymentDate ?? "missing"}, ` +
+              `accrualEndDate ${accrualEndDate ?? "missing"}). Resolver ignored the asset schedule rather than attach ` +
+              `contradictory borrower interest timing; loan remains in compatibility mode.`,
+        severity: "warn",
+        blocking: false,
+      });
+    }
+    if (
+      hasPositiveScheduleExposure &&
+      hasCompleteHoldingScheduleEvidence &&
+      hasAmbiguousAccrualMatch(h)
+    ) {
+      warnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          `Holding "${h.obligorName ?? "unknown"}" has duplicate or conflicting accrual rows, ` +
+          `but complete holding-level asset schedule evidence is present. Resolver ignored the supplemental rows.`,
+        severity: "warn",
+        blocking: false,
+      });
+    }
+    const needsAccrualScheduleEvidence =
+      !holdingPaymentPeriod ||
+      !hasHoldingPaymentAnchor;
+    if (
+      hasPositiveScheduleExposure &&
+      !accrual &&
+      !hasScheduleEvidenceConflict &&
+      needsAccrualScheduleEvidence &&
+      hasAmbiguousAccrualMatch(h)
+    ) {
+      warnings.push({
+        field: "loans.assetPaymentSchedule",
+        message:
+          `Holding "${h.obligorName ?? "unknown"}" has duplicate or conflicting accrual rows for its identifiers. ` +
+          `Resolver ignored accrual-sourced payment frequency/accrual dates rather than attach an arbitrary row; ` +
+          `loan remains in compatibility mode unless holding-level schedule fields are present.`,
+        severity: "warn",
+        blocking: false,
+      });
+    }
+
     return stripNulls({
       parBalance: holdingPar(h),
       maturityDate: h.maturityDate ?? fallbackMaturity,
@@ -2781,6 +3057,13 @@ export function resolveWaterfallInputs(
       ...(activeIndustryTaxonomy != null
         ? resolveLoanIndustry(h, activeIndustryTaxonomy, holdingPar(h) > 0 && !h.isDefaulted, industryCoverageGapObligors)
         : {}),
+      assetPaymentPeriodRaw,
+      assetPaymentIntervalMonths: hasScheduleEvidenceConflict ? undefined : assetPaymentIntervalMonths ?? undefined,
+      assetPaymentScheduleSource,
+      nextPaymentDate: hasScheduleEvidenceConflict ? undefined : nextPaymentDate ?? undefined,
+      accrualBeginDate,
+      accrualEndDate,
+      openingAccruedInterest: h.accruedInterest ?? undefined,
     });
   });
 

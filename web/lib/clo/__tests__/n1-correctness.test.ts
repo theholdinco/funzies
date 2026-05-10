@@ -248,10 +248,10 @@ describe("N1 correctness — currently broken buckets (documented in KI ledger)"
 
   // Sub distribution is the residual — cascades from every upstream drift.
   // Net direction: engine sub is slightly LOWER than trustee because the
-  // fee-base over-payment on senior/sub mgmt fees (€27,941 combined, KI-12a) +
-  // the incentive-fee circular solver's rounding more than offset the engine's
-  // missing trustee fee (€64,660, KI-08). Counter-intuitive signs are a hint
-  // this is a residual, not an independent effect.
+  // senior/sub mgmt fee-base residuals, class-interest day-count drift,
+  // scheduled asset cash timing, and smaller trustee/admin/tax/issuer-profit
+  // residual components. Counter-intuitive signs are a hint this is a
+  // residual, not an independent effect.
   //
   // MAINTENANCE WARNING: this expectedDrift MUST be re-baselined whenever any
   // upstream KI (01 / 08 / 09 / 10 / 11 / 12a / 12b) closes or its own expected
@@ -321,39 +321,53 @@ describe("N1 correctness — currently broken buckets (documented in KI ledger)"
       // timing delta is not independently decomposed here:
       //   post per-loan DCC: -€57,239.62
       //   post KI-36 monthly clock: -€172,489.98
-      //   implied monthly-clock cascade: -€115,250.36
-      expectedDrift: -172489.98,
+      //   post asset interest receipt scheduling: -€353,676.36
+      //   post schedule consistency/T0 multi-receipt review: -€263,542.20
+      //   post duplicate-accrual suppression review: -€260,482.67
+      //   post holding accrualEndDate anchor review: -€233,269.05
+      //   post inferred opening asset-interest receivable review: -€232,932.00
+      //   post same-tick defaulted-share asset-interest writeoff: -€254,223.24
+      expectedDrift: -254223.24,
       tolerance: 100,
       closeThreshold: 100,
     },
-    "subDistribution matches trustee within €1000",
+    "subDistribution total residual matches trustee within €1000",
     () => drift("subDistribution"),
   );
 
-  it("subDistribution drift bridges to upstream modeled interest-waterfall drifts", () => {
-    const upstreamInterestOutflowBuckets = [
-      "taxes",
-      "issuerProfit",
-      "trusteeFeesPaid",
-      "adminFeesPaid",
-      "seniorMgmtFeePaid",
-      "stepG_interest",
-      "classB_interest",
-      "classC_current",
-      "classD_current",
-      "classE_current",
-      "classF_current",
-      "subMgmtFeePaid",
-    ];
-    const upstreamOutflowDrift = upstreamInterestOutflowBuckets.reduce((sum, bucket) => sum + drift(bucket), 0);
+  failsWithMagnitude(
+    {
+      ki: "KI-13a-engineMath",
+      closesIn: "Progressively as KI-08 / KI-12a / KI-12b close (re-baseline on each)",
+      expectedDrift: -170_655.81,
+      tolerance: 100,
+      closeThreshold: 100,
+    },
+    "subDistribution upstream bridge residual after modeled waterfall drifts",
+    () => {
+      const upstreamInterestOutflowBuckets = [
+        "taxes",
+        "issuerProfit",
+        "trusteeFeesPaid",
+        "adminFeesPaid",
+        "seniorMgmtFeePaid",
+        "stepG_interest",
+        "classB_interest",
+        "classC_current",
+        "classD_current",
+        "classE_current",
+        "classF_current",
+        "subMgmtFeePaid",
+      ];
+      const upstreamOutflowDrift = upstreamInterestOutflowBuckets.reduce((sum, bucket) => sum + drift(bucket), 0);
 
-    // Sub distribution is the residual after every modeled interest outflow.
-    // This pins the aggregate residual funding drift while deriving the sub
-    // bridge from the emitted waterfall rows, so upstream re-baselines fail
-    // here unless the residual is reviewed as a cascade.
-    const aggregateResidualFundingDrift = -88_922.54;
-    expect(drift("subDistribution")).toBeCloseTo(aggregateResidualFundingDrift - upstreamOutflowDrift, 1);
-  });
+      // Sub distribution is the residual after every modeled interest outflow.
+      // This pins the aggregate residual funding drift while deriving the sub
+      // bridge from the emitted waterfall rows, so upstream re-baselines fail
+      // here unless the residual is reviewed as a cascade.
+      return drift("subDistribution") + upstreamOutflowDrift;
+    },
+  );
 });
 
 // ----------------------------------------------------------------------------

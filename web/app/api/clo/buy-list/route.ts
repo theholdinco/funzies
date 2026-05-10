@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth-helpers";
 import { getProfileForUser } from "@/lib/clo/access";
 import { getBuyListForProfile, replaceBuyList, clearBuyList } from "@/lib/clo/buy-list";
 import { canonicalCurrency } from "@/lib/clo/currency";
+import { normalizeAssetPaymentIntervalMonths } from "@/lib/clo/projection";
 import type { BuyListItem } from "@/lib/clo/types";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -66,6 +67,17 @@ const COLUMN_MAP: Record<string, string> = {
   wal: "averageLifeYears",
   recovery: "recoveryRate",
   recovery_rate: "recoveryRate",
+  payment_period: "assetPaymentPeriodRaw",
+  asset_payment_period: "assetPaymentPeriodRaw",
+  asset_payment_period_raw: "assetPaymentPeriodRaw",
+  asset_payment_interval_months: "assetPaymentIntervalMonths",
+  payment_interval_months: "assetPaymentIntervalMonths",
+  next_payment_date: "nextPaymentDate",
+  accrual_begin_date: "accrualBeginDate",
+  accrual_start_date: "accrualBeginDate",
+  accrual_end_date: "accrualEndDate",
+  accrued_interest: "openingAccruedInterest",
+  opening_accrued_interest: "openingAccruedInterest",
   notes: "notes",
   commentary: "notes",
 };
@@ -73,6 +85,7 @@ const COLUMN_MAP: Record<string, string> = {
 const NUMERIC_FIELDS = new Set([
   "spreadBps", "price", "facilitySize", "leverage",
   "interestCoverage", "averageLifeYears", "recoveryRate",
+  "assetPaymentIntervalMonths", "openingAccruedInterest",
 ]);
 
 function parseNumber(value: string): number | null {
@@ -120,7 +133,7 @@ function parseCsvLine(line: string): string[] {
   return fields;
 }
 
-function parseCsv(text: string): ParsedItem[] {
+export function parseCsv(text: string): ParsedItem[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) throw new Error("CSV must have a header row and at least one data row");
 
@@ -141,7 +154,8 @@ function parseCsv(text: string): ParsedItem[] {
 
   const items: ParsedItem[] = [];
 
-  for (const line of dataLines) {
+  for (let rowIndex = 0; rowIndex < dataLines.length; rowIndex++) {
+    const line = dataLines[rowIndex];
     const values = parseCsvLine(line);
     const item: Record<string, unknown> = {
       obligorName: "",
@@ -162,6 +176,12 @@ function parseCsv(text: string): ParsedItem[] {
       isCovLite: null,
       averageLifeYears: null,
       recoveryRate: null,
+      assetPaymentPeriodRaw: null,
+      assetPaymentIntervalMonths: null,
+      nextPaymentDate: null,
+      accrualBeginDate: null,
+      accrualEndDate: null,
+      openingAccruedInterest: null,
       notes: null,
     };
 
@@ -172,7 +192,17 @@ function parseCsv(text: string): ParsedItem[] {
       if (!val) continue;
 
       if (NUMERIC_FIELDS.has(field)) {
-        item[field] = parseNumber(val);
+        const parsedNumber = parseNumber(val);
+        if (
+          parsedNumber == null &&
+          (field === "assetPaymentIntervalMonths" || field === "openingAccruedInterest")
+        ) {
+          const sourceColumn = headers[i]?.trim() || field;
+          throw new Error(
+            `Buy-list CSV row ${rowIndex + 2} has invalid numeric value for ${sourceColumn}: "${val}"`,
+          );
+        }
+        item[field] = parsedNumber;
       } else if (field === "isCovLite") {
         item[field] = parseBoolean(val);
       } else if (field === "industryTaxonomy") {
@@ -191,6 +221,27 @@ function parseCsv(text: string): ParsedItem[] {
     }
 
     if (!item.obligorName) continue;
+    if (
+      typeof item.openingAccruedInterest === "number" &&
+      (!Number.isFinite(item.openingAccruedInterest) || item.openingAccruedInterest < 0)
+    ) {
+      throw new Error(`Buy-list row "${item.obligorName}" has invalid opening accrued interest; expected a non-negative number`);
+    }
+    if (item.assetPaymentPeriodRaw) {
+      const rawInterval = normalizeAssetPaymentIntervalMonths(item.assetPaymentPeriodRaw as string);
+      if (item.assetPaymentIntervalMonths == null) {
+        item.assetPaymentIntervalMonths = rawInterval;
+      } else if (
+        rawInterval != null &&
+        item.assetPaymentIntervalMonths !== rawInterval
+      ) {
+        throw new Error(
+          `Buy-list row "${item.obligorName}" has conflicting asset payment interval evidence: ` +
+          `"${item.assetPaymentPeriodRaw}" implies ${rawInterval} months but asset_payment_interval_months is ` +
+          `${item.assetPaymentIntervalMonths}`,
+        );
+      }
+    }
     items.push(item as unknown as ParsedItem);
   }
 

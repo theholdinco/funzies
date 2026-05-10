@@ -1326,6 +1326,16 @@ export interface ResolvedLoan {
    *  taxonomy's seed list via `lookupByCode(industryCode, taxonomy)`.
    *  Engine matching uses `industryCode`, NOT this field. */
   industryName?: string;
+  /** Asset-side interest receipt schedule. Schedule mode requires a
+   *  recognized interval plus a next payment date anchor. Missing/incomplete
+   *  schedule evidence intentionally preserves compatibility behavior. */
+  assetPaymentPeriodRaw?: string | null;
+  assetPaymentIntervalMonths?: number | null;
+  assetPaymentScheduleSource?: "holding" | "accrual" | null;
+  nextPaymentDate?: string | null;
+  accrualBeginDate?: string | null;
+  accrualEndDate?: string | null;
+  openingAccruedInterest?: number | null;
 }
 
 export type WarningSeverity = "info" | "warn" | "error";

@@ -13,6 +13,20 @@ import { describe, expect, it } from "vitest";
 import { resolve } from "path";
 
 const TSCONFIG_PATH = resolve(__dirname, "../../../tsconfig.json");
+const WEB_ROOT = resolve(__dirname, "../../..");
+const UI_FILE_PATTERNS = [
+  resolve(WEB_ROOT, "app/clo/**/*.{ts,tsx}"),
+  resolve(WEB_ROOT, "components/clo/**/*.{ts,tsx}"),
+];
+
+function createScopedProject(filePatterns: string[]): Project {
+  const project = new Project({
+    tsConfigFilePath: TSCONFIG_PATH,
+    skipAddingFilesFromTsConfig: true,
+  });
+  project.addSourceFilesAtPaths(filePatterns);
+  return project;
+}
 
 const ARITHMETIC_TOKENS = new Set<SyntaxKind>([
   SyntaxKind.AsteriskToken,
@@ -164,10 +178,11 @@ function hasAllowComment(node: Node, ruleId: string): boolean {
 
 describe("UI does not re-derive engine values", () => {
   it("no AST violations under scoped UI files", () => {
-    const project = new Project({ tsConfigFilePath: TSCONFIG_PATH });
+    const project = createScopedProject(UI_FILE_PATTERNS);
+    const sourceFiles = project.getSourceFiles();
     const violations: string[] = [];
     for (const rule of RULES) {
-      const files = project.getSourceFiles().filter((f) => rule.scope.test(f.getFilePath()));
+      const files = sourceFiles.filter((f) => rule.scope.test(f.getFilePath()));
       for (const file of files) {
         file.forEachDescendant((node) => {
           if (rule.detect(node) && !hasAllowComment(node, rule.id)) {
@@ -209,7 +224,10 @@ describe("LoanState.warfFactor invariant has only sanctioned construction paths"
   //   - arbitrary call expression (warfFactor: someOtherFn(...))
   //   - arithmetic (warfFactor: x * y)
   it("every warfFactor: write site in projection.ts/switch-simulator.ts uses a sanctioned shape", () => {
-    const project = new Project({ tsConfigFilePath: TSCONFIG_PATH });
+    const project = createScopedProject([
+      resolve(WEB_ROOT, "lib/clo/projection.ts"),
+      resolve(WEB_ROOT, "lib/clo/switch-simulator.ts"),
+    ]);
     const targetFiles = project.getSourceFiles().filter((f) =>
       /web\/lib\/clo\/(projection|switch-simulator)\.ts$/.test(f.getFilePath()),
     );

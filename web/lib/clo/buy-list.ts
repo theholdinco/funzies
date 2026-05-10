@@ -34,6 +34,12 @@ function rowToBuyListItem(row: Record<string, unknown>): BuyListItem {
     isCovLite: row.is_cov_lite != null ? (row.is_cov_lite as boolean) : null,
     averageLifeYears: num(row.average_life_years),
     recoveryRate: num(row.recovery_rate),
+    assetPaymentPeriodRaw: (row.asset_payment_period_raw as string) ?? null,
+    assetPaymentIntervalMonths: num(row.asset_payment_interval_months),
+    nextPaymentDate: (row.next_payment_date as string) ?? null,
+    accrualBeginDate: (row.accrual_begin_date as string) ?? null,
+    accrualEndDate: (row.accrual_end_date as string) ?? null,
+    openingAccruedInterest: num(row.opening_accrued_interest),
     notes: (row.notes as string) ?? null,
     createdAt: (row.created_at as string) || "",
   };
@@ -73,7 +79,7 @@ export async function replaceBuyList(
   for (const item of items) {
     const start = paramIndex;
     placeholders.push(
-      `($${start},$${start + 1},$${start + 2},$${start + 3},$${start + 4},$${start + 5},$${start + 6},$${start + 7},$${start + 8},$${start + 9},$${start + 10},$${start + 11},$${start + 12},$${start + 13},$${start + 14},$${start + 15},$${start + 16},$${start + 17},$${start + 18},$${start + 19},$${start + 20},$${start + 21},$${start + 22})`
+      `($${start},$${start + 1},$${start + 2},$${start + 3},$${start + 4},$${start + 5},$${start + 6},$${start + 7},$${start + 8},$${start + 9},$${start + 10},$${start + 11},$${start + 12},$${start + 13},$${start + 14},$${start + 15},$${start + 16},$${start + 17},$${start + 18},$${start + 19},$${start + 20},$${start + 21},$${start + 22},$${start + 23},$${start + 24},$${start + 25},$${start + 26},$${start + 27},$${start + 28})`
     );
     values.push(
       profileId,
@@ -96,11 +102,17 @@ export async function replaceBuyList(
       item.isCovLite,
       item.averageLifeYears,
       item.recoveryRate,
+      item.assetPaymentPeriodRaw ?? null,
+      item.assetPaymentIntervalMonths ?? null,
+      item.nextPaymentDate ?? null,
+      item.accrualBeginDate ?? null,
+      item.accrualEndDate ?? null,
+      item.openingAccruedInterest ?? null,
       item.notes,
       item.industryTaxonomy,
       item.industryCode
     );
-    paramIndex += 23;
+    paramIndex += 29;
   }
 
   const rows = await query<Record<string, unknown>>(
@@ -110,7 +122,10 @@ export async function replaceBuyList(
       currency_raw, currency_canonical, currency_source,
       price, maturity_date,
       facility_size, leverage, interest_coverage, is_cov_lite,
-      average_life_years, recovery_rate, notes,
+      average_life_years, recovery_rate,
+      asset_payment_period_raw, asset_payment_interval_months, next_payment_date,
+      accrual_begin_date, accrual_end_date, opening_accrued_interest,
+      notes,
       industry_taxonomy, industry_code
     ) VALUES ${placeholders.join(", ")}
     RETURNING *`,
