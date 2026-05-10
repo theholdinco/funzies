@@ -155,6 +155,12 @@ export default async function ContextPage() {
           reinvestmentPeriodEnd,
           reportDate: reportPeriod?.reportDate ?? null,
           paymentDate: reportPeriod?.paymentDate ?? null,
+          previousPaymentDate: reportPeriod?.previousPaymentDate ?? null,
+          reportType: reportPeriod?.reportType ?? null,
+          reportingPeriodStart: reportPeriod?.reportingPeriodStart ?? null,
+          reportingPeriodEnd: reportPeriod?.reportingPeriodEnd ?? null,
+          isFinal: reportPeriod?.isFinal ?? null,
+          dataQuality: reportPeriod?.dataQuality ?? null,
           closingDate: deal?.closingDate ?? constraints.keyDates?.originalIssueDate ?? null,
           effectiveDate: deal?.effectiveDate ?? constraints.keyDates?.currentIssueDate ?? null,
           nonCallPeriodEnd: deal?.nonCallPeriodEnd ?? constraints.keyDates?.nonCallPeriodEnd ?? null,
@@ -166,7 +172,7 @@ export default async function ContextPage() {
         trades={trades}
         tradingSummary={tradingSummary}
         waterfallSteps={waterfallSteps}
-        events={events}
+        events={reportPeriod ? events.filter((event) => event.reportPeriodId === reportPeriod.id || event.reportPeriodId == null) : []}
         supplementaryData={supplementaryData}
         proceeds={proceeds}
         overflow={overflow}

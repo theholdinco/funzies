@@ -5,6 +5,20 @@ import { decryptApiKey } from "@/lib/crypto";
 import { verifyPanelAccess } from "@/lib/clo/access";
 import { processAnthropicStream } from "@/lib/claude-stream";
 
+function prioritizeScheduleSummary(dealContext: unknown): unknown {
+  if (
+    !dealContext ||
+    typeof dealContext !== "object" ||
+    Array.isArray(dealContext) ||
+    !("assetInterestScheduleSummary" in dealContext)
+  ) {
+    return dealContext;
+  }
+
+  const { assetInterestScheduleSummary, ...rest } = dealContext as Record<string, unknown>;
+  return { assetInterestScheduleSummary, ...rest };
+}
+
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user?.id) {
@@ -59,7 +73,7 @@ Output a JSON array of scenarios. Each must have:
 
 Only output the JSON array, nothing else.`;
 
-  const contextSummary = JSON.stringify(dealContext, null, 2).slice(0, 6000);
+  const contextSummary = JSON.stringify(prioritizeScheduleSummary(dealContext), null, 2).slice(0, 6000);
 
   const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",

@@ -2,9 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-helpers";
 import { query } from "@/lib/db";
 import { decryptApiKey } from "@/lib/crypto";
-import { verifyPanelAccess } from "@/lib/clo/access";
+import {
+  getAccountBalances,
+  getAccruals,
+  getHoldings,
+  getIntexPositionsByReportPeriod,
+  getParValueAdjustments,
+  getReportPeriodData,
+  getTrancheSnapshots,
+  getTranches,
+  verifyPanelAccess,
+} from "@/lib/clo/access";
 import { normalizeClassName } from "@/lib/clo/api";
+import { resolveWaterfallInputs } from "@/lib/clo/resolver";
+import type { ExtractedConstraints } from "@/lib/clo/types";
 import { processAnthropicStream } from "@/lib/claude-stream";
+
+interface ReportContextRow {
+  id: string;
+  latest_id: string | null;
+  deal_id: string;
+  deal_name: string | null;
+  deal_currency: string | null;
+  stated_maturity_date: string | Date | null;
+  reinvestment_period_end: string | Date | null;
+  report_date: string | Date | null;
+  extracted_constraints: unknown;
+}
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
@@ -14,6 +38,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { panelId, dealContext } = body;
+  const contextRecord = dealContext && typeof dealContext === "object" ? dealContext as Record<string, unknown> : {};
 
   if (!panelId) {
     return NextResponse.json({ error: "Missing panelId" }, { status: 400 });
@@ -22,6 +47,102 @@ export async function POST(request: NextRequest) {
   const hasAccess = await verifyPanelAccess(panelId, user.id);
   if (!hasAccess) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const hasReportPeriodKey = Object.prototype.hasOwnProperty.call(contextRecord, "reportPeriodId");
+  const reportPeriodValue = contextRecord.reportPeriodId;
+  if (
+    hasReportPeriodKey &&
+    reportPeriodValue != null &&
+    (typeof reportPeriodValue !== "string" || reportPeriodValue.trim() === "")
+  ) {
+    return NextResponse.json({ error: "Invalid reportPeriodId" }, { status: 400 });
+  }
+  const requestedReportPeriodId =
+    typeof reportPeriodValue === "string" && reportPeriodValue.trim()
+      ? reportPeriodValue.trim()
+      : null;
+  let reportContextRow: ReportContextRow | null = null;
+  if (requestedReportPeriodId) {
+    const periodRows = await query<ReportContextRow>(
+      `SELECT
+         rp.id,
+         latest.id AS latest_id,
+         d.id AS deal_id,
+         d.deal_name,
+         d.deal_currency,
+         d.stated_maturity_date,
+         d.reinvestment_period_end,
+         rp.report_date,
+         pr.extracted_constraints
+       FROM clo_report_periods rp
+       JOIN clo_deals d ON rp.deal_id = d.id
+       JOIN clo_profiles pr ON d.profile_id = pr.id
+       JOIN clo_panels p ON p.profile_id = pr.id
+       LEFT JOIN LATERAL (
+         SELECT id FROM clo_report_periods
+         WHERE deal_id = d.id
+         ORDER BY report_date DESC
+         LIMIT 1
+       ) latest ON true
+       WHERE rp.id = $1 AND p.id = $2 AND pr.user_id = $3`,
+      [requestedReportPeriodId, panelId, user.id],
+    );
+    if (periodRows.length === 0) {
+      return NextResponse.json({ error: "Stale or inaccessible report period" }, { status: 409 });
+    }
+    if (periodRows[0].latest_id && periodRows[0].latest_id !== requestedReportPeriodId) {
+      return NextResponse.json({ error: "Stale report period" }, { status: 409 });
+    }
+    reportContextRow = periodRows[0];
+  } else if (hasReportPeriodKey) {
+    const latestRows = await query<{ id: string }>(
+      `SELECT rp.id
+       FROM clo_panels p
+       JOIN clo_profiles pr ON p.profile_id = pr.id
+       JOIN clo_deals d ON d.profile_id = pr.id
+       JOIN LATERAL (
+         SELECT id
+         FROM clo_report_periods
+         WHERE deal_id = d.id
+         ORDER BY report_date DESC
+         LIMIT 1
+       ) rp ON true
+       WHERE p.id = $1 AND pr.user_id = $2`,
+      [panelId, user.id],
+    );
+    if (latestRows.length > 0) {
+      return NextResponse.json(
+        { error: "Report data changed; refresh required" },
+        { status: 409 },
+      );
+    }
+  } else if (!hasReportPeriodKey) {
+    const latestRows = await query<ReportContextRow>(
+      `SELECT
+         rp.id,
+         rp.id AS latest_id,
+         d.id AS deal_id,
+         d.deal_name,
+         d.deal_currency,
+         d.stated_maturity_date,
+         d.reinvestment_period_end,
+         rp.report_date,
+         pr.extracted_constraints
+       FROM clo_panels p
+       JOIN clo_profiles pr ON p.profile_id = pr.id
+       JOIN clo_deals d ON d.profile_id = pr.id
+       JOIN LATERAL (
+         SELECT *
+         FROM clo_report_periods
+         WHERE deal_id = d.id
+         ORDER BY report_date DESC
+         LIMIT 1
+       ) rp ON true
+       WHERE p.id = $1 AND pr.user_id = $2`,
+      [panelId, user.id],
+    );
+    reportContextRow = latestRows[0] ?? null;
   }
 
   const userRows = await query<{ encrypted_api_key: Buffer; api_key_iv: Buffer }>(
@@ -67,23 +188,37 @@ Output a JSON array of warnings. Each warning must have:
 Only output the JSON array, nothing else. If no issues found, output an empty array [].
 Keep it concise — at most 5-6 warnings for the most important issues.`;
 
-  const contextSummary = summarizeDealContext(dealContext);
+  if (request.signal.aborted) return new Response(null, { status: 204 });
+  const authoritativeContext = reportContextRow
+    ? await buildServerDealContext(reportContextRow)
+    : contextRecord;
+  if (request.signal.aborted) return new Response(null, { status: 204 });
+  const contextSummary = summarizeDealContext(authoritativeContext);
 
-  const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 2048,
-      system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: `Analyze this CLO deal data for quality issues:\n\n${contextSummary}` }],
-      stream: true,
-    }),
-  });
+  let anthropicResponse: Response;
+  try {
+    anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2048,
+        system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
+        messages: [{ role: "user", content: `Analyze this CLO deal data for quality issues:\n\n${contextSummary}` }],
+        stream: true,
+      }),
+      signal: request.signal,
+    });
+  } catch (err) {
+    if (request.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
+      return new Response(null, { status: 204 });
+    }
+    throw err;
+  }
 
   if (!anthropicResponse.ok) {
     const errorText = await anthropicResponse.text();
@@ -99,12 +234,40 @@ Keep it concise — at most 5-6 warnings for the most important issues.`;
   }
 
   const encoder = new TextEncoder();
+  let cancelled = false;
 
   const stream = new ReadableStream({
     async start(controller) {
-      await processAnthropicStream(reader, controller, encoder);
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
-      controller.close();
+      const close = () => {
+        try {
+          controller.close();
+        } catch {
+          // stream already closed/cancelled
+        }
+      };
+      const abort = () => {
+        cancelled = true;
+        reader.cancel().catch(() => {});
+      };
+      request.signal.addEventListener("abort", abort);
+      try {
+        await processAnthropicStream(reader, controller, encoder);
+        if (!cancelled) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : "Data quality stream failed";
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", message })}\n\n`));
+        }
+      } finally {
+        request.signal.removeEventListener("abort", abort);
+        close();
+      }
+    },
+    cancel() {
+      cancelled = true;
+      reader.cancel().catch(() => {});
     },
   });
 
@@ -115,6 +278,124 @@ Keep it concise — at most 5-6 warnings for the most important issues.`;
       Connection: "keep-alive",
     },
   });
+}
+
+function dateString(value: unknown): string | null {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+async function buildServerDealContext(row: ReportContextRow): Promise<Record<string, unknown>> {
+  const constraints = (row.extracted_constraints || {}) as ExtractedConstraints;
+  const reportPeriodId = row.id;
+  const maturityDate = dateString(row.stated_maturity_date) ?? constraints.keyDates?.maturityDate ?? null;
+  const reinvestmentPeriodEnd =
+    dateString(row.reinvestment_period_end) ?? constraints.keyDates?.reinvestmentPeriodEnd ?? null;
+  const reportDate = dateString(row.report_date);
+  const dealName = row.deal_name ?? constraints.dealIdentity?.dealName ?? null;
+
+  const [
+    tranches,
+    trancheSnapshots,
+    periodData,
+    accountBalances,
+    parValueAdjustments,
+    holdings,
+    accruals,
+    intexPositions,
+  ] = await Promise.all([
+    getTranches(row.deal_id),
+    getTrancheSnapshots(reportPeriodId),
+    getReportPeriodData(reportPeriodId),
+    getAccountBalances(reportPeriodId),
+    getParValueAdjustments(reportPeriodId),
+    getHoldings(reportPeriodId),
+    getAccruals(reportPeriodId),
+    getIntexPositionsByReportPeriod(reportPeriodId),
+  ]);
+
+  const { resolved, warnings: resolutionWarnings } = resolveWaterfallInputs(
+    constraints,
+    periodData
+      ? {
+          poolSummary: periodData.poolSummary,
+          complianceTests: periodData.complianceTests,
+          concentrations: periodData.concentrations,
+        }
+      : null,
+    tranches,
+    trancheSnapshots,
+    holdings,
+    {
+      maturity: maturityDate,
+      reinvestmentPeriodEnd,
+      reportDate,
+      dealCurrency: row.deal_currency,
+    },
+    accountBalances,
+    parValueAdjustments,
+    intexPositions,
+    accruals,
+  );
+
+  return {
+    reportPeriodId,
+    dealName,
+    dealCurrency: resolved.currency,
+    maturityDate,
+    reinvestmentPeriodEnd,
+    poolSummary: periodData?.poolSummary ?? null,
+    complianceTests: periodData?.complianceTests ?? [],
+    concentrationTests: resolved.concentrationTests,
+    tranches,
+    resolvedTranches: resolved.tranches.map((t) => ({
+      className: t.className,
+      paymentFrequency: t.paymentFrequency ?? null,
+      isIncomeNote: t.isIncomeNote,
+      spreadBps: t.spreadBps,
+      isFloating: t.isFloating,
+    })),
+    trancheSnapshots,
+    accountBalances,
+    collateralCurrencySummary: {
+      totalLoans: resolved.loans.length,
+      missingCurrencyCount: resolved.loans.filter((loan) => loan.parBalance > 0 && !loan.currency).length,
+      currencies: Array.from(new Set(resolved.loans.map((loan) => loan.currency).filter(Boolean))).sort(),
+    },
+    assetInterestScheduleSummary: {
+      totalLoans: resolved.loans.length,
+      scheduledLoans: resolved.loans.filter((loan) =>
+        loan.assetPaymentIntervalMonths != null && loan.nextPaymentDate != null
+      ).length,
+      scheduleEvidenceWithoutActiveSchedule: resolved.loans.filter((loan) =>
+        loan.assetPaymentPeriodRaw != null &&
+        (loan.assetPaymentIntervalMonths == null || loan.nextPaymentDate == null)
+      ).length,
+      scheduleSources: {
+        holding: resolved.loans.filter((loan) => loan.assetPaymentScheduleSource === "holding").length,
+        accrual: resolved.loans.filter((loan) => loan.assetPaymentScheduleSource === "accrual").length,
+      },
+      warnings: resolutionWarnings
+        .filter((w) => w.field === "loans.assetPaymentSchedule")
+        .map((w) => ({ severity: w.severity, blocking: w.blocking, message: w.message })),
+      sampleScheduledLoans: resolved.loans
+        .filter((loan) => loan.assetPaymentPeriodRaw != null || loan.nextPaymentDate != null)
+        .slice(0, 12)
+        .map((loan) => ({
+          obligorName: loan.obligorName ?? null,
+          assetPaymentPeriodRaw: loan.assetPaymentPeriodRaw ?? null,
+          assetPaymentIntervalMonths: loan.assetPaymentIntervalMonths ?? null,
+          assetPaymentScheduleSource: loan.assetPaymentScheduleSource ?? null,
+          nextPaymentDate: loan.nextPaymentDate ?? null,
+          accrualBeginDate: loan.accrualBeginDate ?? null,
+          accrualEndDate: loan.accrualEndDate ?? null,
+          openingAccruedInterest: loan.openingAccruedInterest ?? null,
+        })),
+    },
+    deterministicWarnings: resolutionWarnings,
+    constraints,
+    reportDate,
+  };
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -138,6 +419,25 @@ function summarizeDealContext(ctx: Record<string, any>): string {
   const collateralCurrencySummary = ctx.collateralCurrencySummary as Record<string, unknown> | undefined;
   if (collateralCurrencySummary) {
     parts.push(`\nCollateral Currency Summary: ${JSON.stringify(collateralCurrencySummary)}`);
+  }
+
+  const concentrationTests = ctx.concentrationTests as any[] | undefined;
+  if (concentrationTests && concentrationTests.length > 0) {
+    const currencyRows = concentrationTests.filter((c) =>
+      /currenc|denominat|eur|gbp|usd|non.?base/i.test(`${c.concentrationType ?? ""} ${c.bucketName ?? ""}`)
+    );
+    const rowsToShow = currencyRows.length > 0 ? currencyRows : concentrationTests.slice(0, 12);
+    parts.push(`\nConcentration Tests (${concentrationTests.length}${currencyRows.length > 0 ? `, ${currencyRows.length} currency-related` : ""}):`);
+    for (const c of rowsToShow.slice(0, 12)) {
+      parts.push(
+        `  ${c.concentrationType ?? "?"} / ${c.bucketName ?? "?"}: actualPct=${c.actualPct ?? "NULL"}, limitPct=${c.limitPct ?? "NULL"}, passing=${c.isPassing ?? "NULL"}`
+      );
+    }
+  }
+
+  const assetInterestScheduleSummary = ctx.assetInterestScheduleSummary as Record<string, unknown> | undefined;
+  if (assetInterestScheduleSummary) {
+    parts.push(`\nAsset Interest Schedule Summary: ${JSON.stringify(assetInterestScheduleSummary)}`);
   }
 
   const resolvedTranches = ctx.resolvedTranches as any[] | undefined;

@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-
-interface Warning {
-  severity: "error" | "warning" | "info";
-  message: string;
-  action: string;
-}
+import {
+  dataQualityErrorMessage,
+  parseWarnings,
+  type DataQualityWarning as Warning,
+} from "./data-quality-utils";
 
 interface Props {
   panelId: string;
@@ -18,31 +17,33 @@ export default function DataQualityCheck({ panelId, dealContext }: Props) {
   const [warnings, setWarnings] = useState<Warning[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const ran = useRef(false);
+  const dealContextKey = useMemo(() => JSON.stringify(dealContext), [dealContext]);
 
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
-
     const controller = new AbortController();
+    setLoading(true);
+    setError(null);
 
     async function check() {
       try {
+        const parsedDealContext = JSON.parse(dealContextKey);
         const res = await fetch("/api/clo/waterfall/check-data", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ panelId, dealContext }),
+          body: JSON.stringify({ panelId, dealContext: parsedDealContext }),
           signal: controller.signal,
         });
 
         if (!res.ok) {
-          setError("Could not run data quality check");
+          if (controller.signal.aborted) return;
+          setError(await dataQualityErrorMessage(res));
           setLoading(false);
           return;
         }
 
         const reader = res.body?.getReader();
         if (!reader) {
+          if (controller.signal.aborted) return;
           setLoading(false);
           return;
         }
@@ -50,6 +51,29 @@ export default function DataQualityCheck({ panelId, dealContext }: Props) {
         const decoder = new TextDecoder();
         let buffer = "";
         let fullText = "";
+        let sawTerminalEvent = false;
+
+        const processLine = (rawLine: string) => {
+          const line = rawLine.trimEnd();
+          if (!line.startsWith("data: ")) return;
+          const data = line.slice(6);
+          try {
+            const event = JSON.parse(data);
+            if (event.type === "text") {
+              fullText += event.content;
+            }
+            if (event.type === "error") {
+              throw new Error(event.message || "Data quality stream failed");
+            }
+            if (event.type === "done") {
+              sawTerminalEvent = true;
+            }
+          } catch (err) {
+            if (err instanceof Error && err.message !== "Unexpected end of JSON input") {
+              throw err;
+            }
+          }
+        };
 
         while (true) {
           const { done, value } = await reader.read();
@@ -59,38 +83,52 @@ export default function DataQualityCheck({ panelId, dealContext }: Props) {
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
 
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const data = line.slice(6);
-            try {
-              const event = JSON.parse(data);
-              if (event.type === "text") {
-                fullText += event.content;
-              }
-              if (event.type === "done") break;
-            } catch {
-              // skip
-            }
-          }
+          for (const line of lines) processLine(line);
+          if (sawTerminalEvent) break;
         }
 
+        buffer += decoder.decode();
+        if (buffer.trim()) processLine(buffer);
+        if (!sawTerminalEvent) {
+          throw new Error("Data quality stream ended before completion");
+        }
         const parsed = parseWarnings(fullText);
+        if (controller.signal.aborted) return;
         setWarnings(parsed);
       } catch (err) {
-        if ((err as Error).name !== "AbortError") {
+        if (!controller.signal.aborted && (err as Error).name !== "AbortError") {
           setError("Data quality check failed");
         }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     }
 
     check();
 
     return () => controller.abort();
-  }, [panelId, dealContext]);
+  }, [panelId, dealContextKey]);
 
-  if (error) return null;
+  if (error) {
+    return (
+      <div
+        className="wf-section"
+        style={{
+          padding: "0.85rem 1rem",
+          marginBottom: "1.5rem",
+          border: "1px solid var(--color-border-light)",
+          borderRadius: "var(--radius-sm)",
+          color: "var(--color-text-muted)",
+          fontSize: "0.82rem",
+          background: "var(--color-surface)",
+        }}
+      >
+        {error}
+      </div>
+    );
+  }
   if (loading) {
     return (
       <div
@@ -167,54 +205,4 @@ export default function DataQualityCheck({ panelId, dealContext }: Props) {
       </div>
     </div>
   );
-}
-
-function parseWarnings(text: string): Warning[] {
-  const warnings: Warning[] = [];
-
-  // Try JSON array parse first
-  try {
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(parsed)) {
-        for (const item of parsed) {
-          if (item.severity && item.message) {
-            warnings.push({
-              severity: item.severity === "error" ? "error" : item.severity === "warning" ? "warning" : "info",
-              message: item.message,
-              action: item.action || "",
-            });
-          }
-        }
-        return warnings;
-      }
-    }
-  } catch {
-    // Fall through to line parsing
-  }
-
-  // Fallback: parse line-by-line markdown-style
-  const lines = text.split("\n").filter((l) => l.trim());
-  for (const line of lines) {
-    const stripped = line.replace(/^[-*]\s*/, "").trim();
-    if (!stripped) continue;
-
-    let severity: Warning["severity"] = "info";
-    if (/\b(error|missing|required|blocking)\b/i.test(stripped)) severity = "error";
-    else if (/\b(warning|unusual|mismatch|verify|check)\b/i.test(stripped)) severity = "warning";
-
-    const dashIdx = stripped.indexOf("—");
-    if (dashIdx > 0) {
-      warnings.push({
-        severity,
-        message: stripped.slice(0, dashIdx).trim(),
-        action: stripped.slice(dashIdx + 1).trim(),
-      });
-    } else {
-      warnings.push({ severity, message: stripped, action: "" });
-    }
-  }
-
-  return warnings;
 }

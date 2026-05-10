@@ -42,6 +42,7 @@ import type {
   CloExtractionOverflow,
   EquityInceptionData,
   CloDeal,
+  DataQuality,
 } from "@/lib/clo/types";
 import { resolveWaterfallInputs } from "@/lib/clo/resolver";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
@@ -83,6 +84,12 @@ interface ContextEditorProps {
     reinvestmentPeriodEnd?: string | null;
     reportDate?: string | null;
     paymentDate?: string | null;
+    previousPaymentDate?: string | null;
+    reportType?: string | null;
+    reportingPeriodStart?: string | null;
+    reportingPeriodEnd?: string | null;
+    isFinal?: boolean | null;
+    dataQuality?: DataQuality | null;
     closingDate?: string | null;
     effectiveDate?: string | null;
     nonCallPeriodEnd?: string | null;
@@ -317,10 +324,12 @@ export default function ContextEditor({
       dealDates,
       accountBalances ?? [],
       parValueAdjustments ?? [],
+      undefined,
+      accruals ?? [],
     );
     setResolved(r);
     setResolutionWarnings(w);
-  }, [constraints, complianceData, tranches, trancheSnapshots, holdings, accountBalances, parValueAdjustments, dealDates]);
+  }, [constraints, complianceData, tranches, trancheSnapshots, holdings, accountBalances, parValueAdjustments, dealDates, accruals]);
 
   const [constraintsDirty, setConstraintsDirty] = useState(false);
   const [profileDirty, setProfileDirty] = useState(false);
@@ -338,6 +347,8 @@ export default function ContextEditor({
 
   const [intexUploading, setIntexUploading] = useState(false);
   const [intexMessage, setIntexMessage] = useState<string | null>(null);
+  const [contextImporting, setContextImporting] = useState(false);
+  const [contextImportMessage, setContextImportMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
   async function uploadIntexCashflows(file: File) {
     if (!dealId) {
@@ -815,6 +826,8 @@ export default function ContextEditor({
   }
 
   function importContext(file: File) {
+    setContextImporting(true);
+    setContextImportMessage(null);
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -822,44 +835,132 @@ export default function ContextEditor({
         // Handle both flat format { constraints, fundProfile, complianceData }
         // and nested format { resolved, warnings, raw: { constraints, fundProfile, complianceData } }
         const source = data.raw ?? data;
+        const requireOk = async (res: Response, label: string) => {
+          if (res.ok) return;
+          let message = `${label} failed with HTTP ${res.status}`;
+          try {
+            const body = await res.json();
+            const detail = body?.error ?? body?.message;
+            if (typeof detail === "string" && detail.trim()) message = `${label} failed: ${detail}`;
+          } catch {
+            // keep status-only message
+          }
+          throw new Error(message);
+        };
+        // Raw SDF/report tables are exported for diagnostics and restored
+        // through a report-level import endpoint when present. Present empty
+        // arrays are authoritative deletes for their report table.
+        const rawArrayKeys = [
+          "tranches",
+          "trancheSnapshots",
+          "holdings",
+          "accruals",
+          "trades",
+          "waterfallSteps",
+          "accountBalances",
+          "parValueAdjustments",
+          "proceeds",
+          "overflow",
+          "events",
+        ];
+        const hasOwn = (obj: Record<string, unknown>, key: string) =>
+          Object.prototype.hasOwnProperty.call(obj, key);
+        const hasReportAnchor = Boolean(source.dealDates?.reportDate || source.deal?.reportDate || source.complianceData?.reportDate);
+        const hasRawRestorePayload =
+          rawArrayKeys.some((key) => hasOwn(source, key) && Array.isArray(source[key])) ||
+          hasOwn(source, "tradingSummary") ||
+          hasOwn(source, "supplementaryData") ||
+          hasOwn(source, "dealDates") ||
+          hasOwn(source, "deal") ||
+          hasOwn(source, "complianceData");
+        let shouldRefresh = false;
+        let rawImportSucceeded = false;
+        if (hasReportAnchor && hasRawRestorePayload) {
+          const res = await fetch("/api/clo/context/raw", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ raw: source }),
+          });
+          await requireOk(res, "Raw SDF/report import");
+          rawImportSucceeded = true;
+          shouldRefresh = true;
+        }
         if (source.constraints) {
           setConstraints(source.constraints);
           setConstraintsDirty(false);
-          await fetch("/api/clo/profile/constraints", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ extractedConstraints: source.constraints }),
-          });
+          if (!rawImportSucceeded) {
+            const res = await fetch("/api/clo/profile/constraints", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ extractedConstraints: source.constraints }),
+            });
+            await requireOk(res, "Constraints import");
+          }
         }
         if (source.fundProfile) {
           setFundProfile(source.fundProfile);
           setProfileDirty(false);
-          await fetch("/api/clo/profile", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              fund_strategy: source.fundProfile.fundStrategy,
-              target_sectors: source.fundProfile.targetSectors,
-              risk_appetite: source.fundProfile.riskAppetite,
-              portfolio_size: source.fundProfile.portfolioSize,
-              reinvestment_period: source.fundProfile.reinvestmentPeriod,
-              concentration_limits: source.fundProfile.concentrationLimits,
-              covenant_preferences: source.fundProfile.covenantPreferences,
-              rating_thresholds: source.fundProfile.ratingThresholds,
-              spread_targets: source.fundProfile.spreadTargets,
-              regulatory_constraints: source.fundProfile.regulatoryConstraints,
-              portfolio_description: source.fundProfile.portfolioDescription,
-              beliefs_and_biases: source.fundProfile.beliefsAndBiases,
-            }),
-          });
+          if (!rawImportSucceeded) {
+            const res = await fetch("/api/clo/profile", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                fund_strategy: source.fundProfile.fundStrategy,
+                target_sectors: source.fundProfile.targetSectors,
+                risk_appetite: source.fundProfile.riskAppetite,
+                portfolio_size: source.fundProfile.portfolioSize,
+                reinvestment_period: source.fundProfile.reinvestmentPeriod,
+                concentration_limits: source.fundProfile.concentrationLimits,
+                covenant_preferences: source.fundProfile.covenantPreferences,
+                rating_thresholds: source.fundProfile.ratingThresholds,
+                spread_targets: source.fundProfile.spreadTargets,
+                regulatory_constraints: source.fundProfile.regulatoryConstraints,
+                portfolio_description: source.fundProfile.portfolioDescription,
+                beliefs_and_biases: source.fundProfile.beliefsAndBiases,
+              }),
+            });
+            await requireOk(res, "Profile import");
+          }
+        }
+        if (hasOwn(source, "equityInceptionData")) {
+          const importedInception =
+            source.equityInceptionData as EquityInceptionData | null;
+          setInceptionData(importedInception ?? { purchaseDate: null, purchasePriceCents: null, payments: [] });
+          setInceptionDirty(false);
+          if (!rawImportSucceeded) {
+            const res = await fetch("/api/clo/profile/inception", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ equityInceptionData: importedInception }),
+            });
+            await requireOk(res, "Equity inception import");
+          }
         }
         if (source.complianceData) {
           setComplianceData(source.complianceData);
-          const res = await persistCompliance(source.complianceData);
-          setComplianceDirty(!res.ok);
-          if (res.ok) router.refresh();
+          if (rawImportSucceeded) {
+            setComplianceDirty(false);
+          } else {
+            const res = await persistCompliance(source.complianceData);
+            setComplianceDirty(!res.ok);
+            await requireOk(res, "Compliance import");
+            shouldRefresh = true;
+          }
         }
-      } catch { /* ignore parse errors */ }
+        if (shouldRefresh) router.refresh();
+        setContextImportMessage({ kind: "success", text: "Context import completed." });
+      } catch (err) {
+        setContextImportMessage({
+          kind: "error",
+          text: err instanceof Error ? err.message : "Context import failed.",
+        });
+      } finally {
+        setContextImporting(false);
+      }
+    };
+    reader.onerror = () => {
+      setContextImportMessage({ kind: "error", text: "Could not read JSON file." });
+      setContextImporting(false);
     };
     reader.readAsText(file);
   }
@@ -874,11 +975,12 @@ export default function ContextEditor({
         >
           Export JSON
         </button>
-        <label style={{ ...saveBtnStyle, background: "var(--color-surface)", color: "var(--color-text)", border: "1px solid var(--color-border)", cursor: "pointer" }}>
-          Import JSON
+        <label style={{ ...saveBtnStyle, background: "var(--color-surface)", color: "var(--color-text)", border: "1px solid var(--color-border)", cursor: contextImporting ? "wait" : "pointer", opacity: contextImporting ? 0.7 : 1 }}>
+          {contextImporting ? "Importing..." : "Import JSON"}
           <input
             type="file"
             accept=".json"
+            disabled={contextImporting}
             style={{ display: "none" }}
             onChange={(e) => { if (e.target.files?.[0]) importContext(e.target.files[0]); }}
           />
@@ -914,6 +1016,19 @@ export default function ContextEditor({
           background: "var(--color-surface)",
         }}>
           {intexMessage}
+        </div>
+      )}
+      {contextImportMessage && (
+        <div style={{
+          marginBottom: "1rem",
+          padding: "0.5rem 0.75rem",
+          fontSize: "0.85rem",
+          border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--color-surface)",
+          color: contextImportMessage.kind === "error" ? "var(--color-error, #c00)" : "var(--color-text)",
+        }}>
+          {contextImportMessage.text}
         </div>
       )}
 
