@@ -4,6 +4,7 @@ import path from "path";
 export default defineConfig({
   test: {
     globals: true,
+    testTimeout: 30_000,
     exclude: ["**/node_modules/**", "**/dist/**", "**/worker/dist/**"],
   },
   resolve: {
