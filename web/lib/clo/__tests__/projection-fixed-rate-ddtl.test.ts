@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runProjection, addQuarters, dayCountFraction } from "../projection";
+import { runProjection, addQuarters, dayCountFraction, type PeriodResult } from "../projection";
 import { makeInputs, uniformRates, noDefaults } from "./test-helpers";
 
 // B3: makeInputs uses currentDate=2026-03-09 → period 1 ends 2026-06-09.
@@ -15,6 +15,30 @@ const Q3_ACTUAL = dayCountFraction("actual_360", "2026-09-09", "2026-12-09");
 // short first stub must not push the quarter-2 draw to the third month of the
 // second payment row.
 const STUB_Q2_ACTUAL = dayCountFraction("actual_360", "2026-04-09", "2026-07-09");
+
+const classAEndBalance = (period: PeriodResult): number => {
+  const classA = period.tranchePrincipal.find((t) => t.className === "A");
+  expect(classA).toBeDefined();
+  return classA!.endBalance;
+};
+
+const classAOcActual = (period: PeriodResult): number => {
+  const classA = period.ocTests.find((t) => t.className === "A");
+  expect(classA).toBeDefined();
+  return classA!.actual;
+};
+
+const expectedClassAOc = (
+  period: PeriodResult,
+  opts: { impliedOcAdjustment?: number; cumulativeDrawnOffset?: number } = {},
+): number => {
+  const numerator =
+    period.endingPar -
+    period.endingUndrawnCommitment -
+    (opts.impliedOcAdjustment ?? 0) -
+    (opts.cumulativeDrawnOffset ?? 0);
+  return (numerator / classAEndBalance(period)) * 100;
+};
 
 describe("Fixed-rate loan projection", () => {
   it("earns flat coupon regardless of base rate", () => {
@@ -373,39 +397,19 @@ describe("DDTL projection", () => {
     expect(Math.abs(ocWithDdtl - ocWithout)).toBeLessThan(2);
   });
 
-  it("ki: KI-46-ddtlPostDrawOcInflation — DDTL draw mid-projection inflates forward OC numerator (frozen impliedOcAdjustment + bucket-move drift)", () => {
-    // Marker test pinning the current (wrong) behavior: when a DDTL
-    // draws mid-projection AND `impliedOcAdjustment > 0` (calibrated at
-    // T=0 with the unfunded DDTL strip), the engine's forward OC
-    // numerator over-states because (a) endingPar grows by drawn par,
-    // (b) currentDdtlUnfundedPar shrinks by drawn par (so the explicit
-    // OC-numerator subtraction shrinks by the same amount), and (c)
-    // impliedOcAdjustment is frozen at T=0 calibration so doesn't
-    // re-absorb the bucket move. Net inflation: ~2× drawn par per
-    // period from the draw quarter forward (the upper-bound case where
-    // AdjCPA is invariant under DDTL bucket moves; lower-bound is 1×
-    // drawn par if AdjCPA grows with funded par per the engine's "OC
-    // excludes unfunded" convention). Closure of KI-46 flips the
-    // assertion to the corrected post-draw OC.
-    // Pool scaled above the default tranches' aggregate debt (€80M) so
-    // OC tests stay live forward (a 13% OC ratio trips an early
-    // Event-of-Default state where ocTests are no longer emitted).
+  it("calibrated DDTL draw improves OC once, not twice", () => {
+    // Resolver shape: pre-strip implied = 11M, ddtlUnfundedPar = 10M (Case A,
+    // pre > D). Strip removes 10M → post-strip implied = 1M, calibrationOffset
+    // = 10M. The synthetic inputs below mirror exactly what `buildFromResolved`
+    // would pass to the engine for that shape.
     const drawnPar = 10_000_000;
+    const impliedOcAdjustment = 1_000_000;
     const normalLoan = {
       parBalance: 200_000_000,
       maturityDate: addQuarters("2026-03-09", 20),
       ratingBucket: "B",
       spreadBps: 375,
     };
-    // Convention: un-drawn notional lives on `undrawnCommitment`, not
-    // on `parBalance`. `parBalance` is the currently-drawn balance;
-    // `undrawnCommitment` is the un-drawn notional. The engine
-    // excludes un-drawn portions from `beginningPar` (their
-    // parBalance=0 → already excluded) but counts them via the
-    // OC-numerator subtractor (Σ undrawnCommitment). The bug
-    // magnitude pinned below (frozen `impliedOcAdjustment` +
-    // bucket-move drift across the draw event) is convention-
-    // independent — it depends only on the OC-numerator dynamics.
     const ddtl = {
       parBalance: 0,
       undrawnCommitment: drawnPar,
@@ -420,28 +424,247 @@ describe("DDTL projection", () => {
       makeInputs({
         loans: [normalLoan, ddtl],
         initialPar: 210_000_000,
-        impliedOcAdjustment: 1_000_000,
+        impliedOcAdjustment,
+        ocDdtlCalibrationOffset: drawnPar,
         baseRatePct: 2.5,
         baseRateFloorPct: 0,
         ...noDefaults,
         cprPct: 0,
+        cccBucketLimitPct: 0,
       })
     );
-    // Pre-draw (q=3, index 2): DDTL still unfunded (drawQuarter is 4).
-    // Post-draw (q=5, index 4): DDTL is funded, currentDdtlUnfundedPar = 0.
-    const ocPreDraw = result.periods[2].ocTests[0]?.actual;
-    const ocPostDraw = result.periods[4].ocTests[0]?.actual;
-    expect(ocPreDraw).toBeDefined();
-    expect(ocPostDraw).toBeDefined();
-    // The bucket-move drift inflates the forward OC numerator by ~2× drawn par
-    // when AdjCPA is invariant under DDTL bucket moves (PPM convention)
-    // or by ~1× drawn par if the engine's "OC excludes unfunded" convention
-    // is the intended invariant. Either way the jump at the draw quarter is
-    // material and pins the bug magnitude until KI-46 closes. With Class A
-    // debt = €65M, a 10M numerator over-statement = ~15 OC points; a 20M
-    // = ~30 points. Asserting > 10 captures the lower bound.
-    const ocJump = ocPostDraw! - ocPreDraw!;
-    expect(ocJump).toBeGreaterThan(10);
+
+    const preDraw = result.periods[2];
+    const postDraw = result.periods[4];
+    expect(preDraw.endingUndrawnCommitment).toBeCloseTo(drawnPar, 0);
+    expect(postDraw.endingUndrawnCommitment).toBeCloseTo(0, 0);
+    expect(result.initialState.ocNumerator).toBeCloseTo(200_000_000 - impliedOcAdjustment - drawnPar, 0);
+    expect(classAOcActual(preDraw)).toBeCloseTo(
+      expectedClassAOc(preDraw, { impliedOcAdjustment, cumulativeDrawnOffset: 0 }),
+      8,
+    );
+    expect(classAOcActual(postDraw)).toBeCloseTo(
+      expectedClassAOc(postDraw, { impliedOcAdjustment, cumulativeDrawnOffset: drawnPar }),
+      8,
+    );
+    expect(classAOcActual(postDraw) - classAOcActual(preDraw)).toBeCloseTo(
+      (drawnPar / classAEndBalance(postDraw)) * 100,
+      6,
+    );
+  });
+});
+
+describe("guarded DDTL OC calibration offset", () => {
+  // Resolver invariant (see `resolver.ts` § ddtlCalibrationOffset):
+  //   ddtlCalibrationOffset = preStripImpliedOcAdjustment - postStripImpliedOcAdjustment
+  //                         = min(preStripImplied, ddtlUnfundedPar)  when both > 0
+  //                         = 0                                       otherwise
+  // The synthetic engine inputs below set `impliedOcAdjustment` to the
+  // post-strip residual and `ocDdtlCalibrationOffset` to the stripped amount,
+  // so they mirror exactly what `buildFromResolved` would emit.
+  const impliedOcAdjustment = 1_000_000; // post-strip residual under Case A (pre = 11M, D = 10M)
+  const normalLoan = {
+    parBalance: 200_000_000,
+    maturityDate: addQuarters("2026-03-09", 20),
+    ratingBucket: "A",
+    spreadBps: 375,
+  };
+  const ddtlPar = 10_000_000;
+  const baseDdtl = {
+    parBalance: 0,
+    undrawnCommitment: ddtlPar,
+    maturityDate: addQuarters("2026-03-09", 20),
+    ratingBucket: "B",
+    spreadBps: 0,
+    isDelayedDraw: true,
+    ddtlSpreadBps: 350,
+    drawQuarter: 2,
+  };
+
+  it("Case A full draw — full calibrated offset is subtracted from forward OC", () => {
+    const result = runProjection(
+      makeInputs({
+        loans: [normalLoan, baseDdtl],
+        initialPar: 210_000_000,
+        impliedOcAdjustment,
+        ocDdtlCalibrationOffset: ddtlPar,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        ...noDefaults,
+        cprPct: 0,
+        cccBucketLimitPct: 0,
+      })
+    );
+    const postDraw = result.periods[1];
+    expect(postDraw.endingPar).toBeCloseTo(210_000_000, 0);
+    expect(postDraw.endingUndrawnCommitment).toBeCloseTo(0, 0);
+    expect(classAOcActual(postDraw)).toBeCloseTo(
+      expectedClassAOc(postDraw, { impliedOcAdjustment, cumulativeDrawnOffset: ddtlPar }),
+      8,
+    );
+  });
+
+  it("Case A partial draw — cumulative caps at the actual funded portion", () => {
+    const result = runProjection(
+      makeInputs({
+        loans: [normalLoan, baseDdtl],
+        initialPar: 210_000_000,
+        impliedOcAdjustment,
+        ocDdtlCalibrationOffset: ddtlPar,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        ...noDefaults,
+        cprPct: 0,
+        cccBucketLimitPct: 0,
+        ddtlDrawPercent: 40,
+      })
+    );
+    const postDraw = result.periods[1];
+    const actualDrawn = 4_000_000;
+    expect(postDraw.endingPar).toBeCloseTo(204_000_000, 0);
+    expect(postDraw.endingUndrawnCommitment).toBeCloseTo(6_000_000, 0);
+    expect(classAOcActual(postDraw)).toBeCloseTo(
+      expectedClassAOc(postDraw, { impliedOcAdjustment, cumulativeDrawnOffset: actualDrawn }),
+      8,
+    );
+  });
+
+  it("Case C calibration offset = 0 — engine applies no forward subtraction", () => {
+    // Reachable when the resolver's strip didn't fire: pre-strip implied ≤ 0
+    // (clamped to 0), or ddtlUnfundedPar = 0. `buildFromResolved` then passes
+    // `ocDdtlCalibrationOffset = 0` and the engine must NOT compensate.
+    const result = runProjection(
+      makeInputs({
+        loans: [normalLoan, baseDdtl],
+        initialPar: 210_000_000,
+        impliedOcAdjustment,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        ...noDefaults,
+        cprPct: 0,
+        cccBucketLimitPct: 0,
+      })
+    );
+    const postDraw = result.periods[1];
+    expect(postDraw.endingUndrawnCommitment).toBeCloseTo(0, 0);
+    expect(classAOcActual(postDraw)).toBeCloseTo(
+      expectedClassAOc(postDraw, { impliedOcAdjustment, cumulativeDrawnOffset: 0 }),
+      8,
+    );
+  });
+
+  it("Case B knife-edge (pre-strip implied = D) — post-strip implied = 0, offset = D", () => {
+    // pre-strip implied = 10M, ddtlUnfundedPar = 10M → calibrationOffset = 10M
+    // and post-strip implied = 0. The offset still applies (and equals the
+    // full unfunded amount).
+    const result = runProjection(
+      makeInputs({
+        loans: [normalLoan, baseDdtl],
+        initialPar: 210_000_000,
+        impliedOcAdjustment: 0,
+        ocDdtlCalibrationOffset: ddtlPar,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        ...noDefaults,
+        cprPct: 0,
+        cccBucketLimitPct: 0,
+      })
+    );
+    const postDraw = result.periods[1];
+    expect(postDraw.endingPar).toBeCloseTo(210_000_000, 0);
+    expect(postDraw.endingUndrawnCommitment).toBeCloseTo(0, 0);
+    expect(classAOcActual(postDraw)).toBeCloseTo(
+      expectedClassAOc(postDraw, { impliedOcAdjustment: 0, cumulativeDrawnOffset: ddtlPar }),
+      8,
+    );
+  });
+
+  it("Case B clamped (pre-strip implied < D) — cumulative caps at the offset", () => {
+    // pre-strip implied = 6M, ddtlUnfundedPar = 10M → calibrationOffset = 6M
+    // (clamped), post-strip implied = 0. The DDTL still draws the full 10M,
+    // but the cumulative subtraction is capped at the 6M actually calibrated.
+    const calibrationOffset = 6_000_000;
+    const result = runProjection(
+      makeInputs({
+        loans: [normalLoan, baseDdtl],
+        initialPar: 210_000_000,
+        impliedOcAdjustment: 0,
+        ocDdtlCalibrationOffset: calibrationOffset,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        ...noDefaults,
+        cprPct: 0,
+        cccBucketLimitPct: 0,
+      })
+    );
+    const postDraw = result.periods[1];
+    expect(postDraw.endingPar).toBeCloseTo(210_000_000, 0);
+    expect(postDraw.endingUndrawnCommitment).toBeCloseTo(0, 0);
+    expect(classAOcActual(postDraw)).toBeCloseTo(
+      expectedClassAOc(postDraw, { impliedOcAdjustment: 0, cumulativeDrawnOffset: calibrationOffset }),
+      8,
+    );
+  });
+
+  it("offset survives post-draw default with zero recovery", () => {
+    const cdrPath = (q: number) => ({
+      ...uniformRates(0),
+      CCC: q >= 2 ? 100 : 0,
+    });
+    const defaultingDdtl = { ...baseDdtl, ratingBucket: "CCC" };
+    const result = runProjection(
+      makeInputs({
+        loans: [normalLoan, defaultingDdtl],
+        initialPar: 210_000_000,
+        impliedOcAdjustment,
+        ocDdtlCalibrationOffset: ddtlPar,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        defaultRatesByRating: uniformRates(1),
+        cdrMultiplierPathFn: cdrPath,
+        overriddenBuckets: ["CCC"],
+        cprPct: 0,
+        recoveryPct: 0,
+        recoveryLagMonths: 0,
+        cccBucketLimitPct: 0,
+      })
+    );
+    const postDefault = result.periods[1];
+    expect(postDefault.defaults).toBeGreaterThan(0);
+    expect(postDefault.endingUndrawnCommitment).toBeCloseTo(0, 0);
+    expect(postDefault.recoveries).toBeCloseTo(0, 0);
+    expect(classAOcActual(postDefault)).toBeCloseTo(
+      expectedClassAOc(postDefault, { impliedOcAdjustment, cumulativeDrawnOffset: ddtlPar }),
+      8,
+    );
+  });
+
+  it("offset survives scheduled maturity during the reinvestment period", () => {
+    const maturingDdtl = {
+      ...baseDdtl,
+      maturityDate: "2026-07-09",
+    };
+    const result = runProjection(
+      makeInputs({
+        loans: [normalLoan, maturingDdtl],
+        initialPar: 210_000_000,
+        impliedOcAdjustment,
+        ocDdtlCalibrationOffset: ddtlPar,
+        baseRatePct: 2.5,
+        baseRateFloorPct: 0,
+        ...noDefaults,
+        cprPct: 0,
+        cccBucketLimitPct: 0,
+      })
+    );
+    const maturityPeriod = result.periods[1];
+    expect(maturityPeriod.scheduledMaturities).toBeCloseTo(ddtlPar, 0);
+    expect(maturityPeriod.reinvestment).toBeCloseTo(ddtlPar, 0);
+    expect(maturityPeriod.endingUndrawnCommitment).toBeCloseTo(0, 0);
+    expect(classAOcActual(maturityPeriod)).toBeCloseTo(
+      expectedClassAOc(maturityPeriod, { impliedOcAdjustment, cumulativeDrawnOffset: ddtlPar }),
+      8,
+    );
   });
 });
 

@@ -3633,18 +3633,23 @@ export function resolveWaterfallInputs(
   // A fully-drawn DDTL (Eleda-shape: parBalance > 0, undrawnCommitment === 0)
   // contributes 0; a partially-drawn DDTL contributes its preserved residual.
   const ddtlUnfundedPar = loans.reduce((s, l) => s + (l.undrawnCommitment ?? 0), 0);
-  if (ddtlUnfundedPar > 0 && impliedOcAdjustment > 0) {
-    impliedOcAdjustment = Math.max(0, impliedOcAdjustment - ddtlUnfundedPar);
-  }
-  // KI-46 — the strip calibrates `impliedOcAdjustment` against T=0
-  // unfunded DDTL par; the engine's forward OC numerator subtracts
-  // `currentDdtlUnfundedPar` (evolves as DDTLs draw) AND
-  // `impliedOcAdjustment` (frozen at T=0). Post-draw the engine
-  // over-reports forward OC by ~D per period when
-  // `impliedOcAdjustment > 0`. Zero magnitude on Ares XV (no
-  // scheduled draws). See `web/docs/clo-model-known-issues.md` § KI-46
-  // for the algebra, the convention question that blocks closure, and
-  // the data-acquisition path required to verify the fix.
+  // Capture the exact amount stripped from `impliedOcAdjustment` so the
+  // engine's forward cumulative-draw offset compensates only for the
+  // calibration that actually happened. Identity:
+  //   ddtlCalibrationOffset = preStripImpliedOcAdjustment - postStripImpliedOcAdjustment
+  // Cases (R = pre-strip implied, D = ddtlUnfundedPar):
+  //   A. R > D  → offset = D; post-strip implied = R - D
+  //   B. 0 < R ≤ D → offset = R (clamped); post-strip implied = 0
+  //   C. R ≤ 0 or D = 0 → offset = 0; post-strip implied unchanged
+  // `buildFromResolved` threads `ddtlCalibrationOffset` (not `ddtlUnfundedPar`)
+  // into the engine; the engine caps its cumulative-draw subtraction at this
+  // value. Without this gating, Case C would over-correct by adding a forward
+  // -D that has no calibration anchor.
+  const ddtlCalibrationOffset =
+    ddtlUnfundedPar > 0 && impliedOcAdjustment > 0
+      ? Math.min(impliedOcAdjustment, ddtlUnfundedPar)
+      : 0;
+  impliedOcAdjustment -= ddtlCalibrationOffset;
 
   // --- Base Rate Floor ---
   // Extracted from interest mechanics section. null = not extracted (use default from CLO_DEFAULTS).
@@ -4345,7 +4350,7 @@ export function resolveWaterfallInputs(
   } = industryConcentrationResolved;
 
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, excludedIndustryCodes, principalPop: resolvePrincipalPop(constraints, warnings), preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, excludedIndustryCodes, principalPop: resolvePrincipalPop(constraints, warnings), preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, ddtlCalibrationOffset, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
     warnings,
   };
 }

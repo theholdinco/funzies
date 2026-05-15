@@ -100,6 +100,7 @@ export function makeInputs(overrides: Partial<ProjectionInputs> = {}): Projectio
     longDatedObligationHaircut: 0,
     impliedOcAdjustment: 0,
     quartersSinceReport: 0,
+    ocDdtlCalibrationOffset: 0,
     ddtlDrawPercent: 100,
     ...overrides,
     tranches,

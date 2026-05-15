@@ -174,6 +174,7 @@ export const EMPTY_RESOLVED: ResolvedDealData = {
   impliedOcAdjustment: 0,
   quartersSinceReport: 0,
   ddtlUnfundedPar: 0,
+  ddtlCalibrationOffset: 0,
   deferredInterestCompounds: true,
   interestNonPaymentGracePeriods: null,
   baseRateFloorPct: null,
@@ -1557,6 +1558,7 @@ export function buildFromResolved(
     excludedIndustryCodes: resolved.excludedIndustryCodes,
     impliedOcAdjustment: resolved.impliedOcAdjustment,
     quartersSinceReport: resolved.quartersSinceReport,
+    ocDdtlCalibrationOffset: resolved.ddtlCalibrationOffset,
     ddtlDrawPercent: userAssumptions.ddtlDrawPercent,
     ...(equityEntryPrice != null ? { equityEntryPrice } : {}),
     // C1 — pull compliance triggers from resolved qualityTests/concentrationTests

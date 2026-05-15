@@ -559,6 +559,16 @@ export interface ProjectionInputs {
   impliedOcAdjustment?: number; // derived residual between trustee's Adjusted CPA and identified components
   quartersSinceReport?: number; // quarters between compliance report and projection start (adjusts default recovery timing)
   ddtlDrawPercent?: number; // % of DDTL par actually funded on draw (default 100)
+  /** Exact amount the resolver stripped from `impliedOcAdjustment` to absorb
+   *  T=0 unfunded DDTL/revolver exposure (identity:
+   *  `preStripImpliedOcAdjustment - postStripImpliedOcAdjustment`). The engine
+   *  tracks actual `undrawnCommitment` reductions at draw events and subtracts
+   *  the cumulative amount from forward OC, capped at this value. Always in
+   *  `[0, ddtlUnfundedPar]`; zero when the resolver's strip didn't fire. T=0
+   *  OC is intentionally unchanged. Resolver-backed inputs populate this from
+   *  `ResolvedDealData.ddtlCalibrationOffset`; direct synthetic callers opt in
+   *  explicitly. */
+  ocDdtlCalibrationOffset?: number;
   equityEntryPrice?: number; // user-specified entry price for equity IRR (overrides balance-sheet implied value)
   /** PPM § 10(a)(i) — number of consecutive *payment-date* interest
    *  shortfalls on a non-deferrable senior tranche before an Event of
@@ -1767,6 +1777,7 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     industryCapRules = null,
     excludedIndustryCodes = null,
     ddtlDrawPercent = 100,
+    ocDdtlCalibrationOffset = 0,
     moodysWarfTriggerLevel = null,
     minWasBps: minWasBpsTrigger = null,
     moodysCaaLimitPct: moodysCaaLimitPctTrigger = null,
@@ -3506,6 +3517,13 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   let heldSupplementalReserveBalance =
     supplementalReserveDisposition === "hold" ? initialSupplementalReserveBalance : 0;
   let supplementalReserveBalance = 0;
+  // Deal-level memory of the amount actually drawn from the T=0 calibrated
+  // unfunded DDTL/revolver bucket. Kept outside LoanState so defaults,
+  // maturities, calls, liquidation, PIK, and pruning cannot erase it. Current
+  // draw mechanics are non-reborrowing: once undrawn availability drops, it
+  // does not refill. If future revolver support reintroduces borrowing
+  // availability, this offset must be revisited.
+  let cumulativeDrawnFromCalibratedDdtl = 0;
 
   // Senior Expenses Cap rolling carryforward state (PPM Condition 1
   // proviso (ii)). Each period's unused stated-cap headroom is appended;
@@ -3619,11 +3637,19 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         if (loan.undrawnCommitment <= 0) continue;
         const drawMonth = Math.max(1, ((loan.drawQuarter ?? 0) - 1) * 3 + 1);
         if (monthIndex === drawMonth) {
+          const beforeUndrawn = loan.undrawnCommitment;
           const drawn = loan.undrawnCommitment * (ddtlDrawPercent / 100);
           if (drawn > 0) {
             loan.survivingPar += drawn;
             loan.undrawnCommitment -= drawn;
             loan.spreadBps = loan.ddtlSpreadBps ?? loan.spreadBps;
+          }
+          const actualUndrawnReduction = Math.max(0, beforeUndrawn - loan.undrawnCommitment);
+          if (ocDdtlCalibrationOffset > 0 && actualUndrawnReduction > 0) {
+            cumulativeDrawnFromCalibratedDdtl = Math.min(
+              ocDdtlCalibrationOffset,
+              cumulativeDrawnFromCalibratedDdtl + actualUndrawnReduction,
+            );
           }
         }
       }
@@ -5105,7 +5131,8 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       : 0;
     let ocNumerator = endingPar + remainingPrelim - suppReserveLeftoverInRemainingPrelim
       + pendingRecoveryValue + ocDefaultAdjustment
-      - discountHaircut - longDatedHaircut - impliedOcAdjustment - currentDdtlUnfundedPar;
+      - discountHaircut - longDatedHaircut - impliedOcAdjustment - currentDdtlUnfundedPar
+      - cumulativeDrawnFromCalibratedDdtl;
     if (hasLoans && cccBucketLimitPct > 0) {
       const cccPar = loanStates
         .filter((l) => l.ratingBucket === "CCC" && l.survivingPar > 0)

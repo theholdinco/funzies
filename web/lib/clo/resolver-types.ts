@@ -970,6 +970,14 @@ export interface ResolvedDealData {
   impliedOcAdjustment: number; // derived residual between trustee's Adjusted CPA and identified components
   quartersSinceReport: number; // quarters between compliance report date and projection start (adjusts pre-existing default recovery timing)
   ddtlUnfundedPar: number; // total DDTL commitment par (for dynamic OC deduction in projection)
+  /** Amount actually stripped from `impliedOcAdjustment` to absorb the T=0
+   *  unfunded DDTL bucket under the engine's "OC excludes unfunded commitments"
+   *  convention. Identity:
+   *    `ddtlCalibrationOffset = preStripImpliedOcAdjustment - postStripImpliedOcAdjustment`
+   *  Threaded into `ProjectionInputs.ocDdtlCalibrationOffset` so the engine's
+   *  forward cumulative-draw subtraction caps at exactly the calibrated amount
+   *  (no double-counting, no Case-C over-correction). Always in `[0, ddtlUnfundedPar]`. */
+  ddtlCalibrationOffset: number;
   deferredInterestCompounds: boolean; // whether PIK'd interest itself earns interest in subsequent periods
   /** PPM § 10(a)(i) — number of consecutive payment-date interest shortfalls
    *  on a non-deferrable senior tranche before an Event of Default fires.
