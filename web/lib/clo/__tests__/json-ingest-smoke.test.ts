@@ -113,6 +113,16 @@ describe("A8 — JSON-ingest smoke (Euro XV compliance + ppm)", () => {
     }
   });
 
+  it("maps PPM fields that gate projection build", () => {
+    expect((constraints as Record<string, unknown>).excessCccAdjustment).toEqual({
+      thresholdPct: "7.5",
+      marketValuePct: "70",
+    });
+    const interestMechanics = (constraints as Record<string, unknown>).interestMechanics as Record<string, unknown>;
+    expect(interestMechanics.referenceWeightedAverageFixedCoupon).toBe(4);
+    expect(interestMechanics.deferredInterestCompounds).toBe(true);
+  });
+
   it("pins named mapped rows that drive waterfall and asset economics", () => {
     const paymentKeys = [
       "className",
@@ -187,6 +197,16 @@ describe("A8 — JSON-ingest smoke (Euro XV compliance + ppm)", () => {
     });
 
     expect((mapped.key_dates as Record<string, unknown>).paymentFrequency).toBe("Semi-annually");
+  });
+
+  it("maps snake_case structured principal POP interest_waterfall into resolver shape", () => {
+    const principalPop = (constraints as Record<string, unknown>)
+      .principalPriorityOfPayments as Record<string, unknown>;
+
+    expect(principalPop).toBeTruthy();
+    expect(principalPop.clauses).toHaveLength(22);
+    expect(principalPop.interestWaterfall).toBeTruthy();
+    expect(principalPop).not.toHaveProperty("interest_waterfall");
   });
 
   it("falls back to camelCase paymentFrequency when snake_case JSON fields are blank", () => {

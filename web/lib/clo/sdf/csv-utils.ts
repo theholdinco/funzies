@@ -74,7 +74,10 @@ export function parseCsvRow(line: string): string[] {
 // with a non-zero leading digit — this keeps "0,500" → 0.5 and rejects
 // 4+-digit prefixes like "1500,500" → 1500.5 where the thousands-grouping
 // shape doesn't fit anyway.
-function parseLocaleNumber(input: string): number | null {
+function parseLocaleNumber(
+  input: string,
+  options: { singleSeparatorThreeDecimalsAsDecimal?: boolean } = {},
+): number | null {
   let s = input;
   let sign = 1;
   // Eat leading whitespace, sign, and currency chars in any order.
@@ -98,7 +101,7 @@ function parseLocaleNumber(input: string): number | null {
   // recursively locale-processed; the exponent is digit-only by definition.
   const sciMatch = s.match(/^([\d.,\u00A0 ]+)([eE][+-]?\d+)$/);
   if (sciMatch) {
-    const mantissa = parseLocaleNumber(sciMatch[1]);
+    const mantissa = parseLocaleNumber(sciMatch[1], options);
     if (mantissa === null) return null;
     const exp = parseInt(sciMatch[2].slice(1), 10);
     if (isNaN(exp)) return null;
@@ -140,7 +143,7 @@ function parseLocaleNumber(input: string): number | null {
         after.length === 3 &&
         before.length >= 1 && before.length <= 3 &&
         /[1-9]/.test(before);
-      if (isCanonicalThousands) {
+      if (isCanonicalThousands && !options.singleSeparatorThreeDecimalsAsDecimal) {
         cleaned = before + after;
       } else {
         cleaned = sep === "," ? before + "." + after : s;
@@ -220,7 +223,7 @@ export function parseDate(
 export function parsePercentage(value: string | undefined | null): number | null {
   if (value == null || value.trim() === "") return null;
   const stripped = value.trim().replace(/%$/, "");
-  return parseLocaleNumber(stripped);
+  return parseLocaleNumber(stripped, { singleSeparatorThreeDecimalsAsDecimal: true });
 }
 
 /** parseNumeric variant for PPM-extraction-style decorated strings.

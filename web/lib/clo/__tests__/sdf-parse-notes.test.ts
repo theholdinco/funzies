@@ -16,6 +16,9 @@ const ROW_CLASS_B2 =
 const ROW_CLASS_C =
   "Ares European CLO XV  DAC,Class C Senior Secured Deferrable Floating Rate Notes due 2032,,,,,,,,A   ,A2  ,A   ,A2  ,32500000.0000,2.1,,,32500000.0000,EUR,,,15.01.2036,,EURIBOR (3 months),4.116,06.01.2026,03.04.2026,3 Months,Actual,360,,,,,,";
 
+const ROW_CLASS_F =
+  "Ares European CLO XV  DAC,Class F Senior Secured Deferrable Floating Rate Notes due 2032,,,,,,,,B-  ,B3  ,B-  ,B3  ,15000000.0000,8.85,,,15000000.0000,EUR,,,15.01.2036,,EURIBOR (3 months),10.866,06.01.2026,03.04.2026,3 Months,Actual,360,,,,,,";
+
 const ROW_SUBORDINATED =
   "Ares European CLO XV  DAC,Subordinated Notes due 2032,,,,,,,,NR  ,NR  ,NR  ,NR  ,44800000.0000,0,,,44800000.0000,EUR,,,15.01.2036,,EURIBOR (3 months),0,06.01.2026,03.04.2026,3 Months,Actual,360,,,,,,";
 
@@ -54,6 +57,12 @@ describe("parseNotes", () => {
     expect(row.reference_rate).toBeNull();
     expect(row.coupon_rate).toBeCloseTo(1.95);
     expect(row.class_name).toBe("Class B-2");
+  });
+
+  it("parses three-decimal tranche coupons as percent values", () => {
+    const result = parseNotes(makeCsv(ROW_CLASS_A, ROW_CLASS_F));
+    expect(result.rows[0].coupon_rate).toBeCloseTo(2.966);
+    expect(result.rows[1].coupon_rate).toBeCloseTo(10.866);
   });
 
   it("parses accrual dates correctly (06.01.2026 → 2026-01-06)", () => {

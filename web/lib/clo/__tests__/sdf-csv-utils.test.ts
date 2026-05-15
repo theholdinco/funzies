@@ -204,6 +204,13 @@ describe("parsePercentage (KI-50: locale-aware)", () => {
     expect(parsePercentage("136.98")).toBe(136.98);
   });
 
+  it("treats single-separator three-decimal percent values as decimals", () => {
+    expect(parsePercentage("99.542")).toBe(99.542);
+    expect(parsePercentage("100.094%")).toBe(100.094);
+    expect(parsePercentage("3.250")).toBe(3.25);
+    expect(parsePercentage("3,250")).toBe(3.25);
+  });
+
   it("returns null for empty", () => {
     expect(parsePercentage("")).toBeNull();
   });

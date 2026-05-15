@@ -792,7 +792,22 @@ export function composeBuildWarnings(
   userAssumptions: UserAssumptions,
   callerWarnings: ResolutionWarning[] = [],
 ): ResolutionWarning[] {
-  const composedWarnings: ResolutionWarning[] = [...callerWarnings];
+  const composedWarnings: ResolutionWarning[] = callerWarnings.filter((warning) => {
+    // PPMs often state trustee/admin fees as "per agreement". The resolver
+    // correctly blocks when that would leave trusteeFeeBps at zero, but the
+    // projection path can resolve the same missing PPM number from observed
+    // waterfall step (B) via defaultsFromResolved. Once a positive trustee
+    // assumption is present, the arithmetic input is no longer missing.
+    if (
+      warning.field === "fees.trusteeFeeBps" &&
+      warning.blocking === true &&
+      /per agreement|unparseable/i.test(warning.message) &&
+      userAssumptions.trusteeFeeBps > 0
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   // KI-38 boundary: projection arithmetic assumes every monetary input is
   // already denominated in the deal currency. Until FX conversion and

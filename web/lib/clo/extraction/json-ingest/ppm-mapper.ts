@@ -589,7 +589,9 @@ function mapWaterfallRules(ppm: PpmJson): Record<string, unknown> {
  *  passthrough shape consumed by the resolver. The block is already
  *  shaped to mirror `ResolvedPrincipalPop` (camelCase keys, discriminated
  *  union clause variants); the resolver does the per-clause variant
- *  validation. Returns null when the block is absent or fails the
+ *  validation. Accepts the current extractor's snake_case
+ *  `interest_waterfall` and normalizes it to the resolver's camelCase
+ *  `interestWaterfall`. Returns null when the block is absent or fails the
  *  top-level structural check (the resolver then either falls back to
  *  the uniformly-simplified loop or, post-Step-7, blocks with an
  *  extraction-failure warning). */
@@ -600,25 +602,71 @@ function mapPrincipalPriorityOfPayments(ppm: PpmJson): unknown {
     [k: string]: unknown;
   };
   const structured = popBlock.structured;
+  const structuredRecord =
+    structured && typeof structured === "object"
+      ? structured as Record<string, unknown>
+      : null;
+  const interestWaterfall =
+    structuredRecord?.interestWaterfall ?? structuredRecord?.interest_waterfall;
   if (
-    !structured ||
-    typeof structured !== "object" ||
-    !("clauses" in structured) ||
-    !("interestWaterfall" in structured)
+    !structuredRecord ||
+    !("clauses" in structuredRecord) ||
+    interestWaterfall == null
   ) {
     return null;
   }
   const provenance = deriveSectionProvenance(wf as { source_pages?: unknown; source_condition?: unknown });
+  const normalizedStructured = { ...structuredRecord };
+  delete normalizedStructured.interest_waterfall;
   return {
-    ...structured,
+    ...normalizedStructured,
+    interestWaterfall,
     sourcePages: provenance?.source_pages ?? null,
     sourceCondition: provenance?.source_condition ?? null,
   };
 }
 
 function mapInterestMechanics(ppm: PpmJson): Record<string, unknown> {
-  // Schema is passthrough; dump section_7 verbatim.
-  return { ...ppm.section_7_interest_mechanics };
+  const section = ppm.section_7_interest_mechanics as Record<string, unknown>;
+  const referenceWeightedAverageFixedCoupon =
+    section.referenceWeightedAverageFixedCoupon ??
+    section.reference_weighted_average_fixed_coupon;
+  const explicitDeferredInterestCompounds =
+    section.deferredInterestCompounds ??
+    section.deferred_interest_compounds;
+  const deferredInterestCompounds =
+    typeof explicitDeferredInterestCompounds === "boolean"
+      ? explicitDeferredInterestCompounds
+      : deriveDeferredInterestCompounds(section.interest_deferral);
+
+  return {
+    ...section,
+    ...(typeof referenceWeightedAverageFixedCoupon === "number"
+      ? { referenceWeightedAverageFixedCoupon }
+      : {}),
+    ...(typeof deferredInterestCompounds === "boolean"
+      ? { deferredInterestCompounds }
+      : {}),
+  };
+}
+
+function deriveDeferredInterestCompounds(interestDeferral: unknown): boolean | undefined {
+  if (!interestDeferral || typeof interestDeferral !== "object") return undefined;
+  const rows = Object.values(interestDeferral as Record<string, unknown>);
+  const mechanics = rows
+    .map((row) =>
+      row && typeof row === "object"
+        ? String((row as Record<string, unknown>).mechanics ?? "").toLowerCase()
+        : "",
+    )
+    .join(" ");
+  if (
+    mechanics.includes("added to principal amount outstanding") ||
+    (mechanics.includes("deferred interest") && mechanics.includes("accrues interest"))
+  ) {
+    return true;
+  }
+  return undefined;
 }
 
 export function mapPpm(ppm: PpmJson): PpmSections {

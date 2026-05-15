@@ -1,6 +1,7 @@
 import {
   parseCsvLines,
   parseNumeric,
+  parsePercentage,
   parseBoolean,
   parseDate,
   trimRating,
@@ -164,8 +165,8 @@ export function parseCollateralFile(
           ? commitment
           : principalBalance,
     );
-    const grossPurchasePrice = parseNumeric(raw.Gross_Purchase_Price);
-    const marketValue = validateMagnitude("market_value", parseNumeric(raw.Market_Value));
+    const grossPurchasePrice = parsePercentage(raw.Gross_Purchase_Price);
+    const marketValue = validateMagnitude("market_value", parsePercentage(raw.Market_Value));
     const defaultDate = parseDate(raw.Default_Date, "DD.MM.YYYY");
     const nativeCurrency = trimOrNull(raw.Native_Currency);
     // Spread (% per annum). Magnitude-validated so a European-locale
@@ -174,7 +175,7 @@ export function parseCollateralFile(
     // rather than flowing into spreadToBps as 1,550,000 bps. Per CLAUDE.md
     // anti-pattern #5 (boundaries assert sign and scale): spread is the
     // exact field locale mis-parses target, so it must wear the validator.
-    const spreadRaw = validateMagnitude("rate_pct", parseNumeric(raw.Current_Spread));
+    const spreadRaw = validateMagnitude("rate_pct", parsePercentage(raw.Current_Spread));
 
     return {
       obligor_name: trimOrNull(raw.Issuer_Name),
@@ -205,10 +206,10 @@ export function parseCollateralFile(
       country: trimOrNull(raw.Country_Name),
       country_code: trimOrNull(raw.Country_Code),
       is_fixed_rate: parseCouponType(raw.Coupon_Type),
-      all_in_rate: validateMagnitude("rate_pct", parseNumeric(raw.All_In_Rate)),
+      all_in_rate: validateMagnitude("rate_pct", parsePercentage(raw.All_In_Rate)),
       reference_rate: trimOrNull(raw.Index_Type),
-      index_rate: validateMagnitude("rate_pct", parseNumeric(raw.Index)),
-      floor_rate: validateMagnitude("rate_pct", parseNumeric(raw.Index_Floor_Rate)),
+      index_rate: validateMagnitude("rate_pct", parsePercentage(raw.Index)),
+      floor_rate: validateMagnitude("rate_pct", parsePercentage(raw.Index_Floor_Rate)),
       spread_bps: spreadToBps(spreadRaw),
       day_count_convention: buildDayCountConvention(
         raw.Month_Count,
@@ -231,9 +232,9 @@ export function parseCollateralFile(
       moodys_rating: trimRating(raw.Moodys_Rating),
       sp_rating: trimRating(raw.SP_Rating),
       fitch_rating: trimRating(raw.Fitch_Rating),
-      recovery_rate_moodys: validateMagnitude("recovery_rate_pct", parseNumeric(raw.Moodys_Recovery_Rate)),
-      recovery_rate_sp: validateMagnitude("recovery_rate_pct", parseNumeric(raw.SP_Recovery_Rate)),
-      recovery_rate_fitch: validateMagnitude("recovery_rate_pct", parseNumeric(raw.Fitch_Recovery_Rate)),
+      recovery_rate_moodys: validateMagnitude("recovery_rate_pct", parsePercentage(raw.Moodys_Recovery_Rate)),
+      recovery_rate_sp: validateMagnitude("recovery_rate_pct", parsePercentage(raw.SP_Recovery_Rate)),
+      recovery_rate_fitch: validateMagnitude("recovery_rate_pct", parsePercentage(raw.Fitch_Recovery_Rate)),
       issue_date: parseDate(raw.Issue_Date, "DD.MM.YYYY"),
       maturity_date: parseDate(raw.Maturity_Date, "DD.MM.YYYY"),
       default_date: defaultDate,

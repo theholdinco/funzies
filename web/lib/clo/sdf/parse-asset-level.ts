@@ -1,6 +1,7 @@
 import {
   parseCsvLines,
   parseNumeric,
+  parsePercentage,
   parseBoolean,
   parseDate,
   trimRating,
@@ -236,7 +237,7 @@ export function parseAssetLevel(
     // Price — percent-canonical (0..200 with 1% floor). Validator catches
     // fraction-shape regressions and absolute-vs-percent confusions at the
     // parser boundary; resolver/engine consumers trust the percent shape.
-    current_price: validateMagnitude("market_value", parseNumeric(raw.Mark_Price)),
+    current_price: validateMagnitude("market_value", parsePercentage(raw.Mark_Price)),
 
     // Identifiers
     facility_id: trimOrNull(raw.Facility_ID),

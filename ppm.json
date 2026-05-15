@@ -110,6 +110,11 @@
       "trigger_action": "Interest diversion (lesser of 50% of residual IP or cure amount) during Reinvestment Period",
       "waterfall_clause": "Interest Priority (W)"
     },
+    "excess_ccc_adjustment": {
+      "threshold_pct": 7.5,
+      "market_value_pct": 70.0,
+      "source_condition": "OC Condition 1 definitions: CCC/Caa Excess threshold is 7.5% of Collateral Principal Amount; Excess CCC Adjustment Amount credits Market Value of included excess obligations. Current engine uses a scalar market_value_pct input; 70.0 preserves the existing Euro XV fixture convention and has no current-period impact while Caa/CCC adjustment is zero."
+    },
     "event_of_default_par_value_test": {
       "source_condition": "OC Condition 10(a)(iv)",
       "source_pages": [207, 208],
@@ -346,6 +351,8 @@
 
   "section_7_interest_mechanics": {
     "source_condition": "OC Condition 6 (pp. 192–194); Condition 1 definitions (pp. 127–128)",
+    "reference_weighted_average_fixed_coupon": 4.0,
+    "deferred_interest_compounds": true,
     "conventions": {
       "day_count_floating": "Actual/360",
       "day_count_fixed_class_b2": "30/360 (12 × 30-day months)",

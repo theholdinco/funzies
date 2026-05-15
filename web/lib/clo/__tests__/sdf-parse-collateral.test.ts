@@ -38,6 +38,25 @@ describe("parseCollateralFile", () => {
     expect(result.rows[0].spread_bps).toBe(325);
   });
 
+  it("parses SDF percent-scale price/rate fields with three decimals", () => {
+    const result = parseCollateralFile(makeCsv(ROW_1, ROW_2));
+    const first = result.rows[0];
+    const second = result.rows[1];
+
+    expect(first.gross_purchase_price).toBe(98);
+    expect(first.purchase_price).toBe(98);
+    expect(first.market_value).toBe(99.542);
+    expect(first.current_price).toBe(99.542);
+    expect(first.all_in_rate).toBe(5.15);
+    expect(first.index_rate).toBe(1.9);
+    expect(first.floor_rate).toBe(0);
+    expect(first.recovery_rate_moodys).toBe(45);
+    expect(first.recovery_rate_fitch).toBe(57);
+    expect(second.market_value).toBe(100.094);
+    expect(second.all_in_rate).toBe(5.011);
+    expect(second.index_rate).toBe(2.011);
+  });
+
   it("derives is_defaulted = true when Default_Date is present", () => {
     const rowWithDefault = ROW_1.replace(",,,30.04.2026", ",15.03.2026,Credit Event,30.04.2026");
     const result = parseCollateralFile(makeCsv(rowWithDefault));

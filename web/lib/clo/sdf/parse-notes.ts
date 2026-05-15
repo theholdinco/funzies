@@ -1,6 +1,7 @@
 import {
   parseCsvLines,
   parseNumeric,
+  parsePercentage,
   parseDate,
   trimRating,
   spreadToBps,
@@ -109,7 +110,7 @@ export function parseNotes(csvText: string): SdfParseResult<SdfNoteRow> {
 
   const rows: SdfNoteRow[] = csvRows.map((raw) => {
     const rawTrancheName = raw.Tranche_Name?.trim() ?? "";
-    const spreadRaw = parseNumeric(raw.Spread);
+    const spreadRaw = parsePercentage(raw.Spread);
     const originalAmount = parseNumeric(raw.Original_Amount);
     const amountNative = parseNumeric(raw.Amount_Native);
 
@@ -140,13 +141,13 @@ export function parseNotes(csvText: string): SdfParseResult<SdfNoteRow> {
       vendor_custom_fields: buildVendorCustomFields(raw),
 
       current_balance: parseNumeric(raw.Current_Principal),
-      coupon_rate: parseNumeric(raw.Coupon),
+      coupon_rate: parsePercentage(raw.Coupon),
       rating_fitch_issuance: trimRating(raw.Fitch_Rating_Issuance),
       rating_moodys_issuance: trimRating(raw.Moodys_Rating_Issuance),
       rating_sp_issuance: trimRating(raw.SP_Rating_Issuance),
       interest_accrued: parseNumeric(raw.Interest),
       ic_interest: parseNumeric(raw.IC_Interest),
-      base_rate: parseNumeric(raw.Base_Rate),
+      base_rate: parsePercentage(raw.Base_Rate),
       accrual_start_date: parseDate(raw.Start_Date, "DD.MM.YYYY"),
       accrual_end_date: parseDate(raw.End_Date, "DD.MM.YYYY"),
       unscheduled_principal_paydown: parseNumeric(

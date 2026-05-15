@@ -20,9 +20,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   DEFAULT_ASSUMPTIONS,
+  composeBuildWarnings,
   defaultsFromResolved,
+  selectBlockingWarnings,
 } from "@/lib/clo/build-projection-inputs";
-import type { ResolvedDealData } from "@/lib/clo/resolver-types";
+import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
 
 const FIXTURE_PATH = join(__dirname, "fixtures", "euro-xv-q1.json");
 const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as {
@@ -66,6 +68,21 @@ describe("D3 — defaultsFromResolved (Euro XV fixture)", () => {
     // Sanity: not the static default (0).
     expect(d.trusteeFeeBps).not.toBe(DEFAULT_ASSUMPTIONS.trusteeFeeBps);
     expect(d.adminFeeBps).not.toBe(0);
+  });
+
+  it("does not block the projection on per-agreement trustee fee once waterfall pre-fill supplied bps", () => {
+    const d = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const warning: ResolutionWarning = {
+      field: "fees.trusteeFeeBps",
+      message:
+        "Trustee/admin fee found in PPM but rate is 'per agreement' (or otherwise unparseable) — `trusteeFeeBps` stayed at the CLO_DEFAULTS zero.",
+      severity: "error",
+      blocking: true,
+    };
+
+    expect(d.trusteeFeeBps).toBeGreaterThan(0);
+    expect(selectBlockingWarnings(composeBuildWarnings(fixture.resolved, d, [warning]))).toEqual([]);
+    expect(selectBlockingWarnings(composeBuildWarnings(fixture.resolved, DEFAULT_ASSUMPTIONS, [warning]))).toHaveLength(1);
   });
 
   it("propagates seniorExpensesCap from resolved (PPM Condition 1, OC pp. 150-151)", () => {
