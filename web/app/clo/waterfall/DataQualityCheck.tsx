@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   dataQualityErrorMessage,
@@ -15,22 +15,22 @@ interface Props {
 
 export default function DataQualityCheck({ panelId, dealContext }: Props) {
   const [warnings, setWarnings] = useState<Warning[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [requested, setRequested] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dealContextKey = useMemo(() => JSON.stringify(dealContext), [dealContext]);
 
   useEffect(() => {
+    if (!requested) return;
     const controller = new AbortController();
     setLoading(true);
     setError(null);
 
     async function check() {
       try {
-        const parsedDealContext = JSON.parse(dealContextKey);
         const res = await fetch("/api/clo/waterfall/check-data", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ panelId, dealContext: parsedDealContext }),
+          body: JSON.stringify({ panelId, dealContext }),
           signal: controller.signal,
         });
 
@@ -109,7 +109,7 @@ export default function DataQualityCheck({ panelId, dealContext }: Props) {
     check();
 
     return () => controller.abort();
-  }, [panelId, dealContextKey]);
+  }, [panelId, dealContext, requested]);
 
   if (error) {
     return (
@@ -126,6 +126,44 @@ export default function DataQualityCheck({ panelId, dealContext }: Props) {
         }}
       >
         {error}
+      </div>
+    );
+  }
+  if (!requested) {
+    return (
+      <div
+        className="wf-section"
+        style={{
+          padding: "0.85rem 1rem",
+          marginBottom: "1.5rem",
+          border: "1px solid var(--color-border-light)",
+          borderRadius: "var(--radius-sm)",
+          color: "var(--color-text-muted)",
+          fontSize: "0.82rem",
+          background: "var(--color-surface)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "1rem",
+        }}
+      >
+        <span>AI data-quality review is available on demand. Deterministic model warnings are shown below.</span>
+        <button
+          type="button"
+          onClick={() => setRequested(true)}
+          style={{
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius-sm)",
+            background: "var(--color-surface)",
+            color: "var(--color-text)",
+            padding: "0.4rem 0.65rem",
+            fontSize: "0.78rem",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Run review
+        </button>
       </div>
     );
   }

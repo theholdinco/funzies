@@ -474,6 +474,12 @@ export default function ProjectionModel({
   const [showTransparency, setShowTransparency] = useState(false);
   const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"projection" | "switch">(urlTab === "switch" ? "switch" : "projection");
+  const [fairValueRequest, setFairValueRequest] = useState<{
+    noCallInputs: ProjectionInputs;
+    withCallInputs: ProjectionInputs | null;
+    subNotePar: number;
+  } | null>(null);
+  const [monteCarloRequested, setMonteCarloRequested] = useState(false);
 
   // Pre-fill sliders from `defaultsFromResolved` — single source of truth for
   // the baseRate + management/incentive-fee pre-fill family. Only fires once
@@ -1011,22 +1017,30 @@ export default function ProjectionModel({
     });
   }, [noCallBaseInputs, withCallDate, resolved]);
 
-  // Fair value @ hurdle — computed under both no-call and with-call so the
-  // partner sees both anchor prices (option (d): two columns wherever
-  // call-mode matters, no toggle).
+  // Fair value @ hurdle — expensive bisection (~dozens of engine runs per
+  // no-call/with-call pair), so it is user-triggered instead of computed
+  // during route mount. The request stores a snapshot of the projection
+  // inputs; changing assumptions clears the snapshot below.
   const fairValues = useMemo<FairValueResult[] | null>(() => {
-    if (!noCallBaseInputs || !equityMetrics || equityMetrics.wipedOut || equityMetrics.subNotePar <= 0) {
-      return null;
-    }
-    return computeFairValuesAtHurdles(noCallBaseInputs, equityMetrics.subNotePar, [0.10, 0.15]);
-  }, [noCallBaseInputs, equityMetrics]);
+    if (!fairValueRequest) return null;
+    return computeFairValuesAtHurdles(fairValueRequest.noCallInputs, fairValueRequest.subNotePar, [0.10, 0.15]);
+  }, [fairValueRequest]);
 
   const fairValuesWithCall = useMemo<FairValueResult[] | null>(() => {
-    if (!withCallBaseInputs || !equityMetrics || equityMetrics.wipedOut || equityMetrics.subNotePar <= 0) {
-      return null;
-    }
-    return computeFairValuesAtHurdles(withCallBaseInputs, equityMetrics.subNotePar, [0.10, 0.15]);
-  }, [withCallBaseInputs, equityMetrics]);
+    if (!fairValueRequest?.withCallInputs) return null;
+    return computeFairValuesAtHurdles(fairValueRequest.withCallInputs, fairValueRequest.subNotePar, [0.10, 0.15]);
+  }, [fairValueRequest]);
+
+  const canComputeFairValue =
+    !!noCallBaseInputs &&
+    !!equityMetrics &&
+    !equityMetrics.wipedOut &&
+    equityMetrics.subNotePar > 0;
+
+  React.useEffect(() => {
+    setFairValueRequest(null);
+    setMonteCarloRequested(false);
+  }, [inputs]);
 
   // Forward IRR triple: cost basis / book / fair-value-10%. Two columns
   // when nonCallPeriodEnd is extracted; no-call only otherwise. The
@@ -1174,7 +1188,7 @@ export default function ProjectionModel({
 
 
   const mc = useMonteCarlo(
-    incompleteDataErrors.length === 0 && validationErrors.length === 0
+    monteCarloRequested && incompleteDataErrors.length === 0 && validationErrors.length === 0
       ? inputs
       : null,
   );
@@ -1719,6 +1733,28 @@ export default function ProjectionModel({
                   })}
                 </div>
               )}
+              {!fairValues && canComputeFairValue && (
+                <button
+                  type="button"
+                  onClick={() => setFairValueRequest({
+                    noCallInputs: noCallBaseInputs!,
+                    withCallInputs: withCallBaseInputs,
+                    subNotePar: equityMetrics.subNotePar,
+                  })}
+                  style={{
+                    marginTop: "0.35rem",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text)",
+                    padding: "0.3rem 0.5rem",
+                    fontSize: "0.68rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  Compute fair value
+                </button>
+              )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <label style={{ fontSize: "0.72rem", color: "var(--color-text-muted)", fontWeight: 500, whiteSpace: "nowrap" }} title="What-if input: drives the @ custom row in the Forward IRR card. Independent of the cost-basis / book / fair-value rows.">Custom entry (what-if):</label>
@@ -2250,17 +2286,42 @@ export default function ProjectionModel({
 
           {/* Monte Carlo Analysis — visible by default */}
           <div style={{ marginBottom: "1.5rem" }}>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.75rem" }}>
-              Monte Carlo Simulation
-              <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--color-text-muted)", marginLeft: "0.5rem" }}>
-                {mc.running ? "running..." : mc.result ? `${mc.result.runCount.toLocaleString()} runs` : ""}
-              </span>
-            </h3>
-            <MonteCarloChart
-              result={mc.result}
-              running={mc.running}
-              progress={mc.progress}
-            />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "0.75rem" }}>
+              <h3 style={{ fontSize: "0.95rem", fontWeight: 600, margin: 0 }}>
+                Monte Carlo Simulation
+                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--color-text-muted)", marginLeft: "0.5rem" }}>
+                  {mc.running ? "running..." : mc.result ? `${mc.result.runCount.toLocaleString()} runs` : ""}
+                </span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setMonteCarloRequested(true)}
+                disabled={mc.running}
+                style={{
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-sm)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-text)",
+                  padding: "0.4rem 0.65rem",
+                  fontSize: "0.78rem",
+                  cursor: mc.running ? "wait" : "pointer",
+                  opacity: mc.running ? 0.7 : 1,
+                }}
+              >
+                {mc.result ? "Rerun" : "Run"}
+              </button>
+            </div>
+            {monteCarloRequested || mc.result ? (
+              <MonteCarloChart
+                result={mc.result}
+                running={mc.running}
+                progress={mc.progress}
+              />
+            ) : (
+              <div style={{ padding: "0.75rem 1rem", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "0.82rem" }}>
+                Monte Carlo is paused until requested to keep route changes responsive.
+              </div>
+            )}
           </div>
 
           {/* Transparency section */}

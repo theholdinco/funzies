@@ -328,20 +328,28 @@ export default function ContextEditor({
   const [resolutionWarnings, setResolutionWarnings] = useState<ResolutionWarning[]>([]);
 
   useEffect(() => {
-    const { resolved: r, warnings: w } = resolveWaterfallInputs(
-      constraints,
-      complianceData ? { poolSummary: complianceData.poolSummary, complianceTests: complianceData.complianceTests, concentrations: complianceData.concentrations } : null,
-      tranches ?? [],
-      trancheSnapshots ?? [],
-      holdings ?? [],
-      dealDates,
-      accountBalances ?? [],
-      parValueAdjustments ?? [],
-      intexPositions,
-      accruals ?? [],
-    );
-    setResolved(r);
-    setResolutionWarnings(w);
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      const { resolved: r, warnings: w } = resolveWaterfallInputs(
+        constraints,
+        complianceData ? { poolSummary: complianceData.poolSummary, complianceTests: complianceData.complianceTests, concentrations: complianceData.concentrations } : null,
+        tranches ?? [],
+        trancheSnapshots ?? [],
+        holdings ?? [],
+        dealDates,
+        accountBalances ?? [],
+        parValueAdjustments ?? [],
+        intexPositions,
+        accruals ?? [],
+      );
+      if (cancelled) return;
+      setResolved(r);
+      setResolutionWarnings(w);
+    }, 150);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [constraints, complianceData, tranches, trancheSnapshots, holdings, accountBalances, parValueAdjustments, intexPositions, dealDates, accruals]);
 
   const [constraintsDirty, setConstraintsDirty] = useState(false);
