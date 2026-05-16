@@ -65,11 +65,15 @@ export function DefaultRatePanel({
   /** Slider-drag handler. Delta-based override marking is fine here
    *  — user clearly intends to override any bucket they drag. */
   onChange: (rates: Record<string, number>) => void;
-  /** "Set all to X% / Apply" handler. Unconditionally marks every
-   *  displayed bucket overridden, regardless of whether the value
-   *  numerically changed. An explicit "Apply 2%" when the panel
-   *  already shows 2% should still take effect — historical bug was
-   *  delta-based handler silently no-op'ing this case. */
+  /** "Set all to X% / Apply" handler. The consumer marks every
+   *  RATING_BUCKETS bucket overridden (including buckets that are
+   *  currently empty in the pool — future reinvestment into those
+   *  buckets should also be hit by the user's stated rate, not
+   *  silently fall back to WARF). Unconditional regardless of
+   *  whether the displayed value numerically changed — an explicit
+   *  "Apply 2%" when the panel already shows 2% should still take
+   *  effect (historical bug: delta-based handler silently no-op'd
+   *  this case). */
   onApplyUniform: (rate: number) => void;
   ratingDistribution: Record<string, { count: number; par: number }>;
   weightedAvgCdr: number;

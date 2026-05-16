@@ -592,10 +592,14 @@ export function defaultsFromIntex(
   // Intex CDR is a pool-level aggregate; broadcast to every rating bucket
   // AND mark every bucket overridden so the engine actually consumes the
   // CDR (otherwise the per-loan WARF path overrides it silently — see
-  // override-semantics note in the docstring above).
+  // override-semantics note in the docstring above). Iterate RATING_BUCKETS
+  // (not `Object.keys(next.defaultRates)`) so the two fields stay aligned —
+  // if any bucket were in overriddenBuckets but not in defaultRates the
+  // engine would treat it as 0% hazard (projection.ts:3817:
+  // `quarterlyHazard[loan.ratingBucket] ?? 0`).
   if (intex.cdrPct != null) {
     const rates: Record<string, number> = {};
-    for (const k of Object.keys(next.defaultRates)) rates[k] = intex.cdrPct;
+    for (const k of RATING_BUCKETS) rates[k] = intex.cdrPct;
     next.defaultRates = rates;
     next.overriddenBuckets = [...RATING_BUCKETS];
   }

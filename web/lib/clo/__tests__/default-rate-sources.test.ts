@@ -73,6 +73,22 @@ describe("Default-rate sources — engine consumes what the UI displays", () => 
       new Set(overlaid.overriddenBuckets),
       "Intex CDR must populate overriddenBuckets so the engine honors the displayed rate (not silently fall through to WARF)",
     ).toEqual(new Set(RATING_BUCKETS));
+
+    // Engine round-trip: when we hand the helper's output straight to
+    // the engine (no further mutation), the projection MUST run at the
+    // Intex CDR, not silently fall back to WARF. Pre-fix this test
+    // would have failed at ~3.84% (engine runs WARF when
+    // overriddenBuckets is empty). Bridges from helper-output-shape
+    // (above) to engine-actual-behavior — a future consumer that
+    // forgets to thread overriddenBuckets through to ProjectionInputs
+    // is caught here.
+    const result = runProjection(
+      buildFromResolved(fixture.resolved, overlaid, [], fixture.raw),
+    );
+    const p0 = result.periods[0];
+    const annualizedRate = (p0.defaults / p0.beginningPar) * 4 * 100;
+    expect(annualizedRate, "engine MUST run at the Intex CDR (~2%), not WARF (~3.84%)").toBeGreaterThan(1.7);
+    expect(annualizedRate, "engine MUST run at the Intex CDR (~2%), not WARF (~3.84%)").toBeLessThan(2.1);
   });
 
   it("explicit Apply-style override (overriddenBuckets = all) → engine honors user CDR", () => {
