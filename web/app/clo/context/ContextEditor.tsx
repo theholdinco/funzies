@@ -46,6 +46,7 @@ import type {
 } from "@/lib/clo/types";
 import { resolveWaterfallInputs } from "@/lib/clo/resolver";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
+import type { IntexPositionRow } from "@/lib/clo/resolve-rating";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -79,6 +80,17 @@ interface ContextEditorProps {
   holdings?: CloHolding[];
   accountBalances?: CloAccountBalance[];
   parValueAdjustments?: CloParValueAdjustment[];
+  /** Per-position Intex DealCF rating supplements for the period (keyed by
+   *  lxid / isin / facility_id). Without this, the resolver's per-agency
+   *  rating ladder can't reach its Intex rungs, and loans whose Moody's /
+   *  Fitch ratings are SDF-absent but Intex-present (e.g. Apollo Finco,
+   *  McAfee, Castle US Holding on Ares XV) silently resolve as "absent",
+   *  triggering false blocking warnings. The Waterfall page passes the
+   *  same Map into its `resolveWaterfallInputs` call (page.tsx:80); this
+   *  prop puts the Context Editor's resolved-state view on the same
+   *  footing so the displayed warnings and exported context.json match
+   *  what the projection actually consumes. */
+  intexPositions?: Map<string, IntexPositionRow>;
   dealDates?: {
     maturity?: string | null;
     reinvestmentPeriodEnd?: string | null;
@@ -292,6 +304,7 @@ export default function ContextEditor({
   holdings,
   accountBalances,
   parValueAdjustments,
+  intexPositions,
   dealDates,
   deal,
   equityInceptionData: initialInceptionData,
@@ -324,12 +337,12 @@ export default function ContextEditor({
       dealDates,
       accountBalances ?? [],
       parValueAdjustments ?? [],
-      undefined,
+      intexPositions,
       accruals ?? [],
     );
     setResolved(r);
     setResolutionWarnings(w);
-  }, [constraints, complianceData, tranches, trancheSnapshots, holdings, accountBalances, parValueAdjustments, dealDates, accruals]);
+  }, [constraints, complianceData, tranches, trancheSnapshots, holdings, accountBalances, parValueAdjustments, intexPositions, dealDates, accruals]);
 
   const [constraintsDirty, setConstraintsDirty] = useState(false);
   const [profileDirty, setProfileDirty] = useState(false);

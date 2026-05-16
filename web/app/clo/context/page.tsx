@@ -19,6 +19,7 @@ import {
   getSupplementaryData,
   getProceeds,
   getOverflow,
+  getIntexPositionsByReportPeriod,
   rowToProfile,
 } from "@/lib/clo/access";
 import type { ExtractedConstraints, CloDocument } from "@/lib/clo/types";
@@ -60,7 +61,7 @@ export default async function ContextPage() {
   const deal = await getDealForProfile(profile.id);
   const reportPeriod = deal ? await getLatestReportPeriod(deal.id) : null;
 
-  const [tranches, trancheSnapshots, holdings, periodData, accountBalances, parValueAdjustments, extractedDistributions, accruals, trades, tradingSummary, waterfallSteps, events, supplementaryData, proceeds, overflow] = await Promise.all([
+  const [tranches, trancheSnapshots, holdings, periodData, accountBalances, parValueAdjustments, extractedDistributions, accruals, trades, tradingSummary, waterfallSteps, events, supplementaryData, proceeds, overflow, intexPositions] = await Promise.all([
     deal ? getTranches(deal.id) : Promise.resolve([]),
     reportPeriod ? getTrancheSnapshots(reportPeriod.id) : Promise.resolve([]),
     reportPeriod ? getHoldings(reportPeriod.id) : Promise.resolve([]),
@@ -76,6 +77,7 @@ export default async function ContextPage() {
     reportPeriod ? getSupplementaryData(reportPeriod.id) : Promise.resolve(null),
     reportPeriod ? getProceeds(reportPeriod.id) : Promise.resolve([]),
     reportPeriod ? getOverflow(reportPeriod.id) : Promise.resolve([]),
+    reportPeriod ? getIntexPositionsByReportPeriod(reportPeriod.id) : Promise.resolve(new Map()),
   ]);
 
   if (reportPeriod && periodData) {
@@ -150,6 +152,7 @@ export default async function ContextPage() {
         holdings={holdings}
         accountBalances={accountBalances}
         parValueAdjustments={parValueAdjustments}
+        intexPositions={intexPositions}
         dealDates={{
           maturity: maturityDate,
           reinvestmentPeriodEnd,
