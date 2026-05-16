@@ -113,7 +113,9 @@
     "excess_ccc_adjustment": {
       "threshold_pct": 7.5,
       "market_value_pct": 70.0,
-      "source_condition": "OC Condition 1 definitions: CCC/Caa Excess threshold is 7.5% of Collateral Principal Amount; Excess CCC Adjustment Amount credits Market Value of included excess obligations. Current engine uses a scalar market_value_pct input; 70.0 preserves the existing Euro XV fixture convention and has no current-period impact while Caa/CCC adjustment is zero."
+      "market_value_pct_source": "engine_default_compatibility_not_ppm_fixed_number",
+      "source_condition": "OC Condition 1 definitions: CCC/Caa Excess threshold is 7.5% of Collateral Principal Amount; Excess CCC Adjustment Amount credits the actual Market Value of the lowest-Market-Value obligations included in the CCC/Caa Excess.",
+      "modeling_note": "Ares XV does not specify a fixed 70% excess-CCC valuation scalar. The current projection input shape requires market_value_pct; 70.0 preserves the existing Euro XV fixture/default convention only as a fallback approximation. It has no current-period impact because the trustee report shows Moody's Caa 6.92% and Fitch CCC 5.87%, both below the 7.5% threshold, with Caa/CCC adjustment 0."
     },
     "event_of_default_par_value_test": {
       "source_condition": "OC Condition 10(a)(iv)",
