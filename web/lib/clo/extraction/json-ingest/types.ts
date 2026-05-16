@@ -203,6 +203,15 @@ export interface PpmJson {
     [k: string]: unknown;
   };
   section_6_waterfall: {
+    issuer_profit_amount?: {
+      regular_amount_eur?: number;
+      post_frequency_switch_amount_eur?: number | null;
+      currency?: string | null;
+      source_pages?: number[] | null;
+      source_condition?: string | null;
+      note?: string | null;
+      [k: string]: unknown;
+    } | null;
     interest_priority_of_payments: { clauses: PpmJsonWaterfallClause[]; [k: string]: unknown };
     principal_priority_of_payments: { clauses: PpmJsonWaterfallClause[]; [k: string]: unknown };
     post_acceleration_priority_of_payments?: { sequence_summary?: string; [k: string]: unknown };

@@ -572,16 +572,43 @@ function mapWaterfallRules(ppm: PpmJson): Record<string, unknown> {
   const wf = ppm.section_6_waterfall;
   const serializeClauses = (clauses: Array<{ clause: string; application: string }>): string =>
     clauses.map((c) => `(${c.clause}) ${c.application}`).join("\n");
+  const issuerProfitAmount = mapIssuerProfitAmount(ppm);
   return {
     interestPriority: serializeClauses(wf.interest_priority_of_payments.clauses),
     principalPriority: serializeClauses(wf.principal_priority_of_payments.clauses),
     postAcceleration: wf.post_acceleration_priority_of_payments?.sequence_summary ?? undefined,  // ppmWaterfallRulesSchema is string | undefined, NOT nullable
+    ...(issuerProfitAmount ? { issuerProfitAmount } : {}),
     // Schema-driven principal POP block. Resolver consumes via
     // `resolvePrincipalPop` and emits a `severity: "error", blocking: true`
     // warning on any malformed clause variant. Shape mirrors
     // `ResolvedPrincipalPop` (resolver-types.ts) for direct passthrough —
     // ppm.json:section_6_waterfall.principal_priority_of_payments.structured.
     principalPriorityOfPayments: mapPrincipalPriorityOfPayments(ppm),
+  };
+}
+
+function mapIssuerProfitAmount(ppm: PpmJson): Record<string, unknown> | null {
+  const wf = ppm.section_6_waterfall;
+  const block = wf.issuer_profit_amount;
+  if (!block || typeof block !== "object") return null;
+  if (typeof block.regular_amount_eur !== "number" || block.regular_amount_eur <= 0) return null;
+  const provenance =
+    deriveSectionProvenance(block as { source_pages?: unknown; source_condition?: unknown }) ??
+    deriveSectionProvenance(wf as { source_pages?: unknown; source_condition?: unknown });
+  return {
+    amountPerPeriod: block.regular_amount_eur,
+    postFrequencySwitchAmountPerPeriod:
+      typeof block.post_frequency_switch_amount_eur === "number"
+        ? block.post_frequency_switch_amount_eur
+        : null,
+    currency:
+      typeof block.currency === "string"
+        ? block.currency
+        : typeof ppm.meta.reporting_currency === "string"
+          ? ppm.meta.reporting_currency
+          : null,
+    sourcePages: provenance?.source_pages ?? null,
+    sourceCondition: provenance?.source_condition ?? null,
   };
 }
 

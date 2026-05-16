@@ -205,8 +205,9 @@ export interface ProjectionInputs {
   /** PPM step (A)(ii) Issuer Profit Amount. Absolute € per period (not bps,
    *  not annualized). Per PPM Condition 1 definitions: €250 per regular
    *  period, €500 per period post-Frequency-Switch Event. Deducted between
-   *  taxes (A.i) and trustee fees (B). Default 0 when no Q1 actuals
-   *  available. Back-derived by `defaultsFromResolved` from Q1 step (A)(ii). */
+   *  taxes (A.i) and trustee fees (B). Default 0 only for synthetic inputs;
+   *  production callers consume the PPM-extracted value via
+   *  `defaultsFromResolved`. */
   issuerProfitAmount?: number;
   trusteeFeeBps: number; // PPM step (B) trustee, in bps p.a. on collateral par
   /** C3 — PPM step (C) administrative expenses, in bps p.a. on collateral par.

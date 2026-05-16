@@ -147,6 +147,7 @@ export const EMPTY_RESOLVED: ResolvedDealData = {
   interestSmoothingBalance: 0,
   supplementalReserveBalance: 0,
   expenseReserveBalance: 0,
+  issuerProfitAmount: null,
   hedgeCostBps: 0,
   seniorExpensesCap: null,
   discountObligationRule: null,
@@ -248,9 +249,11 @@ export interface UserAssumptions {
   // for the OC verification + the data we'd need to close the unmodeled
   // GAAP-vs-cash residual (~€24,500/year on Euro XV).
   /** PPM step (A)(ii) Issuer Profit Amount. Absolute € per period.
-   *  €250 regular, €500 post-Frequency-Switch on Euro XV. User-set via the
-   *  EngineExpensesPanel; the resolver-time gate fires when the PPM
-   *  waterfall narrative mentions "Issuer Profit" but no value is provided. */
+   *  €250 regular, €500 post-Frequency-Switch on Euro XV. Pre-filled from
+   *  structured PPM extraction; user-set via EngineExpensesPanel when
+   *  extraction is missing. The resolver-time gate fires when the PPM
+   *  waterfall narrative mentions "Issuer Profit" but no structured value
+   *  is provided. */
   issuerProfitAmount: number;
   /** C3 — Trustee fee bps on Collateral Principal Amount, per annum. Paid
    *  at PPM step (B). Jointly subject to Senior Expenses Cap with adminFeeBps;
@@ -434,12 +437,14 @@ export interface DefaultsFromResolvedRaw {
  *     A build-time blocking gate in `composeBuildWarnings` refuses the
  *     projection when raw Step F shows hedge cashflows but neither the
  *     resolved value nor the user assumption is positive.
- *   - `issuerProfitAmount` ← `DEFAULT_ASSUMPTIONS` (zero). No PPM-extraction
- *     path exists today; the resolver's `resolveAssumptionGates` emits a
- *     blocking warning whenever the PPM waterfall narrative mentions
- *     the corresponding economics, so the projection refuses until the
- *     user enters an explicit value (the observed Step A(ii) amount is
- *     surfaced as a suggestion for one-click acceptance).
+ *   - `issuerProfitAmount` ← PPM-extracted
+ *     `resolved.issuerProfitAmount` when present; else
+ *     `DEFAULT_ASSUMPTIONS` (zero). The resolver's
+ *     `resolveAssumptionGates` emits a blocking warning whenever the PPM
+ *     waterfall narrative mentions Issuer Profit but the structured
+ *     amount is absent, so the projection refuses until extraction is fixed
+ *     or the user enters an explicit value (the observed Step A(ii) amount
+ *     is surfaced as a suggestion for one-click acceptance).
  *   - `taxesBps` removed (KI-69): PPM step (A)(i) Issuer taxes is now
  *     hardcoded to 0 by the engine; structurally justified by the
  *     Section 110 closed-form `0.125 × max(0, gaap_taxable_income − IPA)`
@@ -495,10 +500,12 @@ export function defaultsFromResolved(
   // accepting the observed-step suggestion via the Waterfall page button.
   if (f.trusteeFeeBps > 0) base.trusteeFeeBps = f.trusteeFeeBps;
   if (f.adminFeeBps > 0) base.adminFeeBps = f.adminFeeBps;
-  // issuerProfitAmount has no PPM-extraction path today and no resolver
-  // field — it passes through DEFAULT_ASSUMPTIONS as zero, and the gate
-  // at resolveAssumptionGates (resolver.ts) blocks the projection when
-  // the deal's waterfall narrative shows the corresponding economics.
+  // Issuer Profit Amount: consume the PPM-extracted fixed per-period
+  // amount when available. The historical observed Step A(ii) back-derive
+  // remains removed — observed-paid is still only a suggestion surface.
+  if (resolved.issuerProfitAmount != null && resolved.issuerProfitAmount > 0) {
+    base.issuerProfitAmount = resolved.issuerProfitAmount;
+  }
   // (taxesBps was removed entirely — KI-69, step (A)(i) is now
   // structurally emitted by the engine.)
 

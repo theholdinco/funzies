@@ -829,6 +829,14 @@ export interface ResolvedDealData {
   *  drains it as overflow is paid. Distinct from the step (D) deposit-
   *  into-reserve flow. NOT credited to the OC numerator. */
   expenseReserveBalance: number;
+  /** Interest Priority of Payments step (A)(ii) Issuer Profit Amount —
+   *  fixed currency amount retained by the issuer each payment period.
+   *  Sourced from `ppm.json:section_6_waterfall.issuer_profit_amount` and
+   *  consumed by `defaultsFromResolved` as the default
+   *  `ProjectionInputs.issuerProfitAmount`. Null on legacy fixtures or
+   *  extraction miss; resolver emits a blocking warning when the waterfall
+   *  narrative mentions Issuer Profit but the structured amount is absent. */
+  issuerProfitAmount: number | null;
   /** Annualized hedge cost in bps on collateral par, sourced from the
    *  compliance fees row matching /hedge|swap/i in `resolveHedgeCost`.
    *  Zero when the deal has no hedge signal — Euro XV is single-currency,

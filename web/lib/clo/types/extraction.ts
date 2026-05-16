@@ -275,6 +275,19 @@ export interface ExtractedConstraints {
     sourcePages: number[] | null;
     sourceCondition: string | null;
   } | null;
+  /** PPM Interest Priority of Payments step (A)(ii) "Issuer Profit Amount".
+   *  Sourced from `ppm.json:section_6_waterfall.issuer_profit_amount` via
+   *  `mapWaterfallRules`. Resolver consumes the current-period
+   *  `amountPerPeriod` directly into `ResolvedDealData.issuerProfitAmount`.
+   *  Null/missing on a PPM whose waterfall narrative still mentions Issuer
+   *  Profit remains a blocking extraction gap. */
+  issuerProfitAmount?: {
+    amountPerPeriod: number;
+    postFrequencySwitchAmountPerPeriod: number | null;
+    currency: string | null;
+    sourcePages: number[] | null;
+    sourceCondition: string | null;
+  } | null;
   /** PPM Condition 1 clause (t) "Industry Classification" — industry-cap closure.
    *  Sourced from `ppm.json:section_8_portfolio_and_quality_tests
    *  .industry_concentration_test` via `mapIndustryConcentrationTest`.

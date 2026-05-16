@@ -82,6 +82,14 @@ describe("D3 — defaultsFromResolved (Euro XV fixture)", () => {
     expect(d.issuerProfitAmount).toBe(DEFAULT_ASSUMPTIONS.issuerProfitAmount);
   });
 
+  it("pre-fills issuerProfitAmount from structured PPM extraction when present", () => {
+    const d = defaultsFromResolved(
+      { ...fixture.resolved, issuerProfitAmount: 250 },
+      fixture.raw,
+    );
+    expect(d.issuerProfitAmount).toBe(250);
+  });
+
   it("diagnoseFeePrefill emits one INFO suggestion per observed waterfall step (profit/trustee/admin)", () => {
     const d = defaultsFromResolved(fixture.resolved, fixture.raw);
     const suggestions = diagnoseFeePrefill(fixture.resolved, fixture.raw, d);

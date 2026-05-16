@@ -704,12 +704,28 @@ describe("Pattern B (silent acceptance of sentinel value)", () => {
   // the resolver never emits an `assumptions.taxesBps` warning regardless
   // of whether the waterfall mentions taxes.
 
-  it("issuer profit evidence-based gate (resolver.ts resolveAssumptionGates) — waterfall mentions Issuer Profit + assumption zero → blocking", () => {
+  it("issuer profit evidence-based gate (resolver.ts resolveAssumptionGates) — waterfall mentions Issuer Profit + structured amount missing → blocking", () => {
     const raw = loadRaw();
+    delete (raw.constraints as any).issuerProfitAmount;
     const { resolved, warnings } = runResolver(raw);
     const w = warnings.find((w) => w.field === "assumptions.issuerProfitAmount");
     expectBlockingError(w, "assumptions.issuerProfitAmount");
     expectGateThrows(resolved, warnings);
+  });
+
+  it("issuer profit structured PPM amount clears resolver-time issuer-profit gate", () => {
+    const raw = loadRaw();
+    (raw.constraints as any).issuerProfitAmount = {
+      amountPerPeriod: 250,
+      postFrequencySwitchAmountPerPeriod: 500,
+      currency: "EUR",
+      sourcePages: null,
+      sourceCondition: "test",
+    };
+    const { resolved, warnings } = runResolver(raw);
+    const w = warnings.find((w) => w.field === "assumptions.issuerProfitAmount");
+    expect(w).toBeUndefined();
+    expect(resolved.issuerProfitAmount).toBe(250);
   });
 
   it("evidence-based gates do NOT fire when waterfall narrative is absent (synthetic-fixture safety)", () => {

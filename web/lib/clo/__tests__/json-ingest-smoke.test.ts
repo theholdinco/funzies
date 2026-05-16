@@ -121,6 +121,11 @@ describe("A8 — JSON-ingest smoke (Euro XV compliance + ppm)", () => {
     const interestMechanics = (constraints as Record<string, unknown>).interestMechanics as Record<string, unknown>;
     expect(interestMechanics.referenceWeightedAverageFixedCoupon).toBe(4);
     expect(interestMechanics.deferredInterestCompounds).toBe(true);
+    expect((constraints as Record<string, unknown>).issuerProfitAmount).toMatchObject({
+      amountPerPeriod: 250,
+      postFrequencySwitchAmountPerPeriod: 500,
+      currency: "EUR",
+    });
   });
 
   it("pins named mapped rows that drive waterfall and asset economics", () => {

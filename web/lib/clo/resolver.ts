@@ -1802,14 +1802,31 @@ function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarn
   return { seniorFeePct, subFeePct, trusteeFeeBps, adminFeeBps, incentiveFeePct, incentiveFeeHurdleIrr, citation };
 }
 
+function resolveIssuerProfitAmount(constraints: ExtractedConstraints): number | null {
+  const block = constraints.issuerProfitAmount;
+  if (
+    block &&
+    typeof block.amountPerPeriod === "number" &&
+    Number.isFinite(block.amountPerPeriod) &&
+    block.amountPerPeriod > 0
+  ) {
+    return block.amountPerPeriod;
+  }
+  return null;
+}
+
 /** Evidence-based blocking gates for engine assumption fields whose PPM
- *  extraction path is intentionally absent today. The gates fire only when
- *  the PPM waterfall narrative shows the deal has the corresponding
- *  economics (i.e., synthetic test fixtures without a `waterfall` block
- *  do not trip). composeBuildWarnings (build-projection-inputs.ts) un-blocks
- *  each warning when the corresponding `userAssumptions.*` value is set
+ *  extraction path is incomplete. The gates fire only when the PPM
+ *  waterfall narrative shows the deal has the corresponding economics
+ *  (i.e., synthetic test fixtures without a `waterfall` block do not
+ *  trip). composeBuildWarnings (build-projection-inputs.ts) un-blocks each
+ *  warning when the corresponding `userAssumptions.*` value is set
  *  positive, mirroring the trustee/admin gate semantics. */
-function resolveAssumptionGates(constraints: ExtractedConstraints, warnings: ResolutionWarning[]): void {
+function resolveAssumptionGates(
+  constraints: ExtractedConstraints,
+  warnings: ResolutionWarning[],
+  resolvedAssumptions: { issuerProfitAmount: number | null },
+): void {
   const interestPriority = constraints.waterfall?.interestPriority ?? "";
   const postAcceleration = constraints.waterfall?.postAcceleration ?? "";
   const waterfallText = `${interestPriority}\n${postAcceleration}`;
@@ -1828,10 +1845,11 @@ function resolveAssumptionGates(constraints: ExtractedConstraints, warnings: Res
   // inference — see the discipline section in CLAUDE.md.
 
   // Step A(ii) Issuer Profit Amount — fixed € per period (Euro XV: €250
-  // regular / €500 post-Frequency-Switch). Fires when waterfall narrative
-  // mentions "Issuer Profit". Same un-block path: composeBuildWarnings
-  // clears once `userAssumptions.issuerProfitAmount > 0`.
-  if (/issuer\s+profit/i.test(waterfallText)) {
+  // regular / €500 post-Frequency-Switch). Fires only when the waterfall
+  // narrative mentions "Issuer Profit" AND the structured amount is
+  // missing. Same un-block path: composeBuildWarnings clears once
+  // `userAssumptions.issuerProfitAmount > 0`.
+  if (/issuer\s+profit/i.test(waterfallText) && resolvedAssumptions.issuerProfitAmount == null) {
     warnings.push({
       field: "assumptions.issuerProfitAmount",
       message: "PPM waterfall mentions Issuer Profit Amount (step A(ii)) but no per-deal value is extracted. The engine accrues a fixed € per period; with `issuerProfitAmount` left at 0 it would silently emit zero. Refusing to run. Set `issuerProfitAmount` explicitly in the Context Editor (Engine Assumptions); the Waterfall page surfaces an observed-step-A(ii) suggestion when prior-period waterfall data is available.",
@@ -2199,19 +2217,14 @@ export function resolveWaterfallInputs(
 
   // --- Fees ---
   const fees = resolveFees(constraints, warnings);
+  const issuerProfitAmount = resolveIssuerProfitAmount(constraints);
 
-  // --- Engine-assumption gates with no PPM-extraction path ---
-  // PPM step (A)(i) Issuer taxes and step (A)(ii) Issuer Profit Amount are
-  // not numerically extracted from PPM today (taxes is a regulatory rate,
-  // not a fee schedule entry; issuer profit is fixed € per period and lives
-  // in section 5 narrative without structured extraction). Pre-fix the
-  // engine silently back-derived both from observed step A(i)/A(ii) paid
-  // amounts in `defaultsFromResolved`, turning a single quarter's paid
-  // amount into the forward-period rate — same silent-fallback shape as
-  // the trustee/admin back-derives. Block when the PPM waterfall narrative
-  // shows the deal has these economics; composeBuildWarnings un-blocks
-  // once the user enters explicit values.
-  resolveAssumptionGates(constraints, warnings);
+  // --- Engine-assumption gates for structured-extraction misses ---
+  // PPM step (A)(i) Issuer taxes is intentionally not user-set (KI-69).
+  // Step (A)(ii) Issuer Profit Amount now has a structured PPM extraction
+  // path. The gate below only blocks when the waterfall narrative shows the
+  // economics but the structured amount is still absent.
+  resolveAssumptionGates(constraints, warnings, { issuerProfitAmount });
 
   // --- Senior Expenses Cap (PPM Condition 1) ---
   const seniorExpensesCap = resolveSeniorExpensesCap(constraints, warnings);
@@ -4455,7 +4468,7 @@ export function resolveWaterfallInputs(
   } = industryConcentrationResolved;
 
   return {
-    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, excludedIndustryCodes, principalPop: resolvePrincipalPop(constraints, warnings), preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, ddtlCalibrationOffset, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
+    resolved: { tranches, poolSummary, ocTriggers, icTriggers, qualityTests, concentrationTests, reinvestmentOcTrigger, eventOfDefaultTest, dates, fees, loans, metadata, principalAccountCash, unusedProceedsCash, interestAccountCash, interestSmoothingBalance, supplementalReserveBalance, expenseReserveBalance, issuerProfitAmount, hedgeCostBps: resolveHedgeCost(constraints, warnings), seniorExpensesCap, discountObligationRule, longDatedValuationRule, industryTaxonomy, industryCapPresentInPpm, industryCapRules, excludedIndustryNames, excludedIndustryCodes, principalPop: resolvePrincipalPop(constraints, warnings), preExistingDefaultedPar, preExistingDefaultRecovery, unpricedDefaultedPar, preExistingDefaultOcValue, discountObligationHaircut, longDatedObligationHaircut, cccBucketLimitPct, cccMarketValuePct, targetParAmount, referenceWeightedAverageFixedCoupon, isMoodysRated, isFitchRated, isSpRated, ratingAgencies, impliedOcAdjustment, quartersSinceReport, ddtlUnfundedPar, ddtlCalibrationOffset, deferredInterestCompounds, interestNonPaymentGracePeriods, baseRateFloorPct, currency },
     warnings,
   };
 }

@@ -215,6 +215,13 @@
   "section_6_waterfall": {
     "source_condition": "OC Condition 3(c)",
     "source_pages": [176, 179],
+    "issuer_profit_amount": {
+      "regular_amount_eur": 250,
+      "post_frequency_switch_amount_eur": 500,
+      "currency": "EUR",
+      "source_condition": "OC Condition 3(c) paragraph (A)(ii); Frequency Switch Event effects",
+      "note": "Fixed amount retained by the Issuer each Payment Date. Steps from EUR 250 to EUR 500 after a Frequency Switch Event; status_as_of_2026_04_01 confirms no FSE has occurred."
+    },
     "interest_priority_of_payments": {
       "clause_count": 30,
       "clause_range": "A–DD",
