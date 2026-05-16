@@ -708,8 +708,12 @@ export default function ProjectionModel({
     [resolved, userAssumptions],
   );
   const result: ProjectionResult | null = useMemo(
-    () => (validationErrors.length === 0 ? runProjection(inputs) : null),
-    [inputs, validationErrors]
+    () => (
+      incompleteDataErrors.length === 0 && validationErrors.length === 0
+        ? runProjection(inputs)
+        : null
+    ),
+    [inputs, validationErrors, incompleteDataErrors]
   );
 
   // Equity metrics — single canonical source.
@@ -739,9 +743,10 @@ export default function ProjectionModel({
   // directly for an "ostensibly no-call" run. See decision-log entry S
   // (callMode pinning) and the helper's docstring for the rationale.
   const noCallBaseInputs = useMemo<ProjectionInputs | null>(() => {
+    if (incompleteDataErrors.length > 0) return null;
     if (!inputs) return null;
     return deriveNoCallBaseInputs(inputs as ProjectionInputs & { equityEntryPrice?: number });
-  }, [inputs]);
+  }, [inputs, incompleteDataErrors]);
 
   // Effective with-call date: user override > engine default. The engine
   // default is max(NCP, currentDate) — the EARLIEST legal call from
@@ -963,7 +968,11 @@ export default function ProjectionModel({
   const deferredResult = React.useDeferredValue(result);
 
 
-  const mc = useMonteCarlo(validationErrors.length === 0 ? inputs : null);
+  const mc = useMonteCarlo(
+    incompleteDataErrors.length === 0 && validationErrors.length === 0
+      ? inputs
+      : null,
+  );
 
   const handleApplyAssumptions = (assumptions: {
     cdrPct: number;

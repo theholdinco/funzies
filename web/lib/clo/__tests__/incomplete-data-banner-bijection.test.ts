@@ -1100,6 +1100,23 @@ describe("UI surfaces drive the banner from the same predicate", () => {
     ).toBe(true);
   });
 
+  it("ProjectionModel.tsx refuses to call runProjection while blocking warnings are present", () => {
+    // Regression: the UI correctly built `incompleteDataErrors`, but the
+    // main projection memo still called `runProjection(inputs)` against
+    // dummy EMPTY_RESOLVED-derived inputs. After `ratingAgencies` became an
+    // engine-level required field, that backstop throw preempted the DATA
+    // INCOMPLETE banner and rendered the page as a 500. The banner gate must
+    // be upstream of the engine call, not only downstream in JSX.
+    const sf = sharedProject.getSourceFileOrThrow(PROJECTION_MODEL_PATH);
+    const text = sf.getFullText();
+    const resultMemo = text.match(
+      /const result: ProjectionResult \| null = useMemo\([\s\S]*?\n  \);\n\n  \/\/ Equity metrics/,
+    )?.[0];
+    expect(resultMemo, "Could not find ProjectionModel main result memo").toBeDefined();
+    expect(resultMemo).toContain("incompleteDataErrors.length === 0");
+    expect(resultMemo).toContain("runProjection(inputs)");
+  });
+
   it("no divergent inline `.filter(w => w.blocking ...)` anywhere under web/{app,lib,components,scripts}", () => {
     // Catches divergent re-implementations of the predicate. The canonical
     // call site lives in build-projection-inputs.ts:selectBlockingWarnings;
