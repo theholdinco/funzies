@@ -428,4 +428,132 @@ describe("parseIntexPastCashflows — schema-driven discovery", () => {
       expect(err.diff.actual).toBe(10);
     }
   });
+
+  it("real Intex layout: rejects compliance-test row above bare-tranche group row", () => {
+    // Mirrors the actual Ares XV Intex Past Cashflows CSV (rows 8-11):
+    //   Row 8: section-header row with compliance-test labels like
+    //          "Class A/B Par Value Test", "Class A/B Interest Coverage
+    //          Test", "Class C Par Value Test", etc.
+    //   Row 9: subgroup row with bare-letter tranche labels: "A", "B1",
+    //          "B2", "C", "D", "E", "F", "SUBORD".
+    //   Row 10: column-name row ("Principal", "Interest", ...).
+    //   Row 11: "Period|Date" pivot marker.
+    //
+    // Two invariants:
+    //   1. The parser must pick Row 9 as the group row (real tranches),
+    //      NOT Row 8 (compliance tests). Pre-fix, the loose
+    //      `looksLikeTrancheName` predicate accepted "Class A/B Interest
+    //      Coverage Test" and `normalizeClassName` collapsed it to "a",
+    //      colliding with the deal's Class A and surfacing as a
+    //      `duplicate_match` error at column 140-ish.
+    //   2. The parser must match bare-letter labels ("B1") to the deal's
+    //      hyphenated form ("Class B-1") via the same normalization key.
+    //      Without this, fixing (1) alone surfaces as a
+    //      `missing_tranches` error for Class B-1 / Class B-2.
+    //
+    // Asserts both: success and exactly 8 tranches discovered in the
+    // expected order from Row 9.
+
+    const FIRST_TRANCHE_COL = 39;
+    const totalCols = 200; // leaves room for compliance-test labels in cols 140+
+    const empty = (): string[] => Array.from({ length: totalCols }, () => "");
+
+    const rows: string[][] = [];
+    // Preamble (3 metadata rows).
+    const p1 = empty(); p1[0] = "Ares European CLO XV (synthetic real-shape)"; rows.push(p1);
+    const p2 = empty(); p2[0] = "Deal Name:"; p2[1] = "ARESEU15"; rows.push(p2);
+    const p3 = empty(); p3[0] = "Settlement"; p3[1] = "Dec 14, 2021"; rows.push(p3);
+
+    // Row index 3 (file line 4): section-header row mirroring real Row 8
+    // — compliance-test labels at columns 140+. These would have been
+    // matched as tranches under the loose pre-fix predicate.
+    const sectionHeader = empty();
+    sectionHeader[39] = "Bonds";
+    sectionHeader[135] = "Classes";
+    sectionHeader[140] = "Class A/B Par Value Test";
+    sectionHeader[145] = "Class A/B Interest Coverage Test";
+    sectionHeader[150] = "Class C Par Value Test";
+    sectionHeader[155] = "Class C Interest Coverage Test";
+    sectionHeader[160] = "Class D Par Value Test";
+    sectionHeader[165] = "Class D Interest Coverage Test";
+    sectionHeader[170] = "Class E Par Value Test";
+    sectionHeader[175] = "Class F Par Value Test";
+    sectionHeader[180] = "Interest Diversion Test";
+    sectionHeader[185] = "Event of Default Trigger";
+    rows.push(sectionHeader);
+
+    // Row index 4: subgroup row mirroring real Row 9 — bare-letter tranche
+    // labels at the per-tranche cashflow block starts.
+    const subgroup = empty();
+    subgroup[39]  = "A";       // floating, width 11
+    subgroup[50]  = "B1";      // floating, width 11
+    subgroup[61]  = "B2";      // fixed, width 10
+    subgroup[71]  = "C";       // floating, width 11
+    subgroup[82]  = "D";       // floating, width 11
+    subgroup[93]  = "E";       // floating, width 11
+    subgroup[104] = "F";       // floating, width 11
+    subgroup[115] = "SUBORD";  // fixed, width 10
+    rows.push(subgroup);
+
+    // Row index 5: column-name row (Principal/Interest/etc.). Discovery
+    // doesn't read this — it just needs to NOT contain tranche-shaped
+    // labels.
+    const colNames = empty();
+    colNames[39] = "Principal";
+    colNames[40] = "Interest";
+    colNames[43] = "Balance";
+    rows.push(colNames);
+
+    // Row index 6: first "Period|Date" marker (discovery anchor).
+    const header1 = empty();
+    header1[0] = "Period"; header1[1] = "Date";
+    rows.push(header1);
+
+    // Row index 7: Hist Total summary row.
+    const histTotal = empty();
+    histTotal[0] = "Hist Total"; histTotal[1] = "Apr 15, 2026";
+    rows.push(histTotal);
+
+    // Row index 8: second "Period|Date" header marker (data anchor).
+    const header2 = empty();
+    header2[0] = "Period"; header2[1] = "Date";
+    rows.push(header2);
+
+    // Row index 9: one period of data so the parser exits the discovery
+    // path cleanly and produces a parseable result.
+    const periodData = empty();
+    periodData[0] = "1";
+    periodData[1] = "Apr 15, 2026";
+    periodData[40] = "2298650"; // Class A interest paid (start=39, OFF_INTEREST=1)
+    rows.push(periodData);
+
+    const escape = (c: string) =>
+      /[",]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c;
+    const csv = rows.map(r => r.map(escape).join(",")).join("\n");
+
+    const result = parseIntexPastCashflows(csv, EURO_XV_TRANCHES);
+
+    // Invariant 1: tranches discovered from Row 9 (subgroup), not Row 8
+    // (section header). Order matches the real CSV layout.
+    expect(result.discoveredTranches.map(b => b.className)).toEqual([
+      "Class A",
+      "Class B-1",
+      "Class B-2",
+      "Class C",
+      "Class D",
+      "Class E",
+      "Class F",
+      "Subordinated Notes",
+    ]);
+
+    // Invariant 2: per-tranche block starts match the subgroup row's
+    // bare-letter column positions, NOT the section-header row's
+    // compliance-test positions (which would put Class A at column 140+).
+    expect(result.discoveredTranches.find(b => b.className === "Class A")?.start).toBe(39);
+    expect(result.discoveredTranches.find(b => b.className === "Class B-1")?.start).toBe(50);
+    expect(result.discoveredTranches.find(b => b.className === "Subordinated Notes")?.start).toBe(115);
+
+    // Period data round-trips: Class A interest pulled from start+1=40.
+    expect(result.periods[0].tranches.find(t => t.className === "Class A")?.interestPaid).toBe(2298650);
+  });
 });

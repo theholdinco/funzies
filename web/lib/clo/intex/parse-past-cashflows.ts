@@ -199,20 +199,52 @@ function readTrancheBlock(
   };
 }
 
-/** Heuristic: does this cell text look like a tranche-name header (vs a
- *  random aggregate-block label)? Used to locate the group row above
- *  the first "Period|Date" marker AND to gate the discovery walk's
- *  unknown-tranche fail-loud. Must accept any string that
- *  `normalizeClassName` would map to a deal-known key — otherwise
- *  legitimate naming variants get silently skipped instead of matched. */
+/** Strict standalone tranche-label predicate. Used to locate the group
+ *  row above the first "Period|Date" marker AND to gate the discovery
+ *  walk's unknown-tranche fail-loud.
+ *
+ *  CRITICAL: must NOT accept compliance/coverage test labels even when
+ *  they begin with a tranche-like token ("Class A/B Interest Coverage
+ *  Test", "Class C Par Value Test"). The original loose predicate
+ *  `/^class\s+\w/` matched those, causing the Ares XV Intex Past
+ *  Cashflows CSV to pick the compliance-test section header row instead
+ *  of the bare-letter tranche subgroup row — `normalizeClassName` then
+ *  collapsed every "Class X/Y Test" label to a single-letter key
+ *  colliding with real deal tranches and surfacing as
+ *  `duplicate_match`.
+ *
+ *  Strategy: lowercase + trim + strip optional "Class " or "Class-"
+ *  prefix + strip optional trailing " Notes" suffix, then assert the
+ *  remaining "core" is a tight tranche-identifier shape with no
+ *  trailing words. Accepts the SDF-canonical forms (`Class A`,
+ *  `Class B-1`, `Subordinated Notes`), the bare-letter Intex forms
+ *  (`A`, `B1`, `B-1`), the hyphenated short form (`Class-B`), and the
+ *  `SUBORD` / `SUBORD@12%` abbreviations seen in Ares XV's CSV.
+ *  Rejects any "core" that still contains spaces, slashes, or
+ *  compliance/test/coverage/trigger words. */
 function looksLikeTrancheName(s: string): boolean {
-  const t = (s ?? "").trim();
+  const t = (s ?? "").trim().toLowerCase();
   if (!t) return false;
-  return /^class\s+\w/i.test(t) ||
-         /^subordinated\b/i.test(t) ||
-         /^sub(\s|$)/i.test(t) ||
-         /^income\s+note/i.test(t) ||
-         /^equity\b/i.test(t);
+  // Strip optional "Class " prefix (SPACE only — `Class-B` with hyphen is
+  // a derived metric label in Intex exports, not a real tranche) and
+  // optional trailing " Notes" suffix. Core must then be an exact-shape
+  // tranche identifier — no trailing words, no `@hurdle` suffix, no
+  // slashes. Rejects compliance-test labels ("Class A/B Interest Coverage
+  // Test"), incentive-fee trackers ("SUBORD@12%"), and combined-class
+  // derived metrics ("Class-B" alongside real "Class B-1" / "Class B-2"
+  // in the same row).
+  const core = t
+    .replace(/^class\s+/, "")
+    .replace(/[-\s]+notes?$/, "")
+    .trim();
+  return (
+    /^subordinated$/.test(core) ||
+    /^sub$/.test(core) ||
+    /^equity$/.test(core) ||
+    /^income$/.test(core) ||
+    /^subord$/.test(core) ||
+    /^[a-z](-?\d+)?$/.test(core)
+  );
 }
 
 /**

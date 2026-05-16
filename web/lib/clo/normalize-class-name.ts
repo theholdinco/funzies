@@ -22,6 +22,7 @@ export function normalizeClassName(name: string): string {
   if (
     lower.includes("subordinated") ||
     /^sub(\s|$)/.test(lower) ||
+    /^subord(@|\s|$)/.test(lower) ||
     lower.includes("equity") ||
     lower.includes("income note") ||
     lower.includes("income-note")
@@ -29,9 +30,16 @@ export function normalizeClassName(name: string): string {
     return "sub";
   }
   const stripped = lower
-    .replace(/^class(es)?\s+/i, "")
+    .replace(/^class(es)?[\s-]+/i, "")
     .replace(/[-\s]+notes?$/i, "")
     .trim();
-  const match = stripped.match(/^([a-z](?:[-\s]?[0-9]+)?)\b/);
-  return match ? match[1].replace(/\s+/g, "-") : stripped;
+  // Capture letter and optional digit-suffix separately, then re-join with
+  // a hyphen. This canonicalizes the separator across input variants:
+  // "Class B-1", "Class B 1", "Class B1", and bare "B1" all collapse to
+  // "b-1". Mirrors the canonicalization SDF/parse-notes does in
+  // `formatTrancheClassName` so the Intex parser's bare-letter labels
+  // match the deal's hyphenated `clo_tranches.class_name`.
+  const match = stripped.match(/^([a-z])(?:[-\s]?([0-9]+))?\b/);
+  if (!match) return stripped;
+  return match[2] ? `${match[1]}-${match[2]}` : match[1];
 }
