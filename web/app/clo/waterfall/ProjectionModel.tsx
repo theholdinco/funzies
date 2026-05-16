@@ -137,6 +137,196 @@ function warningDisplayMessage(w: ResolutionWarning): string {
     .replace(/\bfile new KI\b/gi, "requires model review");
 }
 
+type QualityNoteSeverity = "error" | "warn" | "info";
+
+interface QualityNote {
+  key: string;
+  severity: QualityNoteSeverity;
+  title: string;
+  message: string;
+  action?: string;
+  raw: ResolutionWarning[];
+}
+
+function severityRank(severity: ResolutionWarning["severity"] | QualityNoteSeverity): number {
+  if (severity === "error") return 0;
+  if (severity === "warn") return 1;
+  return 2;
+}
+
+function noteSeverity(warnings: ResolutionWarning[]): QualityNoteSeverity {
+  if (warnings.some((w) => w.severity === "error")) return "error";
+  if (warnings.some((w) => w.severity === "warn")) return "warn";
+  return "info";
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.filter((v) => v.trim().length > 0)));
+}
+
+function holdingNameFromWarning(w: ResolutionWarning): string | null {
+  return w.message.match(/Holding "([^"]+)"/)?.[1] ?? null;
+}
+
+function exactWarningKey(w: ResolutionWarning): string {
+  return `${w.field}::${w.message}`;
+}
+
+function summarizeQualityWarnings(
+  resolverWarnings: ResolutionWarning[],
+  carryforwardWarnings: ResolutionWarning[],
+): QualityNote[] {
+  const notes: QualityNote[] = [];
+  const consumed = new Set<ResolutionWarning>();
+  const take = (predicate: (w: ResolutionWarning) => boolean): ResolutionWarning[] => {
+    const out = resolverWarnings.filter((w) => !consumed.has(w) && predicate(w));
+    for (const w of out) consumed.add(w);
+    return out;
+  };
+
+  const assetSchedule = take((w) => w.field === "loans.assetPaymentSchedule");
+  if (assetSchedule.length > 0) {
+    const names = uniqueStrings(assetSchedule.map((w) => holdingNameFromWarning(w) ?? ""));
+    const examples = names.slice(0, 6).join(", ");
+    notes.push({
+      key: "asset-payment-schedule",
+      severity: "warn",
+      title: `Asset payment schedules ignored for ${assetSchedule.length} raw row${assetSchedule.length === 1 ? "" : "s"}`,
+      message:
+        `${names.length} holding${names.length === 1 ? "" : "s"} had missing or contradictory payment-date anchors` +
+        `${examples ? ` (examples: ${examples}${names.length > 6 ? ", ..." : ""})` : ""}. ` +
+        "The projection keeps those loans in accrued-interest compatibility mode: interest is not dropped, but borrower receipt timing is less trustee-exact.",
+      action: "Reconcile nextPaymentDate, accrualEndDate, and paymentPeriod in the collateral/accrual source if near-period liquidity timing matters.",
+      raw: assetSchedule,
+    });
+  }
+
+  const dayCount = take((w) => w.field === "dayCountConvention");
+  if (dayCount.length > 0) {
+    notes.push({
+      key: "day-count",
+      severity: "info",
+      title: `${dayCount.length} day-count precision downgrade${dayCount.length === 1 ? "" : "s"}`,
+      message: "One or more asset day-count conventions were approximated to the closest modeled convention. The expected impact is small unless a leap-day-spanning period is material.",
+      raw: dayCount,
+    });
+  }
+
+  const duplicateClusters = take((w) => w.field === "holdings.duplicateClusters");
+  if (duplicateClusters.length > 0) {
+    notes.push({
+      key: "duplicate-clusters",
+      severity: "info",
+      title: "Purchase-lot fragments detected",
+      message: warningDisplayMessage(duplicateClusters[0]),
+      action: "Informational: pool totals include all rows. Per-facility analytics should aggregate by obligor and facility code.",
+      raw: duplicateClusters,
+    });
+  }
+
+  const poolPct = take((w) => w.field === "poolSummary.pct*");
+  if (poolPct.length > 0) {
+    notes.push({
+      key: "pool-pct",
+      severity: noteSeverity(poolPct),
+      title: "Pool composition percentages were re-derived",
+      message: warningDisplayMessage(poolPct[0]),
+      action: "Projection can proceed, but upstream extraction should populate pool-summary percentage fields directly from the concentration table.",
+      raw: poolPct,
+    });
+  }
+
+  const wacSpread = take((w) => w.field === "poolSummary.wacSpread");
+  if (wacSpread.length > 0) {
+    notes.push({
+      key: "wac-spread",
+      severity: "info",
+      title: "WAC spread unit normalized",
+      message: warningDisplayMessage(wacSpread[0]),
+      raw: wacSpread,
+    });
+  }
+
+  const grace = take((w) => w.field === "interestNonPaymentGracePeriods");
+  if (grace.length > 0) {
+    notes.push({
+      key: "interest-grace",
+      severity: noteSeverity(grace),
+      title: "Interest non-payment grace period not extracted",
+      message: warningDisplayMessage(grace[0]),
+      action: "Base case is unaffected. Before relying on stress scenarios with senior interest shortfalls, extract PPM section 10(a)(i).",
+      raw: grace,
+    });
+  }
+
+  const uncomputed = take((w) => w.field === "complianceTests.uncomputedTests");
+  if (uncomputed.length > 0) {
+    notes.push({
+      key: "uncomputed-tests",
+      severity: noteSeverity(uncomputed),
+      title: "Some compliance rows are informational only",
+      message: warningDisplayMessage(uncomputed[0]),
+      action: "These rows are hidden from trigger-based consumers because no trigger was extracted; review only if those tests should drive model logic.",
+      raw: uncomputed,
+    });
+  }
+
+  const dedupedRemainder = new Map<string, ResolutionWarning[]>();
+  for (const w of resolverWarnings) {
+    if (consumed.has(w)) continue;
+    const key = exactWarningKey(w);
+    const bucket = dedupedRemainder.get(key) ?? [];
+    bucket.push(w);
+    dedupedRemainder.set(key, bucket);
+  }
+  for (const [key, raw] of dedupedRemainder) {
+    const first = raw[0];
+    notes.push({
+      key: `raw-${key}`,
+      severity: noteSeverity(raw),
+      title: formatIncompleteDataField(first.field),
+      message: warningDisplayMessage(first),
+      ...(raw.length > 1 ? { action: `Same message repeated ${raw.length} times in raw resolver output.` } : {}),
+      raw,
+    });
+  }
+
+  for (const w of carryforwardWarnings) {
+    notes.push({
+      key: `carryforward-${exactWarningKey(w)}`,
+      severity: noteSeverity([w]),
+      title: "Senior expenses cap carryforward seed unknown",
+      message: warningDisplayMessage(w),
+      action: "Set the historical unused-cap headroom only if you have the trustee history amount; blank uses zero headroom, not extra cash.",
+      raw: [w],
+    });
+  }
+
+  return notes.sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
+}
+
+function qualityNoteColors(severity: QualityNoteSeverity): { bg: string; border: string; text: string } {
+  if (severity === "error") {
+    return {
+      bg: "var(--color-low-bg)",
+      border: "var(--color-low-border)",
+      text: "var(--color-low)",
+    };
+  }
+  if (severity === "warn") {
+    return {
+      bg: "var(--color-warning-bg, #fdf6e3)",
+      border: "var(--color-warning-border, #e5c07b)",
+      text: "var(--color-warning, #946c00)",
+    };
+  }
+  return {
+    bg: "var(--color-surface)",
+    border: "var(--color-border-light)",
+    text: "var(--color-text-muted)",
+  };
+}
+
 function incompleteDataRecoveryHintForWarning(w: ResolutionWarning): string | null {
   if (w.field === "loans.currency" && /non-[A-Z]{3} currency exposure|FX conversion|cross-currency/.test(w.message)) {
     return "Projection is unavailable for cross-currency collateral until FX conversion and hedge cashflows are modeled.";
@@ -717,6 +907,11 @@ export default function ProjectionModel({
     () => resolved ? diagnoseCarryforwardSeed(resolved, userAssumptions) : [],
     [resolved, userAssumptions],
   );
+  const qualityNotes = useMemo(
+    () => summarizeQualityWarnings(displayResolutionWarnings, carryforwardSeedWarnings),
+    [displayResolutionWarnings, carryforwardSeedWarnings],
+  );
+  const rawQualityWarningCount = displayResolutionWarnings.length + prefillWarnings.length + carryforwardSeedWarnings.length;
   const result: ProjectionResult | null = useMemo(
     () => (
       incompleteDataErrors.length === 0 && validationErrors.length === 0
@@ -1406,33 +1601,79 @@ export default function ProjectionModel({
         </div>
       )}
 
-      {/* Data-quality warnings: resolver-level (pool, triggers, etc.) +
-          fee-prefill gate (admin source missing, etc.). Merged so the
-          partner sees a single panel rather than scattered alerts. */}
-      {(displayResolutionWarnings.length > 0 || prefillWarnings.length > 0 || carryforwardSeedWarnings.length > 0) && (
+      {/* Data-quality notes: grouped presentation over raw resolver telemetry.
+          Fee-prefill suggestions are intentionally excluded here because the
+          Engine Assumptions panel above already renders them next to the
+          editable fields. Raw messages remain available inside each details
+          disclosure for audit/debugging. */}
+      {qualityNotes.length > 0 && (
         <div
           style={{
             padding: "0.75rem 1rem",
-            border: "1px solid var(--color-warning-border, #e5c07b)",
+            border: "1px solid var(--color-border-light)",
             borderRadius: "var(--radius-sm)",
-            background: "var(--color-warning-bg, #fdf6e3)",
+            background: "var(--color-surface)",
             marginBottom: "1rem",
             fontSize: "0.78rem",
-            color: "var(--color-warning, #946c00)",
+            color: "var(--color-text)",
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-            Data Quality Warnings ({displayResolutionWarnings.length + prefillWarnings.length + carryforwardSeedWarnings.length})
+            Data Quality Notes ({qualityNotes.length} grouped from {rawQualityWarningCount} raw warning{rawQualityWarningCount === 1 ? "" : "s"})
           </div>
-          {displayResolutionWarnings.map((w, i) => (
-            <div key={`rw-${i}`}>&bull; <strong>{formatIncompleteDataField(w.field)}:</strong> {warningDisplayMessage(w)}</div>
-          ))}
-          {prefillWarnings.map((w, i) => (
-            <div key={`pw-${i}`}>&bull; <strong>{formatIncompleteDataField(w.field)}:</strong> {warningDisplayMessage(w)}</div>
-          ))}
-          {carryforwardSeedWarnings.map((w, i) => (
-            <div key={`cfw-${i}`}>&bull; <strong>{formatIncompleteDataField(w.field)}:</strong> {warningDisplayMessage(w)}</div>
-          ))}
+          {prefillWarnings.length > 0 && (
+            <div style={{ color: "var(--color-text-muted)", marginBottom: "0.55rem" }}>
+              Observed fee/profit suggestions are shown in Engine Assumptions, not repeated here.
+            </div>
+          )}
+          <div style={{ display: "grid", gap: "0.45rem" }}>
+            {qualityNotes.map((note) => {
+              const colors = qualityNoteColors(note.severity);
+              return (
+                <div
+                  key={note.key}
+                  style={{
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: "var(--radius-sm)",
+                    background: colors.bg,
+                    color: colors.text,
+                    padding: "0.65rem 0.75rem",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "0.75rem" }}>
+                    <strong>{note.title}</strong>
+                    {note.raw.length > 1 && (
+                      <span style={{ fontSize: "0.68rem", opacity: 0.75, whiteSpace: "nowrap" }}>
+                        {note.raw.length} raw
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ marginTop: "0.2rem" }}>{note.message}</div>
+                  {note.action && (
+                    <div style={{ marginTop: "0.25rem", fontSize: "0.73rem", opacity: 0.85 }}>
+                      {note.action}
+                    </div>
+                  )}
+                  {note.raw.length > 0 && (
+                    <details style={{ marginTop: "0.35rem" }}>
+                      <summary style={{ cursor: "pointer", fontSize: "0.7rem", opacity: 0.8 }}>
+                        Raw resolver message{note.raw.length === 1 ? "" : "s"}
+                      </summary>
+                      <div style={{ marginTop: "0.3rem", display: "grid", gap: "0.2rem", color: "var(--color-text-muted)" }}>
+                        {note.raw.map((w, i) => (
+                          <div key={`${note.key}-raw-${i}`}>
+                            <strong>{formatIncompleteDataField(w.field)}:</strong> {warningDisplayMessage(w)}
+                            {w.resolvedFrom && <span style={{ opacity: 0.75 }}> ({w.resolvedFrom})</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
