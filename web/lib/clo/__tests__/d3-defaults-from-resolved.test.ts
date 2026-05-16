@@ -72,25 +72,25 @@ describe("D3 — defaultsFromResolved (Euro XV fixture)", () => {
     expect(d.adminFeeBps).toBe(0);
   });
 
-  it("does NOT back-derive taxesBps / issuerProfitAmount from observed step A(i)/A(ii)", () => {
+  it("does NOT back-derive issuerProfitAmount from observed step A(ii)", () => {
     // Same shape as the trustee/admin removal — observed-paid is not
-    // contractual-forward. Issuer corporate tax (Section 110 / 12.5% on
-    // taxable income) does not scale with par; Issuer Profit Amount is a
-    // fixed € per period defined in the deal docs, not a single-quarter
-    // paid amount extrapolated forward.
+    // contractual-forward. Issuer Profit Amount is a fixed € per period
+    // defined in the deal docs, not a single-quarter paid amount
+    // extrapolated forward. (taxesBps was removed entirely — KI-69:
+    // step (A)(i) is now mechanically emitted via Section 110 closed-form.)
     const d = defaultsFromResolved(fixture.resolved, fixture.raw);
-    expect(d.taxesBps).toBe(DEFAULT_ASSUMPTIONS.taxesBps);
     expect(d.issuerProfitAmount).toBe(DEFAULT_ASSUMPTIONS.issuerProfitAmount);
   });
 
-  it("diagnoseFeePrefill emits one INFO suggestion per observed waterfall step (taxes/profit/trustee/admin)", () => {
+  it("diagnoseFeePrefill emits one INFO suggestion per observed waterfall step (profit/trustee/admin)", () => {
     const d = defaultsFromResolved(fixture.resolved, fixture.raw);
     const suggestions = diagnoseFeePrefill(fixture.resolved, fixture.raw, d);
     const byField = new Map(suggestions.map((w) => [w.field, w]));
-    // All four fields surface a suggestion — the user can one-click these
-    // via the Context Editor "Use suggested value" affordance.
-    expect(byField.get("assumptions.taxesBps")?.severity).toBe("info");
-    expect(byField.get("assumptions.taxesBps")?.suggestedValue).toBeGreaterThan(0);
+    // Three fields surface a suggestion — the user can one-click these
+    // via the Context Editor "Use suggested value" affordance. (taxesBps
+    // suggestion was removed — KI-69, step (A)(i) is now structurally
+    // emitted by the engine.)
+    expect(byField.has("assumptions.taxesBps")).toBe(false);
     expect(byField.get("assumptions.issuerProfitAmount")?.severity).toBe("info");
     expect(byField.get("assumptions.issuerProfitAmount")?.suggestedValue).toBeCloseTo(250, 0);
     expect(byField.get("assumptions.trusteeFeeBps")?.severity).toBe("info");
@@ -115,21 +115,17 @@ describe("D3 — defaultsFromResolved (Euro XV fixture)", () => {
     expect(selectBlockingWarnings(composeBuildWarnings(fixture.resolved, DEFAULT_ASSUMPTIONS, [warning]))).toHaveLength(1);
   });
 
-  it("clears the admin / taxes / issuer-profit gates symmetrically once each assumption is set positive", () => {
+  it("clears the admin / issuer-profit gates symmetrically once each assumption is set positive", () => {
     // Message text mirrors the resolver's actual warnings so the
     // composeBuildWarnings discriminator regexes match. A future change
     // to the gate text without updating these regexes would break the
-    // un-block path silently — this test pins the bijection.
+    // un-block path silently — this test pins the bijection. (The
+    // taxes gate was removed entirely — KI-69, step (A)(i) is now
+    // structurally emitted by the engine.)
     const warnings: ResolutionWarning[] = [
       {
         field: "fees.adminFeeBps",
         message: "Administrative expenses fee found in PPM but rate is 'per agreement' (or otherwise unparseable).",
-        severity: "error",
-        blocking: true,
-      },
-      {
-        field: "assumptions.taxesBps",
-        message: "PPM waterfall mentions Issuer taxes (step A(i)) but no per-deal rate is extracted.",
         severity: "error",
         blocking: true,
       },
@@ -143,13 +139,12 @@ describe("D3 — defaultsFromResolved (Euro XV fixture)", () => {
     const userSet = {
       ...DEFAULT_ASSUMPTIONS,
       adminFeeBps: 5,
-      taxesBps: 0.01,
       issuerProfitAmount: 250,
     };
     expect(selectBlockingWarnings(composeBuildWarnings(fixture.resolved, userSet, warnings))).toEqual([]);
     expect(
       selectBlockingWarnings(composeBuildWarnings(fixture.resolved, DEFAULT_ASSUMPTIONS, warnings)),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
   });
 
   it("propagates seniorExpensesCap from resolved (PPM Condition 1, OC pp. 150-151)", () => {

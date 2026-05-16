@@ -241,7 +241,6 @@ describe("stepTrace emits actually-paid amounts under stress", () => {
     const inputs = makeInputs({
       subFeePct: 0.5, // small but non-zero
       adminFeeBps: 25,
-      taxesBps: 5,
     });
     const result = runProjection(inputs);
     // Skip period 0 (stub from currentDate to first determination date can
@@ -250,7 +249,9 @@ describe("stepTrace emits actually-paid amounts under stress", () => {
     const p = result.periods[2];
     expect(p.stepTrace.subMgmtFeePaid, "non-zero subFeePct should produce positive paid").toBeGreaterThan(0);
     expect(p.stepTrace.adminFeesPaid, "non-zero adminFeeBps should produce positive paid").toBeGreaterThan(0);
-    expect(p.stepTrace.taxes, "non-zero taxesBps should produce positive paid").toBeGreaterThan(0);
+    // Step (A)(i) Issuer taxes is now mechanically emitted by the engine
+    // under Section 110 (~0 on flow-balanced projections per KI-69); no
+    // user-set rate to assert against.
     // No truncation expected — each field bounded by its requested upper
     // bound (par × rate × 1, generous).
     expect(p.stepTrace.subMgmtFeePaid).toBeLessThanOrEqual(p.beginningPar * 0.005);

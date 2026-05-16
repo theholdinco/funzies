@@ -244,7 +244,6 @@ describe("KI-36 tranche payment frequency", () => {
         seniorFeePct: 0,
         subFeePct: 0,
         trusteeFeeBps: 0,
-        taxesBps: 0,
         loans: [{ parBalance: 150_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 800 }],
         tranches: [
           {
@@ -297,7 +296,6 @@ describe("KI-36 tranche payment frequency", () => {
         seniorFeePct: 0,
         subFeePct: 0,
         trusteeFeeBps: 0,
-        taxesBps: 0,
         loans: [{ parBalance: 150_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 800 }],
         tranches: [
           {
@@ -698,7 +696,6 @@ describe("KI-36 tranche payment frequency", () => {
         seniorFeePct: 0,
         subFeePct: 0,
         trusteeFeeBps: 0,
-        taxesBps: 0,
         loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 800 }],
         tranches: [
           {
@@ -964,7 +961,6 @@ describe("KI-36 tranche payment frequency", () => {
         seniorFeePct: 0,
         subFeePct: 0,
         trusteeFeeBps: 0,
-        taxesBps: 0,
         loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 800 }],
         tranches: [
           {
@@ -1007,7 +1003,6 @@ describe("KI-36 tranche payment frequency", () => {
         seniorFeePct: 0,
         subFeePct: 0,
         trusteeFeeBps: 0,
-        taxesBps: 0,
         loans: [{ parBalance: 100_000_000, maturityDate: "2034-06-15", ratingBucket: "B", spreadBps: 400 }],
         tranches: [
           {

@@ -217,7 +217,6 @@ export default function ProjectionModel({
   const initFees = resolved?.fees;
   const [seniorFeePct, setSeniorFeePct] = useState<number>(initFees?.seniorFeePct ?? CLO_DEFAULTS.seniorFeePct);
   const [subFeePct, setSubFeePct] = useState<number>(initFees?.subFeePct ?? CLO_DEFAULTS.subFeePct);
-  const [taxesBps, setTaxesBps] = useState<number>(0);
   const [issuerProfitAmount, setIssuerProfitAmount] = useState<number>(0);
   const [trusteeFeeBps, setTrusteeFeeBps] = useState<number>(initFees?.trusteeFeeBps ?? CLO_DEFAULTS.trusteeFeeBps);
   const [adminFeeBps, setAdminFeeBps] = useState<number>(0);
@@ -317,7 +316,6 @@ export default function ProjectionModel({
     setBaseRatePct(d.baseRatePct);
     setSeniorFeePct(d.seniorFeePct);
     setSubFeePct(d.subFeePct);
-    setTaxesBps(d.taxesBps);
     setIssuerProfitAmount(d.issuerProfitAmount);
     setTrusteeFeeBps(d.trusteeFeeBps);
     setAdminFeeBps(d.adminFeeBps);
@@ -497,7 +495,6 @@ export default function ProjectionModel({
     callPriceMode,
     seniorFeePct,
     subFeePct,
-    taxesBps,
     issuerProfitAmount,
     trusteeFeeBps,
     adminFeeBps,
@@ -552,7 +549,7 @@ export default function ProjectionModel({
     resolved,
     baseRatePct, baseRateFloorPct, defaultRates, overriddenBuckets, cprPct, recoveryPct, recoveryLagMonths,
     reinvestmentSpreadBps, reinvestmentTenorYears, reinvestmentRating, cccBucketLimitPct, cccMarketValuePct,
-    seniorFeePct, subFeePct, taxesBps, issuerProfitAmount, trusteeFeeBps, adminFeeBps, seniorExpensesCapBps,
+    seniorFeePct, subFeePct, issuerProfitAmount, trusteeFeeBps, adminFeeBps, seniorExpensesCapBps,
     hedgeCostBps, incentiveFeePct, incentiveFeeHurdleIrr, postRpReinvestmentPct,
     callMode, callDate, callPricePct, callPriceMode, ddtlDrawAssumption, ddtlDrawQuarter, ddtlDrawPercent, equityEntryPriceCents,
     supplementalReserveDisposition, expenseReserveDepositAmount, supplementalReserveDepositAmount,
@@ -660,7 +657,6 @@ export default function ProjectionModel({
     callPriceMode,
     seniorFeePct,
     subFeePct,
-    taxesBps,
     issuerProfitAmount,
     trusteeFeeBps,
     adminFeeBps,
@@ -709,7 +705,7 @@ export default function ProjectionModel({
     resolved?.deferredInterestCompounds,
     resolved?.seniorExpensesCap,
     postRpReinvestmentPct, hedgeCostBps, callMode, callDate, callPricePct, callPriceMode, seniorFeePct, subFeePct,
-    taxesBps, issuerProfitAmount, trusteeFeeBps, adminFeeBps, seniorExpensesCapBps,
+    issuerProfitAmount, trusteeFeeBps, adminFeeBps, seniorExpensesCapBps,
     incentiveFeePct, incentiveFeeHurdleIrr,
     ddtlDrawAssumption, ddtlDrawQuarter, ddtlDrawPercent, equityEntryPriceCents,
     supplementalReserveDisposition, expenseReserveDepositAmount, supplementalReserveDepositAmount,
@@ -1362,7 +1358,6 @@ export default function ProjectionModel({
           ddtlDrawPercent={ddtlDrawPercent} onDdtlDrawPercentChange={setDdtlDrawPercent}
         />
         <EngineExpensesPanel
-          taxesBps={taxesBps} onTaxesChange={setTaxesBps}
           issuerProfitAmount={issuerProfitAmount} onIssuerProfitChange={setIssuerProfitAmount}
           trusteeFeeBps={trusteeFeeBps} onTrusteeFeeChange={setTrusteeFeeBps}
           adminFeeBps={adminFeeBps} onAdminFeeChange={setAdminFeeBps}
@@ -2373,7 +2368,6 @@ export default function ProjectionModel({
               ddtlDrawPercent={ddtlDrawPercent} onDdtlDrawPercentChange={setDdtlDrawPercent}
             />
             <EngineExpensesPanel
-              taxesBps={taxesBps} onTaxesChange={setTaxesBps}
               issuerProfitAmount={issuerProfitAmount} onIssuerProfitChange={setIssuerProfitAmount}
               trusteeFeeBps={trusteeFeeBps} onTrusteeFeeChange={setTrusteeFeeBps}
               adminFeeBps={adminFeeBps} onAdminFeeChange={setAdminFeeBps}

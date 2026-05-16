@@ -396,7 +396,6 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
         if (s.suggestedValue == null) continue;
         if (s.field === "assumptions.trusteeFeeBps") d.trusteeFeeBps = s.suggestedValue;
         if (s.field === "assumptions.adminFeeBps") d.adminFeeBps = s.suggestedValue;
-        if (s.field === "assumptions.taxesBps") d.taxesBps = s.suggestedValue;
         if (s.field === "assumptions.issuerProfitAmount") d.issuerProfitAmount = s.suggestedValue;
         if (s.field === "assumptions.hedgeCostBps") d.hedgeCostBps = s.suggestedValue;
       }
@@ -422,7 +421,10 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
       {
         ki: "KI-IC-AB",
         closesIn: "Progressively as KI-12a closes (re-baseline on each)",
-        expectedDrift: -5.66,
+        // Re-baselined 2026-05-16: same mechanism as KI-IC-C / KI-IC-D —
+        // structural-Section-110 taxes emission shifts Class A/B IC drift
+        // from -5.66 to -5.43.
+        expectedDrift: -5.43,
         tolerance: 0.05,
         closeThreshold: 0.05,
       },
@@ -433,7 +435,12 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
       {
         ki: "KI-IC-C",
         closesIn: "Progressively as KI-12a closes (re-baseline on each)",
-        expectedDrift: -5.05,
+        // Re-baselined 2026-05-16: shifted -5.05 → -4.84 when step (A)(i)
+        // taxes moved from user-set bps × par to the Section 110 closed-
+        // form structural emission (engine now emits ~0). Less interest
+        // consumed at step (A)(i) → marginally higher available interest
+        // → marginally improved Class C IC parity vs trustee.
+        expectedDrift: -4.84,
         tolerance: 0.05,
         closeThreshold: 0.05,
       },
@@ -444,7 +451,10 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
       {
         ki: "KI-IC-D",
         closesIn: "Progressively as KI-12a closes (re-baseline on each)",
-        expectedDrift: -4.40,
+        // Re-baselined 2026-05-16: same mechanism as KI-IC-C above —
+        // structural-Section-110 taxes emission shifts Class D IC drift
+        // from -4.40 to -4.23.
+        expectedDrift: -4.23,
         tolerance: 0.05,
         closeThreshold: 0.05,
       },

@@ -1814,18 +1814,18 @@ function resolveAssumptionGates(constraints: ExtractedConstraints, warnings: Res
   const postAcceleration = constraints.waterfall?.postAcceleration ?? "";
   const waterfallText = `${interestPriority}\n${postAcceleration}`;
 
-  // Step A(i) Issuer taxes — fires when the waterfall mentions "tax" in
-  // the priority narrative. The Euro XV PPM phrasing "(A) Issuer taxes (i)"
-  // matches; the Ares XVIII / generic "(A)(i) Issuer taxes" matches; a
-  // synthetic fixture without a waterfall narrative does not.
-  if (/\b(?:issuer\s+)?tax(?:es|ation)?\b/i.test(waterfallText)) {
-    warnings.push({
-      field: "assumptions.taxesBps",
-      message: "PPM waterfall mentions Issuer taxes (step A(i)) but no per-deal rate is extracted — taxes are not part of the structured fee schedule. The engine accrues `taxesBps × CPA × dayFrac` per period; with `taxesBps` left at 0 it would silently emit zero tax accrual. Refusing to run rather than ship a projection that under-states senior expenses. Set `taxesBps` explicitly in the Context Editor (Engine Assumptions); the Waterfall page surfaces an observed-step-A(i) suggestion when prior-period waterfall data is available, but that paid amount is not contractual.",
-      severity: "error",
-      blocking: true,
-    });
-  }
+  // Step A(i) Issuer taxes — NO gate. `taxesBps` was removed from
+  // `UserAssumptions` (2026-05-16) after the OC reading confirmed the
+  // engine cannot compute the contractually-correct amount from emitted
+  // flows alone. Engine emits step (A)(i) mechanically via the Section
+  // 110 closed-form derivation (0.125 × max(0, gaap_taxable_income −
+  // issuerProfitAmount)), which evaluates to zero in the engine's flow
+  // accounting. The unmodeled drift on Euro XV (~€24,500/year from
+  // Finance Act 2019 sub-note non-deductibility, recoveries-in-excess-
+  // of-accounting-basis, timing differences) is documented in KI-69
+  // and pinned via the N1 harness `taxes` marker. Adding a user
+  // override would be silent inference — see the discipline section
+  // in CLAUDE.md.
 
   // Step A(ii) Issuer Profit Amount — fixed € per period (Euro XV: €250
   // regular / €500 post-Frequency-Switch). Fires when waterfall narrative

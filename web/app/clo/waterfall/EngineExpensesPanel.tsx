@@ -15,14 +15,12 @@ import type { ResolutionWarning } from "@/lib/clo/resolver-types";
  *  one-click button or types an explicit value; either clears the
  *  corresponding resolver-time blocking gate via composeBuildWarnings. */
 export function EngineExpensesPanel({
-  taxesBps, onTaxesChange,
   issuerProfitAmount, onIssuerProfitChange,
   trusteeFeeBps, onTrusteeFeeChange,
   adminFeeBps, onAdminFeeChange,
   hedgeCostBps, onHedgeCostChange,
   prefillWarnings,
 }: {
-  taxesBps: number; onTaxesChange: (v: number) => void;
   issuerProfitAmount: number; onIssuerProfitChange: (v: number) => void;
   trusteeFeeBps: number; onTrusteeFeeChange: (v: number) => void;
   adminFeeBps: number; onAdminFeeChange: (v: number) => void;
@@ -37,7 +35,6 @@ export function EngineExpensesPanel({
     return { value: w.suggestedValue, resolvedFrom: w.resolvedFrom };
   };
 
-  const taxesSuggestion = suggestionFor("assumptions.taxesBps");
   const profitSuggestion = suggestionFor("assumptions.issuerProfitAmount");
   const trusteeSuggestion = suggestionFor("assumptions.trusteeFeeBps");
   const adminSuggestion = suggestionFor("assumptions.adminFeeBps");
@@ -86,7 +83,7 @@ export function EngineExpensesPanel({
           <span style={{ fontSize: "0.65rem", marginRight: "0.3rem" }}>{open ? "▾" : "▸"}</span>
           Engine Assumptions — Step (A)(i)/(A)(ii) + Trustee/Admin
         </span>
-        {(taxesBps === 0 || issuerProfitAmount === 0 || trusteeFeeBps === 0 || adminFeeBps === 0 || (hedgeSuggestion != null && hedgeCostBps === 0)) && (
+        {(issuerProfitAmount === 0 || trusteeFeeBps === 0 || adminFeeBps === 0 || (hedgeSuggestion != null && hedgeCostBps === 0)) && (
           <span style={{ fontSize: "0.6rem", fontWeight: 600, padding: "0.1rem 0.35rem", borderRadius: "3px", background: "var(--color-warning, #d97706)18", color: "var(--color-warning, #d97706)" }}>
             ZEROED
           </span>
@@ -99,10 +96,6 @@ export function EngineExpensesPanel({
             These fields have no PPM-extraction path (taxes are regulatory; admin/trustee fees are typically &quot;per agreement&quot;; Issuer Profit Amount is a fixed periodic amount defined in the deal docs). Each gates the projection until set. Click &quot;Use suggested&quot; to accept the observed-prior-period value, or type an explicit number.
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
-            <div>
-              <SliderInput label="Issuer Taxes" value={taxesBps} onChange={onTaxesChange} min={0} max={5} step={0.005} suffix=" bps p.a. on par" hint="PPM step (A)(i). Irish corporate tax (12.5% × taxable income) modeled as bps on par — see KI on tax-basis modeling." />
-              {renderSuggestion(taxesSuggestion, onTaxesChange, (v) => `${v.toFixed(3)} bps`)}
-            </div>
             <div>
               <SliderInput label="Issuer Profit" value={issuerProfitAmount} onChange={onIssuerProfitChange} min={0} max={1000} step={50} suffix={` ${sym} per period`} hint="PPM step (A)(ii). Fixed periodic amount retained by the issuer each Payment Date." />
               {renderSuggestion(profitSuggestion, onIssuerProfitChange, (v) => `${sym}${v.toFixed(2)}`)}

@@ -696,17 +696,13 @@ describe("Pattern B (silent acceptance of sentinel value)", () => {
     expectGateThrows(resolved, warnings);
   });
 
-  it("taxes evidence-based gate (resolver.ts resolveAssumptionGates) — waterfall mentions taxes + assumption zero → blocking", () => {
-    // The resolver emits a blocking warning purely on PPM evidence (waterfall
-    // narrative mentions "taxes"); composeBuildWarnings un-blocks once
-    // `userAssumptions.taxesBps > 0`. Synthetic fixtures without a waterfall
-    // narrative don't trip this gate (asserted by the negative case below).
-    const raw = loadRaw();
-    const { resolved, warnings } = runResolver(raw);
-    const w = warnings.find((w) => w.field === "assumptions.taxesBps");
-    expectBlockingError(w, "assumptions.taxesBps");
-    expectGateThrows(resolved, warnings);
-  });
+  // Taxes evidence-based gate was removed (KI-69, 2026-05-16): `taxesBps`
+  // is no longer a user input. PPM step (A)(i) Issuer taxes is computed
+  // mechanically by the engine via the Section 110 closed-form
+  // `0.125 × max(0, gaap_taxable_income − issuerProfitAmount)`. The
+  // negative case below (`taxesGate` undefined) now holds unconditionally —
+  // the resolver never emits an `assumptions.taxesBps` warning regardless
+  // of whether the waterfall mentions taxes.
 
   it("issuer profit evidence-based gate (resolver.ts resolveAssumptionGates) — waterfall mentions Issuer Profit + assumption zero → blocking", () => {
     const raw = loadRaw();
@@ -718,16 +714,15 @@ describe("Pattern B (silent acceptance of sentinel value)", () => {
 
   it("evidence-based gates do NOT fire when waterfall narrative is absent (synthetic-fixture safety)", () => {
     // Negative case: a synthetic deal whose constraints carry no waterfall
-    // narrative (typical hand-built fixture) must not trip the taxes /
-    // issuer-profit gates. The trustee/admin gates here also stay silent
-    // because we strip every fee row — no evidence, no gate.
+    // narrative (typical hand-built fixture) must not trip the
+    // issuer-profit gate. The trustee/admin gates here also stay silent
+    // because we strip every fee row — no evidence, no gate. (Taxes gate
+    // removed: KI-69, taxes are now structurally emitted.)
     const raw = loadRaw();
     raw.constraints.waterfall = undefined as any;
     raw.constraints.fees = [];
     const { warnings } = runResolver(raw);
-    const taxesGate = warnings.find((w) => w.field === "assumptions.taxesBps");
     const profitGate = warnings.find((w) => w.field === "assumptions.issuerProfitAmount");
-    expect(taxesGate).toBeUndefined();
     expect(profitGate).toBeUndefined();
   });
 

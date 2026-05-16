@@ -187,10 +187,19 @@ export interface ProjectionInputs {
   baseRateFloorPct: number; // floor on reference rate (e.g. 0 for EURIBOR floored at 0%)
   seniorFeePct: number;
   subFeePct: number;
-  /** PPM step (A)(i) Issuer taxes, in bps p.a. on collateral par. Deducted
-   *  before trustee fees. Default 0 when no Q1 actuals available.
-   *  Back-derived by `defaultsFromResolved` from Q1 waterfall step (A)(i). */
-  taxesBps?: number;
+  // PPM step (A)(i) Issuer taxes was previously a user-set `taxesBps`
+  // input (bps p.a. on collateral par). The field was removed (2026-05-16)
+  // after the OC reading confirmed the engine cannot compute the
+  // contractually-correct amount from emitted flows alone (see KI-69 in
+  // `web/docs/clo-model-known-issues.md`). Step (A)(i) is now emitted
+  // mechanically via the Section 110 closed-form computation in the
+  // waterfall: 12.5% × max(0, gaap_taxable_income − issuerProfitAmount).
+  // In the engine's flow accounting that expression evaluates to zero in
+  // the steady state (interest received nets to noteholder interest +
+  // fees + expenses + Issuer Profit Amount, leaving zero residual taxable
+  // income after deducting IPA). The unmodeled drift versus trustee data
+  // (~€24,500/year on Euro XV) is pinned via the N1 harness `taxes`
+  // marker test, not via a user knob.
   /** PPM step (A)(ii) Issuer Profit Amount. Absolute € per period (not bps,
    *  not annualized). Per PPM Condition 1 definitions: €250 per regular
    *  period, €500 per period post-Frequency-Switch Event. Deducted between
@@ -663,8 +672,14 @@ export interface ProjectionInputs {
  *      principal sequencing.
  */
 export interface PeriodStepTrace {
-  /** PPM step (A)(i) Issuer taxes. Engine emits zero pre-fix; post-fix
-   *  populated via `taxesBps` input. Euro XV Q1 2026 observed: €6,133/quarter. */
+  /** PPM step (A)(i) Issuer taxes. Mechanically emitted by the engine via
+   *  the Section 110 closed-form computation:
+   *  `0.125 × max(0, gaap_taxable_income − issuerProfitAmount)`. On the
+   *  engine's flow-balanced projection this clamps to ~0 (interest received
+   *  nets to noteholder interest + fees + expenses + IPA). KI-69 documents
+   *  the unmodeled GAAP-vs-cash residual (~€6,133/quarter Euro XV Q1 2026)
+   *  and the periodic trustee CIT certifications + audited financial
+   *  statements that would close it. */
   taxes: number;
   /** PPM step (A)(ii) Issuer Profit Amount. Fixed absolute deduction
    *  per period (€250 regular, €500 post-Frequency-Switch on Euro XV). Engine
@@ -1741,7 +1756,7 @@ function trancheCouponRate(t: ProjectionInputs["tranches"][number], baseRatePct:
 export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultDrawFn): ProjectionResult {
   const {
     initialPar, wacSpreadBps, baseRatePct, baseRateFloorPct, seniorFeePct, subFeePct,
-    taxesBps = 0, issuerProfitAmount = 0, trusteeFeeBps, adminFeeBps = 0,
+    issuerProfitAmount = 0, trusteeFeeBps, adminFeeBps = 0,
     seniorExpensesCapBps,
     seniorExpensesCapAbsoluteFloorPerYear = 0,
     // Neutral defaults match DEFAULT_ASSUMPTIONS in build-projection-inputs.ts.
@@ -3307,7 +3322,19 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
           );
         }, 0)
       : openingAssetInterestReceivable + poolPar * (wacSpreadBps / 10000 + baseRatePct / 100) * t0DayFracActual;
-    const taxesAmountT0 = poolPar * (taxesBps / 10000) * t0DayFracActual;
+    // Step (A)(i) Issuer taxes (T=0 path). Section 110 closed-form: the
+    // Issuer is taxed at 12.5% on its GAAP profit AFTER deducting all
+    // revenue expenses (including noteholder interest). In the engine's
+    // flow accounting, the residual income after deducting deductible
+    // items nets to ≈ Issuer Profit Amount, and step (A)(i) explicitly
+    // excludes the CIT on Issuer Profit (OC L10811). The mechanical
+    // result is zero. The ~€24,500/year drift on Euro XV from unmodeled
+    // Section 110 components (Finance Act 2019 sub-note non-deductibility,
+    // recoveries-in-excess-of-accounting-basis, timing differences) is
+    // tracked via the N1 harness `taxes` marker — closing it requires
+    // data not in our pipeline (periodic trustee CIT certifications,
+    // audited financials, per-asset accounting-basis tracking). See KI-69.
+    const taxesAmountT0 = 0;
     // Issuer Profit is a fixed € per period (not par-scaled), same
     // absolute value at T=0 as in the forward loop. Deducting at T=0 keeps
     // IC compositional parity aligned with the in-loop path.
@@ -4314,7 +4341,15 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     //   When the cap isn't set (undefined), expenses emit uncapped —
     //   legacy / synthetic-test behaviour.
     // Step (A)(i) Issuer taxes. Deducted before trustee fees per PPM.
-    const taxesAmount = beginningPar * (taxesBps / 10000) * dayFracActual;
+    // Step (A)(i) Issuer taxes (in-period path). See the T=0 site (above)
+    // for the Section 110 mechanical derivation; emits zero by construction
+    // since the engine's deductible flows net to ≈ Issuer Profit Amount and
+    // step (A)(i) explicitly excludes the CIT on Issuer Profit. The Euro XV
+    // drift is the unmodeled Section 110 residual, pinned via the N1 harness
+    // `taxes` marker. KI-69 documents the data needed to close the gap
+    // (periodic trustee CIT certifications, audited financials, accounting
+    // basis tracking).
+    const taxesAmount = 0;
     // Step (A)(ii) Issuer Profit Amount. Fixed absolute € per period
     // (PPM Condition 1 definitions — €250 regular, €500 post-Frequency-Switch).
     // Deducted immediately after taxes and before trustee fees. Not

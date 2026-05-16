@@ -241,13 +241,16 @@ export interface UserAssumptions {
   // Pre-filled from resolved PPM data, but user has final say.
   seniorFeePct: number;
   subFeePct: number;
-  /** PPM step (A)(i) Issuer taxes, in bps p.a. on collateral par.
-   *  Deducted before trustee fees. Back-derived from Q1 waterfall step
-   *  (A)(i) via `defaultsFromResolved`. Euro XV: ~0.50 bps (€6,133 quarterly). */
-  taxesBps: number;
+  // `taxesBps` was removed (2026-05-16). PPM step (A)(i) Issuer taxes is
+  // now emitted mechanically by the engine via the Section 110 closed-form
+  // computation (12.5% × max(0, gaap_taxable_income − issuerProfitAmount)),
+  // which evaluates to zero in the engine's flow accounting. See KI-69
+  // for the OC verification + the data we'd need to close the unmodeled
+  // residual drift (~€24,500/year on Euro XV).
   /** PPM step (A)(ii) Issuer Profit Amount. Absolute € per period.
-   *  €250 regular, €500 post-Frequency-Switch on Euro XV. Back-derived from
-   *  Q1 waterfall step (A)(ii) via `defaultsFromResolved`. */
+   *  €250 regular, €500 post-Frequency-Switch on Euro XV. User-set via the
+   *  EngineExpensesPanel; the resolver-time gate fires when the PPM
+   *  waterfall narrative mentions "Issuer Profit" but no value is provided. */
   issuerProfitAmount: number;
   /** C3 — Trustee fee bps on Collateral Principal Amount, per annum. Paid
    *  at PPM step (B). Jointly subject to Senior Expenses Cap with adminFeeBps;
@@ -363,7 +366,6 @@ export const DEFAULT_ASSUMPTIONS: UserAssumptions = {
   ddtlDrawPercent: CLO_DEFAULTS.ddtlDrawPercent,
   seniorFeePct: CLO_DEFAULTS.seniorFeePct,
   subFeePct: CLO_DEFAULTS.subFeePct,
-  taxesBps: 0,
   issuerProfitAmount: 0,
   trusteeFeeBps: CLO_DEFAULTS.trusteeFeeBps,
   adminFeeBps: 0,
@@ -432,13 +434,15 @@ export interface DefaultsFromResolvedRaw {
  *     A build-time blocking gate in `composeBuildWarnings` refuses the
  *     projection when raw Step F shows hedge cashflows but neither the
  *     resolved value nor the user assumption is positive.
- *   - `taxesBps` + `issuerProfitAmount` ← `DEFAULT_ASSUMPTIONS` (zero).
- *     No PPM-extraction path exists today; the resolver's
- *     `resolveAssumptionGates` emits blocking warnings whenever the PPM
- *     waterfall narrative mentions the corresponding economics, so the
- *     projection refuses until the user enters explicit values (the
- *     observed Step A(i)/A(ii) amounts are surfaced as suggestions for
- *     one-click acceptance).
+ *   - `issuerProfitAmount` ← `DEFAULT_ASSUMPTIONS` (zero). No PPM-extraction
+ *     path exists today; the resolver's `resolveAssumptionGates` emits a
+ *     blocking warning whenever the PPM waterfall narrative mentions
+ *     the corresponding economics, so the projection refuses until the
+ *     user enters an explicit value (the observed Step A(ii) amount is
+ *     surfaced as a suggestion for one-click acceptance).
+ *   - `taxesBps` removed (KI-69): PPM step (A)(i) Issuer taxes is now
+ *     mechanically emitted by the engine via the Section 110 closed-form
+ *     `0.125 × max(0, gaap_taxable_income − issuerProfitAmount)`.
  *   - `seniorExpensesCapBps` / `seniorExpensesCapAbsoluteFloorPerYear` /
  *     `seniorExpensesCapAllocationWithinCap` /
  *     `seniorExpensesCapOverflowAllocation` /
@@ -490,10 +494,12 @@ export function defaultsFromResolved(
   // accepting the observed-step suggestion via the Waterfall page button.
   if (f.trusteeFeeBps > 0) base.trusteeFeeBps = f.trusteeFeeBps;
   if (f.adminFeeBps > 0) base.adminFeeBps = f.adminFeeBps;
-  // taxesBps + issuerProfitAmount have no PPM-extraction path today and
-  // no resolver field — they pass through DEFAULT_ASSUMPTIONS as zero, and
-  // the gate at resolveAssumptionGates (resolver.ts) blocks the projection
-  // when the deal's waterfall narrative shows the corresponding economics.
+  // issuerProfitAmount has no PPM-extraction path today and no resolver
+  // field — it passes through DEFAULT_ASSUMPTIONS as zero, and the gate
+  // at resolveAssumptionGates (resolver.ts) blocks the projection when
+  // the deal's waterfall narrative shows the corresponding economics.
+  // (taxesBps was removed entirely — KI-69, step (A)(i) is now
+  // structurally emitted by the engine.)
 
   // Hedge cost. Consumes `resolved.hedgeCostBps` (PPM-extracted, gated by
   // `resolveHedgeCost`); the historical Signal-1 back-derive from observed
@@ -585,16 +591,23 @@ export function defaultsFromIntex(
  * value to clear the corresponding resolver-time blocking gate.
  *
  * Coverage:
- *   - `assumptions.taxesBps`            ← step A(i) annualized
  *   - `assumptions.issuerProfitAmount`  ← step A(ii) paid (absolute €)
  *   - `assumptions.trusteeFeeBps`       ← step B annualized
  *   - `assumptions.adminFeeBps`         ← step C annualized
+ *   - `assumptions.hedgeCostBps`        ← step F annualized (hedge-labeled)
  *
- * Sanity bounds (taxes ≤ 10 bps, issuer profit ≤ €1000, trustee/admin ≤
- * 50 bps) suppress suggestions when the observed amount looks like an
- * extraction artefact (one-off termination spike, mis-classified row).
- * Returns [] when raw.waterfallSteps is absent or empty — synthetic
- * test fixtures see no suggestion noise.
+ * Step (A)(i) taxes is NOT in this list: `taxesBps` was removed from
+ * `UserAssumptions` in favor of the Section 110 mechanical engine
+ * computation. The observed Step A(i) amount on Euro XV does NOT reflect
+ * a forward-period rate the user could set; it reflects unmodeled
+ * Section 110 components (Finance Act 2019 sub-note non-deductibility,
+ * recoveries-in-excess-of-accounting-basis, timing differences) that the
+ * engine cannot compute from emitted flows alone. See KI-69.
+ *
+ * Sanity bounds (issuer profit ≤ €1000, trustee/admin ≤ 50 bps, hedge ≤
+ * 200 bps) suppress suggestions when the observed amount looks like an
+ * extraction artefact. Returns [] when raw.waterfallSteps is absent or
+ * empty — synthetic test fixtures see no suggestion noise.
  */
 export function diagnoseFeePrefill(
   resolved: ResolvedDealData,
@@ -614,14 +627,6 @@ export function diagnoseFeePrefill(
         s.description != null &&
         new RegExp(`^\\(?${code}\\)?\\b`, "i").test(s.description),
     );
-  const findAi = () =>
-    raw?.waterfallSteps?.find(
-      (s) =>
-        s &&
-        s.waterfallType === "INTEREST" &&
-        s.description != null &&
-        /^\(?a\)?\s*\(?i\)?\b|^a\.i\b/i.test(s.description),
-    );
   const findAii = () =>
     raw?.waterfallSteps?.find(
       (s) =>
@@ -631,32 +636,15 @@ export function diagnoseFeePrefill(
         /^\(?a\)?\s*\(?ii\)?\b|^a\.ii\b/i.test(s.description),
     );
 
-  const stepAi = findAi();
   const stepAii = findAii();
   const stepB = findStep("B");
   const stepC = findStep("C");
   const beginPar = resolved.poolSummary.totalPrincipalBalance;
 
-  if (stepAi && beginPar > 0) {
-    const paid = stepAi.amountPaid ?? 0;
-    const bps = (paid * 4 * 10000) / beginPar;
-    if (paid > 0 && bps > 0 && bps < 10) {
-      warnings.push({
-        field: "assumptions.taxesBps",
-        message:
-          `Observed PPM step A(i) paid €${paid.toFixed(2)} this quarter ` +
-          `implies ~${bps.toFixed(3)} bps p.a. on €${beginPar.toFixed(0)} CPA. ` +
-          `This is a paid amount under the historical period, not a contractual ` +
-          `forward rate — Irish corporate tax (12.5% × taxable income) does not ` +
-          `scale with par. Treat the suggested value as an anchor and verify ` +
-          `against the deal's tax structure before accepting.`,
-        severity: "info",
-        blocking: false,
-        resolvedFrom: `step A(i) ${paid.toFixed(2)} EUR × 4 / ${beginPar.toFixed(0)} EUR`,
-        suggestedValue: bps,
-      });
-    }
-  }
+  // Step A(i) intentionally NOT emitted as a suggestion — see docstring
+  // above and KI-69. `taxesBps` has been removed from `UserAssumptions`;
+  // the engine emits step (A)(i) mechanically as 0 via the Section 110
+  // closed-form derivation.
 
   if (stepAii) {
     const paid = stepAii.amountPaid ?? 0;
@@ -906,11 +894,11 @@ export function composeBuildWarnings(
         /per agreement|unparseable/i.test(warning.message) &&
         userAssumptions.adminFeeBps > 0
       ) return false;
-      if (
-        warning.field === "assumptions.taxesBps" &&
-        /no per-deal rate is extracted/i.test(warning.message) &&
-        userAssumptions.taxesBps > 0
-      ) return false;
+      // No filter for `assumptions.taxesBps` — the field was removed
+      // (2026-05-16) and the resolver's tax gate is gone with it. The
+      // engine emits step (A)(i) mechanically; the user cannot override.
+      // See KI-69 for the data-availability constraint that drove this
+      // structural choice over the user-input path.
       if (
         warning.field === "assumptions.issuerProfitAmount" &&
         /no per-deal value is extracted/i.test(warning.message) &&
@@ -1621,7 +1609,6 @@ export function buildFromResolved(
     baseRateFloorPct: userAssumptions.baseRateFloorPct,
     seniorFeePct: userAssumptions.seniorFeePct,
     subFeePct: userAssumptions.subFeePct,
-    taxesBps: userAssumptions.taxesBps,
     issuerProfitAmount: userAssumptions.issuerProfitAmount,
     trusteeFeeBps: userAssumptions.trusteeFeeBps,
     adminFeeBps: userAssumptions.adminFeeBps,

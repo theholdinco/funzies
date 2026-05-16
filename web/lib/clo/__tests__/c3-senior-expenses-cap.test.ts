@@ -40,7 +40,6 @@ function suggestedAssumptions(resolved: ResolvedDealData, raw: Parameters<typeof
     if (s.suggestedValue == null) continue;
     if (s.field === "assumptions.trusteeFeeBps") d.trusteeFeeBps = s.suggestedValue;
     if (s.field === "assumptions.adminFeeBps") d.adminFeeBps = s.suggestedValue;
-    if (s.field === "assumptions.taxesBps") d.taxesBps = s.suggestedValue;
     if (s.field === "assumptions.issuerProfitAmount") d.issuerProfitAmount = s.suggestedValue;
     if (s.field === "assumptions.hedgeCostBps") d.hedgeCostBps = s.suggestedValue;
   }

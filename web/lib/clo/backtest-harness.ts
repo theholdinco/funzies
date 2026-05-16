@@ -364,7 +364,11 @@ function extractEngineBuckets(
   }
 
   return {
-    // Taxes: now emitted by the engine when taxesBps is set.
+    // Taxes (PPM step A(i)): mechanically emitted by the engine via the
+    // Section 110 closed-form `0.125 × max(0, gaap_taxable_income −
+    // issuerProfitAmount)`. KI-69 documents the unmodeled residual on
+    // flow-balanced projections (engine emits ~0; trustee Q1 2026 actual
+    // was €6,133 on Euro XV — pinned by the N1 harness marker).
     taxes: p.stepTrace.taxes ?? 0,
     // Issuer profit: now emitted when issuerProfitAmount is set.
     issuerProfit: p.stepTrace.issuerProfit ?? 0,

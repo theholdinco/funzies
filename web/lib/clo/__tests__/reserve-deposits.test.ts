@@ -88,7 +88,6 @@ describe("Expense Reserve step (D) discretionary deposit", () => {
       seniorExpensesCapBps: 100,
       trusteeFeeBps: 10_000,
       adminFeeBps: 0,
-      taxesBps: 0,
       issuerProfitAmount: 0,
       seniorFeePct: 0,
       hedgeCostBps: 0,

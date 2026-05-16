@@ -77,7 +77,6 @@ const harnessAssumptions = (() => {
     if (s.suggestedValue == null) continue;
     if (s.field === "assumptions.trusteeFeeBps") d.trusteeFeeBps = s.suggestedValue;
     if (s.field === "assumptions.adminFeeBps") d.adminFeeBps = s.suggestedValue;
-    if (s.field === "assumptions.taxesBps") d.taxesBps = s.suggestedValue;
     if (s.field === "assumptions.issuerProfitAmount") d.issuerProfitAmount = s.suggestedValue;
     if (s.field === "assumptions.hedgeCostBps") d.hedgeCostBps = s.suggestedValue;
   }
@@ -341,7 +340,12 @@ describe("N1 correctness — currently broken buckets (documented in KI ledger)"
       //   post holding accrualEndDate anchor review: -€233,269.05
       //   post inferred opening asset-interest receivable review: -€232,932.00
       //   post same-tick defaulted-share asset-interest writeoff: -€254,223.24
-      expectedDrift: -254223.24,
+      //   post KI-69 Section 110 structural taxes emission: -€248,021.74
+      //     (engine emits 0 for step A(i) under closed-form Section 110;
+      //     pre-fix back-derived ~€6,202/period went to taxes which
+      //     reduced what subs received — that money now flows to subs,
+      //     shifting drift by ~+€6,202)
+      expectedDrift: -248021.74,
       tolerance: 100,
       closeThreshold: 100,
     },
@@ -392,15 +396,20 @@ describe("N1 correctness — currently broken buckets (documented in KI ledger)"
 // ----------------------------------------------------------------------------
 
 describe("N1 correctness — engine-does-not-model steps (KI ledger commitments)", () => {
-  it("engine emits taxes (~€6,202), ties to trustee €6,133 within €100", () => {
-    // Post-fix: defaultsFromResolved back-derives taxesBps from Q1 step (A)(i)
-    // actual (€6,133 / €493M / 4 × 10000 ≈ 0.497 bps). Engine emits
-    // ~€6,202 at 91/360 vs trustee €6,133 at 90/360 — ~€69 day-count residual.
-    const row = driftsByBucket.get("taxes");
-    expect(row?.actual).toBeCloseTo(6133, -1);
-    expect(row?.projected).toBeCloseTo(6202, -2);
-    expect(Math.abs(row?.delta ?? 0)).toBeLessThan(100);
-  });
+  // KI-69 Section 110 Issuer taxes — engine now emits 0 mechanically via the
+  // closed-form `0.125 × max(0, gaap_taxable_income − issuerProfitAmount)`.
+  // On the flow-balanced projection, deductible flows (noteholder interest +
+  // fees + expenses) net interest received down to ≈ Issuer Profit Amount,
+  // so the bracket clamps to 0. Trustee Q1 2026 actual was €6,133 (Irish CIT
+  // assessed on a basis the engine does not capture — see KI-69 for the
+  // periodic CIT certifications / audited financial statements / per-asset
+  // accounting-basis tracking that would be needed to model this residual
+  // explicitly). Drift sign: projected (0) − actual (€6,133) = -€6,133.
+  failsWithMagnitude(
+    { ki: "KI-69-section110-residual", closesIn: "Periodic trustee CIT certifications + audited financial statements ingest", expectedDrift: -6133, tolerance: 50 },
+    "taxes (PPM step A(i)) Section 110 unmodeled residual",
+    () => drift("taxes"),
+  );
   it("engine emits €250 issuer profit, ties to trustee to the cent", () => {
     // Post-fix: defaultsFromResolved back-derives issuerProfitAmount from
     // Q1 waterfall step (A)(ii) (€250 regular period). Fixed absolute
