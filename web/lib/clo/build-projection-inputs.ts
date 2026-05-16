@@ -138,7 +138,7 @@ export const EMPTY_RESOLVED: ResolvedDealData = {
   reinvestmentOcTrigger: null,
   eventOfDefaultTest: null,
   dates: { maturity: "", reinvestmentPeriodEnd: null, nonCallPeriodEnd: null, firstPaymentDate: null, currentDate: new Date().toISOString().slice(0, 10) },
-  fees: { seniorFeePct: 0, subFeePct: 0, trusteeFeeBps: 0, incentiveFeePct: 0, incentiveFeeHurdleIrr: 0 },
+  fees: { seniorFeePct: 0, subFeePct: 0, trusteeFeeBps: 0, adminFeeBps: 0, incentiveFeePct: 0, incentiveFeeHurdleIrr: 0 },
   loans: [],
   metadata: { reportDate: null, dataSource: null, sdfFilesIngested: [], pdfExtracted: [] },
   principalAccountCash: 0,
@@ -298,7 +298,8 @@ export interface UserAssumptions {
    *  buffer at q=1, not new cash. */
   seniorExpensesCapCarryforwardSeedAmount: number | null;
   /** Whether VAT on capped expenses counts toward the cap (PPM proviso (i)).
-   *  When fee inputs are gross-of-VAT (typical trustee back-derive path)
+   *  When fee inputs are gross-of-VAT (typical observed-paid trustee step
+   *  amount, which the user accepts via the "Use suggested value" affordance)
    *  the engine path is correct without explicit gross-up; this flag with
    *  a non-null `seniorExpensesCapVatRatePct` triggers an explicit gross-up
    *  for hand-set net-of-VAT inputs. */
@@ -415,11 +416,29 @@ export interface DefaultsFromResolvedRaw {
  *     ← resolver's PPM extraction (`resolved.fees.*`), else default.
  *     (fee-rate plumbing; the ~€22.35M fee-BASE
  *     discrepancy is KI-12a's harness mismatch, not fixed here).
- *   - `trusteeFeeBps` + `adminFeeBps` ← split-back-derived from
- *     `raw.waterfallSteps` step B + step C respectively (when each non-zero
- *     extraction is missing); else PPM extraction. Partial-close of KI-08
- *     (day-count residuals on the engine-vs-trustee tie remain blocked on
- *     KI-12a).
+ *   - `trusteeFeeBps` + `adminFeeBps` ← resolver's PPM extraction
+ *     (`resolved.fees.trusteeFeeBps` + `resolved.fees.adminFeeBps`) when
+ *     each is positive; else `DEFAULT_ASSUMPTIONS` (zero). The historical
+ *     back-derive from observed Step B/C amounts was removed (2026-05-16)
+ *     — observed-paid is not contractual-forward. Step B/C amounts are
+ *     surfaced as non-blocking suggestions in `diagnoseFeePrefill` for
+ *     the `EngineExpensesPanel` "Use suggested" affordance; the resolver
+ *     emits a blocking warning when a fee row exists in `constraints.fees`
+ *     with unparseable rate, refusing the projection until the user
+ *     accepts the suggestion or enters an explicit value.
+ *   - `hedgeCostBps` ← `resolved.hedgeCostBps` (PPM-extracted via
+ *     `resolveHedgeCost`) when positive; else `DEFAULT_ASSUMPTIONS`. The
+ *     historical observed-Step-F back-derive was removed (same reason).
+ *     A build-time blocking gate in `composeBuildWarnings` refuses the
+ *     projection when raw Step F shows hedge cashflows but neither the
+ *     resolved value nor the user assumption is positive.
+ *   - `taxesBps` + `issuerProfitAmount` ← `DEFAULT_ASSUMPTIONS` (zero).
+ *     No PPM-extraction path exists today; the resolver's
+ *     `resolveAssumptionGates` emits blocking warnings whenever the PPM
+ *     waterfall narrative mentions the corresponding economics, so the
+ *     projection refuses until the user enters explicit values (the
+ *     observed Step A(i)/A(ii) amounts are surfaced as suggestions for
+ *     one-click acceptance).
  *   - `seniorExpensesCapBps` / `seniorExpensesCapAbsoluteFloorPerYear` /
  *     `seniorExpensesCapAllocationWithinCap` /
  *     `seniorExpensesCapOverflowAllocation` /
@@ -461,93 +480,31 @@ export function defaultsFromResolved(
   if (f.incentiveFeePct > 0) base.incentiveFeePct = f.incentiveFeePct;
   if (f.incentiveFeeHurdleIrr > 0) base.incentiveFeeHurdleIrr = f.incentiveFeeHurdleIrr * 100;
 
-  // Trustee + admin fees + taxes: back-derive from Q1 waterfall steps.
-  // C3 split trustee/admin separately; taxes (step A.i) added thereafter.
-  const findStep = (code: string) =>
-    raw?.waterfallSteps?.find(
-      (s) =>
-        s &&
-        s.waterfallType === "INTEREST" &&
-        s.description != null &&
-        new RegExp(`^\\(?${code}\\)?\\b`, "i").test(s.description),
-    );
-  // Step (A)(i) for taxes — description format "(A)(i)" or "A.i" varies.
-  const findAi = () =>
-    raw?.waterfallSteps?.find(
-      (s) =>
-        s &&
-        s.waterfallType === "INTEREST" &&
-        s.description != null &&
-        /^\(?a\)?\s*\(?i\)?\b|^a\.i\b/i.test(s.description),
-    );
-  // Step (A)(ii) for issuer profit — same format tolerance as (A)(i).
-  const findAii = () =>
-    raw?.waterfallSteps?.find(
-      (s) =>
-        s &&
-        s.waterfallType === "INTEREST" &&
-        s.description != null &&
-        /^\(?a\)?\s*\(?ii\)?\b|^a\.ii\b/i.test(s.description),
-    );
-  const stepAi = findAi();
-  const stepAii = findAii();
-  const stepB = findStep("B");
-  const stepC = findStep("C");
-  const beginPar = resolved.poolSummary.totalPrincipalBalance;
+  // Trustee + admin fees: consume the resolver's PPM extraction directly.
+  // Pre-fix this site also back-derived from Q1 waterfall step B/C when
+  // resolved values were zero, but observed-paid is not contractual-forward
+  // (single-quarter extrapolation, cap-binding distortion, lumpy items —
+  // see `diagnoseFeePrefill` for the suggestion surface). The resolver's
+  // blocking gate now refuses the projection when the rate is missing;
+  // user clears it by entering an explicit value (Context Editor) or by
+  // accepting the observed-step suggestion via the Waterfall page button.
+  if (f.trusteeFeeBps > 0) base.trusteeFeeBps = f.trusteeFeeBps;
+  if (f.adminFeeBps > 0) base.adminFeeBps = f.adminFeeBps;
+  // taxesBps + issuerProfitAmount have no PPM-extraction path today and
+  // no resolver field — they pass through DEFAULT_ASSUMPTIONS as zero, and
+  // the gate at resolveAssumptionGates (resolver.ts) blocks the projection
+  // when the deal's waterfall narrative shows the corresponding economics.
 
-  // Taxes back-derive.
-  if (stepAi && beginPar > 0) {
-    const bps = ((stepAi.amountPaid ?? 0) * 4 * 10000) / beginPar;
-    // Sanity bound: 0 < bps < 10 is plausible for issuer taxes.
-    if (bps > 0 && bps < 10) base.taxesBps = bps;
-  }
-
-  // Issuer profit back-derive. Fixed absolute € per period (€250
-  // regular, €500 post-Frequency-Switch on Euro XV). Sanity bound: €0–€1000
-  // covers both periodic amounts with generous headroom; caps pathological
-  // extractions without rejecting real values.
-  if (stepAii) {
-    const amount = stepAii.amountPaid ?? 0;
-    if (amount > 0 && amount < 1000) base.issuerProfitAmount = amount;
-  }
-
-  if (f.trusteeFeeBps > 0) {
-    base.trusteeFeeBps = f.trusteeFeeBps;
-  } else if (stepB && beginPar > 0) {
-    const bps = ((stepB.amountPaid ?? 0) * 4 * 10000) / beginPar;
-    if (bps > 0 && bps < 50) base.trusteeFeeBps = bps;
-  }
-  // Admin fee: resolver doesn't currently extract a dedicated field (PPM
-  // typically lists "Administrative Expenses" as "per agreement"), so we
-  // always back-derive from step C when raw waterfall is available.
-  if (stepC && beginPar > 0) {
-    const bps = ((stepC.amountPaid ?? 0) * 4 * 10000) / beginPar;
-    if (bps > 0 && bps < 50) base.adminFeeBps = bps;
-  }
-
-  // Hedge cost. Signal 2 (PPM compliance fee row) seeded from
-  // `resolved.hedgeCostBps` via `resolveHedgeCost`; Signal 1 (back-
-  // derive from observed step F) overrides when present. Description
-  // filter `/hedge|swap/i` prevents silent mis-classification of any
-  // rogue step F entry — the engine and trustee use step (F) for
-  // hedge while ppm.json's sequence_summary annotation says "(E)";
-  // code-only matching is unsafe.
+  // Hedge cost. Consumes `resolved.hedgeCostBps` (PPM-extracted, gated by
+  // `resolveHedgeCost`); the historical Signal-1 back-derive from observed
+  // Step F amount × 4 / par was removed (same paid-amount → forward-rate
+  // failure shape as trustee/admin/taxes/profit). Observed Step F hedge
+  // amounts are now surfaced as non-blocking suggestions in
+  // `diagnoseFeePrefill`, and a build-time blocking gate in
+  // `composeBuildWarnings` refuses the projection when Step F shows
+  // hedge cashflows but neither `resolved.hedgeCostBps` nor
+  // `userAssumptions.hedgeCostBps` is positive.
   if (resolved.hedgeCostBps > 0) base.hedgeCostBps = resolved.hedgeCostBps;
-  const stepF = findStep("F");
-  const stepFhedge =
-    stepF && stepF.description != null && /hedge|swap/i.test(stepF.description)
-      ? stepF
-      : null;
-  if (stepFhedge && (stepFhedge.amountPaid ?? 0) > 0 && beginPar > 0) {
-    const observedBps = ((stepFhedge.amountPaid ?? 0) * 4 * 10000) / beginPar;
-    // Sanity bound: 0 < bps < 200. IR swaps are typically 5-30 bps;
-    // cross-currency hedges (EUR/USD, EUR/GBP) on partially non-EUR
-    // deals reach 70-100 bps in normal markets and have historically
-    // exceeded that in stress regimes. The 200 bps ceiling rejects
-    // extraction artefacts (one-off termination spike, sign-error,
-    // unit-confusion) without dropping legitimate stressed hedge cost.
-    if (observedBps > 0 && observedBps < 200) base.hedgeCostBps = observedBps;
-  }
 
   // C3 Senior Expenses Cap: consume the structured PPM
   // extraction when available. Replaces the prior `max(2× observed, 20 bps)`
@@ -618,24 +575,31 @@ export function defaultsFromIntex(
 }
 
 /**
- * Emits partner-visible warnings when the fee pre-fill data is incomplete.
- * Separate from `defaultsFromResolved` so the test callers (12+ suites) keep
- * their simple signature, and production callers (ProjectionModel) can
- * surface the warnings in the UI's warnings panel rather than stderr.
+ * Emits non-blocking INFO suggestion warnings sourced from observed
+ * waterfall step amounts, replacing the prior silent back-derive that
+ * turned a single quarter's paid amount into the live forward-period
+ * model input. Each suggestion carries `suggestedValue` so the Context
+ * Editor's "Use suggested value" affordance can pre-fill the field on
+ * an explicit click (recording the observed-step provenance in the
+ * process). The user must accept the suggestion or enter an explicit
+ * value to clear the corresponding resolver-time blocking gate.
  *
- * The only gate today catches "pre-fill found trustee step (B) but NOT admin
- * step (C)", which silently sets `adminFeeBps: 0`. Downstream this makes
- * the Senior Expenses Cap apply to only half the expense — partner-visible
- * wrong math on stress scenarios. Gate tests the actual data condition, not
- * a magnitude threshold: a threshold like "trusteeFeeBps > 10 bps" creates
- * a false-negative at Euro XV scale (combined ~5.24 bps, well under 10).
- * Sub-0.5 bps on trustee prevents false-fires on zero-fee deals where both
- * steps are legitimately absent.
+ * Coverage:
+ *   - `assumptions.taxesBps`            ← step A(i) annualized
+ *   - `assumptions.issuerProfitAmount`  ← step A(ii) paid (absolute €)
+ *   - `assumptions.trusteeFeeBps`       ← step B annualized
+ *   - `assumptions.adminFeeBps`         ← step C annualized
+ *
+ * Sanity bounds (taxes ≤ 10 bps, issuer profit ≤ €1000, trustee/admin ≤
+ * 50 bps) suppress suggestions when the observed amount looks like an
+ * extraction artefact (one-off termination spike, mis-classified row).
+ * Returns [] when raw.waterfallSteps is absent or empty — synthetic
+ * test fixtures see no suggestion noise.
  */
 export function diagnoseFeePrefill(
   resolved: ResolvedDealData,
   raw: DefaultsFromResolvedRaw | null | undefined,
-  assumptions: UserAssumptions,
+  _assumptions: UserAssumptions,
 ): ResolutionWarning[] {
   const warnings: ResolutionWarning[] = [];
 
@@ -650,26 +614,148 @@ export function diagnoseFeePrefill(
         s.description != null &&
         new RegExp(`^\\(?${code}\\)?\\b`, "i").test(s.description),
     );
+  const findAi = () =>
+    raw?.waterfallSteps?.find(
+      (s) =>
+        s &&
+        s.waterfallType === "INTEREST" &&
+        s.description != null &&
+        /^\(?a\)?\s*\(?i\)?\b|^a\.i\b/i.test(s.description),
+    );
+  const findAii = () =>
+    raw?.waterfallSteps?.find(
+      (s) =>
+        s &&
+        s.waterfallType === "INTEREST" &&
+        s.description != null &&
+        /^\(?a\)?\s*\(?ii\)?\b|^a\.ii\b/i.test(s.description),
+    );
+
+  const stepAi = findAi();
+  const stepAii = findAii();
   const stepB = findStep("B");
   const stepC = findStep("C");
+  const beginPar = resolved.poolSummary.totalPrincipalBalance;
 
-  // The admin pre-fill source is missing: pre-fill found step (B) trustee
-  // but no step (C) admin in raw.waterfallSteps. Trustee is present (not a
-  // zero-fee deal), so the missing (C) is a data gap — adminFeeBps silently
-  // stays 0 and the Senior Expenses Cap applies to only the trustee portion.
-  if (stepB && !stepC && assumptions.trusteeFeeBps > 0.5) {
-    warnings.push({
-      field: "assumptions.adminFeeBps",
-      message:
-        `Fee pre-fill found PPM step (B) trustee but no step (C) admin in waterfall data — ` +
-        `adminFeeBps defaulted to 0. Senior Expenses Cap will apply to only the trustee ` +
-        `half of senior expenses. Verify raw.waterfallSteps contains a separate step (C) ` +
-        `row for admin expenses, or set adminFeeBps manually to match the PPM "per ` +
-        `agreement" rate.`,
-      severity: "warn",
-      blocking: false,
-      resolvedFrom: `stepB present (${(stepB.amountPaid ?? 0).toFixed(0)}) / stepC missing`,
-    });
+  if (stepAi && beginPar > 0) {
+    const paid = stepAi.amountPaid ?? 0;
+    const bps = (paid * 4 * 10000) / beginPar;
+    if (paid > 0 && bps > 0 && bps < 10) {
+      warnings.push({
+        field: "assumptions.taxesBps",
+        message:
+          `Observed PPM step A(i) paid €${paid.toFixed(2)} this quarter ` +
+          `implies ~${bps.toFixed(3)} bps p.a. on €${beginPar.toFixed(0)} CPA. ` +
+          `This is a paid amount under the historical period, not a contractual ` +
+          `forward rate — Irish corporate tax (12.5% × taxable income) does not ` +
+          `scale with par. Treat the suggested value as an anchor and verify ` +
+          `against the deal's tax structure before accepting.`,
+        severity: "info",
+        blocking: false,
+        resolvedFrom: `step A(i) ${paid.toFixed(2)} EUR × 4 / ${beginPar.toFixed(0)} EUR`,
+        suggestedValue: bps,
+      });
+    }
+  }
+
+  if (stepAii) {
+    const paid = stepAii.amountPaid ?? 0;
+    if (paid > 0 && paid < 1000) {
+      warnings.push({
+        field: "assumptions.issuerProfitAmount",
+        message:
+          `Observed PPM step A(ii) paid €${paid.toFixed(2)} this quarter. ` +
+          `Issuer Profit Amount is typically a fixed € per period defined ` +
+          `in the deal documents (Euro XV: €250 regular, €500 post-Frequency- ` +
+          `Switch); verify against the PPM rather than accepting the observed ` +
+          `value blindly — the figure may shift across the deal lifecycle.`,
+        severity: "info",
+        blocking: false,
+        resolvedFrom: `step A(ii) ${paid.toFixed(2)} EUR (single quarter)`,
+        suggestedValue: paid,
+      });
+    }
+  }
+
+  if (stepB && beginPar > 0) {
+    const paid = stepB.amountPaid ?? 0;
+    const bps = (paid * 4 * 10000) / beginPar;
+    if (paid > 0 && bps > 0 && bps < 50) {
+      warnings.push({
+        field: "assumptions.trusteeFeeBps",
+        message:
+          `Observed PPM step B paid €${paid.toFixed(2)} this quarter ` +
+          `implies ~${bps.toFixed(3)} bps p.a. on €${beginPar.toFixed(0)} CPA. ` +
+          `This is paid under the Senior Expenses Cap, not the contractual rate ` +
+          `— if the cap was binding the suggestion under-states the true rate. ` +
+          `Verify against the trustee fee schedule before accepting.`,
+        severity: "info",
+        blocking: false,
+        resolvedFrom: `step B ${paid.toFixed(2)} EUR × 4 / ${beginPar.toFixed(0)} EUR`,
+        suggestedValue: bps,
+      });
+    }
+  }
+
+  if (stepC && beginPar > 0) {
+    const paid = stepC.amountPaid ?? 0;
+    const bps = (paid * 4 * 10000) / beginPar;
+    if (paid > 0 && bps > 0 && bps < 50) {
+      warnings.push({
+        field: "assumptions.adminFeeBps",
+        message:
+          `Observed PPM step C paid €${paid.toFixed(2)} this quarter ` +
+          `implies ~${bps.toFixed(3)} bps p.a. on €${beginPar.toFixed(0)} CPA. ` +
+          `Admin expenses include lumpy items (annual transparency reporting, ` +
+          `legal, audit, rating-agency surveillance) — single-quarter ` +
+          `annualization can over- or under-state the recurring rate. Verify ` +
+          `against the deal's expense schedule before accepting.`,
+        severity: "info",
+        blocking: false,
+        resolvedFrom: `step C ${paid.toFixed(2)} EUR × 4 / ${beginPar.toFixed(0)} EUR`,
+        suggestedValue: bps,
+      });
+    }
+  }
+
+  // Hedge cost suggestion — same paid-amount → forward-rate framing as
+  // the four above. Description filter `/hedge|swap/i` mirrors the gate
+  // in composeBuildWarnings so the suggestion is only emitted for rows
+  // the gate would also fire on (no silent mis-classification of any
+  // rogue step F entry; the engine and trustee use step F for hedge
+  // while ppm.json's sequence_summary annotates "(E)" — code-only
+  // matching is unsafe). Sanity bound 0 < bps < 200 covers IR swaps
+  // (5-30 bps) and stressed cross-currency hedges (~150 bps); above
+  // suggests an extraction artefact and no suggestion is offered.
+  const findStepF = () =>
+    raw?.waterfallSteps?.find(
+      (s) =>
+        s &&
+        s.waterfallType === "INTEREST" &&
+        s.description != null &&
+        /^\(?F\)?\b/i.test(s.description) &&
+        /hedge|swap/i.test(s.description),
+    );
+  const stepF = findStepF();
+  if (stepF && beginPar > 0) {
+    const paid = stepF.amountPaid ?? 0;
+    const bps = (paid * 4 * 10000) / beginPar;
+    if (paid > 0 && bps > 0 && bps < 200) {
+      warnings.push({
+        field: "assumptions.hedgeCostBps",
+        message:
+          `Observed PPM step F paid €${paid.toFixed(2)} this quarter ` +
+          `on a hedge-labeled row implies ~${bps.toFixed(3)} bps p.a. on ` +
+          `€${beginPar.toFixed(0)} CPA. This is paid under the actual hedge ` +
+          `schedule for this period, not the contractual forward rate — ` +
+          `cross-currency hedges in particular can spike in stress regimes. ` +
+          `Verify against the PPM hedge schedule before accepting.`,
+        severity: "info",
+        blocking: false,
+        resolvedFrom: `step F ${paid.toFixed(2)} EUR × 4 / ${beginPar.toFixed(0)} EUR`,
+        suggestedValue: bps,
+      });
+    }
   }
 
   return warnings;
@@ -791,23 +877,84 @@ export function composeBuildWarnings(
   resolved: ResolvedDealData,
   userAssumptions: UserAssumptions,
   callerWarnings: ResolutionWarning[] = [],
+  raw?: DefaultsFromResolvedRaw | null,
 ): ResolutionWarning[] {
   const composedWarnings: ResolutionWarning[] = callerWarnings.filter((warning) => {
-    // PPMs often state trustee/admin fees as "per agreement". The resolver
-    // correctly blocks when that would leave trusteeFeeBps at zero, but the
-    // projection path can resolve the same missing PPM number from observed
-    // waterfall step (B) via defaultsFromResolved. Once a positive trustee
-    // assumption is present, the arithmetic input is no longer missing.
-    if (
-      warning.field === "fees.trusteeFeeBps" &&
-      warning.blocking === true &&
-      /per agreement|unparseable/i.test(warning.message) &&
-      userAssumptions.trusteeFeeBps > 0
-    ) {
-      return false;
+    // Symmetric un-block for the five paid-amount→forward-rate blocking
+    // gates whose input is a user-set assumption rather than a resolver-
+    // extracted field (trustee/admin: PPM rate "per agreement"; taxes/
+    // issuer profit: no PPM extraction path; hedge cost: build-time gate
+    // when observed step F shows hedge cashflows but no PPM extraction).
+    // Each warning was emitted unconditionally when the deal showed
+    // evidence of the corresponding economics; once the user enters a
+    // positive value the arithmetic input is no longer missing and the
+    // gate clears.
+    //
+    // Message-text discriminators (`per agreement|unparseable` for fees,
+    // `no per-deal` for assumptions, `observed Step F` for hedge) prevent
+    // a future unrelated blocking warning under the same field name from
+    // being silently cleared by a positive user input — only the specific
+    // extraction-gap warning is un-blocked.
+    if (warning.blocking === true) {
+      if (
+        warning.field === "fees.trusteeFeeBps" &&
+        /per agreement|unparseable/i.test(warning.message) &&
+        userAssumptions.trusteeFeeBps > 0
+      ) return false;
+      if (
+        warning.field === "fees.adminFeeBps" &&
+        /per agreement|unparseable/i.test(warning.message) &&
+        userAssumptions.adminFeeBps > 0
+      ) return false;
+      if (
+        warning.field === "assumptions.taxesBps" &&
+        /no per-deal rate is extracted/i.test(warning.message) &&
+        userAssumptions.taxesBps > 0
+      ) return false;
+      if (
+        warning.field === "assumptions.issuerProfitAmount" &&
+        /no per-deal value is extracted/i.test(warning.message) &&
+        userAssumptions.issuerProfitAmount > 0
+      ) return false;
+      if (
+        warning.field === "assumptions.hedgeCostBps" &&
+        /observed Step F/i.test(warning.message) &&
+        userAssumptions.hedgeCostBps > 0
+      ) return false;
     }
     return true;
   });
+
+  // Hedge gate (build-time, evidence-based on raw waterfall observation).
+  // Pre-fix `defaultsFromResolved` silently back-derived `hedgeCostBps`
+  // from observed Step F amount × 4 / par when the description matched
+  // `/hedge|swap/i` — same paid-to-forward-rate failure mode as the four
+  // resolver-time gates. The resolver-level path (`resolveHedgeCost`)
+  // fires only when there IS a PPM hedge fee row with broken extraction;
+  // it doesn't catch the case where extraction missed the row entirely
+  // but the deal still shows hedge cashflows at Step F. This block
+  // closes that gap. Fires only when raw is provided (synthetic test
+  // fixtures without raw can't trip), the deal has no PPM-extracted
+  // hedge cost, the user hasn't set it explicitly, and observed Step F
+  // carries a hedge-labeled positive amount.
+  if (raw?.waterfallSteps && resolved.hedgeCostBps === 0 && userAssumptions.hedgeCostBps === 0) {
+    const stepFhedge = raw.waterfallSteps.find(
+      (s) =>
+        s &&
+        s.waterfallType === "INTEREST" &&
+        s.description != null &&
+        /^\(?F\)?\b/i.test(s.description) &&
+        /hedge|swap/i.test(s.description),
+    );
+    if (stepFhedge && (stepFhedge.amountPaid ?? 0) > 0) {
+      composedWarnings.push({
+        field: "assumptions.hedgeCostBps",
+        message: `observed Step F paid €${(stepFhedge.amountPaid ?? 0).toFixed(2)} this quarter on a hedge-labeled row, but PPM hedge fee extraction left \`hedgeCostBps\` at zero. The historical silent back-derive (paid amount × 4 / par) turning that observation into the forward-period rate is gone; refusing to run rather than ship the silent extrapolation. Set \`hedgeCostBps\` explicitly via the Waterfall page slider (a suggestion sourced from this same observation is surfaced in the Data Quality warnings), or fix the PPM extraction so \`resolved.hedgeCostBps\` carries the contractual rate.`,
+        severity: "error",
+        blocking: true,
+      });
+    }
+  }
 
   // KI-38 boundary: projection arithmetic assumes every monetary input is
   // already denominated in the deal currency. Until FX conversion and
@@ -1370,13 +1517,18 @@ export function buildFromResolved(
   resolved: ResolvedDealData,
   userAssumptions: UserAssumptions,
   warnings: ResolutionWarning[] = [],
+  raw?: DefaultsFromResolvedRaw | null,
 ): ProjectionInputs {
   // Compose caller-supplied warnings with per-tranche data-shape gates.
   // Engine-internal `throw new Error(...)` for a data-shape invariant
   // bypasses the DATA INCOMPLETE banner and produces a stack trace,
   // which is the failure mode the blocking-warning + IncompleteDataError
   // plumbing exists to prevent — see selectBlockingWarnings above.
-  const composedWarnings = composeBuildWarnings(resolved, userAssumptions, warnings);
+  // `raw` threads observed waterfall steps into the build-time hedge gate
+  // (see composeBuildWarnings); callers that don't have raw (synthetic
+  // tests, harness fixtures without waterfall ingest) simply skip that
+  // gate.
+  const composedWarnings = composeBuildWarnings(resolved, userAssumptions, warnings, raw);
 
   // Any warning marked `blocking: true` refuses to construct
   // ProjectionInputs. The engine never receives an inputs object built

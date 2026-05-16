@@ -48,6 +48,9 @@ Categorized so a partner reading cold can separate "what's still wrong" from "wh
 - [KI-13 — Sub distribution cascade residual](#ki-13) — **blocked on KI-12a data**
 - [KI-14 — IC compositional parity at T=0 (cascade)](#ki-14) — **blocked on KI-12a data**
 
+### Tentative — discovered mid-task, verification pending before closure or escalation
+- [KI-69 — Engine taxes-as-bps-on-par modelling shortcut (Section 110 / income-basis vs par-basis)](#ki-69)
+
 ### Design decisions — documented for audit clarity (not open issues)
 - [KI-19 — NR positions proxied to Caa2 for WARF (Moody's convention)](#ki-19)
 
@@ -112,7 +115,7 @@ These were originally tracked as "A10" and "A11" in the 2026-04-30 audit. They a
 
 **What shipped:**
 
-1. **Pre-fill (D3, Sprint 2)**: `defaultsFromResolved` back-derives `trusteeFeeBps` AND `adminFeeBps` separately from Q1 waterfall steps B + C (Euro XV: 0.0969 bps trustee, 5.147 bps admin, 5.244 combined).
+1. **Pre-fill (D3, Sprint 2; superseded 2026-05-16)**: `defaultsFromResolved` originally back-derived `trusteeFeeBps` AND `adminFeeBps` (and `taxesBps` / `issuerProfitAmount` / `hedgeCostBps`) from Q1 waterfall step amounts. Euro XV examples: 0.0969 bps trustee from Step B, 5.147 bps admin from Step C, 0.497 bps taxes from Step A(i), €250 profit from Step A(ii). **All five back-derives were removed in 2026-05-16** after the silent-paid-to-forward-rate pattern was identified (single-quarter extrapolation, cap-binding distortion, lumpy items — a single quarter's paid amount cannot serve as the contractual forward rate for the life of the deal). Observed step amounts are now surfaced as non-blocking INFO suggestion warnings via `diagnoseFeePrefill` carrying `suggestedValue` and `resolvedFrom` for the `EngineExpensesPanel`'s "Use suggested" affordance — explicit user acceptance, not silent inference. Blocking gates by surface: (i) resolver-time `resolver.ts ~1715` (trustee, admin) fire when a fee row is present in `constraints.fees` with rate "per agreement"; the C3 split at `resolver.ts ~1661` resolves trustee and admin into separate `ResolvedFees.trusteeFeeBps` / `adminFeeBps` fields. (ii) resolver-time `resolveAssumptionGates` (taxes, issuer profit) fire when the PPM waterfall narrative mentions taxes / Issuer Profit Amount. (iii) build-time `composeBuildWarnings` (hedge) fires when raw `waterfallSteps` shows a hedge-labeled Step F with positive amountPaid but neither `resolved.hedgeCostBps` nor the user assumption is positive — hedge evidence lives in raw, not constraints, so the gate must run at build time with `raw` threaded through `buildFromResolved`'s new optional 4th parameter.
 2. **Cap + overflow (C3, Sprint 3)**: `ProjectionInputs.adminFeeBps` + `ProjectionInputs.seniorExpensesCapBps` added. Engine emits trustee + admin fees jointly capped at the per-period cap; overflow routes to PPM steps (Y) trustee-overflow and (Z) admin-overflow, paying from residual interest after tranche interest + sub mgmt fee.
 3. **PPM verifications (this PR, 2026-05-04)**:
    - Cap value structure ({a} €300K/yr fixed + {b} 2.5 bps × CPA per OC pp. 150-151) wired through new `ResolvedSeniorExpensesCap` interface on `ResolvedDealData` + new `ProjectionInputs.seniorExpensesCapAbsoluteFloorPerYear` field. Replaces the unstructured 20-bps-only fallback.
@@ -125,7 +128,7 @@ These were originally tracked as "A10" and "A11" in the 2026-04-30 audit. They a
 
 **Tests (7 new C3 tests):**
 - `c3-senior-expenses-cap.test.ts` — base case (no overflow), high-fee overflow (50 bps + 20 bps cap → 30 bps overflow), extreme cap (1 bps), overflow-limited-by-residual, backward-compatibility (undefined cap = unbounded).
-- `d3-defaults-from-resolved.test.ts` — `trusteeFeeBps` + `adminFeeBps` separately back-derived; sum matches pre-C3 combined extraction; `seniorExpensesCapBps` derivation from Q1 observed.
+- `d3-defaults-from-resolved.test.ts` — post-2026-05-16: asserts the back-derive is GONE (`defaultsFromResolved` leaves `trusteeFeeBps` + `adminFeeBps` + `taxesBps` + `issuerProfitAmount` at DEFAULT_ASSUMPTIONS unless resolver extracted positive values); asserts `diagnoseFeePrefill` emits one INFO suggestion per observed waterfall step with `suggestedValue` populated; asserts `composeBuildWarnings` un-blocks each gate symmetrically when the corresponding user assumption is set positive.
 - `b2-post-acceleration.test.ts` — under acceleration (PPM 10(b)) trustee + admin pay uncapped; regression guard asserts `stepTrace.adminFeesPaid / trusteeOnly = adminFeeBps / trusteeFeeBps` exactly.
 
 **Day-count residual markers (registered via `failsWithMagnitude`, close with KI-12a harness fix):**
@@ -497,5 +500,26 @@ Each residual is zero on current Euro XV base case.
 **Tests pinning the closed slice:**
 - `web/lib/clo/__tests__/ki07-deferred-paydown.test.ts > KI-66 — Controlling-Class gating on principal POP deferred paydown` (7 KI-66 tests). The marker tests pin the post-fix PPM-correct behavior and schema dispatch. KI-27 case 1 (€5M Class E PIK seed on Euro XV) continues to pass — Class E PIK is paid via vanilla step (K) interest-side and / or terminal liquidation rather than principal-POP backfill while A/B/C/D outstanding.
 - `web/lib/clo/__tests__/ki66-principal-pop-coverage.test.ts` (3 tests). Pins 22 structured Ares XV clauses and the per-clause engine treatment matrix.
+
+---
+
+<a id="ki-69"></a>
+### [KI-69 — TENTATIVE] Engine taxes-as-bps-on-par modeling shortcut (Section 110 / income-basis vs par-basis)
+
+**PPM reference:** Pre-Acceleration POP step (A)(i) "to the payment of taxes owing by the Issuer accrued in respect of the related Due Period". Irish corporate income tax is governed by Section 110 of the Taxes Consolidation Act 1997 (12.5% rate on taxable income, with most CLO cash flows structured to be tax-neutral so taxable income reduces to ~the Issuer Profit Amount).
+
+**Current engine behavior:** `ProjectionInputs.taxesBps` is a flat basis-points-per-annum rate, accrued each period as `taxesBps × CPA × dayFrac`. Set via the new EngineExpensesPanel slider on the Waterfall page; resolver-time blocking gate refuses zero on any deal whose waterfall narrative mentions taxes (closed 2026-05-16 — see KI-08). Effectively scales linearly with par regardless of the deal's actual taxable income.
+
+**PPM-correct behavior (subject to verification):** Tax accrual ≈ `0.125 × issuerProfitAmount` (plus minor Section 110 wrinkles), independent of pool par. The Issuer Profit Amount in step (A)(ii) is the structural tax base; everything else is tax-neutral by design of the Section 110 SPV. Engine should derive taxes from `issuerProfitAmount` and the deal's tax structure, not from a flat bps × par.
+
+**Quantitative magnitude:** On Euro XV, observed step A(i) = €6,133/quarter, which annualizes to ~0.497 bps × CPA (verified by `diagnoseFeePrefill` suggestion against the Euro XV fixture: `assumptions.taxesBps: suggestedValue ≈ 0.497`). The naive Section 110 framing `0.125 × issuerProfitAmount` predicts €31/quarter (0.0025 bps annualized) — *two orders of magnitude smaller than the €6,133 actually paid*. This needs verification: either (a) Euro XV's Issuer Profit Amount is materially higher than the documented €250 in this period (the Apr-15 IPD was the first PD where the regular €250 stepped up — but a single-quarter €6,133 from a €250 base implies a 24× multiplier that even a Frequency Switch to €500 doesn't explain), (b) the trustee's "taxes" line at step (A)(i) includes other amounts (VAT remittance on management fees, withholding pass-through, prior-quarter true-ups), or (c) the Section 110 picture is materially more complex than the simple `0.125 × profit` framing suggests. Until the verification lands, the bps-on-par modelling produces approximately-correct numbers on Euro XV when the user accepts the observed-step suggestion (~0.5 bps), and structurally wrong numbers on any deal whose tax-base composition or pool par diverges from Euro XV's ratio. The 200× gap between observed-paid and Section-110-predicted taxes is itself a finding worth surfacing — it suggests step (A)(i) is doing more work than just Issuer-Profit corporate tax.
+
+**Verification that would resolve this entry:** read Ares XV OC Condition 1 "Taxes" definition + Section 110 mechanics in the Issuer's tax memo (typically referenced in OC pp. 30-50). Confirm (a) what the contractual tax base is, (b) whether the engine should derive taxes from `issuerProfitAmount` or from a separate input, and (c) whether VAT / pass-through amounts route through step (A)(i) or elsewhere.
+
+**Deferral rationale:** This PR closed the silent-back-derive failure mode (paid amount was being silently promoted to a forward bps rate). The deeper modelling fix (basis from par to taxable-profit) is a separate engine-math change that needs the verification above plus either an engine refactor (taxes as a derived field of `issuerProfitAmount`) or an explicit user choice between the two framings. Out of scope for this PR; entry exists so the discipline gap stays visible per CLAUDE.md "if you discover a candidate KI mid-task, file it before continuing".
+
+**Path to close:** (1) Read the OC Section 110 / tax definitions and tag with `file:line` provenance. (2) Decide engine basis: derived from `issuerProfitAmount` or explicit user input that matches the actual tax base. (3) If derived: remove `taxesBps` from `UserAssumptions` and `ProjectionInputs`; add a derived field on `PeriodResult.stepTrace.taxesPaid` computed from the structural inputs. (4) Update KI-08 day-count residual markers (`KI-08-dayCountResidual-trustee` is now mis-pinned because trustee is no longer back-derived; the marker pins the day-count residual as `expectedDrift: 13` but with the back-derive gone the engine accrues the user-entered rate, not the back-derived one — in the harness flow we lift the suggestion so the magnitude is preserved, but a future PPM-correct tax basis would shift it again).
+
+**Test:** No active marker on KI-69 itself yet — this entry is tentative and the existing KI-08 day-count markers (`n1-correctness.test.ts`) continue to pin the trustee/admin drift. A KI-69 marker should pin the current taxes-as-bps numerical behavior on Euro XV (€6,133/quarter at the observed bps suggestion) so a future engine-basis change has a regression target.
 
 ---

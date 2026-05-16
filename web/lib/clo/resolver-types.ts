@@ -168,13 +168,15 @@ export interface ResolvedSeniorExpensesCap {
   /** Whether VAT on capped expenses counts toward the cap (PPM proviso (i)).
    *  Ares XV: true. Engine path: when `vatIncluded === true && vatRatePct != null`,
    *  the engine grosses up `cappedRequested` by the VAT rate before comparing
-   *  to `capAmount`. When trustee/admin fees are back-derived from waterfall
-   *  amounts paid (which already include VAT under BNY/typical trustee
-   *  convention), the gross-up is unnecessary and `vatRatePct` should be null. */
+   *  to `capAmount`. When trustee/admin fees come from an accepted suggestion
+   *  sourced from observed waterfall amounts paid (which already include VAT
+   *  under BNY/typical trustee convention), the gross-up is unnecessary and
+   *  `vatRatePct` should be null. */
   vatIncluded: boolean;
   /** Applicable VAT rate (%) on capped expenses. Used only when `vatIncluded`
    *  is true AND fee inputs are net-of-VAT. Null when fees are already
-   *  gross-of-VAT (typical trustee-back-derive path) or VAT does not apply. */
+   *  gross-of-VAT (typical observed-paid-suggestion path) or VAT does not
+   *  apply. */
   vatRatePct: number | null;
   /** E1 PPM provenance (OC pp. 150-151 for Ares XV). */
   citation?: Citation | null;
@@ -827,14 +829,17 @@ export interface ResolvedDealData {
   *  drains it as overflow is paid. Distinct from the step (D) deposit-
   *  into-reserve flow. NOT credited to the OC numerator. */
   expenseReserveBalance: number;
-  /** Annualized hedge cost in bps on collateral par, sourced via Signal 2
-   *  (compliance fees row matching /hedge|swap/i in `resolveHedgeCost`).
-   *  Signal 1 (back-derive from observed waterfall step (F)) lives in
-   *  `defaultsFromResolved` (build-projection-inputs.ts) and takes
-   *  precedence over this field when both fire. Zero when the deal has no
-   *  hedge signal — Euro XV is single-currency, no active hedges. The
-   *  slider at `UserAssumptions.hedgeCostBps` overrides this value for
-   *  sensitivity analysis. */
+  /** Annualized hedge cost in bps on collateral par, sourced from the
+   *  compliance fees row matching /hedge|swap/i in `resolveHedgeCost`.
+   *  Zero when the deal has no hedge signal — Euro XV is single-currency,
+   *  no active hedges. The slider at `UserAssumptions.hedgeCostBps`
+   *  overrides this value for sensitivity analysis. The historical
+   *  build-time back-derive from observed Step F amounts was removed
+   *  (2026-05-16); observed Step F amounts now surface as non-blocking
+   *  suggestions via `diagnoseFeePrefill`, and a build-time blocking gate
+   *  in `composeBuildWarnings` refuses the projection when Step F shows
+   *  hedge cashflows but neither this field nor the user assumption is
+   *  positive. */
   hedgeCostBps: number;
   /** PPM Senior Expenses Cap structured definition (Condition 1). Null on
    *  legacy fixtures or when PPM extraction missed; resolver emits a blocking
@@ -1157,7 +1162,25 @@ export interface ResolvedDates {
 export interface ResolvedFees {
   seniorFeePct: number;
   subFeePct: number;
-  trusteeFeeBps: number; // Trustee + admin expenses (PPM Steps B-C), in bps p.a.
+  /** PPM Step (B) — Trustee Fees and Expenses, bps p.a. on CPA.
+   *  Resolves from `constraints.fees[]` rows whose name contains "trustee".
+   *  Stays at 0 when the only matching row has rate "per agreement" /
+   *  unparseable; in that case the resolver emits a blocking warning
+   *  under field `fees.trusteeFeeBps`. The historical observed-step-B
+   *  back-derive is gone — paid amounts are surfaced as non-blocking
+   *  suggestions in `diagnoseFeePrefill`, never as the silent live
+   *  value. User clears the gate by entering the rate explicitly in
+   *  the Context Editor Fees row OR via the "Use suggested value"
+   *  button on the Waterfall page. */
+  trusteeFeeBps: number;
+  /** PPM Step (C) — Administrative Expenses, bps p.a. on CPA.
+   *  Resolves from `constraints.fees[]` rows whose name contains
+   *  "admin"/"administrative". Same gate semantics as trusteeFeeBps:
+   *  stays at 0 when only "per agreement" rows match → blocking
+   *  warning under `fees.adminFeeBps`. Jointly subject to the Senior
+   *  Expenses Cap with `trusteeFeeBps`; overflow routes to PPM step
+   *  (Z). */
+  adminFeeBps: number;
   incentiveFeePct: number; // Incentive management fee as % of residual above IRR hurdle (e.g. 20)
   incentiveFeeHurdleIrr: number; // IRR hurdle for incentive fee (annualized, e.g. 0.12 for 12%)
   /** E1: PPM provenance for the fees block (source_pages from
@@ -1363,6 +1386,13 @@ export type ResolutionWarning =
       severity: "info" | "warn";
       blocking: false;
       resolvedFrom?: string;
+      /** Optional numeric suggestion the UI can offer as a one-click pre-fill
+       *  for the field. Used by `diagnoseFeePrefill` to surface back-derived
+       *  bps / € amounts (observed Step B/C/A(i)/A(ii) annualized) without
+       *  letting them silently become the live model input — the user must
+       *  click "Use suggested value" to accept. Null when no suggestion is
+       *  available; absent when the warning is not a suggestion at all. */
+      suggestedValue?: number | null;
     }
   | {
       field: string;
@@ -1370,6 +1400,7 @@ export type ResolutionWarning =
       severity: "error";
       blocking: boolean;
       resolvedFrom?: string;
+      suggestedValue?: number | null;
     };
 
 export interface ValidationError {

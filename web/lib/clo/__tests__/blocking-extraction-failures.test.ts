@@ -24,6 +24,7 @@ import { join } from "node:path";
 import { resolveWaterfallInputs } from "@/lib/clo/resolver";
 import {
   buildFromResolved,
+  composeBuildWarnings,
   DEFAULT_ASSUMPTIONS,
   IncompleteDataError,
 } from "@/lib/clo/build-projection-inputs";
@@ -645,28 +646,153 @@ describe("Pattern B (silent acceptance of sentinel value)", () => {
     expectGateThrows(resolved, warnings);
   });
 
-  it("trustee per-agreement (resolver.ts:542) — trustee fee with unparseable rate → blocking", () => {
+  it("trustee per-agreement (resolver.ts ~1715) — trustee fee with unparseable rate → blocking", () => {
     const raw = loadRaw();
-    // Make every trustee/admin fee's rate unparseable. The resolver's loop
-    // skips at `if (isNaN(rate)) continue;`, so trusteeFeeBps stays at
-    // CLO_DEFAULTS=0. The post-loop check then fires because the .some()
-    // still finds a trustee/admin-named entry. Mutate ALL such entries —
-    // a single non-NaN entry would set trusteeFeeBps and bypass the gate.
+    // Make every trustee fee's rate unparseable. The resolver's loop skips
+    // at `if (isNaN(rate)) continue;`, so trusteeFeeBps stays at
+    // CLO_DEFAULTS=0. The post-loop trustee gate then fires because the
+    // .some() still finds a trustee-named entry.
     let mutated = 0;
     for (const fee of (raw.constraints.fees as any[])) {
       const n = (fee.name ?? "").toLowerCase();
-      if (n.includes("trustee") || n.includes("admin")) {
+      if (n.includes("trustee")) {
         fee.rate = "per agreement";
         mutated++;
       }
     }
-    expect(mutated, "fixture should contain at least one trustee/admin fee").toBeGreaterThan(0);
+    expect(mutated, "fixture should contain at least one trustee fee").toBeGreaterThan(0);
     const { resolved, warnings } = runResolver(raw);
     const w = warnings.find((w) =>
       w.field === "fees.trusteeFeeBps" && w.message.includes("'per agreement'"),
     );
     expectBlockingError(w, "fees.trusteeFeeBps (per-agreement)");
     expectGateThrows(resolved, warnings);
+  });
+
+  it("admin per-agreement (resolver.ts ~1735) — admin fee with unparseable rate → blocking (C3 split symmetric to trustee)", () => {
+    const raw = loadRaw();
+    // Make every admin fee's rate unparseable. Pre-C3-split the trustee+admin
+    // branch was lumped, so this gate didn't exist; admin silently relied on
+    // the build-time step-C back-derive. Post-split each fee is independently
+    // gated; raise the trustee rate explicitly so its gate clears, isolating
+    // the admin gate as the load-bearing assertion.
+    let mutated = 0;
+    for (const fee of (raw.constraints.fees as any[])) {
+      const n = (fee.name ?? "").toLowerCase();
+      if (n.includes("admin")) {
+        fee.rate = "per agreement";
+        mutated++;
+      } else if (n.includes("trustee")) {
+        fee.rate = "0.1";
+        fee.rateUnit = "bps_pa";
+      }
+    }
+    expect(mutated, "fixture should contain at least one admin fee").toBeGreaterThan(0);
+    const { resolved, warnings } = runResolver(raw);
+    const w = warnings.find((w) =>
+      w.field === "fees.adminFeeBps" && w.message.includes("'per agreement'"),
+    );
+    expectBlockingError(w, "fees.adminFeeBps (per-agreement)");
+    expectGateThrows(resolved, warnings);
+  });
+
+  it("taxes evidence-based gate (resolver.ts resolveAssumptionGates) — waterfall mentions taxes + assumption zero → blocking", () => {
+    // The resolver emits a blocking warning purely on PPM evidence (waterfall
+    // narrative mentions "taxes"); composeBuildWarnings un-blocks once
+    // `userAssumptions.taxesBps > 0`. Synthetic fixtures without a waterfall
+    // narrative don't trip this gate (asserted by the negative case below).
+    const raw = loadRaw();
+    const { resolved, warnings } = runResolver(raw);
+    const w = warnings.find((w) => w.field === "assumptions.taxesBps");
+    expectBlockingError(w, "assumptions.taxesBps");
+    expectGateThrows(resolved, warnings);
+  });
+
+  it("issuer profit evidence-based gate (resolver.ts resolveAssumptionGates) — waterfall mentions Issuer Profit + assumption zero → blocking", () => {
+    const raw = loadRaw();
+    const { resolved, warnings } = runResolver(raw);
+    const w = warnings.find((w) => w.field === "assumptions.issuerProfitAmount");
+    expectBlockingError(w, "assumptions.issuerProfitAmount");
+    expectGateThrows(resolved, warnings);
+  });
+
+  it("evidence-based gates do NOT fire when waterfall narrative is absent (synthetic-fixture safety)", () => {
+    // Negative case: a synthetic deal whose constraints carry no waterfall
+    // narrative (typical hand-built fixture) must not trip the taxes /
+    // issuer-profit gates. The trustee/admin gates here also stay silent
+    // because we strip every fee row — no evidence, no gate.
+    const raw = loadRaw();
+    raw.constraints.waterfall = undefined as any;
+    raw.constraints.fees = [];
+    const { warnings } = runResolver(raw);
+    const taxesGate = warnings.find((w) => w.field === "assumptions.taxesBps");
+    const profitGate = warnings.find((w) => w.field === "assumptions.issuerProfitAmount");
+    expect(taxesGate).toBeUndefined();
+    expect(profitGate).toBeUndefined();
+  });
+
+  it("hedge build-time gate (composeBuildWarnings) — Step F shows hedge cashflow but no PPM extraction → blocking", () => {
+    // The hedge gate fires at build time (not resolver time) because its
+    // evidence lives in raw.waterfallSteps, not in constraints. When raw
+    // is supplied AND observed Step F has a hedge/swap description with
+    // positive amountPaid AND resolved.hedgeCostBps is zero AND user
+    // hasn't set hedgeCostBps, the gate refuses the projection. Test
+    // mutates a copy of the fixture's step F to add a hedge description
+    // and a positive amount; the marker fails immediately if a future
+    // PR drops the gate or weakens its predicate.
+    const fixturePath = join(__dirname, "fixtures", "euro-xv-q1.json");
+    const fullFixture = JSON.parse(readFileSync(fixturePath, "utf8"));
+    const raw = fullFixture.raw;
+    const { resolved, warnings } = runResolver(raw);
+
+    // Confirm the fixture's resolved.hedgeCostBps is zero (Euro XV has no
+    // PPM hedge fee row — the gate's first precondition).
+    expect(resolved.hedgeCostBps).toBe(0);
+
+    // Synthetic raw with positive Step F hedge cashflow. The Euro XV
+    // fixture's Step F is bare "(F)" with amountPaid=0; we replace it
+    // with one that mirrors a deal whose PPM extraction missed the
+    // hedge fee row but the trustee data shows hedge payments.
+    const beginPar = resolved.poolSummary.totalPrincipalBalance;
+    const targetHedgeBps = 20;
+    const hedgeAmount = (targetHedgeBps * beginPar) / (4 * 10_000);
+    const rawWithHedge = {
+      ...raw,
+      waterfallSteps: [
+        ...(raw.waterfallSteps as any[]).filter(
+          (s: any) => !(s && s.description != null && /^\(?F\)?\b/i.test(s.description)),
+        ),
+        { description: "(F) Hedge Periodic Payment", amountPaid: hedgeAmount, waterfallType: "INTEREST" },
+      ],
+    };
+
+    // Gate fires when raw is threaded through composeBuildWarnings.
+    expect(() => buildFromResolved(resolved, DEFAULT_ASSUMPTIONS, warnings, rawWithHedge)).toThrow(IncompleteDataError);
+    // Sanity: same call WITHOUT raw doesn't fire the hedge gate (synthetic
+    // tests that don't supply raw stay unaffected).
+    expect(() => buildFromResolved(resolved, DEFAULT_ASSUMPTIONS, warnings)).toThrow(IncompleteDataError);
+    // The non-raw throw is from the pre-existing resolver-time gates
+    // (trustee/admin/etc.); confirm the raw-threaded throw includes the
+    // hedge field specifically.
+    try {
+      buildFromResolved(resolved, DEFAULT_ASSUMPTIONS, warnings, rawWithHedge);
+      throw new Error("expected IncompleteDataError");
+    } catch (e) {
+      const err = e as IncompleteDataError;
+      const hedgeGate = err.errors.find((w) => w.field === "assumptions.hedgeCostBps");
+      expectBlockingError(hedgeGate, "assumptions.hedgeCostBps (build-time, observed Step F)");
+    }
+
+    // User sets hedgeCostBps positive → gate clears (other gates still fire,
+    // so we filter just for the hedge one).
+    const filtered = composeBuildWarnings(
+      resolved,
+      { ...DEFAULT_ASSUMPTIONS, hedgeCostBps: 20 },
+      warnings,
+      rawWithHedge,
+    );
+    const stillHasHedge = filtered.some((w) => w.field === "assumptions.hedgeCostBps" && w.blocking === true);
+    expect(stillHasHedge).toBe(false);
   });
 
   it("fee bps heuristic (resolver.ts:482) — rate > 5 with null rateUnit guesses bps → blocking", () => {

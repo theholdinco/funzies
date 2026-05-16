@@ -1622,6 +1622,7 @@ function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarn
   let seniorFeePct: number = CLO_DEFAULTS.seniorFeePct;
   let subFeePct: number = CLO_DEFAULTS.subFeePct;
   let trusteeFeeBps: number = CLO_DEFAULTS.trusteeFeeBps;
+  let adminFeeBps: number = 0;
   let incentiveFeePct: number = CLO_DEFAULTS.incentiveFeePct;
   let incentiveFeeHurdleIrr: number = CLO_DEFAULTS.incentiveFeeHurdleIrr;
 
@@ -1654,20 +1655,40 @@ function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarn
       return r;
     };
 
+    // Convert a bps-quoted fee rate, honoring rateUnit. Shared by trustee and
+    // admin branches so both sides of the C3 split apply the same pct→bps
+    // conversion (×100 when rateUnit === "pct_pa").
+    const toBpsPa = (r: number, fieldName: string, kind: "trustee" | "admin"): number => {
+      if (unit === "pct_pa") {
+        warnings.push({ field: fieldName, message: `Converted ${kind} fee ${r}% to ${r * 100} bps (rateUnit: pct_pa)`, severity: "info", blocking: false });
+        return r * 100;
+      }
+      return r;
+    };
+
     if (name.includes("senior") && (name.includes("mgmt") || name.includes("management"))) {
       seniorFeePct = toPctPa(rate, "fees.seniorFeePct");
     } else if (name.includes("sub") && (name.includes("mgmt") || name.includes("management"))) {
       subFeePct = toPctPa(rate, "fees.subFeePct");
-    } else if (name.includes("trustee") || name.includes("admin")) {
-      // Trustee fees are in bps — if unit says pct_pa, convert
-      if (unit === "pct_pa") {
-        trusteeFeeBps = rate * 100;
-        warnings.push({ field: "fees.trusteeFeeBps", message: `Converted trustee fee ${rate}% to ${rate * 100} bps (rateUnit: pct_pa)`, severity: "info", blocking: false });
-      } else {
-        trusteeFeeBps = rate;
-      }
+    } else if (name.includes("trustee")) {
+      // C3 split — trustee branch resolves only PPM step (B). A row whose
+      // name contains both "trustee" and "admin" (rare PPM phrasing like
+      // "Trustee Fees and Administrative Expenses") matches trustee here
+      // because the trustee branch is checked first; that preserves prior
+      // behavior for combined-row PPMs while letting separately-named admin
+      // rows resolve into adminFeeBps below.
+      trusteeFeeBps = toBpsPa(rate, "fees.trusteeFeeBps", "trustee");
       if (trusteeFeeBps > 50) {
         warnings.push({ field: "fees.trusteeFeeBps", message: `Trustee fee ${trusteeFeeBps} bps seems unusually high`, severity: "warn", blocking: false });
+      }
+    } else if (name.includes("admin")) {
+      // C3 split — admin branch resolves PPM step (C). Matches "Administrative
+      // Expenses", "Admin Fee", etc. Symmetric gate at L1699 below blocks
+      // the projection when an admin-named row is present but its rate is
+      // unparseable (typical PPM phrasing: "Per Condition 1 definition").
+      adminFeeBps = toBpsPa(rate, "fees.adminFeeBps", "admin");
+      if (adminFeeBps > 50) {
+        warnings.push({ field: "fees.adminFeeBps", message: `Administrative fee ${adminFeeBps} bps seems unusually high`, severity: "warn", blocking: false });
       }
     } else if (name.includes("incentive") || name.includes("performance")) {
       incentiveFeePct = rate;
@@ -1695,18 +1716,50 @@ function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarn
     }
   }
 
-  // Warn if trustee fee is 0 but the PPM mentions one — "per agreement" means we couldn't extract the rate
+  // C3 — Trustee gate. Fires when a trustee-named PPM fee row is present
+  // but extraction left `trusteeFeeBps` at zero (typical cause: rate is
+  // "per agreement" / "Per Trust Deed" / otherwise unparseable). Evidence-
+  // based: synthetic fixtures without any trustee-named row don't trip.
+  // composeBuildWarnings (build-projection-inputs.ts) un-blocks once
+  // `userAssumptions.trusteeFeeBps > 0`. The historical observed-step-B
+  // back-derive that used to silently supply this number was removed; the
+  // user now sets the rate explicitly in the Context Editor (Trustee Fees
+  // row) or via the "Use suggested value" affordance on the Waterfall page,
+  // sourced from the non-blocking suggestion emitted in diagnoseFeePrefill.
   if (trusteeFeeBps === 0 && (constraints.fees ?? []).some(f => {
     const n = (f.name ?? "").toLowerCase();
-    return n.includes("trustee") || n.includes("admin");
+    return n.includes("trustee");
   })) {
     warnings.push({
       field: "fees.trusteeFeeBps",
-      message: "Trustee/admin fee found in PPM but rate is 'per agreement' (or otherwise unparseable) — `trusteeFeeBps` stayed at the CLO_DEFAULTS zero, so engine would accrue no trustee fee per period. Refusing to run rather than ship a projection that silently under-states senior expenses by the full trustee accrual. Set the rate manually from the compliance report fee schedule (typically 1-5 bps).",
+      message: "Trustee fee found in PPM but rate is 'per agreement' (or otherwise unparseable) — `trusteeFeeBps` stayed at the CLO_DEFAULTS zero, so engine would accrue no trustee fee per period. Refusing to run rather than ship a projection that silently under-states senior expenses by the full trustee accrual. Set the rate manually from the compliance report fee schedule (typically 1-5 bps).",
       severity: "error",
       // Same shape as the senior/sub mgmt fee zero-on-recognized-name sites
       // at L546/556: trustee name found in extraction, rate failed to
       // parse, value silently defaults to 0, engine consumes zero. Refuse.
+      blocking: true,
+    });
+  }
+
+  // C3 — Admin gate (symmetric to trustee). Fires when an admin-only PPM
+  // fee row is present but extraction left `adminFeeBps` at zero (typical
+  // cause: rate is "per agreement" / "Per Condition 1 definition"). Pre-C3
+  // the trustee+admin branch was lumped, so this asymmetry hid: only the
+  // trustee gate existed and admin silently relied on the build-time
+  // step-C back-derive — paid amount becoming the forward-period bps. With
+  // the back-derive removed the gate must fire on its own evidence.
+  // Excludes rows that ALSO mention "trustee" (e.g., a combined row like
+  // "Trustee Fees and Administrative Expenses") — those are handled by the
+  // trustee branch above with the single rate covering both PPM steps;
+  // requiring a separate adminFeeBps from the user there would double-count.
+  if (adminFeeBps === 0 && (constraints.fees ?? []).some(f => {
+    const n = (f.name ?? "").toLowerCase();
+    return n.includes("admin") && !n.includes("trustee");
+  })) {
+    warnings.push({
+      field: "fees.adminFeeBps",
+      message: "Administrative expenses fee found in PPM but rate is 'per agreement' (or otherwise unparseable) — `adminFeeBps` stayed at zero, so engine would accrue no admin expenses per period. Refusing to run rather than ship a projection that silently under-states senior expenses by the full admin accrual. Set the rate manually from the compliance report fee schedule (typically 1-10 bps).",
+      severity: "error",
       blocking: true,
     });
   }
@@ -1746,7 +1799,46 @@ function resolveFees(constraints: ExtractedConstraints, warnings: ResolutionWarn
   const feesProvenance = (constraints as unknown as { _feesProvenance?: { source_pages?: number[] | null; source_condition?: string | null } | null })._feesProvenance ?? null;
   const citation = extractCitation(feesProvenance);
 
-  return { seniorFeePct, subFeePct, trusteeFeeBps, incentiveFeePct, incentiveFeeHurdleIrr, citation };
+  return { seniorFeePct, subFeePct, trusteeFeeBps, adminFeeBps, incentiveFeePct, incentiveFeeHurdleIrr, citation };
+}
+
+/** Evidence-based blocking gates for engine assumption fields whose PPM
+ *  extraction path is intentionally absent today. The gates fire only when
+ *  the PPM waterfall narrative shows the deal has the corresponding
+ *  economics (i.e., synthetic test fixtures without a `waterfall` block
+ *  do not trip). composeBuildWarnings (build-projection-inputs.ts) un-blocks
+ *  each warning when the corresponding `userAssumptions.*` value is set
+ *  positive, mirroring the trustee/admin gate semantics. */
+function resolveAssumptionGates(constraints: ExtractedConstraints, warnings: ResolutionWarning[]): void {
+  const interestPriority = constraints.waterfall?.interestPriority ?? "";
+  const postAcceleration = constraints.waterfall?.postAcceleration ?? "";
+  const waterfallText = `${interestPriority}\n${postAcceleration}`;
+
+  // Step A(i) Issuer taxes — fires when the waterfall mentions "tax" in
+  // the priority narrative. The Euro XV PPM phrasing "(A) Issuer taxes (i)"
+  // matches; the Ares XVIII / generic "(A)(i) Issuer taxes" matches; a
+  // synthetic fixture without a waterfall narrative does not.
+  if (/\b(?:issuer\s+)?tax(?:es|ation)?\b/i.test(waterfallText)) {
+    warnings.push({
+      field: "assumptions.taxesBps",
+      message: "PPM waterfall mentions Issuer taxes (step A(i)) but no per-deal rate is extracted — taxes are not part of the structured fee schedule. The engine accrues `taxesBps × CPA × dayFrac` per period; with `taxesBps` left at 0 it would silently emit zero tax accrual. Refusing to run rather than ship a projection that under-states senior expenses. Set `taxesBps` explicitly in the Context Editor (Engine Assumptions); the Waterfall page surfaces an observed-step-A(i) suggestion when prior-period waterfall data is available, but that paid amount is not contractual.",
+      severity: "error",
+      blocking: true,
+    });
+  }
+
+  // Step A(ii) Issuer Profit Amount — fixed € per period (Euro XV: €250
+  // regular / €500 post-Frequency-Switch). Fires when waterfall narrative
+  // mentions "Issuer Profit". Same un-block path: composeBuildWarnings
+  // clears once `userAssumptions.issuerProfitAmount > 0`.
+  if (/issuer\s+profit/i.test(waterfallText)) {
+    warnings.push({
+      field: "assumptions.issuerProfitAmount",
+      message: "PPM waterfall mentions Issuer Profit Amount (step A(ii)) but no per-deal value is extracted. The engine accrues a fixed € per period; with `issuerProfitAmount` left at 0 it would silently emit zero. Refusing to run. Set `issuerProfitAmount` explicitly in the Context Editor (Engine Assumptions); the Waterfall page surfaces an observed-step-A(ii) suggestion when prior-period waterfall data is available.",
+      severity: "error",
+      blocking: true,
+    });
+  }
 }
 
 /** Resolve PPM Condition 1 / 10(a)(iv) Excess CCC Adjustment Amount.
@@ -2107,6 +2199,19 @@ export function resolveWaterfallInputs(
 
   // --- Fees ---
   const fees = resolveFees(constraints, warnings);
+
+  // --- Engine-assumption gates with no PPM-extraction path ---
+  // PPM step (A)(i) Issuer taxes and step (A)(ii) Issuer Profit Amount are
+  // not numerically extracted from PPM today (taxes is a regulatory rate,
+  // not a fee schedule entry; issuer profit is fixed € per period and lives
+  // in section 5 narrative without structured extraction). Pre-fix the
+  // engine silently back-derived both from observed step A(i)/A(ii) paid
+  // amounts in `defaultsFromResolved`, turning a single quarter's paid
+  // amount into the forward-period rate — same silent-fallback shape as
+  // the trustee/admin back-derives. Block when the PPM waterfall narrative
+  // shows the deal has these economics; composeBuildWarnings un-blocks
+  // once the user enters explicit values.
+  resolveAssumptionGates(constraints, warnings);
 
   // --- Senior Expenses Cap (PPM Condition 1) ---
   const seniorExpensesCap = resolveSeniorExpensesCap(constraints, warnings);

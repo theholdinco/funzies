@@ -19,7 +19,7 @@ import { join } from "node:path";
 
 import { runBacktestHarness } from "@/lib/clo/backtest-harness";
 import { buildBacktestInputs } from "@/lib/clo/backtest-types";
-import { buildFromResolved, DEFAULT_ASSUMPTIONS, defaultsFromResolved } from "@/lib/clo/build-projection-inputs";
+import { buildFromResolved, DEFAULT_ASSUMPTIONS, defaultsFromResolved, diagnoseFeePrefill } from "@/lib/clo/build-projection-inputs";
 import { normalizePpmStepCode, PPM_INTEREST_STEPS, ENGINE_BUCKET_TO_PPM } from "@/lib/clo/ppm-step-map";
 import { runProjection } from "@/lib/clo/projection";
 import type { ResolvedDealData } from "@/lib/clo/resolver-types";
@@ -382,16 +382,27 @@ describe("N6 harness — Euro XV T=0 compliance parity (resolver ↔ trustee)", 
   // fee/day-count or asset-cash timing fixes land, but the current baselines
   // are schedule-driven rather than the old flat quarterly accrual estimate.
   {
-    // Use defaultsFromResolved (production path) so taxesBps / trusteeFeeBps /
-    // adminFeeBps are populated from observed Q1 data — matches the flow in
-    // ProjectionModel.tsx. Prior implementation spread DEFAULT_ASSUMPTIONS
-    // which zeroed all three, making the markers structurally incapable of
-    // responding to upstream closures despite the test name
-    // labelling them as "compositional parity" that cascades on those closes.
-    const projectionInputs = buildFromResolved(
-      fixture.resolved,
-      defaultsFromResolved(fixture.resolved, fixture.raw),
-    );
+    // Apply diagnoseFeePrefill suggestions (taxes / trustee / admin / issuer
+    // profit) on top of the production pre-fill — matches the flow a user
+    // would see if they accepted every "Use suggested value" affordance on
+    // the Waterfall page. Prior implementation relied on the back-derive
+    // happening silently inside `defaultsFromResolved`; that path is gone
+    // (silent paid-amount → forward-rate is the failure shape the gates
+    // refuse), so the harness lifts the suggestions explicitly.
+    const harnessAssumptions = (() => {
+      const d = defaultsFromResolved(fixture.resolved, fixture.raw);
+      const suggestions = diagnoseFeePrefill(fixture.resolved, fixture.raw, d);
+      for (const s of suggestions) {
+        if (s.suggestedValue == null) continue;
+        if (s.field === "assumptions.trusteeFeeBps") d.trusteeFeeBps = s.suggestedValue;
+        if (s.field === "assumptions.adminFeeBps") d.adminFeeBps = s.suggestedValue;
+        if (s.field === "assumptions.taxesBps") d.taxesBps = s.suggestedValue;
+        if (s.field === "assumptions.issuerProfitAmount") d.issuerProfitAmount = s.suggestedValue;
+        if (s.field === "assumptions.hedgeCostBps") d.hedgeCostBps = s.suggestedValue;
+      }
+      return d;
+    })();
+    const projectionInputs = buildFromResolved(fixture.resolved, harnessAssumptions);
     const icResult = runProjection(projectionInputs);
     const trusteeIcByClass = new Map<string, number>();
     for (const t of tests) {

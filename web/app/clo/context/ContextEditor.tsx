@@ -574,6 +574,24 @@ export default function ContextEditor({
     updateConstraint("fees", rows);
   }
 
+  /** Pre-seed an editable Administrative Expenses row with the canonical
+   *  name + bps_pa unit, leaving the rate empty for the user to enter. The
+   *  resolver matches by name-substring `/admin/i`, so this row clears the
+   *  C3 admin blocking gate as soon as the user fills in a positive rate
+   *  and saves. Hidden when an admin row already exists (the gate is
+   *  evidence-based — no row, no gate fire). */
+  function addAdminFeeRow() {
+    const rows = [...((constraints.fees || []) as FeeEntry[])];
+    rows.push({
+      name: "Administrative Expenses",
+      rate: "",
+      rateUnit: "bps_pa",
+      basis: "Subject to Senior Expenses Cap (PPM Condition 1)",
+      description: "Auto-added to clear the adminFeeBps blocking gate. Set the rate from the trustee fee schedule and save.",
+    });
+    updateConstraint("fees", rows);
+  }
+
   function removeFeeRow(index: number) {
     updateConstraint("fees", ((constraints.fees || []) as FeeEntry[]).filter((_, i) => i !== index));
   }
@@ -1399,6 +1417,21 @@ export default function ContextEditor({
           </tbody>
         </table>
         <button type="button" onClick={addFeeRow} style={addBtnStyle}>+ Add row</button>
+        {!feeRows.some((r) => /admin|administrative/i.test(r.name)) && (
+          <button
+            type="button"
+            onClick={addAdminFeeRow}
+            style={{ ...addBtnStyle, marginLeft: "0.5rem" }}
+            title="Adds a pre-named row for the C3 admin gate to clear once a rate is entered"
+          >
+            + Add Administrative Expenses row
+          </button>
+        )}
+        {!feeRows.some((r) => /trustee/i.test(r.name)) && (
+          <span style={{ display: "block", marginTop: "0.4rem", fontSize: "0.72rem", color: "var(--color-text-muted)" }}>
+            No Trustee Fees row found in extracted constraints — add one manually if the PPM defines a trustee fee separate from administrative expenses.
+          </span>
+        )}
 
         {/* Accounts */}
         <div style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", fontWeight: 600, margin: "0.8rem 0 0.4rem" }}>Accounts</div>

@@ -56,6 +56,7 @@ import { SummaryCard } from "./SummaryCard";
 import { ModelInputsPanel } from "./ModelInputsPanel";
 import { PeriodTrace } from "./PeriodTrace";
 import { FeeAssumptions } from "./FeeAssumptions";
+import { EngineExpensesPanel } from "./EngineExpensesPanel";
 import { ModelAssumptions } from "./ModelAssumptions";
 import { DefaultRatePanel } from "./DefaultRatePanel";
 import { SwitchSimulator } from "./SwitchSimulator";
@@ -286,11 +287,16 @@ export default function ProjectionModel({
   const [activeTab, setActiveTab] = useState<"projection" | "switch">(urlTab === "switch" ? "switch" : "projection");
 
   // Pre-fill sliders from `defaultsFromResolved` — single source of truth for
-  // the D3 pre-fill family (baseRate + fees). Only fires once per deal load so
-  // it doesn't stomp subsequent user edits. Also pre-fills trusteeFeeBps via
-  // the back-derive from Q1 waterfall when the PPM says "per agreement".
-  // `diagnoseFeePrefill` produces partner-visible warnings when the pre-fill
-  // data source is incomplete (e.g., step C missing → adminFeeBps silently 0).
+  // the baseRate + management/incentive-fee pre-fill family. Only fires once
+  // per deal load so it doesn't stomp subsequent user edits. Trustee, admin,
+  // taxes, issuer profit, and hedge fees stay at DEFAULT_ASSUMPTIONS here;
+  // their PPM-extracted values flow through `resolved.fees.*` (when present)
+  // and the resolver-time / build-time gates refuse the projection otherwise.
+  // `diagnoseFeePrefill` produces non-blocking INFO suggestions sourced from
+  // observed waterfall step amounts; the EngineExpensesPanel surfaces each
+  // suggestion with a "Use suggested" affordance the user clicks to lift the
+  // observed value into the assumption (explicit acceptance, not silent
+  // back-derive).
   const [prefillWarnings, setPrefillWarnings] = useState<ResolutionWarning[]>([]);
   // D6c — reinvestment-calibration result from manager BUY trades. Null when
   // fewer than MIN_TRADES BUYs exist (partner sees generic defaults) or when
@@ -565,9 +571,14 @@ export default function ProjectionModel({
   // `incomplete-data-banner-bijection.test.ts`.
   const incompleteDataErrors = useMemo<ResolutionWarning[]>(
     () => selectBlockingWarnings(
-      composeBuildWarnings(resolved ?? EMPTY_RESOLVED, projectionAssumptions, resolutionWarnings ?? []),
+      composeBuildWarnings(
+        resolved ?? EMPTY_RESOLVED,
+        projectionAssumptions,
+        resolutionWarnings ?? [],
+        { trancheSnapshots, waterfallSteps },
+      ),
     ),
-    [resolved, projectionAssumptions, resolutionWarnings],
+    [resolved, projectionAssumptions, resolutionWarnings, trancheSnapshots, waterfallSteps],
   );
   const displayResolutionWarnings = useMemo<ResolutionWarning[]>(
     () => selectNonBlockingWarnings(resolutionWarnings ?? []),
@@ -589,10 +600,12 @@ export default function ProjectionModel({
         resolvedData,
         projectionAssumptions,
         resolutionWarnings,
+        { trancheSnapshots, waterfallSteps },
       );
     },
     [
       resolved, resolutionWarnings, incompleteDataErrors, projectionAssumptions,
+      trancheSnapshots, waterfallSteps,
     ]
   );
 
@@ -620,6 +633,7 @@ export default function ProjectionModel({
         incentiveFeeHurdleIrr: resolved.fees.incentiveFeeHurdleIrr * 100,
       },
       resolutionWarnings,
+      { trancheSnapshots, waterfallSteps },
     );
   }, [resolved, trancheSnapshots, waterfallSteps, resolutionWarnings, incompleteDataErrors]);
 
@@ -1334,8 +1348,6 @@ export default function ProjectionModel({
         <FeeAssumptions
           seniorFeePct={seniorFeePct} onSeniorFeeChange={setSeniorFeePct}
           subFeePct={subFeePct} onSubFeeChange={setSubFeePct}
-          trusteeFeeBps={trusteeFeeBps} onTrusteeFeeChange={setTrusteeFeeBps}
-          hedgeCostBps={hedgeCostBps} onHedgeCostChange={setHedgeCostBps}
           incentiveFeePct={incentiveFeePct} onIncentiveFeeChange={setIncentiveFeePct}
           incentiveFeeHurdleIrr={incentiveFeeHurdleIrr} onHurdleChange={setIncentiveFeeHurdleIrr}
           hasResolvedFees={!!resolved && (resolved.fees.seniorFeePct > 0 || resolved.fees.subFeePct > 0)}
@@ -1348,6 +1360,14 @@ export default function ProjectionModel({
           ddtlDrawAssumption={ddtlDrawAssumption} onDdtlDrawAssumptionChange={setDdtlDrawAssumption}
           ddtlDrawQuarter={ddtlDrawQuarter} onDdtlDrawQuarterChange={setDdtlDrawQuarter}
           ddtlDrawPercent={ddtlDrawPercent} onDdtlDrawPercentChange={setDdtlDrawPercent}
+        />
+        <EngineExpensesPanel
+          taxesBps={taxesBps} onTaxesChange={setTaxesBps}
+          issuerProfitAmount={issuerProfitAmount} onIssuerProfitChange={setIssuerProfitAmount}
+          trusteeFeeBps={trusteeFeeBps} onTrusteeFeeChange={setTrusteeFeeBps}
+          adminFeeBps={adminFeeBps} onAdminFeeChange={setAdminFeeBps}
+          hedgeCostBps={hedgeCostBps} onHedgeCostChange={setHedgeCostBps}
+          prefillWarnings={prefillWarnings}
         />
         <div style={{ marginTop: "1rem" }}>
           <DefaultRatePanel
@@ -2339,8 +2359,6 @@ export default function ProjectionModel({
             <FeeAssumptions
               seniorFeePct={seniorFeePct} onSeniorFeeChange={setSeniorFeePct}
               subFeePct={subFeePct} onSubFeeChange={setSubFeePct}
-              trusteeFeeBps={trusteeFeeBps} onTrusteeFeeChange={setTrusteeFeeBps}
-              hedgeCostBps={hedgeCostBps} onHedgeCostChange={setHedgeCostBps}
               incentiveFeePct={incentiveFeePct} onIncentiveFeeChange={setIncentiveFeePct}
               incentiveFeeHurdleIrr={incentiveFeeHurdleIrr} onHurdleChange={setIncentiveFeeHurdleIrr}
               hasResolvedFees={!!resolved && (resolved.fees.seniorFeePct > 0 || resolved.fees.subFeePct > 0)}
@@ -2353,6 +2371,14 @@ export default function ProjectionModel({
               ddtlDrawAssumption={ddtlDrawAssumption} onDdtlDrawAssumptionChange={setDdtlDrawAssumption}
               ddtlDrawQuarter={ddtlDrawQuarter} onDdtlDrawQuarterChange={setDdtlDrawQuarter}
               ddtlDrawPercent={ddtlDrawPercent} onDdtlDrawPercentChange={setDdtlDrawPercent}
+            />
+            <EngineExpensesPanel
+              taxesBps={taxesBps} onTaxesChange={setTaxesBps}
+              issuerProfitAmount={issuerProfitAmount} onIssuerProfitChange={setIssuerProfitAmount}
+              trusteeFeeBps={trusteeFeeBps} onTrusteeFeeChange={setTrusteeFeeBps}
+              adminFeeBps={adminFeeBps} onAdminFeeChange={setAdminFeeBps}
+              hedgeCostBps={hedgeCostBps} onHedgeCostChange={setHedgeCostBps}
+              prefillWarnings={prefillWarnings}
             />
             <div style={{ marginTop: "1rem" }}>
               <DefaultRatePanel

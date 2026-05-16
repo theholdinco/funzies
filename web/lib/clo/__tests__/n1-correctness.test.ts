@@ -43,7 +43,7 @@ import { join } from "node:path";
 
 import { runBacktestHarness, formatHarnessTable } from "@/lib/clo/backtest-harness";
 import { buildBacktestInputs } from "@/lib/clo/backtest-types";
-import { buildFromResolved, defaultsFromResolved } from "@/lib/clo/build-projection-inputs";
+import { buildFromResolved, defaultsFromResolved, diagnoseFeePrefill } from "@/lib/clo/build-projection-inputs";
 import { runProjection } from "@/lib/clo/projection";
 import type { ResolvedDealData } from "@/lib/clo/resolver-types";
 import { failsWithMagnitude } from "./fails-with-magnitude";
@@ -57,20 +57,34 @@ const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as {
 // ----------------------------------------------------------------------------
 // Run the harness once; each per-bucket test reads from the result.
 //
-// Post-D3: uses `defaultsFromResolved(resolved, raw)` for the full pre-fill
-// family. This was previously `legitPinnedAssumptions()` which pinned base
-// rate + PPM fee rates but intentionally left `trusteeFeeBps` unpinned to
-// surface KI-08. D3 closes KI-08's pre-fill portion by back-deriving
-// `trusteeFeeBps` from the Q1 waterfall (B + C) — no longer a "circular pin"
-// under interpretation B (engine runs Q2, harness compares to Q1, so Q1 data
-// as forward estimate is legitimate). Remaining drift = KI-12a period
-// mismatch + KI-12b day-count.
+// `defaultsFromResolved` no longer back-derives trustee/admin/taxes/issuer-
+// profit from observed Q1 waterfall steps (paid-amount → forward-rate is the
+// silent-fallback failure mode the resolver gates now refuse). The harness
+// measures engine-vs-trustee tie-out — that comparison is only meaningful
+// when the engine has the same fee inputs the trustee actually applied. So
+// here we treat the diagnoseFeePrefill suggestions as if the user accepted
+// them via the "Use suggested value" button: the suggested value lifts into
+// the assumptions, the resolver-time blocking gate clears via
+// composeBuildWarnings, and the engine accrues the same paid-period rate.
+// Production callers (ProjectionModel) require explicit user acceptance;
+// this is a harness-only convenience that documents the integration intent.
 // ----------------------------------------------------------------------------
 
-const projectionInputs = buildFromResolved(
-  fixture.resolved,
-  defaultsFromResolved(fixture.resolved, fixture.raw),
-);
+const harnessAssumptions = (() => {
+  const d = defaultsFromResolved(fixture.resolved, fixture.raw);
+  const suggestions = diagnoseFeePrefill(fixture.resolved, fixture.raw, d);
+  for (const s of suggestions) {
+    if (s.suggestedValue == null) continue;
+    if (s.field === "assumptions.trusteeFeeBps") d.trusteeFeeBps = s.suggestedValue;
+    if (s.field === "assumptions.adminFeeBps") d.adminFeeBps = s.suggestedValue;
+    if (s.field === "assumptions.taxesBps") d.taxesBps = s.suggestedValue;
+    if (s.field === "assumptions.issuerProfitAmount") d.issuerProfitAmount = s.suggestedValue;
+    if (s.field === "assumptions.hedgeCostBps") d.hedgeCostBps = s.suggestedValue;
+  }
+  return d;
+})();
+
+const projectionInputs = buildFromResolved(fixture.resolved, harnessAssumptions);
 const backtest = buildBacktestInputs(fixture.raw);
 const harnessResult = runBacktestHarness(projectionInputs, backtest);
 const driftsByBucket = new Map(harnessResult.steps.map((s) => [s.engineBucket, s]));

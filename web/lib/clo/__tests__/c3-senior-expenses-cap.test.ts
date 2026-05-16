@@ -15,7 +15,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { dayCountFraction, runProjection } from "@/lib/clo/projection";
-import { buildFromResolved, defaultsFromResolved, diagnoseCarryforwardSeed } from "@/lib/clo/build-projection-inputs";
+import { buildFromResolved, defaultsFromResolved, diagnoseCarryforwardSeed, diagnoseFeePrefill } from "@/lib/clo/build-projection-inputs";
+import type { UserAssumptions } from "@/lib/clo/build-projection-inputs";
 import type { ResolvedDealData } from "@/lib/clo/resolver-types";
 
 const FIXTURE_PATH = join(__dirname, "fixtures", "euro-xv-q1.json");
@@ -24,9 +25,31 @@ const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as {
   raw: Parameters<typeof defaultsFromResolved>[1];
 };
 
+/** Pre-fill helper: defaultsFromResolved + accepted diagnoseFeePrefill
+ *  suggestions. The C3 stress tests measure the cap overflow mechanic at
+ *  steps Y/Z, which only exercises when trustee/admin requested fees are
+ *  non-zero. The historical silent back-derive of step B/C amounts inside
+ *  defaultsFromResolved is gone (paid-amount → forward-rate is the silent-
+ *  fallback failure mode the resolver gates now refuse), so this helper
+ *  inline-accepts the suggestions to land trusteeFeeBps ≈ 0.097 and
+ *  adminFeeBps ≈ 5.147 from observed Q1 step B/C — same magnitudes the
+ *  back-derive used to produce, but with the provenance now explicit. */
+function suggestedAssumptions(resolved: ResolvedDealData, raw: Parameters<typeof defaultsFromResolved>[1]): UserAssumptions {
+  const d = defaultsFromResolved(resolved, raw);
+  for (const s of diagnoseFeePrefill(resolved, raw, d)) {
+    if (s.suggestedValue == null) continue;
+    if (s.field === "assumptions.trusteeFeeBps") d.trusteeFeeBps = s.suggestedValue;
+    if (s.field === "assumptions.adminFeeBps") d.adminFeeBps = s.suggestedValue;
+    if (s.field === "assumptions.taxesBps") d.taxesBps = s.suggestedValue;
+    if (s.field === "assumptions.issuerProfitAmount") d.issuerProfitAmount = s.suggestedValue;
+    if (s.field === "assumptions.hedgeCostBps") d.hedgeCostBps = s.suggestedValue;
+  }
+  return d;
+}
+
 describe("C3 — Senior Expenses Cap: base case (no overflow on Euro XV)", () => {
   it("Euro XV default: observed fees ~5.24 bps < 20 bps cap → no overflow", () => {
-    const inputs = buildFromResolved(fixture.resolved, defaultsFromResolved(fixture.resolved, fixture.raw));
+    const inputs = buildFromResolved(fixture.resolved, suggestedAssumptions(fixture.resolved, fixture.raw));
     const result = runProjection(inputs);
     for (const p of result.periods) {
       // Capped portion paid in full; overflow zero. trusteeFeesPaid is PPM
@@ -47,7 +70,7 @@ describe("C3 — Senior Expenses Cap: stress scenarios with overflow", () => {
     // Requested = 50 bps × ~€493M × 91/360 ≈ €623K.
     // Overflow = ~€374K per period, pays from residual interest.
     const inputs = buildFromResolved(fixture.resolved, {
-      ...defaultsFromResolved(fixture.resolved, fixture.raw),
+      ...suggestedAssumptions(fixture.resolved, fixture.raw),
       trusteeFeeBps: 10,
       adminFeeBps: 40,
       seniorExpensesCapBps: 20,
@@ -93,7 +116,7 @@ describe("C3 — Senior Expenses Cap: stress scenarios with overflow", () => {
   it("extreme cap (1 bps) with low fees → capped portion < requested, large overflow", () => {
     // Cap at 1 bps on Euro XV default observed ~5.24 bps.
     const inputs = buildFromResolved(fixture.resolved, {
-      ...defaultsFromResolved(fixture.resolved, fixture.raw),
+      ...suggestedAssumptions(fixture.resolved, fixture.raw),
       seniorExpensesCapBps: 1,
       // Isolate the bps-cap mechanic from the absolute floor (see prior
       // test). At 1 bps with €300K/yr floor in play, observed combined
@@ -119,7 +142,7 @@ describe("C3 — Senior Expenses Cap: stress scenarios with overflow", () => {
     // residual interest (because tranche interest and sub mgmt fee exhaust it).
     // Engineered: tiny cap (1 bps) + very high trustee fees (300 bps).
     const inputs = buildFromResolved(fixture.resolved, {
-      ...defaultsFromResolved(fixture.resolved, fixture.raw),
+      ...suggestedAssumptions(fixture.resolved, fixture.raw),
       trusteeFeeBps: 150,
       adminFeeBps: 150,
       seniorExpensesCapBps: 1,
@@ -146,7 +169,7 @@ describe("Senior Expenses Cap — component (a) mixed day-count: Actual/360 firs
     // first PD; assert the floor accrues at Actual/360, not 30/360.
     const baseInputs = buildFromResolved(
       fixture.resolved,
-      defaultsFromResolved(fixture.resolved, fixture.raw),
+      suggestedAssumptions(fixture.resolved, fixture.raw),
     );
     const inputs = {
       ...baseInputs,
@@ -179,7 +202,7 @@ describe("Senior Expenses Cap — component (a) mixed day-count: Actual/360 firs
     // (vs €75,833 at uniform Actual/360 = €300K × 91/360). Drift = ~€833.
     const baseInputs = buildFromResolved(
       fixture.resolved,
-      defaultsFromResolved(fixture.resolved, fixture.raw),
+      suggestedAssumptions(fixture.resolved, fixture.raw),
     );
     // Force cap to bind at the floor: tiny bps (0.0001 → €5/quarter on €493M)
     // so the floor dominates the cap; high fees so cappedPaid = capAmount.
@@ -219,7 +242,7 @@ describe("Senior Expenses Cap — component (a) mixed day-count: Actual/360 firs
     // the floor on every fixture that omits firstPaymentDate.
     const baseInputs = buildFromResolved(
       fixture.resolved,
-      defaultsFromResolved(fixture.resolved, fixture.raw),
+      suggestedAssumptions(fixture.resolved, fixture.raw),
     );
     const stress = {
       ...baseInputs,
@@ -244,7 +267,7 @@ describe("Senior Expenses Cap — component (a) mixed day-count: Actual/360 firs
     // equals firstPaymentDate, q=1's payment date is firstPaymentDate + 1Q
     // — the deal's SECOND PD, not the first. So 30/360 applies. Pre-fix
     // code used `<=` and silently used Actual/360 on this boundary.
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     const currentDate = fixture.resolved.dates.currentDate;
     const stress = {
@@ -273,7 +296,7 @@ describe("Senior Expenses Cap — component (a) mixed day-count: Actual/360 firs
 
 describe("Senior Expenses Cap — CPA cap base augments by Principal Account + Unused Proceeds", () => {
   it("capBaseMode='CPA' grows cap base by initialPrincipalCash; 'APB' uses pool only", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     // Force cap to bind on the bps component so the CPA-vs-APB delta is
     // observable. Synthetic principal cash: €10M.
@@ -314,7 +337,7 @@ describe("Senior Expenses Cap — CPA cap base augments by Principal Account + U
     // exercises only the IIFE) or the existing in-period principal-cash
     // marker (which leaves UPA at zero). This pins both addenda on the
     // in-period path simultaneously.
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     const principalCash = 5_000_000;
     const upaCash = 3_000_000;
@@ -338,7 +361,7 @@ describe("Senior Expenses Cap — CPA cap base augments by Principal Account + U
 
 describe("Senior Expenses Cap — 3-period rolling carryforward of unused headroom (PPM proviso (ii))", () => {
   it("buffer accumulates Σ unused headroom over preceding N periods (PPM proviso (ii))", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     // Constant fees < cap → each period contributes the same unused
     // headroom. With carryforwardPeriods=3, the buffer accumulates over
@@ -406,7 +429,7 @@ describe("Senior Expenses Cap — 3-period rolling carryforward of unused headro
   });
 
   it("seed input augments the q=1 cap by Σ seed entries (mid-life projection)", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     const stress = {
       ...baseInputs,
@@ -430,7 +453,7 @@ describe("Senior Expenses Cap — 3-period rolling carryforward of unused headro
   });
 
   it("over-cap fees every period: no headroom accumulates, carryforward inert", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     const stress = {
       ...baseInputs,
@@ -453,7 +476,7 @@ describe("Senior Expenses Cap — 3-period rolling carryforward of unused headro
 
 describe("Senior Expenses Cap — VAT inclusion gross-up (PPM proviso (i))", () => {
   it("vatIncluded + vatRatePct=20 grosses up cappedRequested by 20%", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     // Tight cap so the difference between gross-vs-net requested matters.
     const stress = {
@@ -493,7 +516,7 @@ describe("Senior Expenses Cap — VAT inclusion gross-up (PPM proviso (i))", () 
     // that dropped VAT from the admin bucket alone (e.g., conditional gross-
     // up only on trustee) wouldn't be caught by the trustee-only test;
     // bijection-rule coverage requires both bucket paths to be exercised.
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     const stress = {
       ...baseInputs,
@@ -523,7 +546,7 @@ describe("Senior Expenses Cap — VAT inclusion gross-up (PPM proviso (i))", () 
 
 describe("Senior Expenses Cap — T=0 dispatch parity with in-period site", () => {
   it("T=0 capBaseMode='CPA' adds initialPrincipalCash + initialUnusedProceedsCash to base", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     const stress = {
       ...baseInputs,
@@ -546,7 +569,7 @@ describe("Senior Expenses Cap — T=0 dispatch parity with in-period site", () =
   });
 
   it("T=0 vatIncluded + vatRatePct=20 grosses up cappedRequested by 20%", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const baseInputs = buildFromResolved(fixture.resolved, baseAssumptions);
     const stress = {
       ...baseInputs,
@@ -576,7 +599,7 @@ describe("C3 — backward compatibility: undefined cap → uncapped behavior", (
   it("legacy inputs without seniorExpensesCapBps behave as before (no cap applied)", () => {
     // Simulate a legacy ProjectionInputs that predates C3 by manually constructing
     // inputs without seniorExpensesCapBps (rely on optional field default).
-    const legitInputs = buildFromResolved(fixture.resolved, defaultsFromResolved(fixture.resolved, fixture.raw));
+    const legitInputs = buildFromResolved(fixture.resolved, suggestedAssumptions(fixture.resolved, fixture.raw));
     // Remove the field to exercise the Infinity-cap path.
     const legacyInputs = { ...legitInputs, seniorExpensesCapBps: undefined };
     const result = runProjection(legacyInputs);
@@ -590,7 +613,7 @@ describe("C3 — backward compatibility: undefined cap → uncapped behavior", (
 
 describe("KI-45 marker — carryforward seed is unknown unless supplied", () => {
   it("surfaces unknown historical state and defaults the q=1 seed to zero", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     expect(baseAssumptions.seniorExpensesCapCarryforwardSeedAmount).toBeNull();
     expect(diagnoseCarryforwardSeed(fixture.resolved, baseAssumptions)).toHaveLength(1);
 
@@ -604,7 +627,7 @@ describe("KI-45 marker — carryforward seed is unknown unless supplied", () => 
   });
 
   it("diagnoses the carryforward seed against the assumptions actually sent to the engine", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const noCarryforwardAssumptions = {
       ...baseAssumptions,
       seniorExpensesCapCarryforwardPeriods: null,
@@ -617,7 +640,7 @@ describe("KI-45 marker — carryforward seed is unknown unless supplied", () => 
   });
 
   it("threads a user-supplied aggregate carryforward seed into q=1 cap headroom", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const seededAssumptions = {
       ...baseAssumptions,
       seniorExpensesCapCarryforwardSeedAmount: 360_000,
@@ -648,7 +671,7 @@ describe("KI-45 marker — carryforward seed is unknown unless supplied", () => 
   });
 
   it("uses the supplied seed to move stressed senior expenses from overflow into capped B/C capacity", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     const stressedAssumptions = {
       ...baseAssumptions,
       seniorExpensesCapCarryforwardSeedAmount: 100_000,
@@ -677,7 +700,7 @@ describe("KI-45 marker — carryforward seed is unknown unless supplied", () => 
   });
 
   it("blocks invalid carryforward seed amounts before they reach the engine FIFO", () => {
-    const baseAssumptions = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const baseAssumptions = suggestedAssumptions(fixture.resolved, fixture.raw);
     expect(() => buildFromResolved(fixture.resolved, {
       ...baseAssumptions,
       seniorExpensesCapCarryforwardPeriods: Number.POSITIVE_INFINITY,

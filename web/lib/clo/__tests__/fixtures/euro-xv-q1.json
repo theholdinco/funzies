@@ -1078,6 +1078,7 @@
       "seniorFeePct": 0.15,
       "subFeePct": 0.35,
       "trusteeFeeBps": 0,
+      "adminFeeBps": 0,
       "incentiveFeePct": 20,
       "incentiveFeeHurdleIrr": 0.12,
       "citation": {

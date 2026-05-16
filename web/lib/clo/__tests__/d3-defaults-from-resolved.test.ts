@@ -8,8 +8,10 @@
  *   - baseRate pre-fill (full)
  *   - senior/sub mgmt fee pre-fill — partial (rate plumbing; fee-base
  *     discrepancy is KI-12a's territory, not fixed here)
- *   - trusteeFeeBps + adminFeeBps split-pre-fill (back-derived from Q1
- *     waterfall steps B + C respectively)
+ *   - trusteeFeeBps + adminFeeBps direct read from `resolved.fees.*`
+ *     (the historical observed-Step-B/C back-derive was removed —
+ *     paid amounts are no longer silently promoted to forward rates;
+ *     `diagnoseFeePrefill` surfaces them as one-click suggestions)
  *   - Senior Expenses Cap propagation: bpsPerYear, absoluteFloorEurPerYear,
  *     allocationWithinCap, overflowAllocation flow from
  *     `resolved.seniorExpensesCap` (PPM Condition 1, OC pp. 150-151).
@@ -22,6 +24,7 @@ import {
   DEFAULT_ASSUMPTIONS,
   composeBuildWarnings,
   defaultsFromResolved,
+  diagnoseFeePrefill,
   selectBlockingWarnings,
 } from "@/lib/clo/build-projection-inputs";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
@@ -54,35 +57,99 @@ describe("D3 — defaultsFromResolved (Euro XV fixture)", () => {
     expect(d.incentiveFeeHurdleIrr).toBeCloseTo(12, 6);
   });
 
-  it("back-derives trusteeFeeBps + adminFeeBps separately from Q1 waterfall B + C (C3 split)", () => {
+  it("does NOT back-derive trusteeFeeBps / adminFeeBps from observed Q1 waterfall steps", () => {
+    // Pre-fix this site silently set trusteeFeeBps + adminFeeBps from
+    // step B/C amountPaid × 4 / beginPar — turning a single quarter's
+    // cap-bound paid amount into the live forward-period rate. The
+    // back-derive was removed; paid amounts are surfaced as suggestion
+    // warnings via `diagnoseFeePrefill` instead. With the Euro XV fixture
+    // the resolver fees stay at 0 (PPM rate is "per agreement"), so
+    // defaultsFromResolved leaves the assumption at DEFAULT_ASSUMPTIONS
+    // and the resolver-time blocking gate will refuse the projection
+    // until the user enters an explicit value.
     const d = defaultsFromResolved(fixture.resolved, fixture.raw);
-    // Q1 2026 Euro XV per raw.waterfallSteps:
-    //   step B (trustee) = €1,194.44 → 0.0969 bps on €493.2M × 4
-    //   step C (admin)   = €63,465.76 → 5.147 bps on €493.2M × 4
-    //   combined         ≈ 5.24 bps (matches the pre-C3 bundled extraction)
-    expect(d.trusteeFeeBps).toBeCloseTo(0.0969, 3);
-    expect(d.adminFeeBps).toBeCloseTo(5.147, 2);
-    // Sum still matches pre-C3 combined extraction (regression guard for
-    // downstream consumers that expected the old single-field bundle).
-    expect(d.trusteeFeeBps + d.adminFeeBps).toBeCloseTo(5.24, 1);
-    // Sanity: not the static default (0).
-    expect(d.trusteeFeeBps).not.toBe(DEFAULT_ASSUMPTIONS.trusteeFeeBps);
-    expect(d.adminFeeBps).not.toBe(0);
+    expect(d.trusteeFeeBps).toBe(DEFAULT_ASSUMPTIONS.trusteeFeeBps);
+    expect(d.adminFeeBps).toBe(0);
   });
 
-  it("does not block the projection on per-agreement trustee fee once waterfall pre-fill supplied bps", () => {
+  it("does NOT back-derive taxesBps / issuerProfitAmount from observed step A(i)/A(ii)", () => {
+    // Same shape as the trustee/admin removal — observed-paid is not
+    // contractual-forward. Issuer corporate tax (Section 110 / 12.5% on
+    // taxable income) does not scale with par; Issuer Profit Amount is a
+    // fixed € per period defined in the deal docs, not a single-quarter
+    // paid amount extrapolated forward.
     const d = defaultsFromResolved(fixture.resolved, fixture.raw);
+    expect(d.taxesBps).toBe(DEFAULT_ASSUMPTIONS.taxesBps);
+    expect(d.issuerProfitAmount).toBe(DEFAULT_ASSUMPTIONS.issuerProfitAmount);
+  });
+
+  it("diagnoseFeePrefill emits one INFO suggestion per observed waterfall step (taxes/profit/trustee/admin)", () => {
+    const d = defaultsFromResolved(fixture.resolved, fixture.raw);
+    const suggestions = diagnoseFeePrefill(fixture.resolved, fixture.raw, d);
+    const byField = new Map(suggestions.map((w) => [w.field, w]));
+    // All four fields surface a suggestion — the user can one-click these
+    // via the Context Editor "Use suggested value" affordance.
+    expect(byField.get("assumptions.taxesBps")?.severity).toBe("info");
+    expect(byField.get("assumptions.taxesBps")?.suggestedValue).toBeGreaterThan(0);
+    expect(byField.get("assumptions.issuerProfitAmount")?.severity).toBe("info");
+    expect(byField.get("assumptions.issuerProfitAmount")?.suggestedValue).toBeCloseTo(250, 0);
+    expect(byField.get("assumptions.trusteeFeeBps")?.severity).toBe("info");
+    expect(byField.get("assumptions.trusteeFeeBps")?.suggestedValue).toBeCloseTo(0.0969, 3);
+    expect(byField.get("assumptions.adminFeeBps")?.severity).toBe("info");
+    expect(byField.get("assumptions.adminFeeBps")?.suggestedValue).toBeCloseTo(5.147, 2);
+    // Suggestions are non-blocking by construction — they never appear in
+    // the IncompleteData banner.
+    for (const s of suggestions) expect(s.blocking).toBe(false);
+  });
+
+  it("clears the resolver-time per-agreement blocking gate once the user enters a positive trustee fee", () => {
     const warning: ResolutionWarning = {
       field: "fees.trusteeFeeBps",
       message:
-        "Trustee/admin fee found in PPM but rate is 'per agreement' (or otherwise unparseable) — `trusteeFeeBps` stayed at the CLO_DEFAULTS zero.",
+        "Trustee fee found in PPM but rate is 'per agreement' (or otherwise unparseable) — `trusteeFeeBps` stayed at the CLO_DEFAULTS zero.",
       severity: "error",
       blocking: true,
     };
-
-    expect(d.trusteeFeeBps).toBeGreaterThan(0);
-    expect(selectBlockingWarnings(composeBuildWarnings(fixture.resolved, d, [warning]))).toEqual([]);
+    const userSet = { ...DEFAULT_ASSUMPTIONS, trusteeFeeBps: 0.1 };
+    expect(selectBlockingWarnings(composeBuildWarnings(fixture.resolved, userSet, [warning]))).toEqual([]);
     expect(selectBlockingWarnings(composeBuildWarnings(fixture.resolved, DEFAULT_ASSUMPTIONS, [warning]))).toHaveLength(1);
+  });
+
+  it("clears the admin / taxes / issuer-profit gates symmetrically once each assumption is set positive", () => {
+    // Message text mirrors the resolver's actual warnings so the
+    // composeBuildWarnings discriminator regexes match. A future change
+    // to the gate text without updating these regexes would break the
+    // un-block path silently — this test pins the bijection.
+    const warnings: ResolutionWarning[] = [
+      {
+        field: "fees.adminFeeBps",
+        message: "Administrative expenses fee found in PPM but rate is 'per agreement' (or otherwise unparseable).",
+        severity: "error",
+        blocking: true,
+      },
+      {
+        field: "assumptions.taxesBps",
+        message: "PPM waterfall mentions Issuer taxes (step A(i)) but no per-deal rate is extracted.",
+        severity: "error",
+        blocking: true,
+      },
+      {
+        field: "assumptions.issuerProfitAmount",
+        message: "PPM waterfall mentions Issuer Profit Amount (step A(ii)) but no per-deal value is extracted.",
+        severity: "error",
+        blocking: true,
+      },
+    ];
+    const userSet = {
+      ...DEFAULT_ASSUMPTIONS,
+      adminFeeBps: 5,
+      taxesBps: 0.01,
+      issuerProfitAmount: 250,
+    };
+    expect(selectBlockingWarnings(composeBuildWarnings(fixture.resolved, userSet, warnings))).toEqual([]);
+    expect(
+      selectBlockingWarnings(composeBuildWarnings(fixture.resolved, DEFAULT_ASSUMPTIONS, warnings)),
+    ).toHaveLength(3);
   });
 
   it("propagates seniorExpensesCap from resolved (PPM Condition 1, OC pp. 150-151)", () => {
@@ -130,7 +197,7 @@ describe("D3 — defaultsFromResolved (Euro XV fixture)", () => {
 });
 
 describe("D3 — defaultsFromResolved (degenerate inputs)", () => {
-  it("null raw → falls back to resolver-only pre-fills (no baseRate, no trusteeFeeBps back-derive)", () => {
+  it("null raw → falls back to resolver-only pre-fills (no baseRate)", () => {
     const d = defaultsFromResolved(fixture.resolved, null);
     expect(d.baseRatePct).toBe(DEFAULT_ASSUMPTIONS.baseRatePct); // no trancheSnapshots → default
     expect(d.seniorFeePct).toBe(0.15); // resolver still works
@@ -140,24 +207,36 @@ describe("D3 — defaultsFromResolved (degenerate inputs)", () => {
   it("resolved.fees all zero (no PPM extraction) → everything falls through to DEFAULT_ASSUMPTIONS", () => {
     const emptyFees: ResolvedDealData = {
       ...fixture.resolved,
-      fees: { seniorFeePct: 0, subFeePct: 0, trusteeFeeBps: 0, incentiveFeePct: 0, incentiveFeeHurdleIrr: 0 },
+      fees: { seniorFeePct: 0, subFeePct: 0, trusteeFeeBps: 0, adminFeeBps: 0, incentiveFeePct: 0, incentiveFeeHurdleIrr: 0 },
     };
     const d = defaultsFromResolved(emptyFees, { trancheSnapshots: null, waterfallSteps: null });
     expect(d.seniorFeePct).toBe(DEFAULT_ASSUMPTIONS.seniorFeePct);
     expect(d.subFeePct).toBe(DEFAULT_ASSUMPTIONS.subFeePct);
     expect(d.incentiveFeePct).toBe(DEFAULT_ASSUMPTIONS.incentiveFeePct);
     expect(d.trusteeFeeBps).toBe(DEFAULT_ASSUMPTIONS.trusteeFeeBps);
+    expect(d.adminFeeBps).toBe(0);
   });
 
-  it("trusteeFeeBps from PPM takes precedence over waterfall back-derivation", () => {
-    // If the resolver successfully extracted a trustee fee, use it — don't
-    // re-derive from waterfall (which would duplicate the signal).
+  it("trusteeFeeBps from PPM extraction is consumed directly (parallel to senior/sub mgmt)", () => {
+    // If the resolver successfully extracted a numeric trustee rate (e.g.,
+    // PPM quoted "0.5 bps p.a." with rateUnit bps_pa), defaultsFromResolved
+    // reads it through. The waterfall-step-B back-derive that used to fire
+    // here was removed — paid amounts are surfaced as suggestions only.
     const withPpmFee: ResolvedDealData = {
       ...fixture.resolved,
       fees: { ...fixture.resolved.fees, trusteeFeeBps: 3.5 },
     };
     const d = defaultsFromResolved(withPpmFee, fixture.raw);
     expect(d.trusteeFeeBps).toBe(3.5);
+  });
+
+  it("adminFeeBps from PPM extraction is consumed directly (C3 split symmetric to trustee)", () => {
+    const withPpmAdmin: ResolvedDealData = {
+      ...fixture.resolved,
+      fees: { ...fixture.resolved.fees, adminFeeBps: 4.2 },
+    };
+    const d = defaultsFromResolved(withPpmAdmin, fixture.raw);
+    expect(d.adminFeeBps).toBe(4.2);
   });
 
   // Helper: replace any existing step (F) entry in the fixture with a
@@ -180,33 +259,51 @@ describe("D3 — defaultsFromResolved (degenerate inputs)", () => {
     };
   }
 
-  it("KI-31 Signal 1 — back-derives hedgeCostBps from observed step (F) hedge entry", () => {
-    const targetBps = 20;
+  it("KI-31 Signal 1 — does NOT back-derive hedgeCostBps from observed step F (silent-fallback removal, 2026-05-16)", () => {
+    // Pre-fix this site silently set hedgeCostBps from step F amountPaid × 4 / par
+    // when description matched /hedge|swap/i. The back-derive was removed for
+    // the same reason as trustee/admin/taxes/profit — paid amount is not the
+    // contractual forward rate. defaultsFromResolved now leaves hedgeCostBps
+    // at DEFAULT_ASSUMPTIONS unless resolved.hedgeCostBps carries a positive
+    // PPM-extracted value.
     const d = defaultsFromResolved(
       fixture.resolved,
-      makeRawWithStepF("(F) Hedge Periodic Payment", targetBps),
+      makeRawWithStepF("(F) Hedge Periodic Payment", 20),
     );
-    expect(d.hedgeCostBps).toBeCloseTo(targetBps, 1);
-    // Sanity: not the DEFAULT_ASSUMPTIONS value (0).
-    expect(d.hedgeCostBps).not.toBe(DEFAULT_ASSUMPTIONS.hedgeCostBps);
+    expect(d.hedgeCostBps).toBe(DEFAULT_ASSUMPTIONS.hedgeCostBps);
   });
 
-  it("KI-31 Signal 1 — non-hedge step (F) description does NOT back-derive (description filter required)", () => {
+  it("diagnoseFeePrefill — emits a hedge suggestion (info, with suggestedValue) when step F has hedge description and positive paid amount", () => {
+    const targetBps = 20;
+    const raw = makeRawWithStepF("(F) Hedge Periodic Payment", targetBps);
+    const d = defaultsFromResolved(fixture.resolved, raw);
+    const suggestions = diagnoseFeePrefill(fixture.resolved, raw, d);
+    const hedgeSuggestion = suggestions.find((w) => w.field === "assumptions.hedgeCostBps");
+    expect(hedgeSuggestion).toBeDefined();
+    expect(hedgeSuggestion!.severity).toBe("info");
+    expect(hedgeSuggestion!.blocking).toBe(false);
+    expect(hedgeSuggestion!.suggestedValue).toBeCloseTo(targetBps, 1);
+  });
+
+  it("diagnoseFeePrefill — non-hedge step F description produces NO hedge suggestion (description filter still load-bearing)", () => {
     // Defensive: a rogue step F entry without a hedge/swap description
     // (e.g., upstream extraction bug, deal where step F carries something
-    // else) must NOT silently classify as hedge cost. Code-only matching
-    // would mis-classify; description filter prevents the silent error.
-    const d = defaultsFromResolved(
-      fixture.resolved,
-      makeRawWithStepF("(F) Misclassified Other Payment", 20),
-    );
-    // Falls through to resolved.hedgeCostBps (0 for Euro XV) and DEFAULT (0).
+    // else) must NOT generate a hedge suggestion. Description filter
+    // prevents silent mis-classification at both the suggestion site and
+    // the composeBuildWarnings hedge gate.
+    const raw = makeRawWithStepF("(F) Misclassified Other Payment", 20);
+    const d = defaultsFromResolved(fixture.resolved, raw);
+    const suggestions = diagnoseFeePrefill(fixture.resolved, raw, d);
+    const hedgeSuggestion = suggestions.find((w) => w.field === "assumptions.hedgeCostBps");
+    expect(hedgeSuggestion).toBeUndefined();
     expect(d.hedgeCostBps).toBe(0);
   });
 
-  it("bps sanity bound: ignores implausible back-derived values (≥ 50 bps)", () => {
-    // If fixture shows e.g. a one-off expense spike that annualizes to 200 bps,
-    // the bound prevents polluting the forward projection. Falls back to default.
+  it("trustee/admin suggestion bps sanity bound: implausible (≥ 50 bps) values produce no suggestion", () => {
+    // If raw.waterfallSteps shows a one-off expense spike that annualizes
+    // beyond 50 bps (e.g. €10M step B), the diagnoseFeePrefill bound
+    // suppresses the suggestion rather than offering a wildly off value
+    // for one-click acceptance.
     const inflatedWaterfall = {
       ...fixture.raw,
       waterfallSteps: fixture.raw!.waterfallSteps?.map((s) =>
@@ -215,11 +312,9 @@ describe("D3 — defaultsFromResolved (degenerate inputs)", () => {
           : s,
       ),
     };
-    const emptyFees: ResolvedDealData = {
-      ...fixture.resolved,
-      fees: { ...fixture.resolved.fees, trusteeFeeBps: 0 },
-    };
-    const d = defaultsFromResolved(emptyFees, inflatedWaterfall);
-    expect(d.trusteeFeeBps).toBe(DEFAULT_ASSUMPTIONS.trusteeFeeBps);
+    const d = defaultsFromResolved(fixture.resolved, inflatedWaterfall);
+    const suggestions = diagnoseFeePrefill(fixture.resolved, inflatedWaterfall, d);
+    const trusteeSuggestion = suggestions.find((w) => w.field === "assumptions.trusteeFeeBps");
+    expect(trusteeSuggestion).toBeUndefined();
   });
 });

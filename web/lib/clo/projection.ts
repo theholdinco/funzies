@@ -243,8 +243,9 @@ export interface ProjectionInputs {
    *  Null = no carryforward (legacy behavior). */
   seniorExpensesCapCarryforwardPeriods?: number | null;
   /** C3 — Whether VAT on capped expenses counts toward cap (PPM proviso (i)).
-   *  When fee inputs are gross-of-VAT (typical trustee back-derive path) the
-   *  engine path is correct without explicit gross-up; this flag combined
+   *  When fee inputs are gross-of-VAT (typical observed-paid trustee Step B
+   *  amount, which the user accepts via the "Use suggested value" affordance)
+   *  the engine path is correct without explicit gross-up; this flag combined
    *  with non-null `seniorExpensesCapVatRatePct` triggers an explicit
    *  gross-up of `cappedRequested` for hand-set net-of-VAT inputs. */
   seniorExpensesCapVatIncluded?: boolean;
@@ -4323,10 +4324,10 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
     // `vatRatePct` is set, gross up the per-bucket requested amounts so
     // both the cap comparison and the per-bucket overflow allocation see
     // VAT-inclusive amounts. The engine's `trusteeFeeBps` / `adminFeeBps`
-    // typically come from `defaultsFromResolved` which back-derives from
-    // waterfall step B/C amounts paid (gross-of-VAT under BNY trustee
-    // convention) — `vatRatePct: null` is the default and produces no
-    // gross-up. Hand-set net-of-VAT inputs set vatRatePct explicitly.
+    // typically come from a user-accepted suggestion sourced from observed
+    // Step B/C amounts paid (gross-of-VAT under BNY trustee convention) —
+    // `vatRatePct: null` is the default and produces no gross-up. Hand-set
+    // net-of-VAT inputs set vatRatePct explicitly.
     const vatGrossUp =
       seniorExpensesCapVatIncluded && seniorExpensesCapVatRatePct != null
         ? 1 + seniorExpensesCapVatRatePct / 100

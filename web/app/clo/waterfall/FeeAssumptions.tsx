@@ -10,8 +10,6 @@ import { currencySymbol } from "./helpers";
 export function FeeAssumptions({
   seniorFeePct, onSeniorFeeChange,
   subFeePct, onSubFeeChange,
-  trusteeFeeBps, onTrusteeFeeChange,
-  hedgeCostBps, onHedgeCostChange,
   incentiveFeePct, onIncentiveFeeChange,
   incentiveFeeHurdleIrr, onHurdleChange,
   hasResolvedFees,
@@ -27,8 +25,6 @@ export function FeeAssumptions({
 }: {
   seniorFeePct: number; onSeniorFeeChange: (v: number) => void;
   subFeePct: number; onSubFeeChange: (v: number) => void;
-  trusteeFeeBps: number; onTrusteeFeeChange: (v: number) => void;
-  hedgeCostBps: number; onHedgeCostChange: (v: number) => void;
   incentiveFeePct: number; onIncentiveFeeChange: (v: number) => void;
   incentiveFeeHurdleIrr: number; onHurdleChange: (v: number) => void;
   hasResolvedFees: boolean;
@@ -76,8 +72,6 @@ export function FeeAssumptions({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
             <SliderInput label="Senior Mgmt Fee" value={seniorFeePct} onChange={onSeniorFeeChange} min={0} max={1} step={0.05} suffix="% p.a. on par" hint="Paid quarterly from interest before tranche payments" />
             <SliderInput label="Sub Mgmt Fee" value={subFeePct} onChange={onSubFeeChange} min={0} max={1} step={0.05} suffix="% p.a. on par" hint="Paid quarterly from interest after all tranche payments" />
-            <SliderInput label="Trustee / Admin" value={trusteeFeeBps} onChange={onTrusteeFeeChange} min={0} max={10} step={1} suffix=" bps p.a. on par" hint="Paid first from interest, before management fee" />
-            <SliderInput label="Hedge Cost" value={hedgeCostBps} onChange={onHedgeCostChange} min={0} max={200} step={1} suffix=" bps p.a. on par" hint="Hedge / swap periodic cost, paid from interest at step (F). Pre-filled from PPM extraction or back-derived from observed step (F)." />
             <SliderInput label="Incentive Fee" value={incentiveFeePct} onChange={onIncentiveFeeChange} min={0} max={30} step={1} suffix="% of residual" hint="% of residual interest + principal each quarter, but only when equity IRR exceeds the hurdle" />
             <SliderInput label="Incentive Hurdle" value={incentiveFeeHurdleIrr} onChange={onHurdleChange} min={0} max={20} step={0.5} suffix="% IRR" hint="Fee is zero while equity IRR is below this rate. Above it, the full percentage applies unless it would push IRR below the hurdle" />
             <div>

@@ -76,12 +76,20 @@ export function applySwitch(
   // any new caller must thread warnings or accept that the gate is
   // bypassed for that call path.
   warnings?: ResolutionWarning[],
+  // Raw waterfall snapshot for the build-time hedge gate. Optional for
+  // the same reason as `warnings`: in production the parent ProjectionModel
+  // clears the hedge gate (userAssumptions.hedgeCostBps > 0) before
+  // applySwitch runs, so the gate is structurally inert here. Threaded
+  // for defense-in-depth — a future caller invoking applySwitch with
+  // userAssumptions.hedgeCostBps = 0 on a hedge deal would otherwise
+  // silently bypass the gate.
+  raw?: Parameters<typeof buildFromResolved>[3],
 ): SwitchResult {
   const { sellLoanIndex, sellParAmount, buyLoan, sellPrice: _sellPrice, buyPrice: _buyPrice } = params;
   const sellLoan = resolved.loans[sellLoanIndex];
   const localWarnings = warnings ? [...warnings] : undefined;
 
-  const baseInputs = buildFromResolved(resolved, assumptions, localWarnings);
+  const baseInputs = buildFromResolved(resolved, assumptions, localWarnings, raw);
 
   // Build switched loan pool
   const switchedLoans = [...resolved.loans];
@@ -240,7 +248,7 @@ export function applySwitch(
     },
   };
 
-  const switchedInputs = buildFromResolved(switchedResolved, assumptions, localWarnings);
+  const switchedInputs = buildFromResolved(switchedResolved, assumptions, localWarnings, raw);
 
   return {
     baseInputs,

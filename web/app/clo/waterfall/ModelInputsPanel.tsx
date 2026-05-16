@@ -77,7 +77,8 @@ export function ModelInputsPanel({ resolved, inputs }: { resolved: ResolvedDealD
               </div>
               <div style={kvStyle}><span style={kvLabel}>Senior Mgmt</span> <span style={kvValue}>{resolved.fees.seniorFeePct}%</span></div>
               <div style={kvStyle}><span style={kvLabel}>Sub Mgmt</span> <span style={kvValue}>{resolved.fees.subFeePct}%</span></div>
-              <div style={kvStyle}><span style={kvLabel}>Trustee/Admin</span> <span style={kvValue}>{resolved.fees.trusteeFeeBps} bps</span></div>
+              <div style={kvStyle}><span style={kvLabel}>Trustee</span> <span style={kvValue}>{resolved.fees.trusteeFeeBps} bps</span></div>
+              <div style={kvStyle}><span style={kvLabel}>Admin</span> <span style={kvValue}>{resolved.fees.adminFeeBps} bps</span></div>
               <div style={kvStyle}><span style={kvLabel}>Incentive</span> <span style={kvValue}>{resolved.fees.incentiveFeePct > 0 ? `${resolved.fees.incentiveFeePct}%` : "None"}</span></div>
               <div style={kvStyle}><span style={kvLabel}>Hedge Cost</span> <span style={kvValue}>{inputs.hedgeCostBps} bps</span></div>
             </div>
