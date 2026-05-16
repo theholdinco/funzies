@@ -3,16 +3,83 @@
 import React, { useState } from "react";
 import { RATING_BUCKETS } from "@/lib/clo/rating-mapping";
 
+/** Visual indicator of what's driving the displayed per-bucket rate.
+ *  - WARF: bucket not in overriddenBuckets — engine uses per-loan
+ *    `warfFactorToQuarterlyHazard(loan.warfFactor)` for every loan in
+ *    the bucket; the panel displays the WARF-seeded par-weighted
+ *    bucket aggregate (set by the WARF-seed effect in ProjectionModel).
+ *  - Intex: bucket is overridden AND current rate equals the active
+ *    Intex CDR — engine consumes the Intex scenario rate.
+ *  - Override: bucket is overridden AND current rate ≠ Intex CDR (or
+ *    no Intex active) — user explicitly set this rate.
+ *
+ *  This was added after a class of silent-wrong-number bugs where the
+ *  Intex overlay set `defaultRates` without setting `overriddenBuckets`,
+ *  so the panel displayed Intex CDR while the engine silently ran WARF.
+ *  Without source visibility, the same shape can come back as new
+ *  overlay sources land; the badge forces a runtime answer to "what is
+ *  the engine actually using." */
+type SourceBadge = "WARF" | "Override" | "Intex";
+
+function bucketSource(
+  bucket: string,
+  overriddenBuckets: readonly string[],
+  intexCdrPct: number | null,
+  currentRate: number,
+): SourceBadge {
+  if (!overriddenBuckets.includes(bucket)) return "WARF";
+  if (intexCdrPct != null && Math.abs(currentRate - intexCdrPct) < 1e-9) {
+    return "Intex";
+  }
+  return "Override";
+}
+
+const BADGE_STYLES: Record<SourceBadge, React.CSSProperties> = {
+  WARF: {
+    color: "var(--color-text-muted)",
+    background: "var(--color-surface-alt, rgba(0,0,0,0.04))",
+    border: "1px solid var(--color-border-light)",
+  },
+  Override: {
+    color: "var(--color-accent, #2563eb)",
+    background: "var(--color-accent-bg, rgba(37,99,235,0.08))",
+    border: "1px solid var(--color-accent, #2563eb)",
+  },
+  Intex: {
+    color: "var(--color-warning, #d97706)",
+    background: "rgba(217,119,6,0.08)",
+    border: "1px solid var(--color-warning, #d97706)",
+  },
+};
+
 export function DefaultRatePanel({
   defaultRates,
   onChange,
+  onApplyUniform,
   ratingDistribution,
   weightedAvgCdr,
+  overriddenBuckets,
+  intexCdrPct,
 }: {
   defaultRates: Record<string, number>;
+  /** Slider-drag handler. Delta-based override marking is fine here
+   *  — user clearly intends to override any bucket they drag. */
   onChange: (rates: Record<string, number>) => void;
+  /** "Set all to X% / Apply" handler. Unconditionally marks every
+   *  displayed bucket overridden, regardless of whether the value
+   *  numerically changed. An explicit "Apply 2%" when the panel
+   *  already shows 2% should still take effect — historical bug was
+   *  delta-based handler silently no-op'ing this case. */
+  onApplyUniform: (rate: number) => void;
   ratingDistribution: Record<string, { count: number; par: number }>;
   weightedAvgCdr: number;
+  /** Buckets the engine is currently honoring user/scenario rates for.
+   *  Drives the source badge per bucket. */
+  overriddenBuckets: readonly string[];
+  /** Active Intex CDR rate, if any. When set AND a bucket's current
+   *  rate equals it, the bucket's badge reads "Intex" instead of
+   *  "Override". */
+  intexCdrPct: number | null;
 }) {
   const [open, setOpen] = useState(true);
   const [uniformInput, setUniformInput] = useState("");
@@ -20,9 +87,7 @@ export function DefaultRatePanel({
   const applyUniform = () => {
     const val = parseFloat(uniformInput);
     if (!isNaN(val) && val >= 0) {
-      const rates: Record<string, number> = {};
-      for (const bucket of RATING_BUCKETS) rates[bucket] = val;
-      onChange(rates);
+      onApplyUniform(val);
       setUniformInput("");
     }
   };
@@ -55,7 +120,7 @@ export function DefaultRatePanel({
         }}
       >
         <span>
-          <span style={{ fontSize: "0.65rem", marginRight: "0.3rem" }}>{open ? "\u25BE" : "\u25B8"}</span>
+          <span style={{ fontSize: "0.65rem", marginRight: "0.3rem" }}>{open ? "▾" : "▸"}</span>
           Default Rates by Rating
         </span>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.72rem", color: "var(--color-text-muted)" }}>
@@ -102,13 +167,19 @@ export function DefaultRatePanel({
           {RATING_BUCKETS.filter((b) => ratingDistribution[b]?.par > 0).map((bucket) => {
             const dist = ratingDistribution[bucket];
             const parPct = totalPar > 0 ? (dist.par / totalPar) * 100 : 0;
+            const source = bucketSource(
+              bucket,
+              overriddenBuckets,
+              intexCdrPct,
+              defaultRates[bucket] ?? 0,
+            );
             return (
               <div key={bucket} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.3rem 0" }}>
                 <div style={{ width: "2.5rem", fontSize: "0.72rem", fontWeight: 600, fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)" }}>
                   {bucket}
                 </div>
                 <div style={{ width: "4rem", fontSize: "0.65rem", color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
-                  {dist.count > 0 ? `${dist.count} \u00B7 ${parPct.toFixed(0)}%` : "\u2014"}
+                  {dist.count > 0 ? `${dist.count} · ${parPct.toFixed(0)}%` : "—"}
                 </div>
                 <input
                   type="range"
@@ -122,6 +193,28 @@ export function DefaultRatePanel({
                 />
                 <span style={{ width: "3rem", textAlign: "right", fontSize: "0.72rem", fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>
                   {(defaultRates[bucket] ?? 0).toFixed(1)}%
+                </span>
+                <span
+                  title={
+                    source === "WARF"
+                      ? "Engine uses per-loan WARF hazard for this bucket. Displayed value is the WARF-seeded par-weighted aggregate; move the slider to override."
+                      : source === "Intex"
+                        ? "Active Intex CDR scenario rate. Engine consumes this exact value for the whole bucket."
+                        : "User override. Engine consumes this exact value for the whole bucket."
+                  }
+                  style={{
+                    fontSize: "0.58rem",
+                    fontWeight: 600,
+                    fontFamily: "var(--font-mono)",
+                    padding: "0.1rem 0.3rem",
+                    borderRadius: "3px",
+                    letterSpacing: "0.04em",
+                    minWidth: "3.4rem",
+                    textAlign: "center",
+                    ...BADGE_STYLES[source],
+                  }}
+                >
+                  {source.toUpperCase()}
                 </span>
               </div>
             );

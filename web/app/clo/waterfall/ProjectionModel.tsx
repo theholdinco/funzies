@@ -550,9 +550,13 @@ export default function ProjectionModel({
       setRecoveryLagMonths(overlay.recoveryLagMonths);
       setReinvestmentSpreadBps(overlay.reinvestmentSpreadBps);
       setReinvestmentTenorYears(overlay.reinvestmentTenorYears);
-      // CDR is broadcast flat to every rating bucket; flat-set defaultRates.
+      // CDR is broadcast flat to every rating bucket; flat-set defaultRates
+      // AND mark every bucket overridden so the engine actually consumes
+      // the Intex CDR (otherwise per-loan WARF silently runs — see
+      // defaultsFromIntex docstring override-semantics note).
       if (intexAssumptions.cdrPct != null) {
         setDefaultRates(overlay.defaultRates);
+        setOverriddenBuckets(new Set(overlay.overriddenBuckets));
       }
       setIntexPrefillSource({
         scenario: intexAssumptions.scenario,
@@ -630,6 +634,18 @@ export default function ProjectionModel({
       });
       return next;
     });
+  }, []);
+
+  // "Set all to X% / Apply" handler — unconditionally marks every bucket
+  // overridden, regardless of whether the value numerically changed. An
+  // explicit Apply with the displayed value already at X is still a user
+  // statement of intent; the prior delta-based slider handler silently no-
+  // op'd this case (engine kept running WARF while panel showed X%).
+  const handleApplyUniformRate = React.useCallback((rate: number) => {
+    const rates: Record<string, number> = {};
+    for (const bucket of RATING_BUCKETS) rates[bucket] = rate;
+    setDefaultRates(rates);
+    setOverriddenBuckets(new Set(RATING_BUCKETS));
   }, []);
 
   const ratingDistribution = useMemo(() => {
@@ -1578,8 +1594,11 @@ export default function ProjectionModel({
           <DefaultRatePanel
             defaultRates={defaultRates}
             onChange={handleDefaultRatesChange}
+            onApplyUniform={handleApplyUniformRate}
             ratingDistribution={ratingDistribution}
             weightedAvgCdr={weightedAvgCdr}
+            overriddenBuckets={Array.from(overriddenBuckets)}
+            intexCdrPct={intexAssumptions?.cdrPct ?? null}
           />
         </div>
       </div>
@@ -2712,8 +2731,11 @@ export default function ProjectionModel({
               <DefaultRatePanel
                 defaultRates={defaultRates}
                 onChange={handleDefaultRatesChange}
+                onApplyUniform={handleApplyUniformRate}
                 ratingDistribution={ratingDistribution}
                 weightedAvgCdr={weightedAvgCdr}
+                overriddenBuckets={Array.from(overriddenBuckets)}
+                intexCdrPct={intexAssumptions?.cdrPct ?? null}
               />
             </div>
           </div>

@@ -4,7 +4,7 @@ import type { IntexAssumptions } from "./intex/parse-past-cashflows";
 import type { PaymentFrequency } from "./payment-frequency";
 import { canonicalCurrency } from "./currency";
 import { CLO_DEFAULTS } from "./defaults";
-import { DEFAULT_RATES_BY_RATING } from "./rating-mapping";
+import { DEFAULT_RATES_BY_RATING, RATING_BUCKETS } from "./rating-mapping";
 import { normalizeAssetPaymentIntervalMonths } from "./projection";
 
 function addMonthsAnchoredForBuild(dateIso: string, months: number, anchorDay: number): string {
@@ -555,8 +555,21 @@ export function defaultsFromResolved(
  *
  * Coverage (only fields Intex publishes):
  *   cprPct, recoveryPct, recoveryLagMonths, reinvestmentSpreadBps,
- *   reinvestmentTenorYears, plus per-rating defaultRates flat-set to cdrPct
- *   when the user hasn't touched buckets (CDR is a pool aggregate; map flat).
+ *   reinvestmentTenorYears, plus per-rating defaultRates flat-set to cdrPct.
+ *
+ * Override semantics — when `intex.cdrPct != null`, this also sets
+ * `overriddenBuckets = RATING_BUCKETS`. Intex CDR is an explicit external
+ * scenario input (the partner-facing "MV+ Apr 2026 export" rate); it has
+ * to be ACTIVE in the engine, not decorative in the UI. Prior bug: this
+ * helper set `defaultRates` but left `overriddenBuckets` unchanged, so
+ * the engine's WARF-default path silently overrode the displayed Intex
+ * CDR — Euro XV ran defaults at ~3.84% (WARF) while the panel showed
+ * 2.00% (Intex). The fix sets both fields atomically here so consumers
+ * cannot apply only half the overlay.
+ *
+ * Non-CDR fields (CPR / Recovery / reinvestment) don't need a
+ * corresponding "override" flag — they map to scalar `UserAssumptions`
+ * fields that the engine consumes directly with no per-bucket gate.
  *
  * Returns the input assumptions unchanged when `intex` is null.
  */
@@ -577,12 +590,14 @@ export function defaultsFromIntex(
     next.reinvestmentTenorYears = intex.reinvestMaturityMonths / 12;
   }
   // Intex CDR is a pool-level aggregate; broadcast to every rating bucket
-  // when the user hasn't customised them. Per-position WARF stays the
-  // engine default for any bucket the user later touches.
+  // AND mark every bucket overridden so the engine actually consumes the
+  // CDR (otherwise the per-loan WARF path overrides it silently — see
+  // override-semantics note in the docstring above).
   if (intex.cdrPct != null) {
     const rates: Record<string, number> = {};
     for (const k of Object.keys(next.defaultRates)) rates[k] = intex.cdrPct;
     next.defaultRates = rates;
+    next.overriddenBuckets = [...RATING_BUCKETS];
   }
 
   return next;
