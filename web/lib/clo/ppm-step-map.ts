@@ -101,7 +101,7 @@ export function normalizePpmStepCode(description: string | null | undefined): Pp
 /** Semantic names for the buckets the engine emits in `PeriodResult.stepTrace`
  *  and adjacent PeriodResult fields. */
 export type EngineBucket =
-  | "taxes"                 // step a.i  — emitted via seniorExpenseBreakdown.taxes
+  | "taxes"                 // step a.i  — engine hardcodes 0; Section 110 closed-form clamps to 0 on flow-balanced projections; GAAP-vs-cash residual pinned by KI-69 marker
   | "issuerProfit"          // step a.ii — emitted via seniorExpenseBreakdown.issuerProfit
   | "trusteeFeesPaid"       // step b    — Sprint 3 / C3 split from admin
   | "adminFeesPaid"         // step c    — Sprint 3 / C3 split from trustee

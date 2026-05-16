@@ -191,15 +191,17 @@ export interface ProjectionInputs {
   // input (bps p.a. on collateral par). The field was removed (2026-05-16)
   // after the OC reading confirmed the engine cannot compute the
   // contractually-correct amount from emitted flows alone (see KI-69 in
-  // `web/docs/clo-model-known-issues.md`). Step (A)(i) is now emitted
-  // mechanically via the Section 110 closed-form computation in the
-  // waterfall: 12.5% × max(0, gaap_taxable_income − issuerProfitAmount).
-  // In the engine's flow accounting that expression evaluates to zero in
-  // the steady state (interest received nets to noteholder interest +
-  // fees + expenses + Issuer Profit Amount, leaving zero residual taxable
-  // income after deducting IPA). The unmodeled drift versus trustee data
-  // (~€24,500/year on Euro XV) is pinned via the N1 harness `taxes`
-  // marker test, not via a user knob.
+  // `web/docs/clo-model-known-issues.md`). The engine now hardcodes
+  // step (A)(i) to 0. The structural justification is that the Section
+  // 110 closed-form `0.125 × max(0, gaap_taxable_income − IPA)` clamps
+  // to zero on the engine's flow-balanced projection: deductible flows
+  // (noteholder interest + fees + expenses) net interest received down
+  // to ≈ Issuer Profit Amount, and step (A)(i) explicitly excludes the
+  // CIT on Issuer Profit (OC L10810-10815). Hardcoding 0 takes the
+  // analytical limit rather than recomputing the formula. The unmodeled
+  // drift versus trustee data (~€24,500/year on Euro XV) is the
+  // GAAP-vs-cash residual the engine's cash-flow construction cannot
+  // capture; pinned via the N1 harness `taxes` marker test.
   /** PPM step (A)(ii) Issuer Profit Amount. Absolute € per period (not bps,
    *  not annualized). Per PPM Condition 1 definitions: €250 per regular
    *  period, €500 per period post-Frequency-Switch Event. Deducted between
@@ -672,14 +674,16 @@ export interface ProjectionInputs {
  *      principal sequencing.
  */
 export interface PeriodStepTrace {
-  /** PPM step (A)(i) Issuer taxes. Mechanically emitted by the engine via
-   *  the Section 110 closed-form computation:
-   *  `0.125 × max(0, gaap_taxable_income − issuerProfitAmount)`. On the
-   *  engine's flow-balanced projection this clamps to ~0 (interest received
-   *  nets to noteholder interest + fees + expenses + IPA). KI-69 documents
-   *  the unmodeled GAAP-vs-cash residual (~€6,133/quarter Euro XV Q1 2026)
-   *  and the periodic trustee CIT certifications + audited financial
-   *  statements that would close it. */
+  /** PPM step (A)(i) Issuer taxes. Engine hardcodes 0; structurally
+   *  justified by the Section 110 closed-form
+   *  `0.125 × max(0, gaap_taxable_income − IPA)` clamping to 0 on the
+   *  engine's flow-balanced projection (interest received nets to
+   *  noteholder interest + fees + expenses + IPA, leaving no residual
+   *  taxable income after deducting IPA per step (A)(i)'s explicit
+   *  exclusion at OC L10810-10815). KI-69 documents the unmodeled
+   *  GAAP-vs-cash residual (~€6,133/quarter Euro XV Q1 2026) and the
+   *  periodic trustee CIT certifications + audited financial statements
+   *  that would close it. */
   taxes: number;
   /** PPM step (A)(ii) Issuer Profit Amount. Fixed absolute deduction
    *  per period (€250 regular, €500 post-Frequency-Switch on Euro XV). Engine

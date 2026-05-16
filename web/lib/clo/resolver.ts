@@ -1817,15 +1817,15 @@ function resolveAssumptionGates(constraints: ExtractedConstraints, warnings: Res
   // Step A(i) Issuer taxes — NO gate. `taxesBps` was removed from
   // `UserAssumptions` (2026-05-16) after the OC reading confirmed the
   // engine cannot compute the contractually-correct amount from emitted
-  // flows alone. Engine emits step (A)(i) mechanically via the Section
-  // 110 closed-form derivation (0.125 × max(0, gaap_taxable_income −
-  // issuerProfitAmount)), which evaluates to zero in the engine's flow
-  // accounting. The unmodeled drift on Euro XV (~€24,500/year from
-  // Finance Act 2019 sub-note non-deductibility, recoveries-in-excess-
-  // of-accounting-basis, timing differences) is documented in KI-69
-  // and pinned via the N1 harness `taxes` marker. Adding a user
-  // override would be silent inference — see the discipline section
-  // in CLAUDE.md.
+  // flows alone. The engine hardcodes step (A)(i) to 0; structurally
+  // justified by the Section 110 closed-form
+  // `0.125 × max(0, gaap_taxable_income − IPA)` clamping to 0 on the
+  // engine's flow-balanced projection (deductible flows net interest
+  // received down to ≈ IPA; step (A)(i) explicitly excludes CIT on IPA
+  // per OC L10810-10815). The unmodeled drift on Euro XV (~€24,500/year
+  // GAAP-vs-cash residual) is documented in KI-69 and pinned via the
+  // N1 harness `taxes` marker. Adding a user override would be silent
+  // inference — see the discipline section in CLAUDE.md.
 
   // Step A(ii) Issuer Profit Amount — fixed € per period (Euro XV: €250
   // regular / €500 post-Frequency-Switch). Fires when waterfall narrative

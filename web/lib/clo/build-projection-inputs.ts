@@ -241,12 +241,12 @@ export interface UserAssumptions {
   // Pre-filled from resolved PPM data, but user has final say.
   seniorFeePct: number;
   subFeePct: number;
-  // `taxesBps` was removed (2026-05-16). PPM step (A)(i) Issuer taxes is
-  // now emitted mechanically by the engine via the Section 110 closed-form
-  // computation (12.5% × max(0, gaap_taxable_income − issuerProfitAmount)),
-  // which evaluates to zero in the engine's flow accounting. See KI-69
+  // `taxesBps` was removed (2026-05-16). The engine now hardcodes PPM
+  // step (A)(i) Issuer taxes to 0; structurally justified by the
+  // Section 110 closed-form `0.125 × max(0, gaap_taxable_income − IPA)`
+  // clamping to 0 on the engine's flow-balanced projection. See KI-69
   // for the OC verification + the data we'd need to close the unmodeled
-  // residual drift (~€24,500/year on Euro XV).
+  // GAAP-vs-cash residual (~€24,500/year on Euro XV).
   /** PPM step (A)(ii) Issuer Profit Amount. Absolute € per period.
    *  €250 regular, €500 post-Frequency-Switch on Euro XV. User-set via the
    *  EngineExpensesPanel; the resolver-time gate fires when the PPM
@@ -441,8 +441,9 @@ export interface DefaultsFromResolvedRaw {
  *     user enters an explicit value (the observed Step A(ii) amount is
  *     surfaced as a suggestion for one-click acceptance).
  *   - `taxesBps` removed (KI-69): PPM step (A)(i) Issuer taxes is now
- *     mechanically emitted by the engine via the Section 110 closed-form
- *     `0.125 × max(0, gaap_taxable_income − issuerProfitAmount)`.
+ *     hardcoded to 0 by the engine; structurally justified by the
+ *     Section 110 closed-form `0.125 × max(0, gaap_taxable_income − IPA)`
+ *     clamping to 0 on flow-balanced projections.
  *   - `seniorExpensesCapBps` / `seniorExpensesCapAbsoluteFloorPerYear` /
  *     `seniorExpensesCapAllocationWithinCap` /
  *     `seniorExpensesCapOverflowAllocation` /
@@ -597,12 +598,13 @@ export function defaultsFromIntex(
  *   - `assumptions.hedgeCostBps`        ← step F annualized (hedge-labeled)
  *
  * Step (A)(i) taxes is NOT in this list: `taxesBps` was removed from
- * `UserAssumptions` in favor of the Section 110 mechanical engine
- * computation. The observed Step A(i) amount on Euro XV does NOT reflect
- * a forward-period rate the user could set; it reflects unmodeled
- * Section 110 components (Finance Act 2019 sub-note non-deductibility,
- * recoveries-in-excess-of-accounting-basis, timing differences) that the
- * engine cannot compute from emitted flows alone. See KI-69.
+ * `UserAssumptions` in favor of the engine hardcoding step (A)(i) to 0
+ * (structurally justified by the Section 110 closed-form clamping to 0
+ * on flow-balanced projections; see KI-69). The observed Step A(i)
+ * amount on Euro XV does NOT reflect a forward-period rate the user
+ * could set; it reflects unmodeled GAAP-vs-cash differences (per-asset
+ * accounting basis, timing, prior-quarter true-ups) that the engine
+ * cannot capture from emitted cash flows alone.
  *
  * Sanity bounds (issuer profit ≤ €1000, trustee/admin ≤ 50 bps, hedge ≤
  * 200 bps) suppress suggestions when the observed amount looks like an
@@ -643,8 +645,9 @@ export function diagnoseFeePrefill(
 
   // Step A(i) intentionally NOT emitted as a suggestion — see docstring
   // above and KI-69. `taxesBps` has been removed from `UserAssumptions`;
-  // the engine emits step (A)(i) mechanically as 0 via the Section 110
-  // closed-form derivation.
+  // the engine hardcodes step (A)(i) to 0 (Section 110 closed-form
+  // clamps to 0 on flow-balanced projections; KI-69 documents the
+  // GAAP-vs-cash residual).
 
   if (stepAii) {
     const paid = stepAii.amountPaid ?? 0;

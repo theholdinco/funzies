@@ -39,7 +39,8 @@ import { currencySymbol } from "./helpers";
  *  badge are genuine unexpected drift that partners should flag. Ledger anchors at
  *  `docs/clo-model-known-issues.md#ki-<id>` (kebab-case). */
 const BUCKET_TO_KI: Partial<Record<EngineBucket, { ids: string[]; blurb: string }>> = {
-  taxes: { ids: ["KI-12a"], blurb: "Issuer taxes (A.i). Residual is 91/360 vs 90/360 harness-period-mismatch — closes fully with KI-12a." },
+  // arch-boundary-allow: ui-hardcodes-currency-symbol
+  taxes: { ids: ["KI-69"], blurb: "Issuer taxes (A.i). Engine hardcodes 0 — structurally justified by the Section 110 closed-form `0.125 × max(0, gaap_taxable_income − IPA)` clamping to 0 on flow-balanced projections. Trustee residual (~€6,133/quarter on Euro XV) is GAAP-vs-cash delta not capturable from the engine's cash-flow construction; closes when periodic trustee CIT certifications + audited financial statements are ingested." },
   // arch-boundary-allow: ui-hardcodes-currency-symbol
   issuerProfit: { ids: [], blurb: "Issuer Profit Amount (A.ii). Fixed €250/period — engine ties to the cent." },
   // arch-boundary-allow: ui-hardcodes-currency-symbol

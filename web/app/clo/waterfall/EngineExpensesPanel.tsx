@@ -6,14 +6,17 @@ import { useDealCurrency } from "./CurrencyContext";
 import { currencySymbol } from "./helpers";
 import type { ResolutionWarning } from "@/lib/clo/resolver-types";
 
-/** Engine-assumption inputs that have no PPM-extraction path: PPM step (A)(i)
- *  Issuer taxes, step (A)(ii) Issuer Profit Amount, plus the C3-split step (B)
- *  trustee and step (C) admin fees when the PPM rate is "per agreement". Pre-
- *  fix these were silently back-derived from observed step amounts in
+/** Engine-assumption inputs that have no PPM-extraction path: step (A)(ii)
+ *  Issuer Profit Amount, plus the C3-split step (B) trustee and step (C)
+ *  admin fees when the PPM rate is "per agreement", plus step (F) hedge cost.
+ *  Pre-fix these were silently back-derived from observed step amounts in
  *  `defaultsFromResolved`; that path is gone (paid amount is not contractual
  *  forward rate). The user accepts the observed-period suggestion via the
  *  one-click button or types an explicit value; either clears the
- *  corresponding resolver-time blocking gate via composeBuildWarnings. */
+ *  corresponding resolver-time blocking gate via composeBuildWarnings.
+ *  Step (A)(i) Issuer taxes is NOT in this panel — it was removed in favor
+ *  of the engine emitting 0 mechanically (justified by the Section 110
+ *  closed-form clamping to 0 on flow-balanced projections; KI-69). */
 export function EngineExpensesPanel({
   issuerProfitAmount, onIssuerProfitChange,
   trusteeFeeBps, onTrusteeFeeChange,
@@ -81,7 +84,7 @@ export function EngineExpensesPanel({
       >
         <span>
           <span style={{ fontSize: "0.65rem", marginRight: "0.3rem" }}>{open ? "▾" : "▸"}</span>
-          Engine Assumptions — Step (A)(i)/(A)(ii) + Trustee/Admin
+          Engine Assumptions — Step (A)(ii) + Trustee/Admin/Hedge
         </span>
         {(issuerProfitAmount === 0 || trusteeFeeBps === 0 || adminFeeBps === 0 || (hedgeSuggestion != null && hedgeCostBps === 0)) && (
           <span style={{ fontSize: "0.6rem", fontWeight: 600, padding: "0.1rem 0.35rem", borderRadius: "3px", background: "var(--color-warning, #d97706)18", color: "var(--color-warning, #d97706)" }}>
@@ -93,7 +96,7 @@ export function EngineExpensesPanel({
         <div style={{ padding: "0 0.8rem 0.8rem" }}>
           {/* arch-boundary-allow: ui-hardcodes-currency-symbol (documentation prose; not a numeric display) */}
           <div style={{ fontSize: "0.68rem", color: "var(--color-text-muted)", marginBottom: "0.75rem", lineHeight: 1.5 }}>
-            These fields have no PPM-extraction path (taxes are regulatory; admin/trustee fees are typically &quot;per agreement&quot;; Issuer Profit Amount is a fixed periodic amount defined in the deal docs). Each gates the projection until set. Click &quot;Use suggested&quot; to accept the observed-prior-period value, or type an explicit number.
+            These fields have no PPM-extraction path (admin/trustee fees are typically &quot;per agreement&quot;; Issuer Profit Amount is a fixed periodic amount defined in the deal docs; hedge cost is from the swap confirmation). Each gates the projection until set. Click &quot;Use suggested&quot; to accept the observed-prior-period value, or type an explicit number.
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
             <div>
