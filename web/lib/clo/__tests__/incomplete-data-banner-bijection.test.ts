@@ -1117,6 +1117,21 @@ describe("UI surfaces drive the banner from the same predicate", () => {
     expect(resultMemo).toContain("runProjection(inputs)");
   });
 
+  it("ProjectionModel.tsx hides HarnessPanel while blocking warnings are present", () => {
+    // The N1 harness also calls the engine through runBacktestHarness. It
+    // must share the DATA INCOMPLETE gate; otherwise it receives the
+    // placeholder EMPTY_RESOLVED-derived inputs and surfaces low-level
+    // invariant errors (for example missing ratingAgencies) next to the
+    // correct partner-facing blocking-warning banner.
+    const sf = sharedProject.getSourceFileOrThrow(PROJECTION_MODEL_PATH);
+    const text = sf.getFullText();
+    const harnessRender = text.match(
+      /\{activeTab === "projection"[\s\S]*?<HarnessPanel[\s\S]*?\/>\s*\)\}/,
+    )?.[0];
+    expect(harnessRender, "Could not find gated HarnessPanel render").toBeDefined();
+    expect(harnessRender).toContain("incompleteDataErrors.length === 0");
+  });
+
   it("no divergent inline `.filter(w => w.blocking ...)` anywhere under web/{app,lib,components,scripts}", () => {
     // Catches divergent re-implementations of the predicate. The canonical
     // call site lives in build-projection-inputs.ts:selectBlockingWarnings;

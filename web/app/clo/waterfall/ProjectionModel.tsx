@@ -2386,8 +2386,12 @@ export default function ProjectionModel({
         </div>
       )}
 
-      {/* N1 Waterfall Replay Harness — reactive to user assumptions above */}
-      {(waterfallSteps?.length ?? 0) > 0 && trancheSnapshots.length > 0 && (
+      {/* N1 Waterfall Replay Harness — reactive to user assumptions above.
+          Same DATA INCOMPLETE gate as the projection itself: the harness
+          runs the engine too, so feeding it placeholder inputs while the
+          resolver is blocked produces noisy invariant errors instead of
+          actionable data-quality guidance. */}
+      {activeTab === "projection" && incompleteDataErrors.length === 0 && (waterfallSteps?.length ?? 0) > 0 && trancheSnapshots.length > 0 && (
         <HarnessPanel
           inputs={inputs}
           engineMathInputs={engineMathInputs}
