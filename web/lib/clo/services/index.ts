@@ -36,3 +36,8 @@ export {
   type SwitchOcCushionDelta,
   type SwitchPeriodEquityDelta,
 } from "./switch-deltas";
+
+export {
+  computeEquityDistributionProfile,
+  type EquityDistributionProfile,
+} from "./equity-distribution-profile";

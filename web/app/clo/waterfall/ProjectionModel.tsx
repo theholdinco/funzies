@@ -39,6 +39,7 @@ import {
   type CallSensitivityCell,
   deriveNoCallBaseInputs,
   applyOptionalRedemptionCall,
+  computeEquityDistributionProfile,
 } from "@/lib/clo/services";
 import type { ResolvedDealData, ResolutionWarning } from "@/lib/clo/resolver-types";
 import { buildFromResolved, composeBuildWarnings, DEFAULT_ASSUMPTIONS, EMPTY_RESOLVED, selectBlockingWarnings, selectNonBlockingWarnings, defaultsFromResolved, defaultsFromIntex, diagnoseFeePrefill, diagnoseCarryforwardSeed } from "@/lib/clo/build-projection-inputs";
@@ -2274,10 +2275,41 @@ export default function ProjectionModel({
               )}
             </div>
 
-            <SummaryCard
-              label="Total Equity Distributions"
-              value={formatAmount(result.totalEquityDistributions)}
-            />
+            {(() => {
+              // Equity-distribution concentration profile (pure derivation
+              // from engine output via service layer). Surfaces a warning
+              // sub-label when distributions are front-loaded — protects
+              // partners from anchoring on the headline total without
+              // seeing that the back half is materially starved (typical
+              // shape under OC cure cascades). Precedence:
+              //   1) Equity exhausted before half the projection → show last
+              //      positive period (most concrete signal: "stops at q12/40")
+              //   2) Front-loaded but exhaustion later → show concentration %
+              //   3) Healthy taper → no sub-label
+              const equityProfile = computeEquityDistributionProfile(result);
+              let subValue: string | undefined;
+              let subValueSeverity: "info" | "warn" | undefined;
+              const earlyExhaustion =
+                equityProfile.lastPositivePeriodIndex >= 0 &&
+                equityProfile.lastPositivePeriodIndex < equityProfile.halfPeriodCount;
+              if (earlyExhaustion) {
+                const lastIdx = equityProfile.lastPositivePeriodIndex;
+                subValue = `Equity exhausted at ${equityProfile.lastPositivePeriodDate} (q${lastIdx + 1}/${equityProfile.periodCount})`;
+                subValueSeverity = "warn";
+              } else if (equityProfile.isFrontLoaded && equityProfile.halfPeriodCount > 0) {
+                const pct = Math.round(equityProfile.firstHalfPct * 100);
+                subValue = `${pct}% in first ${equityProfile.halfPeriodCount} quarters`;
+                subValueSeverity = "warn";
+              }
+              return (
+                <SummaryCard
+                  label="Total Equity Distributions"
+                  value={formatAmount(result.totalEquityDistributions)}
+                  subValue={subValue}
+                  subValueSeverity={subValueSeverity}
+                />
+              );
+            })()}
             <SummaryCard
               label="Projection Periods"
               value={`${result.periods.length} quarters`}

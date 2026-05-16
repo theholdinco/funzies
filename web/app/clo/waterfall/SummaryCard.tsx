@@ -3,10 +3,22 @@ import React from "react";
 export function SummaryCard({
   label,
   value,
+  subValue,
+  subValueSeverity,
 }: {
   label: string;
   value: string;
+  /** Optional small context line shown below the main value (e.g.
+   *  "87% in first 8 quarters"). Hidden when undefined. */
+  subValue?: string;
+  /** Visual styling for the subValue: "info" (default — muted text),
+   *  "warn" (amber, for partner-facing concentration / wipeout signals). */
+  subValueSeverity?: "info" | "warn";
 }) {
+  const subValueColor =
+    subValueSeverity === "warn"
+      ? "var(--color-warning, #d97706)"
+      : "var(--color-text-muted)";
   return (
     <div
       style={{
@@ -31,6 +43,20 @@ export function SummaryCard({
       >
         {value}
       </div>
+      {subValue && (
+        <div
+          style={{
+            fontSize: "0.7rem",
+            fontWeight: 500,
+            color: subValueColor,
+            marginTop: "0.3rem",
+            fontFamily: "var(--font-mono)",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {subValue}
+        </div>
+      )}
     </div>
   );
 }

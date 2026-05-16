@@ -41,7 +41,9 @@ export interface PeriodTraceLine {
               | "principalProceeds"
               | "prepayments"
               | "scheduledMaturities"
-              | "recoveries";
+              | "recoveries"
+              | "beginningPrincipalAccount"
+              | "endingPrincipalAccount";
   indent?: 0 | 1 | 2;
   muted?: boolean;
   severity?: "info" | "warn" | "fee" | "equity";
@@ -296,6 +298,24 @@ export function buildPeriodTraceLines(period: PeriodResult): PeriodTraceLine[] {
   });
 
   // ─── Principal waterfall ──────────────────────────────────────────────────
+  // Q1 carries any determination-date principal-account balance (typically an
+  // overdraft on Euro XV — the BNY Apr 15 Note Valuation shows the principal
+  // account at −€1.82M pre-payment, cleared to €0 post-payment). The engine
+  // nets this signed balance against principal proceeds via `q1Cash`; without
+  // this row the user sees an unexplained gap between proceeds and
+  // reinvestment. Negative values render as outflow (overdraft consumes
+  // proceeds); positive values render as inflow (carry adds to proceeds).
+  // Skipped when zero (typical post-Q1 — the engine fully distributes).
+  lines.push({
+    label: period.beginningPrincipalAccount < 0
+      ? "Opening principal account (determination-date overdraft)"
+      : "Opening principal account (carry from prior period)",
+    amount: period.beginningPrincipalAccount,
+    engineField: "beginningPrincipalAccount",
+    muted: period.beginningPrincipalAccount === 0,
+    outflow: period.beginningPrincipalAccount < 0,
+    section: "principal",
+  });
   lines.push({
     label: "Prepayments",
     amount: period.prepayments,
