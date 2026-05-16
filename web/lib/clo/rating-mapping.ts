@@ -154,3 +154,25 @@ export function isFitchCccOrBelow(rating: string | null | undefined): boolean {
   if (!rating) return false;
   return tryMap(rating, SP_FITCH_MAP) === "CCC";
 }
+
+/** Representative per-agency sub-bucket strings for synthetic reinvestment
+ *  loans. Engine reinvestment synthesis works with a coarse `RatingBucket`
+ *  ("B", "CCC", etc.) but the per-agency CCC/Caa Excess haircut needs
+ *  agency-specific rating strings on each loan. This helper picks the
+ *  mid-of-bucket sub-rating per agency for each coarse bucket so synthetic
+ *  loans participate in the per-agency predicates exactly like ingested
+ *  loans. Consumed only at synthesis-time. */
+export function representativeSubRatings(
+  bucket: string,
+): { moodysRatingFinal?: string; fitchRatingFinal?: string } {
+  switch (bucket) {
+    case "AAA": return { moodysRatingFinal: "Aaa",  fitchRatingFinal: "AAA" };
+    case "AA":  return { moodysRatingFinal: "Aa2",  fitchRatingFinal: "AA"  };
+    case "A":   return { moodysRatingFinal: "A2",   fitchRatingFinal: "A"   };
+    case "BBB": return { moodysRatingFinal: "Baa2", fitchRatingFinal: "BBB" };
+    case "BB":  return { moodysRatingFinal: "Ba2",  fitchRatingFinal: "BB"  };
+    case "B":   return { moodysRatingFinal: "B2",   fitchRatingFinal: "B"   };
+    case "CCC": return { moodysRatingFinal: "Caa2", fitchRatingFinal: "CCC" };
+    default:    return {};
+  }
+}

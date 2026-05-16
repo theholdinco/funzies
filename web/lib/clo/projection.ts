@@ -3,7 +3,7 @@
 
 import { CLO_DEFAULTS } from "./defaults";
 import { POST_ACCEL_SEQUENCE } from "./waterfall-schema";
-import { warfFactorToQuarterlyHazard } from "./rating-mapping";
+import { warfFactorToQuarterlyHazard, isFitchCccOrBelow, isMoodysCaaOrBelow, representativeSubRatings } from "./rating-mapping";
 import {
   BUCKET_WARF_FALLBACK,
   aggregateQualityMetrics,
@@ -423,7 +423,17 @@ export interface ProjectionInputs {
    *  transparency and the par-fallback banner. */
   reinvestmentPriceSource?: "user_override" | "pool_was_derived" | "par_fallback";
   cccBucketLimitPct: number; // CCC excess above this % of par is haircut in OC test
-  cccMarketValuePct: number; // market value assumption for CCC excess haircut (% of par)
+  /** Legacy flat-scalar market-value assumption for the CCC/Caa Excess
+   *  haircut. The engine prefers the per-position PPM-correct
+   *  computation (greater-of Fitch CCC vs Moody's Caa, read from
+   *  `loan.fitchRatingFinal`, `loan.moodysRatingFinal`, and
+   *  `loan.currentPrice`) when ANY loan in the pool carries a
+   *  per-agency rating. This scalar is the legacy fallback used only
+   *  when no per-agency ratings are present (typical of hand-
+   *  constructed test fixtures and synthetic-only pools). Production
+   *  data through the resolver always carries per-agency strings, so
+   *  this fallback never fires on partner-visible projections. */
+  cccMarketValuePct: number;
   deferredInterestCompounds: boolean; // whether PIK'd interest itself earns interest
   initialPrincipalCash?: number; // uninvested principal in accounts at projection start (flows through waterfall Q1)
   /** Unused Proceeds Account opening balance at T=0. Per PPM Condition 1
@@ -2542,6 +2552,20 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
   const hasScheduledAssetPayments = hasLoans && loanStates.some(
     (l) => l.assetPaymentIntervalMonths != null && l.nextPaymentDate != null,
   );
+  // Snapshot at engine startup: does the INITIAL pool carry per-agency
+  // ratings? Production data through the resolver always does; hand-
+  // constructed test fixtures typically don't. Synthetic reinvestment
+  // loans created mid-projection respect this snapshot — they only
+  // populate per-agency strings if the deal's existing pool does, so
+  // the CCC/Caa Excess haircut dispatch (per-agency vs legacy scalar)
+  // stays stable across the projection and matches the dispatch the
+  // initial loanStates would have produced. Without this gate, the
+  // first synthetic reinvestment with per-agency strings would flip
+  // an otherwise-legacy fixture onto the per-agency path mid-run,
+  // silently changing the haircut on the original loans.
+  const dealUsesPerAgencyRatings = hasLoans && loanStates.some(
+    (l) => l.fitchRatingFinal != null || l.moodysRatingFinal != null,
+  );
   // Average loan size — used to chunk reinvestment into realistic individual
   // loans for Monte Carlo. "Funded" = currently-drawn par > 0 — independent
   // of the isDelayedDraw facility-type tag (a fully-drawn DDTL is funded).
@@ -4198,8 +4222,22 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       // the per-period haircut Σ correctly deducts on the next
       // determination date.
       const isLongDatedSynth = matDate > longDatedReferenceDate;
+      // Per-agency strings + currentPrice on synthetic loans so the
+      // CCC/Caa Excess haircut sees them in the per-agency path. Gated
+      // on `dealUsesPerAgencyRatings` (snapshot of the initial pool) so
+      // a legacy fixture stays on the legacy scalar path across the
+      // whole projection — without the gate, the first synthetic
+      // reinvestment would silently flip the dispatch and change the
+      // haircut applied to the original loans mid-run.
+      // currentPrice = reinvestmentPricePct (the acquisition price;
+      // synthetic loans don't have a separate mark-to-market evolution).
+      const synthSubRatings = dealUsesPerAgencyRatings
+        ? representativeSubRatings(reinvestmentRating)
+        : {};
       const synthCommonFields = {
         ratingBucket: reinvestmentRating,
+        ...synthSubRatings,
+        ...(dealUsesPerAgencyRatings ? { currentPrice: reinvestmentPricePct } : {}),
         spreadBps: reinvestmentSpreadBps,
         warfFactor: reinvestmentWarfFactor,
         maturityDate: matDate,
@@ -5134,15 +5172,159 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
       - discountHaircut - longDatedHaircut - impliedOcAdjustment - currentDdtlUnfundedPar
       - cumulativeDrawnFromCalibratedDdtl;
     if (hasLoans && cccBucketLimitPct > 0) {
-      const cccPar = loanStates
-        .filter((l) => l.ratingBucket === "CCC" && l.survivingPar > 0)
-        .reduce((s, l) => s + l.survivingPar, 0);
-      const cccLimitAbs = endingPar * (cccBucketLimitPct / 100);
-      const cccExcess = Math.max(0, cccPar - cccLimitAbs);
-      if (cccExcess > 0) {
-        // Haircut: replace par with market value for the excess amount
-        const haircut = cccExcess * (1 - cccMarketValuePct / 100);
-        ocNumerator -= haircut;
+      // CCC/Caa Excess Adjustment per Ares XV indenture ("CCC/Caa
+      // Excess" and "Excess CCC Adjustment Amount" definitions in the
+      // Final Offering Circular dated 14 December 2021):
+      //
+      //   CCC/Caa Excess = greater of
+      //     (a) Σ par of Fitch CCC Obligations    − 7.5% × CPA
+      //     (b) Σ par of Moody's Caa Obligations  − 7.5% × CPA
+      //   Adjustment = Σ par × (1 − Market Value) over the lowest-
+      //                Market-Value obligations from the winning branch
+      //                whose cumulative par fills the excess (partial
+      //                slice on the marginal obligation).
+      //
+      // DEAL-SPECIFIC AGENCY PAIR — Ares XV uses Fitch + Moody's. Other
+      // deals can use other pairs: Ares European CLO XVIII's indenture,
+      // for example, defines CCC Excess as greater-of(Fitch CCC,
+      // S&P CCC) with an LML asymmetry (S&P does not exclude LML there).
+      // The pair is hard-coded into the engine here because (a) the
+      // resolver does not yet extract the per-deal definition, and
+      // (b) Ares XV is the only deal currently ingested. When the
+      // second deal lands, lift the pair into `ResolvedDealData` (as
+      // `cccExcessAgencyPair: ["fitch", "moodys"]` or similar) and
+      // have the engine dispatch off that field — anti-pattern #1
+      // ("Don't overfit to a single deal"). The earlier S&P/Moody's
+      // confusion on this branch is the canonical case study.
+      //
+      // Both "Fitch CCC Obligations" and "Moody's Caa Obligations"
+      // definitions explicitly exclude Defaulted Obligations AND Loss
+      // Mitigation Loans — the LML carve-out is symmetric on this deal.
+      //
+      // Two evaluation modes, dispatched on data availability:
+      //
+      // 1. PER-AGENCY PER-POSITION (production path): when any loan in
+      //    the pool carries a per-agency rating (`fitchRatingFinal` or
+      //    `moodysRatingFinal`), the engine evaluates both branches
+      //    against the per-agency populations and computes the haircut
+      //    from `slicePar × (1 − currentPrice/100)` over the lowest-MV
+      //    obligations from the winning branch. If any loan in the
+      //    winning branch is missing `currentPrice`, the engine throws
+      //    BEFORE the selection runs — sorting unpriced loans last
+      //    would silently under-haircut when the unpriced loan should
+      //    have been the lowest-MV one (anti-pattern #3: silent
+      //    fallback on a missing computational input).
+      //
+      // 2. LEGACY SCALAR (back-compat path): when NO loan in the pool
+      //    carries a per-agency rating (typical of hand-constructed
+      //    test fixtures whose loans only set `ratingBucket`), the
+      //    engine falls back to the prior `ratingBucket === "CCC"`
+      //    population with a flat `cccMarketValuePct` haircut. The
+      //    fallback preserves the OC-ratio shape for existing fixtures
+      //    so reinvestment timing and downstream `loanStates`
+      //    evolution remain bit-identical. Synthetic reinvestment
+      //    loans created mid-projection populate per-agency ratings
+      //    via `representativeSubRatings(reinvestmentRating)` so they
+      //    enter the per-agency path correctly — preventing the
+      //    silent-exclusion shape where a CCC-bucket synthetic loan
+      //    would otherwise drop out of the haircut once any ingested
+      //    loan flipped the deal onto the per-agency path.
+      //
+      // Default exclusions (both modes): `survivingPar <= 0` covers
+      // fully-defaulted and matured/liquidated positions;
+      // `defaultedParPending > 0` covers partially-defaulted obligors
+      // (same convention as `computeQualityMetrics` — the PPM
+      // definition of "Defaulted Obligations" excludes the whole
+      // obligor once any portion is defaulted, not just the defaulted
+      // slice).
+      //
+      // Denominator: the PPM-strict 7.5% threshold uses Collateral
+      // Principal Amount with Defaulted Obligations valued at Fitch /
+      // Moody's Collateral Value. `endingPar` (used here, matching
+      // the prior scalar path) excludes defaulteds entirely. The
+      // divergence is small on healthy pools and zero today on Euro
+      // XV (no defaulted par); a strict CPA-with-collateral-value
+      // denominator is a separate refinement.
+      // Dispatch keyed off the engine-startup snapshot (not a per-
+      // period recompute) so the dispatch can't flip mid-projection
+      // when synthetic reinvestment loans land in `loanStates`. The
+      // synthesis sites already gate per-agency string assignment on
+      // the same snapshot, so the two are mutually consistent: a
+      // legacy pool stays on the legacy path with legacy-shaped
+      // synthetic loans; a production pool stays on the per-agency
+      // path with per-agency-shaped synthetic loans.
+      const limitAbs = endingPar * (cccBucketLimitPct / 100);
+      if (dealUsesPerAgencyRatings) {
+        type CccCandidate = { survivingPar: number; currentPrice?: number | null };
+        const fitchPool: CccCandidate[] = [];
+        const moodysPool: CccCandidate[] = [];
+        let fitchPar = 0;
+        let moodysPar = 0;
+        for (const l of loanStates) {
+          if (l.survivingPar <= 0) continue;
+          if (l.defaultedParPending > 0) continue;
+          if (l.isLossMitigationLoan) continue; // PPM: both branches exclude LML
+          if (isFitchCccOrBelow(l.fitchRatingFinal)) {
+            fitchPool.push({ survivingPar: l.survivingPar, currentPrice: l.currentPrice });
+            fitchPar += l.survivingPar;
+          }
+          if (isMoodysCaaOrBelow(l.moodysRatingFinal)) {
+            moodysPool.push({ survivingPar: l.survivingPar, currentPrice: l.currentPrice });
+            moodysPar += l.survivingPar;
+          }
+        }
+        const fitchExcess = Math.max(0, fitchPar - limitAbs);
+        const moodysExcess = Math.max(0, moodysPar - limitAbs);
+        if (fitchExcess > 0 || moodysExcess > 0) {
+          const useFitch = fitchExcess >= moodysExcess;
+          const winner = useFitch ? fitchPool : moodysPool;
+          const branchName = useFitch ? "Fitch CCC" : "Moody's Caa";
+          const branchExcess = useFitch ? fitchExcess : moodysExcess;
+          // Pre-sort validation: lowest-MV selection requires every
+          // candidate in the winning branch to carry a price. An
+          // unpriced loan might be the lowest-MV one and would skew
+          // the selection by silently dropping out — fail-loud before
+          // the selection runs rather than after.
+          const unpriced = winner.filter((l) => l.currentPrice == null);
+          if (unpriced.length > 0) {
+            throw new Error(
+              `CCC/Caa Excess haircut: ${branchName} branch is binding ` +
+                `(branch_excess=${branchExcess.toFixed(2)}) but ` +
+                `${unpriced.length} obligation(s) in the branch lack ` +
+                `currentPrice. Lowest-MV selection cannot run reliably. ` +
+                `Populate prices at ingestion or set a deliberate stress override.`,
+            );
+          }
+          const sorted = [...winner].sort(
+            (a, b) => (a.currentPrice as number) - (b.currentPrice as number),
+          );
+          let remaining = branchExcess;
+          let haircut = 0;
+          for (const l of sorted) {
+            if (remaining <= 0) break;
+            const slice = Math.min(l.survivingPar, remaining);
+            haircut += slice * (1 - (l.currentPrice as number) / 100);
+            remaining -= slice;
+          }
+          ocNumerator -= haircut;
+        }
+      } else {
+        // Legacy scalar path — byte-identical to the pre-refactor
+        // logic, preserved for back-compat with hand-constructed
+        // fixtures and synthetic-only pools whose loans only carry
+        // `ratingBucket`. Filters on `survivingPar > 0` only (no
+        // PPM-precise exclusions for Defaulted/LML) so downstream OC
+        // trajectories and reinvestment timing remain bit-identical
+        // to the original behavior these fixtures were calibrated
+        // against. The PPM-precise exclusions live in the per-agency
+        // path above, which is the production code path.
+        const cccPar = loanStates
+          .filter((l) => l.ratingBucket === "CCC" && l.survivingPar > 0)
+          .reduce((s, l) => s + l.survivingPar, 0);
+        const cccExcess = Math.max(0, cccPar - limitAbs);
+        if (cccExcess > 0) {
+          ocNumerator -= cccExcess * (1 - cccMarketValuePct / 100);
+        }
       }
     }
 
@@ -5620,9 +5802,14 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
             currentPar += cureParBought;
             ocNumerator += cureNumeratorGain;
             if (hasLoans) {
+              const cureSubRatings = dealUsesPerAgencyRatings
+                ? representativeSubRatings(reinvestmentRating)
+                : {};
               loanStates.push({
                 survivingPar: cureParBought,
                 ratingBucket: reinvestmentRating,
+                ...cureSubRatings,
+                ...(dealUsesPerAgencyRatings ? { currentPrice: reinvestmentPricePct } : {}),
                 spreadBps: reinvestmentSpreadBps,
                 warfFactor: reinvestmentWarfFactor,
                 maturityDate: cureMaturityDate,
@@ -5819,9 +6006,14 @@ export function runProjection(inputs: ProjectionInputs, defaultDrawFn?: DefaultD
         const synthMaturityMonth = periodEndMonth + reinvestmentTenorQuarters * 3;
         const synthMaturityDate = addMonthsAnchored(periodDate, reinvestmentTenorQuarters * 3, new Date(periodDate).getUTCDate());
         if (hasLoans) {
+          const ocDivertSubRatings = dealUsesPerAgencyRatings
+            ? representativeSubRatings(reinvestmentRating)
+            : {};
           loanStates.push({
             survivingPar: parBought,
             ratingBucket: reinvestmentRating,
+            ...ocDivertSubRatings,
+            ...(dealUsesPerAgencyRatings ? { currentPrice: reinvestmentPricePct } : {}),
             spreadBps: reinvestmentSpreadBps,
             warfFactor: reinvestmentWarfFactor,
             maturityDate: synthMaturityDate,
